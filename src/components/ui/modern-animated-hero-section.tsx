@@ -157,7 +157,7 @@ export const RainingLettersBackground: React.FC<{ className?: string; density?: 
         char: allChars[Math.floor(Math.random() * allChars.length)],
         x: Math.random() * 100,
         y: Math.random() * 100,
-        speed: 0.08 + Math.random() * 0.22,
+      speed: 0.045 + Math.random() * 0.12,
       })
     }
 
@@ -180,7 +180,7 @@ export const RainingLettersBackground: React.FC<{ className?: string; density?: 
 
         return newActiveIndices
       })
-    }, 80)
+    }, 180)
 
     return () => window.clearInterval(flickerInterval)
   }, [characters.length])
