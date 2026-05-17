@@ -168,7 +168,7 @@ export default function HeroSection() {
 
       <div className="bakhtech-hero-left relative z-10 w-full will-change-transform">
         <HeroGeometric
-          badge="Bakhtech Solutions"
+          badge=""
           title1="Need a website"
           title2="that stands out?"
           description="Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites."

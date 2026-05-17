@@ -157,16 +157,18 @@ function HeroGeometric({
 
       <div className="container-x relative z-20 pb-[24vh] md:pb-[28vh]">
         <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            custom={0}
-            variants={fadeUpVariants}
-            initial="hidden"
-            animate="visible"
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-3 py-1 backdrop-blur-xl md:mb-8"
-          >
-            <Circle className="h-2 w-2 fill-[#12c8a0] text-[#12c8a0]" />
-            <span className="text-soft text-sm tracking-wide">{badge}</span>
-          </motion.div>
+          {badge ? (
+            <motion.div
+              custom={0}
+              variants={fadeUpVariants}
+              initial="hidden"
+              animate="visible"
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-3 py-1 backdrop-blur-xl md:mb-8"
+            >
+              <Circle className="h-2 w-2 fill-[#12c8a0] text-[#12c8a0]" />
+              <span className="text-soft text-sm tracking-wide">{badge}</span>
+            </motion.div>
+          ) : null}
 
           <motion.div custom={1} variants={fadeUpVariants} initial="hidden" animate="visible">
             <h1 className="mb-5 text-4xl font-bold tracking-tight drop-shadow-[0_12px_36px_color-mix(in_srgb,var(--background)_72%,transparent)] sm:text-6xl md:mb-6 md:text-8xl">
