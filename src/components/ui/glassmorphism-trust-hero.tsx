@@ -1,43 +1,18 @@
 import {
   ArrowRight,
   CheckCircle2,
-  Command,
-  Cpu,
-  Crown,
-  Gem,
-  Ghost,
-  Hexagon,
-  Play,
-  Star,
-  Target,
-  Triangle,
 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { RainingLettersBackground } from '@/components/ui/modern-animated-hero-section'
+import { HeroGeometric } from '@/components/ui/shape-landing-hero'
 import { cn } from '@/lib/utils'
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
 }
-
-const CLIENTS = [
-  { name: 'Acme Corp', icon: Hexagon },
-  { name: 'Quantum', icon: Triangle },
-  { name: 'Command+Z', icon: Command },
-  { name: 'Phantom', icon: Ghost },
-  { name: 'Ruby', icon: Gem },
-  { name: 'Chipset', icon: Cpu },
-]
-
-const StatItem = ({ value, label }: { value: string; label: string }) => (
-  <div className="flex cursor-default flex-col items-center justify-center transition-transform hover:-translate-y-1">
-    <span className="text-main text-xl font-bold sm:text-2xl">{value}</span>
-    <span className="text-soft text-[10px] font-medium uppercase tracking-wider sm:text-xs">{label}</span>
-  </div>
-)
 
 export default function HeroSection() {
   const { theme } = useTheme()
@@ -191,137 +166,28 @@ export default function HeroSection() {
       <div className="pointer-events-none absolute inset-y-0 left-0 z-[3] w-[68%] bg-[radial-gradient(ellipse_at_38%_45%,color-mix(in_srgb,var(--background)_92%,transparent)_0%,color-mix(in_srgb,var(--background)_68%,transparent)_42%,transparent_76%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-32 bg-gradient-to-t from-[var(--background)] to-transparent" />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 pt-28 sm:px-6 md:pb-20 md:pt-36 lg:px-8">
-        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-12 lg:gap-8">
-          <div className="bakhtech-hero-left flex flex-col justify-center space-y-8 pt-8 will-change-transform lg:col-span-7">
-            <div className="animate-fade-in delay-100">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-3 py-1.5 backdrop-blur-md transition-colors hover:bg-[var(--surface)]">
-                <span className="text-soft flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider sm:text-xs">
-                  Award-Winning Design
-                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                </span>
-              </div>
-            </div>
-
-            <h1
-              className="animate-fade-in delay-200 text-main text-5xl font-medium leading-[0.9] tracking-tight sm:text-6xl lg:text-7xl xl:text-8xl"
-              style={{
-                maskImage: 'linear-gradient(180deg, black 0%, black 80%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(180deg, black 0%, black 80%, transparent 100%)',
-              }}
-            >
-              Need a website
-              <br />
-              <span
-                className={cn(
-                  'bg-clip-text text-transparent',
-                  isDark
-                    ? 'bg-gradient-to-br from-white via-white to-[#ffcd75]'
-                    : 'bg-gradient-to-br from-[#0b1220] via-[#1261ff] to-[#0f8c76]',
-                )}
-              >
-                that stands out?
-              </span>
-            </h1>
-
-            <p className="animate-fade-in delay-300 text-soft max-w-xl text-lg leading-relaxed">
-              Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites.
-            </p>
-
-            <div className="animate-fade-in delay-400 flex flex-col gap-4 sm:flex-row">
-              <a
-                href="/portfolio"
-                className="group inline-flex items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 py-4 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Get Started Now
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </a>
-
-              <a
-                href="/contact"
-                className="group inline-flex items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-8 py-4 text-sm font-semibold text-[var(--foreground)] backdrop-blur-sm transition-colors hover:bg-[var(--surface)]"
-              >
-                <Play className="h-4 w-4 fill-current" />
-                Request A Quote
-              </a>
-            </div>
-          </div>
-
-          <div className="bakhtech-hero-right space-y-6 will-change-transform lg:col-span-5 lg:mt-12">
-            <div className="animate-fade-in delay-500 surface-card relative overflow-hidden rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-              <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-[var(--brand)]/10 blur-3xl" />
-
-              <div className="relative z-10">
-                <div className="mb-8 flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20">
-                    <Target className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-main text-3xl font-bold tracking-tight">200+</div>
-                    <div className="text-soft text-sm">Website Designed</div>
-                  </div>
-                </div>
-
-                <div className="mb-8 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-soft">Positive Feedback</span>
-                    <span className="text-main font-medium">98%</span>
-                  </div>
-                  <div className="surface-muted h-2 w-full overflow-hidden rounded-full">
-                    <div className="h-full w-[98%] rounded-full bg-gradient-to-r from-[#1261ff] to-[#12c8a0]" />
-                  </div>
-                </div>
-
-                <div className="mb-6 h-px w-full bg-[var(--line)]" />
-
-                <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-4 text-center">
-                  <StatItem value="7+" label="Years" />
-                  <div className="mx-auto h-full w-px bg-[var(--line)]" />
-                  <StatItem value="23" label="Countries" />
-                  <div className="mx-auto h-full w-px bg-[var(--line)]" />
-                  <StatItem value="8+" label="Services" />
-                </div>
-
-                <div className="mt-8 flex flex-wrap gap-2">
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-medium tracking-wide text-zinc-300">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-                    </span>
-                    ACTIVE
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-medium tracking-wide text-zinc-300">
-                    <Crown className="h-3 w-3 text-yellow-500" />
-                    PREMIUM
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="animate-fade-in delay-500 surface-card relative overflow-hidden rounded-3xl py-8 backdrop-blur-xl">
-              <h3 className="text-soft mb-6 px-8 text-sm font-medium">Projects</h3>
-
-              <div
-                className="relative flex overflow-hidden"
-                style={{
-                  maskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)',
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)',
-                }}
-              >
-                <div className="animate-marquee flex whitespace-nowrap px-4">
-                  {[...CLIENTS, ...CLIENTS, ...CLIENTS].map((client, index) => (
-                    <div
-                      key={`${client.name}-${index}`}
-                      className="mx-6 flex cursor-default items-center gap-2 opacity-55 grayscale transition-all hover:scale-105 hover:opacity-100 hover:grayscale-0"
-                    >
-                      <client.icon className="h-6 w-6 fill-current text-[var(--foreground)]" />
-                      <span className="text-main text-lg font-bold tracking-tight">{client.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="bakhtech-hero-left relative z-10 w-full will-change-transform">
+        <HeroGeometric
+          badge="Bakhtech Solutions"
+          title1="Need a website"
+          title2="that stands out?"
+          description="Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites."
+          className="min-h-screen bg-transparent"
+        />
+        <div className="pointer-events-auto absolute bottom-[12vh] left-1/2 z-20 flex -translate-x-1/2 flex-col gap-4 sm:flex-row">
+          <a
+            href="/contact"
+            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Get Started Now
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </a>
+          <a
+            href="/portfolio"
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-8 text-sm font-semibold text-[var(--foreground)] backdrop-blur-sm transition hover:bg-[var(--surface)]"
+          >
+            Explore Project
+          </a>
         </div>
       </div>
 
