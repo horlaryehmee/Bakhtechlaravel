@@ -155,7 +155,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 pb-[18vh] md:pb-[22vh]">
+      <div className="container-x relative z-20 translate-y-12 pb-[14vh] md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
