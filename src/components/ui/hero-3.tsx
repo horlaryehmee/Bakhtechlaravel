@@ -61,7 +61,7 @@ export function AnimatedImageMarquee({
         {duplicatedImages.map((src, index) => (
           <div
             key={`${src}-${index}`}
-            className="relative h-36 flex-shrink-0 overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] md:h-52"
+            className="relative h-28 flex-shrink-0 overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] md:h-52"
             style={{
               aspectRatio: '16 / 10',
               rotate: `${index % 2 === 0 ? -1.5 : 2.5}deg`,

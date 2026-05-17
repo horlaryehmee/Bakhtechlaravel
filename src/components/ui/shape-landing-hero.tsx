@@ -111,7 +111,7 @@ function HeroGeometric({
   }
 
   return (
-    <div className={cn('relative flex min-h-screen w-full items-center justify-center overflow-hidden', className)}>
+    <div className={cn('relative flex min-h-screen w-full items-start justify-center overflow-hidden pt-[7.75rem] md:items-center md:pt-0', className)}>
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
 
       <div className="absolute inset-0 overflow-hidden">
@@ -157,7 +157,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 translate-y-0 pb-[10vh] pt-16 md:translate-y-16 md:pb-[18vh] md:pt-0">
+      <div className="container-x relative z-20 pb-[22vh] md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -195,7 +195,7 @@ function HeroGeometric({
       <AnimatedImageMarquee
         images={BAKHTECH_MARQUEE_IMAGES}
         duration={48}
-        className="bottom-2 z-10 h-[20vh] opacity-72 md:bottom-4 md:h-[25vh]"
+        className="bottom-[4.75rem] z-10 h-[18vh] opacity-82 md:bottom-4 md:h-[25vh]"
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
