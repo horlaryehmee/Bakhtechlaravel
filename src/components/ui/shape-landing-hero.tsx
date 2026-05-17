@@ -160,7 +160,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 -translate-y-8 pb-[24vh] md:translate-y-16 md:pb-[18vh]">
+      <div className="container-x relative z-20 translate-y-10 pb-0 md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -176,7 +176,7 @@ function HeroGeometric({
           ) : null}
 
           <motion.div custom={1} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <h1 className="text-main mb-4 text-[3.05rem] font-black leading-[0.94] tracking-tight sm:text-6xl md:mb-6 md:text-8xl">
+            <h1 className="text-main mb-4 text-[2.8rem] font-black leading-[0.96] tracking-tight sm:text-6xl md:mb-6 md:text-8xl">
               <span className="md:bg-gradient-to-b md:from-[var(--foreground)] md:to-[color-mix(in_srgb,var(--foreground)_72%,transparent)] md:bg-clip-text md:text-transparent">
                 {title1}
               </span>
@@ -204,7 +204,7 @@ function HeroGeometric({
       <AnimatedImageMarquee
         images={BAKHTECH_MARQUEE_IMAGES}
         duration={48}
-        className="bottom-0 z-10 h-[18vh] opacity-82 md:bottom-4 md:h-[25vh]"
+        className="bottom-[4.25rem] z-10 h-[15vh] opacity-82 md:bottom-4 md:h-[25vh]"
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
