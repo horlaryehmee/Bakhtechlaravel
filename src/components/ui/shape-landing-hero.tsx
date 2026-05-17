@@ -160,7 +160,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 translate-y-10 pb-0 md:translate-y-16 md:pb-[18vh]">
+      <div className="container-x relative z-20 translate-y-2 pb-0 md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -204,7 +204,7 @@ function HeroGeometric({
       <AnimatedImageMarquee
         images={BAKHTECH_MARQUEE_IMAGES}
         duration={48}
-        className="bottom-[4.25rem] z-10 h-[15vh] opacity-82 md:bottom-4 md:h-[25vh]"
+        className="bottom-[6.25rem] z-10 h-[15vh] opacity-82 md:bottom-4 md:h-[25vh]"
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
