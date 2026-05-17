@@ -114,7 +114,7 @@ function HeroGeometric({
   }
 
   return (
-    <div className={cn('relative flex min-h-screen w-full items-start justify-center overflow-hidden pt-28 md:items-center md:pt-0', className)}>
+    <div className={cn('relative flex min-h-screen w-full items-center justify-center overflow-hidden', className)}>
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
 
       <div className="absolute inset-0 overflow-hidden">
@@ -160,7 +160,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 pb-[24vh] md:translate-y-16 md:pb-[18vh]">
+      <div className="container-x relative z-20 -translate-y-8 pb-[24vh] md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
