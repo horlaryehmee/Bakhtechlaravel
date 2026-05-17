@@ -155,21 +155,21 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-10">
+      <div className="container-x relative z-20 pb-[24vh] md:pb-[28vh]">
         <div className="mx-auto max-w-4xl text-center">
           <motion.div
             custom={0}
             variants={fadeUpVariants}
             initial="hidden"
             animate="visible"
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/50 px-3 py-1 backdrop-blur-xl md:mb-12"
+            className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-3 py-1 backdrop-blur-xl md:mb-8"
           >
             <Circle className="h-2 w-2 fill-[#12c8a0] text-[#12c8a0]" />
             <span className="text-soft text-sm tracking-wide">{badge}</span>
           </motion.div>
 
           <motion.div custom={1} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-6xl md:mb-8 md:text-8xl">
+            <h1 className="mb-5 text-4xl font-bold tracking-tight drop-shadow-[0_12px_36px_color-mix(in_srgb,var(--background)_72%,transparent)] sm:text-6xl md:mb-6 md:text-8xl">
               <span className="bg-gradient-to-b from-[var(--foreground)] to-[color-mix(in_srgb,var(--foreground)_72%,transparent)] bg-clip-text text-transparent">
                 {title1}
               </span>
@@ -181,7 +181,7 @@ function HeroGeometric({
           </motion.div>
 
           <motion.div custom={2} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <p className="text-soft mx-auto mb-8 max-w-xl px-4 text-base font-light leading-relaxed tracking-wide sm:text-lg md:text-xl">
+            <p className="text-soft mx-auto mb-8 max-w-2xl rounded-2xl bg-[var(--background)]/42 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:text-xl">
               {description}
             </p>
           </motion.div>
@@ -191,10 +191,10 @@ function HeroGeometric({
       <AnimatedImageMarquee
         images={BAKHTECH_MARQUEE_IMAGES}
         duration={48}
-        className="bottom-4 h-[24vh] opacity-75 md:bottom-8 md:h-[30vh]"
+        className="bottom-2 z-10 h-[20vh] opacity-72 md:bottom-4 md:h-[25vh]"
       />
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
     </div>
   )
 }
