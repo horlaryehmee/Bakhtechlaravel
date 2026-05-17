@@ -172,9 +172,26 @@ export default function HeroSection() {
           title1="Need a website"
           title2="that stands out?"
           description="Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites."
+          actions={
+            <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row md:hidden">
+              <a
+                href="/contact"
+                className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Get Started Now
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </a>
+              <a
+                href="/portfolio"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface)]/70 px-8 text-sm font-semibold text-[var(--foreground)] backdrop-blur-sm transition hover:bg-[var(--surface)]"
+              >
+                Explore Project
+              </a>
+            </div>
+          }
           className="min-h-screen bg-transparent"
         />
-        <div className="pointer-events-auto absolute left-1/2 top-[56%] z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-3 sm:flex-row md:top-[70%] md:gap-4">
+        <div className="pointer-events-auto absolute left-1/2 top-[70%] z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col gap-3 sm:flex-row md:flex md:gap-4">
           <a
             href="/contact"
             className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] active:scale-[0.98]"

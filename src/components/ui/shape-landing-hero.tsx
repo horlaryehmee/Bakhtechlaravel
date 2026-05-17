@@ -2,6 +2,7 @@
 
 import { motion, type Variants } from 'framer-motion'
 import { Circle } from 'lucide-react'
+import type React from 'react'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { cn } from '@/lib/utils'
 
@@ -89,12 +90,14 @@ function HeroGeometric({
   title1 = 'Elevate Your Digital Vision',
   title2 = 'Crafting Exceptional Websites',
   description = 'Crafting exceptional digital experiences through innovative design and cutting-edge technology.',
+  actions,
   className,
 }: {
   badge?: string
   title1?: string
   title2?: string
   description?: string
+  actions?: React.ReactNode
   className?: string
 }) {
   const fadeUpVariants: Variants = {
@@ -111,7 +114,7 @@ function HeroGeometric({
   }
 
   return (
-    <div className={cn('relative flex min-h-screen w-full items-start justify-center overflow-hidden pt-[7.75rem] md:items-center md:pt-0', className)}>
+    <div className={cn('relative flex min-h-screen w-full items-start justify-center overflow-hidden pt-28 md:items-center md:pt-0', className)}>
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
 
       <div className="absolute inset-0 overflow-hidden">
@@ -157,7 +160,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 pb-[22vh] md:translate-y-16 md:pb-[18vh]">
+      <div className="container-x relative z-20 pb-[24vh] md:translate-y-16 md:pb-[18vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -173,12 +176,12 @@ function HeroGeometric({
           ) : null}
 
           <motion.div custom={1} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <h1 className="mb-4 text-[2.7rem] font-bold leading-[0.98] tracking-tight drop-shadow-[0_12px_36px_color-mix(in_srgb,var(--background)_72%,transparent)] sm:text-6xl md:mb-6 md:text-8xl">
-              <span className="bg-gradient-to-b from-[var(--foreground)] to-[color-mix(in_srgb,var(--foreground)_72%,transparent)] bg-clip-text text-transparent">
+            <h1 className="text-main mb-4 text-[3.05rem] font-black leading-[0.94] tracking-tight sm:text-6xl md:mb-6 md:text-8xl">
+              <span className="md:bg-gradient-to-b md:from-[var(--foreground)] md:to-[color-mix(in_srgb,var(--foreground)_72%,transparent)] md:bg-clip-text md:text-transparent">
                 {title1}
               </span>
               <br />
-              <span className="bg-gradient-to-r from-[#92b7ff] via-[var(--foreground)] to-[#8ce8d3] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#7ea5f7] via-[var(--foreground)] to-[#61cdb8] bg-clip-text text-transparent">
                 {title2}
               </span>
             </h1>
@@ -189,13 +192,19 @@ function HeroGeometric({
               {description}
             </p>
           </motion.div>
+
+          {actions ? (
+            <motion.div custom={3} variants={fadeUpVariants} initial="hidden" animate="visible" className="mt-5 flex justify-center">
+              {actions}
+            </motion.div>
+          ) : null}
         </div>
       </div>
 
       <AnimatedImageMarquee
         images={BAKHTECH_MARQUEE_IMAGES}
         duration={48}
-        className="bottom-[4.75rem] z-10 h-[18vh] opacity-82 md:bottom-4 md:h-[25vh]"
+        className="bottom-0 z-10 h-[18vh] opacity-82 md:bottom-4 md:h-[25vh]"
       />
 
       <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
