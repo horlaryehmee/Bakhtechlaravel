@@ -174,14 +174,14 @@ function HeroGeometric({
                 {title1}
               </span>
               <br />
-              <span className="bg-gradient-to-r from-[#7c8cff] via-[var(--foreground)] to-[#cf6fc2] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#92b7ff] via-[var(--foreground)] to-[#8ce8d3] bg-clip-text text-transparent">
                 {title2}
               </span>
             </h1>
           </motion.div>
 
           <motion.div custom={2} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <p className="text-soft mx-auto mb-8 max-w-2xl rounded-2xl bg-[var(--background)]/42 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:text-xl">
+            <p className="text-soft mx-auto mb-8 max-w-2xl rounded-2xl bg-[var(--background)]/36 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:text-xl">
               {description}
             </p>
           </motion.div>

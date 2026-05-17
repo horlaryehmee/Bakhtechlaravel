@@ -151,15 +151,15 @@ export default function HeroSection() {
         className={cn(
           'bakhtech-hero-bg',
           'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover',
-          isDark ? 'opacity-25 brightness-75 saturate-125' : 'opacity-100',
+          isDark ? 'opacity-42 brightness-90 saturate-110' : 'opacity-100',
         )}
       />
-      <RainingLettersBackground className={cn('z-[1] bg-transparent', isDark ? 'opacity-70' : 'opacity-55')} density={150} mode={theme} />
+      <RainingLettersBackground className={cn('z-[1] bg-transparent', isDark ? 'opacity-34' : 'opacity-55')} density={150} mode={theme} />
       <div
         className={cn(
           'pointer-events-none absolute inset-0 z-[2]',
           isDark
-            ? 'bg-[radial-gradient(circle_at_30%_20%,rgba(34,197,94,0.08),transparent_28%),radial-gradient(circle_at_82%_28%,rgba(99,102,241,0.12),transparent_30%),linear-gradient(180deg,rgba(9,9,11,0.18),rgba(9,9,11,0.52)_86%,#09090b_100%)]'
+            ? 'bg-[radial-gradient(circle_at_28%_18%,rgba(139,184,255,0.22),transparent_32%),radial-gradient(circle_at_84%_30%,rgba(103,232,207,0.16),transparent_34%),linear-gradient(180deg,rgba(16,23,41,0.34),rgba(16,23,41,0.58)_78%,#101729_100%)]'
             : 'bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(248,250,252,0.3)_76%,#f8fafc_100%)]',
         )}
       />

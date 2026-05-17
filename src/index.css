@@ -28,21 +28,21 @@
 }
 
 :root.dark {
-  --background: #050816;
-  --foreground: #eef4ff;
-  --muted: #9aa8bd;
-  --brand: #65a6ff;
-  --brand-2: #20d6b3;
-  --surface: #0d1323;
-  --surface-2: #111a2e;
-  --line: rgba(255, 255, 255, 0.1);
-  --section: #050816;
-  --section-strong: #080d1b;
-  --header-bg: rgba(8, 10, 18, 0.78);
-  --header-border: rgba(255, 255, 255, 0.14);
+  --background: #101729;
+  --foreground: #f5f8ff;
+  --muted: #b8c3d8;
+  --brand: #8bb8ff;
+  --brand-2: #67e8cf;
+  --surface: #172137;
+  --surface-2: #202d48;
+  --line: rgba(226, 232, 240, 0.14);
+  --section: #101729;
+  --section-strong: #141d31;
+  --header-bg: rgba(20, 29, 49, 0.78);
+  --header-border: rgba(226, 232, 240, 0.16);
   --header-text: #ffffff;
-  --header-muted: rgba(255, 255, 255, 0.58);
-  --shadow-soft: 0 24px 80px rgba(2, 6, 23, 0.34);
+  --header-muted: rgba(245, 248, 255, 0.62);
+  --shadow-soft: 0 24px 80px rgba(2, 6, 23, 0.26);
 }
 
 * {
