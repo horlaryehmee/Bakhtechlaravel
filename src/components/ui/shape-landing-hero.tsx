@@ -157,7 +157,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 translate-y-12 pb-[14vh] md:translate-y-16 md:pb-[18vh]">
+      <div className="container-x relative z-20 translate-y-0 pb-[10vh] pt-16 md:translate-y-16 md:pb-[18vh] md:pt-0">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -173,7 +173,7 @@ function HeroGeometric({
           ) : null}
 
           <motion.div custom={1} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <h1 className="mb-5 text-4xl font-bold tracking-tight drop-shadow-[0_12px_36px_color-mix(in_srgb,var(--background)_72%,transparent)] sm:text-6xl md:mb-6 md:text-8xl">
+            <h1 className="mb-4 text-[2.7rem] font-bold leading-[0.98] tracking-tight drop-shadow-[0_12px_36px_color-mix(in_srgb,var(--background)_72%,transparent)] sm:text-6xl md:mb-6 md:text-8xl">
               <span className="bg-gradient-to-b from-[var(--foreground)] to-[color-mix(in_srgb,var(--foreground)_72%,transparent)] bg-clip-text text-transparent">
                 {title1}
               </span>
@@ -185,7 +185,7 @@ function HeroGeometric({
           </motion.div>
 
           <motion.div custom={2} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <p className="text-soft mx-auto mb-4 max-w-2xl rounded-2xl bg-[var(--background)]/36 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:mb-5 md:text-xl">
+            <p className="text-soft mx-auto mb-3 max-w-2xl rounded-2xl bg-[var(--background)]/36 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:mb-5 md:text-xl">
               {description}
             </p>
           </motion.div>

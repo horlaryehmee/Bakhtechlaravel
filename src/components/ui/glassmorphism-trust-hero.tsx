@@ -174,7 +174,7 @@ export default function HeroSection() {
           description="Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites."
           className="min-h-screen bg-transparent"
         />
-        <div className="pointer-events-auto absolute left-1/2 top-[69%] z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-4 sm:flex-row md:top-[70%]">
+        <div className="pointer-events-auto absolute left-1/2 top-[64%] z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-3 sm:flex-row md:top-[70%] md:gap-4">
           <a
             href="/contact"
             className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] active:scale-[0.98]"
