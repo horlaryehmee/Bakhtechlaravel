@@ -6,14 +6,16 @@ import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { cn } from '@/lib/utils'
 
 const BAKHTECH_MARQUEE_IMAGES = [
-  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=900&q=80',
+  '/portfolio-marquee/project-1.jpg',
+  '/portfolio-marquee/project-2.jpg',
+  '/portfolio-marquee/project-3.jpg',
+  '/portfolio-marquee/project-4.jpg',
+  '/portfolio-marquee/project-5.jpg',
+  '/portfolio-marquee/project-6.jpg',
+  '/portfolio-marquee/project-7.jpg',
+  '/portfolio-marquee/project-8.jpg',
+  '/portfolio-marquee/project-9.jpg',
+  '/portfolio-marquee/project-10.jpg',
 ]
 
 function ElegantShape({
