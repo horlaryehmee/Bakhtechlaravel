@@ -2,7 +2,19 @@
 
 import { motion, type Variants } from 'framer-motion'
 import { Circle } from 'lucide-react'
+import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { cn } from '@/lib/utils'
+
+const BAKHTECH_MARQUEE_IMAGES = [
+  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=900&q=80',
+]
 
 function ElegantShape({
   className,
@@ -175,6 +187,12 @@ function HeroGeometric({
           </motion.div>
         </div>
       </div>
+
+      <AnimatedImageMarquee
+        images={BAKHTECH_MARQUEE_IMAGES}
+        duration={48}
+        className="bottom-4 h-[24vh] opacity-75 md:bottom-8 md:h-[30vh]"
+      />
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[var(--background)] via-transparent to-[color-mix(in_srgb,var(--background)_82%,transparent)]" />
     </div>
