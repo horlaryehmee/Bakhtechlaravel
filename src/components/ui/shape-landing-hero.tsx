@@ -155,7 +155,7 @@ function HeroGeometric({
         />
       </div>
 
-      <div className="container-x relative z-20 pb-[24vh] md:pb-[28vh]">
+      <div className="container-x relative z-20 pb-[18vh] md:pb-[22vh]">
         <div className="mx-auto max-w-4xl text-center">
           {badge ? (
             <motion.div
@@ -183,7 +183,7 @@ function HeroGeometric({
           </motion.div>
 
           <motion.div custom={2} variants={fadeUpVariants} initial="hidden" animate="visible">
-            <p className="text-soft mx-auto mb-8 max-w-2xl rounded-2xl bg-[var(--background)]/36 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:text-xl">
+            <p className="text-soft mx-auto mb-4 max-w-2xl rounded-2xl bg-[var(--background)]/36 px-4 py-3 text-base font-normal leading-relaxed tracking-wide backdrop-blur-[2px] sm:text-lg md:mb-5 md:text-xl">
               {description}
             </p>
           </motion.div>
