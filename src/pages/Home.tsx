@@ -1,4 +1,4 @@
-import HeroSection from '@/components/ui/glassmorphism-trust-hero'
+import { CinematicHero } from '@/components/ui/cinematic-landing-hero'
 import { Section } from '@/components/ui/Section'
 import { ButtonLink } from '@/components/ui/button'
 import { SmoothReveal } from '@/components/ui/smooth-reveal'
@@ -7,7 +7,22 @@ import { portfolio, process, seoFeatures, services, stats, websiteTypes } from '
 export function Home() {
   return (
     <>
-      <HeroSection />
+      <CinematicHero
+        brandName="Bakhtech"
+        tagline1="Need a website"
+        tagline2="that stands out?"
+        cardHeading="Empower Your Business"
+        cardDescription={
+          <>
+            <span className="font-semibold text-white">Bakhtech Solutions</span> specializes in creating visually
+            striking, user-friendly websites that help businesses build a strong online presence.
+          </>
+        }
+        metricValue={98}
+        metricLabel="Positive Feedback"
+        ctaHeading="Ready to get started?"
+        ctaDescription="Building Your Online Presence, One Click at a Time!"
+      />
       <SmoothReveal>
         <Section
           eyebrow="Welcome To Bakhtech Solutions"
