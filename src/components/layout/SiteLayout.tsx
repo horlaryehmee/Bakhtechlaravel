@@ -1,6 +1,6 @@
 import { ArrowUpRight, Menu, Moon, Sparkles, Sun, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { navigation } from '@/data/site'
 import { cn } from '@/lib/utils'
@@ -8,9 +8,12 @@ import { cn } from '@/lib/utils'
 export function SiteLayout() {
   const [open, setOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
+  const location = useLocation()
+  const usePageHeader = location.pathname === '/home-2'
 
   return (
     <div className="site-bg min-h-screen">
+      {!usePageHeader ? (
       <header className="fixed inset-x-0 top-0 z-[100] px-4 pt-4">
         <nav
           className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between rounded-2xl border px-5 shadow-[var(--shadow-soft)] backdrop-blur-2xl md:px-7"
@@ -128,6 +131,7 @@ export function SiteLayout() {
           </div>
         ) : null}
       </header>
+      ) : null}
       <main>
         <Outlet />
       </main>
