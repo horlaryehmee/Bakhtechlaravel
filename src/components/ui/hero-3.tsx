@@ -44,7 +44,7 @@ export function AnimatedImageMarquee({
   trackClassName?: string
   cardClassName?: string
 }) {
-  const duplicatedImages = [...images, ...images]
+  const repeatedImages = [...images, ...images, ...images]
 
   return (
     <div
@@ -55,9 +55,9 @@ export function AnimatedImageMarquee({
       )}
       >
         <motion.div
-        className={cn('flex w-max gap-4 px-4', trackClassName)}
+        className={cn('flex w-max transform-gpu gap-4 px-4 will-change-transform', trackClassName)}
         animate={{
-          x: ['0%', '-50%'],
+          x: ['0%', '-33.333%'],
           transition: {
             ease: 'linear',
             duration,
@@ -65,7 +65,7 @@ export function AnimatedImageMarquee({
           },
         }}
       >
-        {duplicatedImages.map((src, index) => (
+        {repeatedImages.map((src, index) => (
           <div
             key={`${src}-${index}`}
             className={cn(

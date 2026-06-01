@@ -82,8 +82,8 @@ export const InfiniteGrid = ({
   ),
   description = (
     <>
-      Bakhtech Solutions creates visually striking, user-friendly websites. <br />
-      Move your cursor to reveal the active grid layer.
+      Bakhtech Solutions builds websites, ecommerce platforms, booking systems, portals, dashboards, and custom web apps
+      that help businesses win more enquiries.
     </>
   ),
   showControls = true,
@@ -129,7 +129,7 @@ export const InfiniteGrid = ({
       ref={containerRef}
       onMouseMove={handleMouseMove}
       className={cn(
-        'relative flex h-screen w-full flex-col items-center justify-center overflow-hidden bg-background',
+        'relative flex min-h-[100svh] w-full flex-col items-center justify-center overflow-hidden bg-background',
         className,
       )}
     >
@@ -178,28 +178,28 @@ export const InfiniteGrid = ({
       ) : null}
 
       {/* Content */}
-      <div className="pointer-events-none relative z-10 mx-auto flex max-w-6xl translate-y-20 flex-col items-center space-y-6 px-4 text-center md:translate-y-28">
-        <div className="space-y-8 md:space-y-10">
-          <h1 className="text-5xl font-black tracking-tight text-foreground drop-shadow-sm sm:text-6xl md:text-7xl lg:text-8xl">
+      <div className="pointer-events-none relative z-10 mx-auto flex w-full max-w-6xl translate-y-10 flex-col items-center space-y-5 px-5 text-center sm:translate-y-14 md:translate-y-24">
+        <div className="w-full space-y-5 md:space-y-9">
+          <h1 className="mx-auto max-w-[21rem] text-4xl font-black leading-[1.08] tracking-tight text-foreground drop-shadow-sm sm:max-w-2xl sm:text-5xl md:max-w-none md:text-7xl lg:text-8xl">
             {title}
           </h1>
-          <p className="text-lg font-semibold text-muted-foreground md:text-xl">
+          <p className="mx-auto max-w-[20rem] text-base font-semibold leading-7 text-muted-foreground sm:max-w-xl md:text-xl">
             {description}
           </p>
         </div>
 
         {showHeroCtas ? (
           <>
-            <div className="pointer-events-auto flex flex-col items-center gap-4 pt-2 sm:flex-row">
+            <div className="pointer-events-auto flex w-full flex-col items-center gap-3 pt-1 sm:w-auto sm:flex-row sm:gap-4">
               <a
                 href="/contact"
-                className="inline-flex min-h-14 min-w-44 items-center justify-center rounded-[18px] border-2 border-[#d8c3b8] bg-[#161616] px-7 text-lg font-black text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#0f0f0f] focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background"
+                className="inline-flex min-h-12 w-full max-w-[18rem] items-center justify-center rounded-[16px] border-2 border-[#d8c3b8] bg-[#161616] px-6 text-base font-black text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#0f0f0f] focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background sm:min-h-14 sm:min-w-44 sm:text-lg"
               >
                 Start Building
               </a>
               <a
                 href="/contact"
-                className="inline-flex min-h-14 min-w-52 rounded-[18px] bg-gradient-to-r from-[#10c8ee] to-[#7c4dff] p-[3px] text-lg font-black shadow-[0_14px_30px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background"
+                className="inline-flex min-h-12 w-full max-w-[18rem] rounded-[16px] bg-gradient-to-r from-[#10c8ee] to-[#7c4dff] p-[3px] text-base font-black shadow-[0_14px_30px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background sm:min-h-14 sm:min-w-52 sm:text-lg"
               >
                 <span className="flex w-full items-center justify-center rounded-[15px] bg-background px-7 text-foreground">
                   Request a demo
@@ -207,14 +207,14 @@ export const InfiniteGrid = ({
               </a>
             </div>
             {heroMarqueeImages.length ? (
-              <div className="relative mt-8 h-36 w-screen max-w-none md:mt-10 md:h-48">
+              <div className="relative mt-5 h-28 w-screen max-w-none sm:h-32 md:mt-10 md:h-48">
                 <AnimatedImageMarquee
                   images={heroMarqueeImages}
                   className="h-full [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"
-                  duration={38}
+                  duration={46}
                   straight
-                  trackClassName="gap-10 px-10 md:gap-20 md:px-20"
-                  cardClassName="h-36 rounded-sm shadow-none md:h-48"
+                  trackClassName="gap-6 px-6 md:gap-20 md:px-20"
+                  cardClassName="h-28 rounded-sm shadow-none sm:h-32 md:h-48"
                 />
               </div>
             ) : null}
