@@ -285,3 +285,26 @@ a {
     background-position: 0% 0%;
   }
 }
+
+.feature-icon-ring {
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(120deg, #1261ff, #12c8a0, #ef4444, #8b5cf6, #1261ff) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: feature-ring-spin 2.4s linear infinite;
+}
+
+.group:hover .feature-icon-ring,
+.group:active .feature-icon-ring {
+  animation-duration: 1.4s;
+}
+
+@keyframes feature-ring-spin {
+  0% {
+    background-position: 0 0, 0% 50%;
+  }
+
+  100% {
+    background-position: 0 0, 300% 50%;
+  }
+}

@@ -17,7 +17,7 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
   return (
     <div
       className={cn(
-        'group relative overflow-hidden p-6 transition duration-300 hover:-translate-y-1 hover:bg-[var(--surface)] hover:shadow-[0_24px_70px_rgba(18,97,255,0.16)]',
+        'group relative overflow-hidden p-6 transition duration-300 hover:-translate-y-1 hover:bg-[var(--surface)] hover:shadow-[0_24px_70px_rgba(18,97,255,0.16)] active:-translate-y-1 active:bg-[var(--surface)] active:shadow-[0_24px_70px_rgba(18,97,255,0.16)]',
         className,
       )}
       {...props}
@@ -37,10 +37,11 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
           />
         </div>
       </div>
-      <div className="relative z-10 grid size-11 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] transition duration-300 group-hover:border-transparent group-hover:bg-[#1261ff] group-hover:text-white">
-        <feature.icon className="size-6 text-foreground/75 transition duration-300 group-hover:text-white" strokeWidth={1} aria-hidden />
+      <div className="feature-icon-ring relative z-10 grid size-11 place-items-center rounded-xl border border-transparent bg-[var(--surface)] transition duration-300">
+        <div className="absolute inset-[2px] rounded-[10px] bg-[var(--surface)]" />
+        <feature.icon className="relative z-10 size-6 text-foreground/75 transition duration-300 group-hover:text-[#1261ff] group-active:text-[#1261ff]" strokeWidth={1} aria-hidden />
       </div>
-      <h3 className="relative z-10 mt-8 text-sm font-semibold text-[var(--foreground)] transition duration-300 group-hover:text-[#1261ff] md:text-base">{feature.title}</h3>
+      <h3 className="relative z-10 mt-8 text-sm font-semibold text-[var(--foreground)] transition duration-300 group-hover:text-[#1261ff] group-active:text-[#1261ff] md:text-base">{feature.title}</h3>
       <p className="relative z-20 mt-2 text-xs font-light leading-5 text-[var(--muted-foreground)]">{feature.description}</p>
     </div>
   )
