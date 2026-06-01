@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Globe2, Layers3, Menu, Moon, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Menu, Moon, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
 import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
@@ -9,15 +9,18 @@ import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { Sparkles } from '@/components/ui/sparkles'
+import { FeatureCard } from '@/components/ui/grid-feature-cards'
 import { ButtonLink } from '@/components/ui/button'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
 
 const services = [
-  { icon: Globe2, title: 'Business Websites', text: 'Clear, credible websites that explain your offer and guide visitors to contact you.' },
-  { icon: ShoppingCart, title: 'E-commerce Platforms', text: 'Online stores with product pages, checkout flows, payments, and customer-ready layouts.' },
-  { icon: Layers3, title: 'Web Apps & Portals', text: 'Dashboards, booking systems, client portals, admin tools, and custom business workflows.' },
-  { icon: SearchCheck, title: 'SEO & Performance', text: 'Fast, responsive pages with clean structure, strong messaging, and search-ready foundations.' },
+  { icon: Globe2, title: 'Business Websites', description: 'Clear, credible websites that explain your offer and guide visitors to contact you.' },
+  { icon: ShoppingCart, title: 'E-commerce Platforms', description: 'Online stores with product pages, checkout flows, payments, and customer-ready layouts.' },
+  { icon: Layers3, title: 'Web Apps & Portals', description: 'Dashboards, booking systems, client portals, admin tools, and custom business workflows.' },
+  { icon: CalendarCheck, title: 'Booking Systems', description: 'Appointment flows, service selection, reminders, and lead capture built around your operations.' },
+  { icon: SearchCheck, title: 'SEO, UI/UX & Performance', description: 'Search-ready structure, modern interfaces, fast pages, and content flows built to convert.' },
+  { icon: Megaphone, title: 'Social Media Management', description: 'Content planning, creative direction, post design, and brand consistency across social channels.' },
 ]
 
 const process = [
@@ -40,7 +43,37 @@ const showcaseImages = [
   '/showcase/showcase-08.jpg',
 ]
 
-const trustItems = ['Business Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'SEO', 'UI/UX']
+const serviceItems = [
+  'Business Websites',
+  'Ecommerce Stores',
+  'Web Apps',
+  'Booking Systems',
+  'Dashboards',
+  'Client Portals',
+  'Landing Pages',
+  'SEO',
+  'UI/UX Design',
+  'API Integrations',
+  'CMS Websites',
+  'Performance Optimization',
+]
+
+const industryItems = [
+  'Beauty & Aesthetics',
+  'Ecommerce',
+  'Real Estate',
+  'Healthcare',
+  'Education',
+  'Restaurants',
+  'Fashion',
+  'Automotive',
+  'Consulting',
+  'Events',
+  'Travel & Tours',
+  'Nonprofits',
+  'Professional Services',
+  'Startups',
+]
 
 const transitionVariants: { item: Variants } = {
   item: {
@@ -195,7 +228,7 @@ export function Home2() {
       <section className="relative min-h-[100svh] overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
         <FluidParticles
           className="absolute inset-0 h-full w-full"
-          particleDensity={100}
+          particleDensity={220}
           particleSize={1}
           particleColor={isDark ? '#555555' : '#555555'}
           activeColor={isDark ? '#ffffff' : '#000000'}
@@ -272,7 +305,7 @@ export function Home2() {
             <AnimatedImageMarquee
               images={showcaseImages}
               className="h-full [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)]"
-              duration={52}
+              duration={68}
               straight
               trackClassName="gap-4 px-4 sm:gap-5 md:gap-10 md:px-10"
               cardClassName="h-[7.6rem] w-[13.5rem] rounded-md border border-[var(--line)] bg-[var(--surface)] shadow-[0_18px_48px_rgba(15,23,42,0.12)] sm:h-[9.2rem] sm:w-[16.35rem] md:h-[11.25rem] md:w-[20rem]"
@@ -282,7 +315,7 @@ export function Home2() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[var(--background)] py-20 md:py-28">
+      <section className="relative overflow-hidden bg-[var(--background)] pt-16 pb-6 md:pt-20 md:pb-8">
         <div className="container-x relative z-10">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-main text-3xl font-black tracking-tight md:text-5xl">
@@ -293,54 +326,54 @@ export function Home2() {
             </p>
           </div>
 
-          <div className="relative mx-auto mt-9 h-[92px] w-full max-w-4xl">
-            <InfiniteSlider className="flex h-full w-full items-center" duration={30} gap={18}>
-              {trustItems.map((item) => (
-                <div
-                  key={item}
-                  className="surface-card flex h-12 min-w-max items-center justify-center rounded-full px-5 text-sm font-black text-[var(--foreground)]"
-                >
+          <div className="relative mx-auto mt-9 grid w-full max-w-5xl gap-4">
+            <InfiniteSlider className="flex h-14 w-full items-center" duration={48} gap={18}>
+              {serviceItems.map((item) => (
+                <div key={item} className="surface-card flex h-12 min-w-max items-center justify-center rounded-full px-5 text-sm font-black text-[var(--foreground)]">
                   {item}
                 </div>
               ))}
             </InfiniteSlider>
+
+            <InfiniteSlider className="flex h-14 w-full items-center" duration={52} gap={18} reverse>
+              {industryItems.map((item) => (
+                <div key={item} className="surface-card flex h-12 min-w-max items-center justify-center rounded-full px-5 text-sm font-black text-[var(--foreground)]">
+                  {item}
+                </div>
+              ))}
+            </InfiniteSlider>
+
             <ProgressiveBlur className="pointer-events-none absolute left-0 top-0 h-full w-28 md:w-48" direction="left" blurIntensity={1} />
             <ProgressiveBlur className="pointer-events-none absolute right-0 top-0 h-full w-28 md:w-48" direction="right" blurIntensity={1} />
           </div>
         </div>
 
-        <div className="relative -mt-20 h-72 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-96">
+        <div className="relative -mt-16 h-40 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-52">
           <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
           <div className="absolute -left-1/2 top-1/2 z-10 aspect-[1/0.7] w-[200%] rounded-[100%] border-t border-zinc-900/20 bg-[var(--background)] dark:border-white/20" />
           <Sparkles
-            density={1200}
+            density={520}
             className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
             color={isDark ? '#ffffff' : '#000000'}
           />
         </div>
       </section>
 
-      <section id="services" className="section-bg py-20 md:py-28">
-        <div className="container-x">
-          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-            <div>
-              <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#1261ff]">What We Build</p>
-              <h2 className="text-main text-3xl font-black tracking-tight md:text-5xl">
-                Complete web development for businesses that need more than a pretty page.
-              </h2>
-            </div>
-            <p className="text-soft text-lg leading-8">
-              From your first landing page to a full web app, Bakhtech handles strategy, UI/UX, development, integrations, deployment, and post-launch support.
+      <section id="services" className="section-bg pt-10 pb-20 md:pt-14 md:pb-28">
+        <div className="mx-auto w-full max-w-5xl space-y-8 px-4">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#1261ff]">What We Build</p>
+            <h2 className="text-main text-balance text-3xl font-bold tracking-wide md:text-4xl lg:text-5xl xl:font-extrabold">
+              Strategy. Design. Development. Launch.
+            </h2>
+            <p className="text-soft mt-4 text-balance text-sm tracking-wide md:text-base">
+              Complete web development services for brands that need fast, secure, scalable digital products.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 divide-y divide-dashed border border-dashed border-[var(--line)] sm:grid-cols-2 sm:divide-x md:grid-cols-3">
             {services.map((service) => (
-              <article key={service.title} className="surface-card rounded-lg p-6">
-                <service.icon className="mb-5 h-7 w-7 text-[#1261ff]" />
-                <h3 className="text-main text-xl font-black">{service.title}</h3>
-                <p className="text-soft mt-3 leading-7">{service.text}</p>
-              </article>
+              <FeatureCard key={service.title} feature={service} />
             ))}
           </div>
         </div>

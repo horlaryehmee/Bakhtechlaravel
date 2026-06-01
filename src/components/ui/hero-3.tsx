@@ -69,7 +69,7 @@ export function AnimatedImageMarquee({
           <div
             key={`${src}-${index}`}
             className={cn(
-              'relative h-28 flex-shrink-0 overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] md:h-52',
+              'relative h-28 flex-shrink-0 transform-gpu overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] will-change-transform md:h-52',
               cardClassName,
             )}
             style={{
@@ -77,7 +77,7 @@ export function AnimatedImageMarquee({
               rotate: straight ? '0deg' : `${index % 2 === 0 ? -1.5 : 2.5}deg`,
             }}
           >
-            <img src={src} alt={`Website showcase ${index + 1}`} className="h-full w-full object-cover object-top" />
+            <img src={src} alt={`Website showcase ${index + 1}`} className="h-full w-full object-cover object-top" draggable={false} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/24 to-transparent" />
           </div>
         ))}

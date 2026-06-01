@@ -57,7 +57,7 @@ function SparklesCanvas({
       enable: false,
       zIndex: 1,
     },
-    fpsLimit: 120,
+    fpsLimit: 60,
     particles: {
       color: {
         value: color,
