@@ -33,22 +33,29 @@ export function AnimatedImageMarquee({
   images,
   className,
   duration = 42,
+  straight = false,
+  trackClassName,
+  cardClassName,
 }: {
   images: string[]
   className?: string
   duration?: number
+  straight?: boolean
+  trackClassName?: string
+  cardClassName?: string
 }) {
   const duplicatedImages = [...images, ...images]
 
   return (
     <div
       className={cn(
-        'pointer-events-none absolute bottom-0 left-0 w-full overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]',
+        'pointer-events-none absolute bottom-0 left-0 w-full overflow-hidden',
+        !straight && '[mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]',
         className,
       )}
-    >
-      <motion.div
-        className="flex w-max gap-4 px-4"
+      >
+        <motion.div
+        className={cn('flex w-max gap-4 px-4', trackClassName)}
         animate={{
           x: ['0%', '-50%'],
           transition: {
@@ -61,13 +68,16 @@ export function AnimatedImageMarquee({
         {duplicatedImages.map((src, index) => (
           <div
             key={`${src}-${index}`}
-            className="relative h-28 flex-shrink-0 overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] md:h-52"
+            className={cn(
+              'relative h-28 flex-shrink-0 overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(2,6,23,0.22)] md:h-52',
+              cardClassName,
+            )}
             style={{
               aspectRatio: '16 / 10',
-              rotate: `${index % 2 === 0 ? -1.5 : 2.5}deg`,
+              rotate: straight ? '0deg' : `${index % 2 === 0 ? -1.5 : 2.5}deg`,
             }}
           >
-            <img src={src} alt={`Website showcase ${index + 1}`} className="h-full w-full object-cover" />
+            <img src={src} alt={`Website showcase ${index + 1}`} className="h-full w-full object-cover object-top" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/24 to-transparent" />
           </div>
         ))}

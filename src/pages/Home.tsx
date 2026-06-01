@@ -1,27 +1,49 @@
 import { CinematicHero } from '@/components/ui/cinematic-landing-hero'
+import { InfiniteGrid } from '@/components/ui/infinite-grid-integration'
 import { Section } from '@/components/ui/Section'
 import { ButtonLink } from '@/components/ui/button'
 import { SmoothReveal } from '@/components/ui/smooth-reveal'
 import { portfolio, process, seoFeatures, services, stats, websiteTypes } from '@/data/site'
+
+const marqueeImages = [
+  '/portfolio-marquee/project-1.jpg',
+  '/portfolio-marquee/project-2.jpg',
+  '/portfolio-marquee/project-3.jpg',
+  '/portfolio-marquee/project-4.jpg',
+  '/portfolio-marquee/project-5.jpg',
+  '/portfolio-marquee/project-6.jpg',
+  '/portfolio-marquee/project-7.jpg',
+  '/portfolio-marquee/project-8.jpg',
+  '/portfolio-marquee/project-9.jpg',
+  '/portfolio-marquee/project-10.jpg',
+]
 
 export function Home() {
   return (
     <>
       <CinematicHero
         brandName="Bakhtech"
+        introContent={
+          <InfiniteGrid
+            showControls={false}
+            showActions={false}
+            showHeroCtas
+            heroMarqueeImages={marqueeImages}
+          />
+        }
         tagline1="Need a website"
         tagline2="that stands out?"
         cardHeading="Empower Your Business"
         cardDescription={
           <>
-            <span className="font-semibold text-white">Bakhtech Solutions</span> specializes in creating visually
-            striking, user-friendly websites that help businesses build a strong online presence.
+            <span className="font-semibold text-white">Bakhtech Solutions</span> specializes in visually striking,
+            user-friendly websites that help businesses build a strong online presence.
           </>
         }
         metricValue={98}
         metricLabel="Positive Feedback"
         ctaHeading="Ready to get started?"
-        ctaDescription="Building Your Online Presence, One Click at a Time!"
+        ctaDescription="Building your online presence, one click at a time."
       />
       <SmoothReveal>
         <Section

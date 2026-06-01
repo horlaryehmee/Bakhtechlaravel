@@ -13,7 +13,7 @@ export function SiteLayout() {
     <div className="site-bg min-h-screen">
       <header className="fixed inset-x-0 top-0 z-[100] px-4 pt-4">
         <nav
-          className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between rounded-2xl border px-4 shadow-[var(--shadow-soft)] backdrop-blur-2xl md:px-5"
+          className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between rounded-2xl border px-5 shadow-[var(--shadow-soft)] backdrop-blur-2xl md:px-7"
           style={{
             background: 'var(--header-bg)',
             borderColor: 'var(--header-border)',
@@ -22,17 +22,17 @@ export function SiteLayout() {
         >
           <Link
             to="/"
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 items-center gap-4"
             onClick={() => setOpen(false)}
             aria-label="Bakhtech home"
           >
-            <span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white text-[#111827] shadow-[inset_0_-8px_18px_rgba(17,24,39,0.12)]">
+            <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-white text-[#111827] shadow-[inset_0_-8px_18px_rgba(17,24,39,0.12)]">
               <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(147,197,253,0.95),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(20,184,166,0.72),transparent_36%)]" />
-              <span className="relative text-sm font-black tracking-tight">BT</span>
+              <span className="relative text-base font-black tracking-tight">BT</span>
             </span>
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-black uppercase tracking-[0.18em]">Bakhtech</span>
-              <span className="hidden text-[11px] font-medium sm:block" style={{ color: 'var(--header-muted)' }}>
+              <span className="block truncate text-lg font-black uppercase tracking-[0.16em]">Bakhtech</span>
+              <span className="hidden text-xs font-bold sm:block" style={{ color: 'var(--header-muted)' }}>
                 Transforming Ideas into Digital Masterpieces
               </span>
             </span>
@@ -60,7 +60,7 @@ export function SiteLayout() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="grid h-11 w-11 place-items-center rounded-xl border transition hover:-translate-y-0.5"
+              className="grid h-12 w-12 place-items-center rounded-xl border transition hover:-translate-y-0.5"
               style={{
                 borderColor: 'var(--header-border)',
                 background: 'color-mix(in srgb, var(--header-text) 8%, transparent)',
@@ -69,7 +69,7 @@ export function SiteLayout() {
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               onClick={toggleTheme}
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
             <NavLink
@@ -81,7 +81,7 @@ export function SiteLayout() {
             </NavLink>
 
             <button
-              className="grid h-11 w-11 place-items-center rounded-xl border lg:hidden"
+              className="grid h-12 w-12 place-items-center rounded-xl border lg:hidden"
               style={{
                 borderColor: 'var(--header-border)',
                 background: 'color-mix(in srgb, var(--header-text) 8%, transparent)',

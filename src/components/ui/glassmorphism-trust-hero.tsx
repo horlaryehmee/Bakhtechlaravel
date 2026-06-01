@@ -22,7 +22,7 @@ export default function HeroSection() {
 
     const ctx = gsap.context(() => {
       gsap.set('.cinematic-card', { yPercent: 115, autoAlpha: 1, scale: 0.94 })
-      gsap.set(['.cinematic-copy', '.cinematic-metric', '.cinematic-pill', '.cinematic-final'], {
+      gsap.set('.cinematic-final', {
         autoAlpha: 0,
         y: 24,
       })
@@ -42,9 +42,9 @@ export default function HeroSection() {
         .to('.bakhtech-hero-left', { y: -70, scale: 0.98, opacity: 0.18, duration: 1.2, ease: 'power2.out' }, 0)
         .to('.bakhtech-hero-bg', { scale: 1.04, opacity: isDark ? 0.24 : 0.62, duration: 1.2, ease: 'power2.out' }, 0)
         .to('.cinematic-card', { yPercent: 0, scale: 1, duration: 1.35, ease: 'power3.out' }, 0.05)
-        .to('.cinematic-copy', { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0.8)
-        .to('.cinematic-metric', { autoAlpha: 1, y: 0, stagger: 0.08, duration: 0.65, ease: 'power3.out' }, 0.95)
-        .to('.cinematic-pill', { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.55, ease: 'power3.out' }, 1.1)
+        .to('.cinematic-copy', { y: 0, duration: 0.8, ease: 'power3.out' }, 0.8)
+        .to('.cinematic-metric', { y: 0, stagger: 0.08, duration: 0.65, ease: 'power3.out' }, 0.95)
+        .to('.cinematic-pill', { y: 0, stagger: 0.06, duration: 0.55, ease: 'power3.out' }, 1.1)
         .to({}, { duration: 0.8 })
         .to(['.cinematic-copy', '.cinematic-metric', '.cinematic-pill'], {
           autoAlpha: 0,
@@ -156,7 +156,7 @@ export default function HeroSection() {
           <img src="/bg1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-18 mix-blend-screen" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_20%,rgba(18,200,160,0.26),transparent_30%),radial-gradient(circle_at_84%_26%,rgba(18,97,255,0.34),transparent_34%),linear-gradient(135deg,#123c82_0%,#07101f_72%)]" />
 
-          <div className="relative z-10 grid h-full items-center gap-7 px-6 py-9 md:px-12 lg:grid-cols-[1.04fr_0.96fr] lg:px-16">
+          <div className="relative z-10 grid h-full content-start items-start gap-7 px-6 py-10 md:px-12 md:py-14 lg:grid-cols-[1.04fr_0.96fr] lg:px-16">
             <div className="cinematic-copy">
               <p className="mb-4 text-xs font-black uppercase tracking-[0.24em] text-[#67e8cf] md:text-sm">
                 Welcome To Bakhtech Solutions
@@ -169,7 +169,7 @@ export default function HeroSection() {
                 and leave a lasting impact in the digital realm.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                {['Innovate', 'Transform', 'Elevate'].map((label) => (
+                {['Innovate', 'Transform', 'Elevate', 'Responsive Design', 'Advanced SEO'].map((label) => (
                   <span
                     key={label}
                     className="cinematic-pill rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-bold text-white/86 backdrop-blur-xl"
@@ -192,6 +192,28 @@ export default function HeroSection() {
                   <div className="mt-2 text-sm font-semibold text-blue-100/62">{item.label}</div>
                 </div>
               ))}
+            </div>
+
+            <div className="cinematic-copy lg:col-span-2">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#67e8cf] md:text-sm">
+                We Design & Develop
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {[
+                  'E-commerce Website',
+                  'Business Website',
+                  'Blogs',
+                  'Portfolio',
+                  'Real Estate Website',
+                  'Educational Website',
+                  'Consultancy Website',
+                  'And Many More',
+                ].map((label) => (
+                  <span key={label} className="cinematic-pill rounded-full border border-white/12 bg-white/[0.07] px-4 py-2 text-sm font-bold text-white/82">
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="cinematic-final absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center">
