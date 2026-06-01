@@ -267,3 +267,17 @@ a {
     transform: translate(0, 0) rotate(-2deg);
   }
 }
+
+@keyframes shine-pulse {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  50% {
+    background-position: 100% 100%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+}

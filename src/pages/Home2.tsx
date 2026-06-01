@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Globe2, Layers3, Menu, Moon, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
+import { ArrowRight, Globe2, Layers3, Menu, Moon, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
 import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
+import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
 import { ButtonLink } from '@/components/ui/button'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,8 @@ const proof = [
   { value: '200+', label: 'Websites Designed' },
   { value: '98%', label: 'Positive Feedback' },
 ]
+
+const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
 
 const transitionVariants: { item: Variants } = {
   item: {
@@ -72,8 +75,8 @@ function Home2Header() {
       <nav data-state={menuOpen ? 'active' : undefined} className="group fixed inset-x-0 top-0 z-[120] px-2">
         <div
           className={cn(
-            'mx-auto mt-2 max-w-6xl px-4 transition-all duration-300 lg:px-8',
-            isScrolled && 'max-w-4xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/78 shadow-[var(--shadow-soft)] backdrop-blur-xl lg:px-5',
+            'mx-auto mt-2 max-w-6xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/58 px-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 lg:px-8',
+            isScrolled && 'max-w-4xl bg-[var(--surface)]/72 shadow-[var(--shadow-soft)] lg:px-5',
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-5 py-3 lg:gap-0 lg:py-4">
@@ -180,52 +183,46 @@ export function Home2() {
       <section className="relative min-h-[100svh] overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
         <FluidParticles
           className="absolute inset-0 h-full w-full"
-          particleDensity={130}
-          particleSize={1.15}
-          particleColor={isDark ? 'rgba(148,163,184,0.48)' : 'rgba(71,85,105,0.34)'}
-          activeColor={isDark ? '#ffffff' : '#0b1220'}
-          interactionDistance={95}
-          hoverDelay={80}
-          maxBlastRadius={260}
+          particleDensity={100}
+          particleSize={1}
+          particleColor={isDark ? '#555555' : '#555555'}
+          activeColor={isDark ? '#ffffff' : '#000000'}
+          maxBlastRadius={300}
+          hoverDelay={1}
+          interactionDistance={100}
         />
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[2] hidden opacity-50 contain-strict lg:block">
           <div className="absolute left-0 top-0 h-[80rem] w-[35rem] -translate-y-[350px] -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.12)_0,hsla(0,0%,55%,.04)_50%,hsla(0,0%,45%,0)_80%)]" />
           <div className="absolute left-0 top-0 h-[80rem] w-56 -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.08)_0,hsla(0,0%,45%,.03)_80%,transparent_100%)] [translate:5%_-50%]" />
           <div className="absolute left-0 top-0 h-[80rem] w-56 -translate-y-[350px] -rotate-45 bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.06)_0,hsla(0,0%,45%,.03)_80%,transparent_100%)]" />
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,color-mix(in_srgb,var(--brand)_20%,transparent),transparent_34%),radial-gradient(circle_at_85%_16%,color-mix(in_srgb,var(--brand-2)_16%,transparent),transparent_28%),linear-gradient(180deg,color-mix(in_srgb,var(--background)_72%,transparent),var(--background)_88%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,color-mix(in_srgb,var(--brand)_10%,transparent),transparent_34%),linear-gradient(180deg,color-mix(in_srgb,var(--background)_42%,transparent),var(--background)_94%)]" />
 
-        <div className="container-x relative z-10 flex min-h-[100svh] flex-col justify-center pb-16 pt-28 text-center md:pt-36">
+        <div className="container-x relative z-10 flex min-h-[100svh] flex-col justify-center pb-10 pt-28 text-center md:pb-16 md:pt-36">
           <AnimatedGroup variants={transitionVariants} className="mx-auto max-w-5xl">
-            <Link
-              to="/contact"
-              className="mx-auto flex w-fit items-center gap-4 rounded-full border border-[var(--line)] bg-[var(--surface)]/78 p-1 pl-4 shadow-md shadow-black/10 transition-all duration-300 hover:bg-[var(--surface)]"
-            >
-              <span className="text-soft text-sm">Full-stack web development for growing businesses</span>
-              <span className="block h-4 w-0.5 border-l border-[var(--line)]" />
-              <span className="grid h-6 w-6 overflow-hidden rounded-full bg-[var(--foreground)] text-[var(--background)]">
-                <ArrowRight className="m-auto h-3 w-3" />
-              </span>
-            </Link>
-
-            <h1 className="mx-auto mt-8 max-w-5xl text-balance text-5xl font-black leading-[0.95] tracking-tight md:text-7xl lg:mt-14 xl:text-[5.6rem]">
-              <span className="block">Need a website</span>
-              <span className="hero-ink-title block md:whitespace-nowrap">
-                that stands out?
-                <span className="hero-ink-stroke" aria-hidden="true">
-                  <svg className="hero-ink-line" viewBox="0 0 520 52" preserveAspectRatio="none" focusable="false">
-                    <path d="M14 31C142 17 311 15 470 31" />
-                  </svg>
-                  <svg className="hero-ink-pencil" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-                    <path d="M15.2 4.2L19.8 8.8" />
-                    <path d="M4.4 19.6L6 14.2L16.3 3.9C17.2 3 18.7 3 19.6 3.9L20.1 4.4C21 5.3 21 6.8 20.1 7.7L9.8 18L4.4 19.6Z" />
-                    <path d="M6 14.2L9.8 18" />
-                  </svg>
+            <div className="relative mx-auto h-full border border-[var(--line)] bg-[var(--background)]/72 p-6 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm [mask-image:radial-gradient(800rem_96rem_at_center,white,transparent)] md:px-10 md:py-12">
+              <Plus strokeWidth={4} className="absolute -left-5 -top-5 h-10 w-10 text-[#ef4444]" />
+              <Plus strokeWidth={4} className="absolute -bottom-5 -left-5 h-10 w-10 text-[#ef4444]" />
+              <Plus strokeWidth={4} className="absolute -right-5 -top-5 h-10 w-10 text-[#ef4444]" />
+              <Plus strokeWidth={4} className="absolute -bottom-5 -right-5 h-10 w-10 text-[#ef4444]" />
+              <h1 className="mx-auto flex max-w-5xl flex-col text-center text-5xl font-semibold leading-none tracking-tight md:text-7xl lg:text-8xl">
+                <span>
+                  Need a website{' '}
+                  <span className="text-[#ef4444]">that stands out?</span>
                 </span>
+              </h1>
+            </div>
+
+            <h2 className="text-main mt-8 text-2xl font-semibold md:text-3xl">
+              Welcome to Bakhtech Solutions.
+            </h2>
+
+            <p className="text-soft mx-auto max-w-2xl py-4 text-base leading-7 md:text-lg">
+              We craft high-converting digital products for businesses, including{' '}
+              <span className="font-bold text-[#1261ff]">
+                <TypeWriter strings={talkAbout} />
               </span>
-            </h1>
-            <p className="text-soft mx-auto mt-8 max-w-2xl text-balance text-lg font-normal leading-8 md:text-xl">
-              Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites.
+              .
             </p>
           </AnimatedGroup>
 
@@ -241,27 +238,33 @@ export function Home2() {
               },
               ...transitionVariants,
             }}
-            className="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row"
+            className="mt-3 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <div className="rounded-[14px] border border-[var(--line)] bg-[var(--surface-2)] p-0.5">
-              <Link to="/contact" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[var(--foreground)] px-6 text-base font-black text-[var(--background)]">
-                <span className="text-nowrap">Start Building</span>
-              </Link>
-            </div>
-            <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center rounded-xl px-6 text-base font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]">
-              <span className="text-nowrap">View Portfolio</span>
+            <Link to="/contact" className="w-full max-w-[18rem] sm:w-auto">
+              <ShineBorder
+                borderWidth={3}
+                className="h-auto w-full cursor-pointer border bg-white/5 p-2 backdrop-blur-md dark:bg-black/5"
+                color={['#FF007F', '#39FF14', '#00FFFF']}
+              >
+                <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--foreground)] px-5 text-sm font-bold text-[var(--background)]">
+                  Start Building
+                </span>
+              </ShineBorder>
+            </Link>
+            <Link to="/contact" className="inline-flex min-h-12 w-full max-w-[18rem] items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 px-6 text-base font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto">
+              <span className="text-nowrap">Book a call</span>
             </Link>
           </AnimatedGroup>
 
           <AnimatedGroup
             preset="slide"
-            className="relative mx-auto mt-12 w-full max-w-6xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]/74 p-4 shadow-lg shadow-black/10 ring-1 ring-[var(--line)] md:mt-16"
+            className="relative mx-auto mt-8 w-full max-w-6xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]/74 p-3 shadow-lg shadow-black/10 ring-1 ring-[var(--line)] md:mt-16 md:p-4"
           >
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 md:gap-4">
               {proof.map((item) => (
-                <div key={item.label} className="surface-card rounded-xl p-5">
-                  <div className="text-4xl font-black tracking-tight">{item.value}</div>
-                  <div className="text-soft mt-2 text-sm font-semibold">{item.label}</div>
+                <div key={item.label} className="surface-card rounded-xl p-3 md:p-5">
+                  <div className="text-2xl font-black tracking-tight md:text-4xl">{item.value}</div>
+                  <div className="text-soft mt-1 text-[10px] font-bold uppercase leading-tight tracking-[0.08em] md:mt-2 md:text-sm md:normal-case md:tracking-normal">{item.label}</div>
                 </div>
               ))}
             </div>
