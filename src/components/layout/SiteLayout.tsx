@@ -29,16 +29,11 @@ export function SiteLayout() {
             onClick={() => setOpen(false)}
             aria-label="Bakhtech home"
           >
-            <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-white text-[#111827] shadow-[inset_0_-8px_18px_rgba(17,24,39,0.12)]">
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(147,197,253,0.95),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(20,184,166,0.72),transparent_36%)]" />
-              <span className="relative text-base font-black tracking-tight">BT</span>
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-lg font-black uppercase tracking-[0.16em]">Bakhtech</span>
-              <span className="hidden text-xs font-bold sm:block" style={{ color: 'var(--header-muted)' }}>
-                Transforming Ideas into Digital Masterpieces
-              </span>
-            </span>
+            <img
+              src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
+              alt="Bakhtech"
+              className="h-12 w-auto shrink-0"
+            />
           </Link>
 
           <div className="hidden items-center gap-1 rounded-full border p-1 lg:flex" style={{ borderColor: 'var(--header-border)', background: 'color-mix(in srgb, var(--header-text) 6%, transparent)' }}>

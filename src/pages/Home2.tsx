@@ -5,6 +5,10 @@ import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
+import { AnimatedImageMarquee } from '@/components/ui/hero-3'
+import { InfiniteSlider } from '@/components/ui/infinite-slider'
+import { ProgressiveBlur } from '@/components/ui/progressive-blur'
+import { Sparkles } from '@/components/ui/sparkles'
 import { ButtonLink } from '@/components/ui/button'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { cn } from '@/lib/utils'
@@ -23,13 +27,20 @@ const process = [
   'We help you go live with a website or app that is easy to use and ready to grow.',
 ]
 
-const proof = [
-  { value: '7+', label: 'Years Experience' },
-  { value: '200+', label: 'Websites Designed' },
-  { value: '98%', label: 'Positive Feedback' },
+const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
+
+const showcaseImages = [
+  '/showcase/showcase-01.jpg',
+  '/showcase/showcase-02.jpg',
+  '/showcase/showcase-03.jpg',
+  '/showcase/showcase-04.jpg',
+  '/showcase/showcase-05.jpg',
+  '/showcase/showcase-06.jpg',
+  '/showcase/showcase-07.jpg',
+  '/showcase/showcase-08.jpg',
 ]
 
-const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
+const trustItems = ['Business Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'SEO', 'UI/UX']
 
 const transitionVariants: { item: Variants } = {
   item: {
@@ -82,10 +93,11 @@ function Home2Header() {
           <div className="relative flex flex-wrap items-center justify-between gap-5 py-3 lg:gap-0 lg:py-4">
             <div className="flex w-full justify-between lg:w-auto">
               <Link to="/home-2" aria-label="Bakhtech home 2" className="flex items-center gap-3 text-[var(--foreground)]">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-sm font-black text-[#07101f] shadow-[inset_0_-8px_18px_rgba(17,24,39,0.12)]">
-                  BT
-                </span>
-                <span className="text-sm font-black uppercase tracking-[0.2em]">Bakhtech</span>
+                <img
+                  src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
+                  alt="Bakhtech"
+                  className="h-10 w-auto"
+                />
               </Link>
 
               <button
@@ -238,37 +250,73 @@ export function Home2() {
               },
               ...transitionVariants,
             }}
-            className="mt-3 flex flex-col items-center justify-center gap-3 sm:flex-row"
+            className="mt-3 flex items-center justify-center gap-2 sm:gap-3"
           >
-            <Link to="/contact" className="w-full max-w-[18rem] sm:w-auto">
+            <Link to="/contact" className="w-[min(46vw,11rem)] sm:w-auto sm:max-w-[18rem]">
               <ShineBorder
                 borderWidth={3}
                 className="h-auto w-full cursor-pointer border bg-white/5 p-2 backdrop-blur-md dark:bg-black/5"
                 color={['#FF007F', '#39FF14', '#00FFFF']}
               >
-                <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--foreground)] px-5 text-sm font-bold text-[var(--background)]">
+                <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--foreground)] px-3 text-xs font-bold text-[var(--background)] sm:px-5 sm:text-sm">
                   Start Building
                 </span>
               </ShineBorder>
             </Link>
-            <Link to="/contact" className="inline-flex min-h-12 w-full max-w-[18rem] items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 px-6 text-base font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto">
+            <Link to="/contact" className="inline-flex min-h-12 w-[min(46vw,11rem)] items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 px-3 text-xs font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto sm:max-w-[18rem] sm:px-6 sm:text-base">
               <span className="text-nowrap">Book a call</span>
             </Link>
           </AnimatedGroup>
 
-          <AnimatedGroup
-            preset="slide"
-            className="relative mx-auto mt-8 w-full max-w-6xl overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]/74 p-3 shadow-lg shadow-black/10 ring-1 ring-[var(--line)] md:mt-16 md:p-4"
-          >
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
-              {proof.map((item) => (
-                <div key={item.label} className="surface-card rounded-xl p-3 md:p-5">
-                  <div className="text-2xl font-black tracking-tight md:text-4xl">{item.value}</div>
-                  <div className="text-soft mt-1 text-[10px] font-bold uppercase leading-tight tracking-[0.08em] md:mt-2 md:text-sm md:normal-case md:tracking-normal">{item.label}</div>
+          <AnimatedGroup preset="slide" className="relative mt-7 h-[7.6rem] w-full overflow-hidden sm:h-[9.2rem] md:mt-10 md:h-[11.25rem]">
+            <AnimatedImageMarquee
+              images={showcaseImages}
+              className="h-full [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)]"
+              duration={52}
+              straight
+              trackClassName="gap-4 px-4 sm:gap-5 md:gap-10 md:px-10"
+              cardClassName="h-[7.6rem] w-[13.5rem] rounded-md border border-[var(--line)] bg-[var(--surface)] shadow-[0_18px_48px_rgba(15,23,42,0.12)] sm:h-[9.2rem] sm:w-[16.35rem] md:h-[11.25rem] md:w-[20rem]"
+            />
+          </AnimatedGroup>
+
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-[var(--background)] py-20 md:py-28">
+        <div className="container-x relative z-10">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-main text-3xl font-black tracking-tight md:text-5xl">
+              Built for businesses that need more than a website.
+            </h2>
+            <p className="text-soft mt-5 text-lg leading-8">
+              Bakhtech combines design, development, and launch strategy to create digital products people can trust and use.
+            </p>
+          </div>
+
+          <div className="relative mx-auto mt-9 h-[92px] w-full max-w-4xl">
+            <InfiniteSlider className="flex h-full w-full items-center" duration={30} gap={18}>
+              {trustItems.map((item) => (
+                <div
+                  key={item}
+                  className="surface-card flex h-12 min-w-max items-center justify-center rounded-full px-5 text-sm font-black text-[var(--foreground)]"
+                >
+                  {item}
                 </div>
               ))}
-            </div>
-          </AnimatedGroup>
+            </InfiniteSlider>
+            <ProgressiveBlur className="pointer-events-none absolute left-0 top-0 h-full w-28 md:w-48" direction="left" blurIntensity={1} />
+            <ProgressiveBlur className="pointer-events-none absolute right-0 top-0 h-full w-28 md:w-48" direction="right" blurIntensity={1} />
+          </div>
+        </div>
+
+        <div className="relative -mt-20 h-72 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-96">
+          <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
+          <div className="absolute -left-1/2 top-1/2 z-10 aspect-[1/0.7] w-[200%] rounded-[100%] border-t border-zinc-900/20 bg-[var(--background)] dark:border-white/20" />
+          <Sparkles
+            density={1200}
+            className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
+            color={isDark ? '#ffffff' : '#000000'}
+          />
         </div>
       </section>
 

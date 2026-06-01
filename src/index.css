@@ -34,6 +34,8 @@
   --header-text: #0b1220;
   --header-muted: rgba(15, 23, 42, 0.58);
   --shadow-soft: 0 24px 80px rgba(15, 23, 42, 0.12);
+  --gradient-color: #8350e8;
+  --sparkles-color: #8350e8;
   color: var(--foreground);
   background: var(--background);
   font-family:
@@ -67,6 +69,8 @@
   --header-text: #ffffff;
   --header-muted: rgba(245, 248, 255, 0.62);
   --shadow-soft: 0 24px 80px rgba(2, 6, 23, 0.26);
+  --gradient-color: #8350e8;
+  --sparkles-color: #ffffff;
 }
 
 * {
