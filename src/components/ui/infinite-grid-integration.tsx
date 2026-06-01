@@ -82,8 +82,7 @@ export const InfiniteGrid = ({
   ),
   description = (
     <>
-      Bakhtech Solutions builds websites, ecommerce platforms, booking systems, portals, dashboards, and custom web apps
-      that help businesses win more enquiries.
+      Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites.
     </>
   ),
   showControls = true,
@@ -129,7 +128,7 @@ export const InfiniteGrid = ({
       ref={containerRef}
       onMouseMove={handleMouseMove}
       className={cn(
-        'relative flex min-h-[100svh] w-full flex-col items-center justify-center overflow-hidden bg-background',
+        'relative flex min-h-[100svh] w-full min-w-0 flex-col items-center justify-center overflow-hidden bg-background',
         className,
       )}
     >
@@ -183,7 +182,7 @@ export const InfiniteGrid = ({
           <h1 className="mx-auto max-w-[21rem] text-4xl font-black leading-[1.08] tracking-tight text-foreground drop-shadow-sm sm:max-w-2xl sm:text-5xl md:max-w-none md:text-7xl lg:text-8xl">
             {title}
           </h1>
-          <p className="mx-auto max-w-[20rem] text-base font-semibold leading-7 text-muted-foreground sm:max-w-xl md:text-xl">
+          <p className="mx-auto max-w-[20rem] text-base font-normal leading-7 text-muted-foreground sm:max-w-xl md:text-xl">
             {description}
           </p>
         </div>
@@ -207,7 +206,7 @@ export const InfiniteGrid = ({
               </a>
             </div>
             {heroMarqueeImages.length ? (
-              <div className="relative mt-5 h-28 w-screen max-w-none sm:h-32 md:mt-10 md:h-48">
+              <div className="relative mt-5 h-28 w-full max-w-none sm:h-32 md:mt-10 md:h-48">
                 <AnimatedImageMarquee
                   images={heroMarqueeImages}
                   className="h-full [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]"

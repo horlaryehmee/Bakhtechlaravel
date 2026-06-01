@@ -264,29 +264,29 @@ export function CinematicHero({
   return (
     <div
       ref={containerRef}
-      className={cn('relative flex h-screen w-screen items-center justify-center overflow-hidden bg-background font-sans text-foreground antialiased', className)}
+      className={cn('relative flex h-screen w-full min-w-0 items-center justify-center overflow-hidden bg-background font-sans text-foreground antialiased', className)}
       style={{ perspective: '1500px' }}
       {...props}
     >
       <style dangerouslySetInnerHTML={{ __html: INJECTED_STYLES }} />
       <div className="bg-grid-theme pointer-events-none absolute inset-0 z-0 opacity-50" aria-hidden="true" />
 
-      <div className="hero-text-wrapper absolute inset-0 z-10 flex w-screen flex-col items-center justify-center px-4 text-center [transform-style:preserve-3d] will-change-transform">
+      <div className="hero-text-wrapper absolute inset-0 z-10 flex w-full min-w-0 flex-col items-center justify-center text-center [transform-style:preserve-3d] will-change-transform">
         {introContent ? (
           introContent
         ) : (
-          <>
+          <div className="px-4">
             <h1 className="text-track gsap-reveal text-3d-matte mb-2 text-5xl font-bold tracking-tight md:text-7xl lg:text-[6rem]">
               {tagline1}
             </h1>
             <h1 className="text-days gsap-reveal text-silver-matte text-5xl font-extrabold tracking-tight md:text-7xl lg:text-[6rem]">
               {tagline2}
             </h1>
-          </>
+          </div>
         )}
       </div>
 
-      <div className="cta-wrapper gsap-reveal pointer-events-auto absolute z-10 flex w-screen flex-col items-center justify-center px-4 text-center will-change-transform">
+      <div className="cta-wrapper gsap-reveal pointer-events-auto absolute z-10 flex w-full min-w-0 flex-col items-center justify-center px-4 text-center will-change-transform">
         <h2 className="text-silver-matte mb-6 text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl">{ctaHeading}</h2>
         <p className="mx-auto mb-12 max-w-xl text-lg font-light leading-relaxed text-muted-foreground md:text-xl">
           {ctaDescription}
