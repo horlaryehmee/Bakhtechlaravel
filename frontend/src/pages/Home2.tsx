@@ -5,7 +5,6 @@ import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { Boxes } from '@/components/ui/background-boxes'
-import { BorderBeam } from '@/components/ui/border-beam'
 import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
@@ -143,12 +142,10 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
         <button
           type="button"
           onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })}
-          className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28"
+          className="absolute bottom-3 right-3 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:bg-black/62"
           aria-label={`Play ${project.title}`}
         >
-          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
-            <Play className="ml-0.5 h-5 w-5 fill-current" />
-          </span>
+          <Play className="ml-0.5 h-5 w-5 fill-current" />
         </button>
       </>
     )
@@ -167,12 +164,10 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
         <button
           type="button"
           onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })}
-          className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28"
+          className="absolute bottom-3 right-3 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:bg-black/62"
           aria-label={`Play ${project.title}`}
         >
-          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
-            <Play className="ml-0.5 h-5 w-5 fill-current" />
-          </span>
+          <Play className="ml-0.5 h-5 w-5 fill-current" />
         </button>
       </>
     )
@@ -192,11 +187,8 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
 
   return (
     <article className="portfolio-glass-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
-      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
       <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(48,55,63,0.08),rgba(8,11,14,0.2))]" />
-        <div className="pointer-events-none absolute inset-0 opacity-14 mix-blend-screen [background-image:linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] [background-size:18px_18px]" />
       </div>
 
       <div className="mt-6 flex flex-1 flex-col">
