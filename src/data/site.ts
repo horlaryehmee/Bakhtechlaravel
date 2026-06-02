@@ -15,8 +15,7 @@ import {
 } from 'lucide-react'
 
 export const navigation = [
-  { label: 'Home 1', href: '/' },
-  { label: 'Home 2', href: '/home-2' },
+  { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   { label: 'Portfolio', href: '/portfolio' },
   { label: 'Ebook', href: '/ebook' },

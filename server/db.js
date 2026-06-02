@@ -284,7 +284,7 @@ function seedProjects() {
 function seedCms() {
   const pageCount = get('SELECT COUNT(*) as total FROM pages')?.total ?? 0
   if (!pageCount) {
-    for (const title of ['Home 1', 'Home 2', 'About', 'Portfolio', 'Ebook', 'Career', 'Contact']) {
+    for (const title of ['Home', 'About', 'Portfolio', 'Ebook', 'Career', 'Contact']) {
       const slug = createSlug(title)
       run(
         'INSERT INTO pages (title, slug, content, seo_title, seo_description, status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -306,7 +306,7 @@ function defaultSettings() {
     siteName: 'Bakhtech Solutions',
     contactEmail: 'solutions@bakhtech.com.ng',
     phone: '+234 708 637 2833',
-    activeHome: 'home-2',
+    activeHome: 'home',
     homePortfolioShowDescriptions: 'true',
   }
 }

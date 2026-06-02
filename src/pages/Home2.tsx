@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Menu, Moon, Play, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Play, Plus, SearchCheck, ShoppingCart, X } from 'lucide-react'
 import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
+import { Boxes } from '@/components/ui/background-boxes'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
@@ -87,11 +89,6 @@ const transitionVariants: { item: Variants } = {
     },
   },
 }
-
-const menuItems = [
-  { name: 'Services', href: '#services' },
-  { name: 'Contact', href: '/contact' },
-]
 
 function cleanProjectUrl(url: string) {
   const value = url.trim()
@@ -194,15 +191,16 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
       : null
 
   return (
-    <article className="portfolio-glass-card flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
+    <article className="portfolio-glass-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
+      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
       <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,36,0.08),rgba(8,12,36,0.18))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(48,55,63,0.08),rgba(8,11,14,0.2))]" />
         <div className="pointer-events-none absolute inset-0 opacity-14 mix-blend-screen [background-image:linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] [background-size:18px_18px]" />
       </div>
 
       <div className="mt-6 flex flex-1 flex-col">
-        <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#b9c4ff]">
+        <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#d6dde5]">
           {project.category}
         </span>
         <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">{project.title}</h3>
@@ -214,7 +212,7 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
               href={projectUrl}
               target="_blank"
               rel="noreferrer"
-              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#8ea0ff] transition hover:text-white sm:text-xs"
+              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs"
             >
               View live project
               <ArrowRight className="h-3 w-3" />
@@ -224,7 +222,7 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
             <button
               type="button"
               onClick={() => onPlayMedia(videoMedia)}
-              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#8ea0ff] transition hover:text-white sm:text-xs"
+              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs"
             >
               Play presentation
               <Play className="h-3 w-3 fill-current" />
@@ -266,121 +264,6 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
   )
 }
 
-function Home2Header() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
-  const { theme, toggleTheme } = useTheme()
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50)
-    handleScroll()
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  return (
-    <header>
-      <nav data-state={menuOpen ? 'active' : undefined} className="group fixed inset-x-0 top-0 z-[120] px-2">
-        <div
-          className={cn(
-            'mx-auto mt-2 max-w-6xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/58 px-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 lg:px-8',
-            isScrolled && 'max-w-4xl bg-[var(--surface)]/72 shadow-[var(--shadow-soft)] lg:px-5',
-          )}
-        >
-          <div className="relative flex flex-wrap items-center justify-between gap-5 py-3 lg:gap-0 lg:py-4">
-            <div className="flex w-full justify-between lg:w-auto">
-              <Link to="/home-2" aria-label="Bakhtech home 2" className="flex items-center gap-3 text-[var(--foreground)]">
-                <img
-                  src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
-                  alt="Bakhtech"
-                  className="h-10 w-auto"
-                />
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setMenuOpen((value) => !value)}
-                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-                className="relative z-20 -m-2 grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] lg:hidden"
-              >
-                <Menu className="h-5 w-5 transition duration-200 group-data-[state=active]:rotate-180 group-data-[state=active]:scale-0 group-data-[state=active]:opacity-0" />
-                <X className="absolute h-5 w-5 -rotate-180 scale-0 opacity-0 transition duration-200 group-data-[state=active]:rotate-0 group-data-[state=active]:scale-100 group-data-[state=active]:opacity-100" />
-              </button>
-            </div>
-
-            <div className="absolute inset-0 m-auto hidden size-fit lg:block">
-              <ul className="flex gap-8 text-sm">
-                {menuItems.map((item) => (
-                  <li key={item.name}>
-                    {item.href.startsWith('/') ? (
-                      <Link to={item.href} className="text-soft block transition hover:text-[var(--foreground)]">
-                        {item.name}
-                      </Link>
-                    ) : (
-                      <a href={item.href} className="text-soft block transition hover:text-[var(--foreground)]">
-                        {item.name}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="hidden w-full flex-wrap items-center justify-end rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl shadow-black/20 group-data-[state=active]:block lg:m-0 lg:flex lg:w-fit lg:gap-4 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none">
-              <div className="lg:hidden">
-                <ul className="space-y-5 text-base">
-                  {menuItems.map((item) => (
-                    <li key={item.name}>
-                      {item.href.startsWith('/') ? (
-                        <Link to={item.href} onClick={() => setMenuOpen(false)} className="text-soft block transition hover:text-[var(--foreground)]">
-                          {item.name}
-                        </Link>
-                      ) : (
-                        <a href={item.href} onClick={() => setMenuOpen(false)} className="text-soft block transition hover:text-[var(--foreground)]">
-                          {item.name}
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row lg:mt-0 lg:w-fit">
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
-                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  <span className="lg:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-                </button>
-                <Link
-                  to="/"
-                  className={cn('inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]', isScrolled && 'lg:hidden')}
-                >
-                  Home 1
-                </Link>
-                <Link
-                  to="/contact"
-                  className={cn('inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:hidden')}
-                >
-                  Get Started
-                </Link>
-                <Link
-                  to="/contact"
-                  className={cn('hidden min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:inline-flex')}
-                >
-                  Get Started
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-    </header>
-  )
-}
-
 export function Home2() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -404,7 +287,6 @@ export function Home2() {
 
   return (
     <>
-      <Home2Header />
       <main className="overflow-hidden">
       <section className="relative min-h-[100svh] overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
         <FluidParticles
@@ -560,9 +442,11 @@ export function Home2() {
         </div>
       </section>
 
-      <section id="portfolio" className="relative overflow-hidden bg-black py-20 md:py-28">
-        <div className="pointer-events-none absolute inset-x-0 top-12 h-32 opacity-40 [background-image:linear-gradient(120deg,transparent_0%,rgba(98,120,255,0.65)_48%,transparent_100%)] blur-2xl" />
-        <div className="container-x relative z-10">
+      <section id="portfolio" className="relative overflow-hidden bg-[#151a20] py-20 md:py-28">
+        <Boxes className="opacity-95" />
+        <div className="pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
+        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
+        <div className="container-x relative z-30">
           <div className="mx-auto mb-12 max-w-3xl text-center">
             <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#8ea0ff]">Portfolio</p>
             <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">

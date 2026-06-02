@@ -142,7 +142,7 @@ function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string;
 const settingLabels: Record<string, string> = {
   activeHome: 'Active home page',
   contactEmail: 'Contact email',
-  homePortfolioShowDescriptions: 'Show Home 2 portfolio descriptions',
+  homePortfolioShowDescriptions: 'Show homepage portfolio descriptions',
   phone: 'Phone',
   siteName: 'Site name',
 }
@@ -476,7 +476,7 @@ export function AdminDashboard() {
             <div>
               <h3 className="text-xl font-black">Homepage project descriptions</h3>
               <p className="text-soft mt-2 text-sm leading-6">
-                Enable or disable project summaries on the Home 2 portfolio cards.
+                Enable or disable project summaries on the homepage portfolio cards.
               </p>
             </div>
             <select

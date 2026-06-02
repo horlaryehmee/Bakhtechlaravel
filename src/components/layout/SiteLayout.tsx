@@ -1,132 +1,127 @@
-import { ArrowUpRight, Menu, Moon, Sparkles, Sun, X } from 'lucide-react'
-import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Menu, Moon, Sun, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { navigation } from '@/data/site'
 import { cn } from '@/lib/utils'
 
 export function SiteLayout() {
   const [open, setOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const location = useLocation()
-  const usePageHeader = location.pathname === '/home-2'
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
     <div className="site-bg min-h-screen">
-      {!usePageHeader ? (
-      <header className="fixed inset-x-0 top-0 z-[100] px-4 pt-4">
-        <nav
-          className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between rounded-2xl border px-5 shadow-[var(--shadow-soft)] backdrop-blur-2xl md:px-7"
-          style={{
-            background: 'var(--header-bg)',
-            borderColor: 'var(--header-border)',
-            color: 'var(--header-text)',
-          }}
-        >
-          <Link
-            to="/"
-            className="flex min-w-0 items-center gap-4"
-            onClick={() => setOpen(false)}
-            aria-label="Bakhtech home"
+      <header>
+        <nav data-state={open ? 'active' : undefined} className="group fixed inset-x-0 top-0 z-[120] px-2">
+          <div
+            className={cn(
+              'mx-auto mt-2 max-w-6xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/58 px-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 lg:px-8',
+              isScrolled && 'max-w-4xl bg-[var(--surface)]/72 shadow-[var(--shadow-soft)] lg:px-5',
+            )}
           >
-            <img
-              src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
-              alt="Bakhtech"
-              className="h-12 w-auto shrink-0"
-            />
-          </Link>
+            <div className="relative flex flex-wrap items-center justify-between gap-5 py-3 lg:gap-0 lg:py-4">
+              <div className="flex w-full justify-between lg:w-auto">
+                <Link to="/" className="flex items-center gap-3 text-[var(--foreground)]" onClick={() => setOpen(false)} aria-label="Bakhtech home">
+                  <img
+                    src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
+                    alt="Bakhtech"
+                    className="h-10 w-auto"
+                  />
+                </Link>
 
-          <div className="hidden items-center gap-1 rounded-full border p-1 lg:flex" style={{ borderColor: 'var(--header-border)', background: 'color-mix(in srgb, var(--header-text) 6%, transparent)' }}>
-            {navigation.map((item) => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                className={({ isActive }) =>
-                  cn(
-                    'rounded-full px-4 py-2 text-sm font-medium transition hover:bg-[color-mix(in_srgb,var(--header-text)_10%,transparent)]',
-                    isActive
-                      ? 'bg-[var(--header-text)] text-[var(--background)] shadow-sm'
-                      : 'text-[color-mix(in_srgb,var(--header-text)_62%,transparent)] hover:text-[var(--header-text)]',
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="grid h-12 w-12 place-items-center rounded-xl border transition hover:-translate-y-0.5"
-              style={{
-                borderColor: 'var(--header-border)',
-                background: 'color-mix(in srgb, var(--header-text) 8%, transparent)',
-                color: 'var(--header-text)',
-              }}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              onClick={toggleTheme}
-            >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
-
-            <NavLink
-              to="/contact"
-              className="group hidden min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--header-text)] px-4 text-sm font-bold text-[var(--background)] transition hover:-translate-y-0.5 md:inline-flex"
-            >
-              Request quote
-              <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </NavLink>
-
-            <button
-              className="grid h-12 w-12 place-items-center rounded-xl border lg:hidden"
-              style={{
-                borderColor: 'var(--header-border)',
-                background: 'color-mix(in srgb, var(--header-text) 8%, transparent)',
-                color: 'var(--header-text)',
-              }}
-              type="button"
-              aria-label="Toggle navigation"
-              onClick={() => setOpen((value) => !value)}
-            >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
-        </nav>
-        {open ? (
-          <div className="mx-auto w-full max-w-7xl pb-4 lg:hidden">
-            <div className="surface-card mt-3 overflow-hidden rounded-2xl p-2 shadow-2xl backdrop-blur-2xl">
-              <div className="surface-muted text-soft mb-2 flex items-center gap-2 rounded-xl px-3 py-3 text-sm">
-                <Sparkles className="h-4 w-4 text-[#12c8a0]" />
-                Precision, Performance, Perfection
-              </div>
-              {navigation.map((item) => (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'text-soft flex rounded-xl px-3 py-3 text-sm font-semibold transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]',
-                      isActive && 'bg-[var(--foreground)] text-[var(--background)] hover:bg-[var(--foreground)] hover:text-[var(--background)]',
-                    )
-                  }
+                <button
+                  type="button"
+                  onClick={() => setOpen((value) => !value)}
+                  aria-label={open ? 'Close menu' : 'Open menu'}
+                  className="relative z-20 -m-2 grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] lg:hidden"
                 >
-                  {item.label}
-                </NavLink>
-              ))}
-              <NavLink
-                to="/contact"
-                onClick={() => setOpen(false)}
-                className="mt-2 flex min-h-12 items-center justify-center rounded-xl bg-[var(--foreground)] text-sm font-black text-[var(--background)]"
-              >
-                Request A Quote
-              </NavLink>
+                  <Menu className="h-5 w-5 transition duration-200 group-data-[state=active]:rotate-180 group-data-[state=active]:scale-0 group-data-[state=active]:opacity-0" />
+                  <X className="absolute h-5 w-5 -rotate-180 scale-0 opacity-0 transition duration-200 group-data-[state=active]:rotate-0 group-data-[state=active]:scale-100 group-data-[state=active]:opacity-100" />
+                </button>
+              </div>
+
+              <div className="absolute inset-0 m-auto hidden size-fit lg:block">
+                <ul className="flex gap-8 text-sm">
+                  {navigation.map((item) => (
+                    <li key={item.href}>
+                      <NavLink
+                        to={item.href}
+                        className={({ isActive }) =>
+                          cn(
+                            'text-soft block transition hover:text-[var(--foreground)]',
+                            isActive && 'font-bold text-[var(--foreground)]',
+                          )
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="hidden w-full flex-wrap items-center justify-end rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl shadow-black/20 group-data-[state=active]:block lg:m-0 lg:flex lg:w-fit lg:gap-4 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none">
+                <div className="lg:hidden">
+                  <ul className="space-y-5 text-base">
+                    {navigation.map((item) => (
+                      <li key={item.href}>
+                        <NavLink
+                          to={item.href}
+                          onClick={() => setOpen(false)}
+                          className={({ isActive }) =>
+                            cn(
+                              'text-soft block transition hover:text-[var(--foreground)]',
+                              isActive && 'font-bold text-[var(--foreground)]',
+                            )
+                          }
+                        >
+                          {item.label}
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row lg:mt-0 lg:w-fit">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                  >
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    <span className="lg:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+                  </button>
+
+                  <NavLink
+                    to="/contact"
+                    onClick={() => setOpen(false)}
+                    className={cn('inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:hidden')}
+                  >
+                    Get Started
+                  </NavLink>
+
+                  <NavLink
+                    to="/contact"
+                    onClick={() => setOpen(false)}
+                    className={cn('hidden min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:inline-flex')}
+                  >
+                    Get Started
+                  </NavLink>
+                </div>
+              </div>
             </div>
           </div>
-        ) : null}
+        </nav>
       </header>
-      ) : null}
       <main>
         <Outlet />
       </main>
