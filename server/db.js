@@ -5,8 +5,10 @@ import bcrypt from 'bcryptjs'
 import initSqlJs from 'sql.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const dataDir = path.join(__dirname, 'data')
-const dbPath = path.join(dataDir, 'bakhtech.sqlite')
+const dbPath = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(process.env.DB_DIR ? path.resolve(process.env.DB_DIR) : path.join(__dirname, 'data'), 'bakhtech.sqlite')
+const dataDir = path.dirname(dbPath)
 
 let SQL
 let db

@@ -11,7 +11,11 @@ import { database, initDb } from './db.js'
 const app = express()
 const port = Number(process.env.API_PORT || 4174)
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-this-secret'
-const uploadDir = path.resolve('public/uploads')
+const uploadDir = process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.resolve('public/uploads')
+const distDir = path.resolve('dist')
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : true
 
 fs.mkdirSync(uploadDir, { recursive: true })
 
@@ -26,8 +30,9 @@ const upload = multer({
   limits: { fileSize: 80 * 1024 * 1024 },
 })
 
-app.use(cors())
+app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json({ limit: '1mb' }))
+app.use('/uploads', express.static(uploadDir))
 
 function signToken(admin) {
   return jwt.sign({ sub: admin.id, email: admin.email }, jwtSecret, { expiresIn: '7d' })
@@ -203,6 +208,13 @@ app.post('/api/visits', (req, res) => {
   })
   res.status(204).end()
 })
+
+if (fs.existsSync(path.join(distDir, 'index.html'))) {
+  app.use(express.static(distDir))
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'))
+  })
+}
 
 app.use((error, _req, res, _next) => {
   const status = error.status || 500

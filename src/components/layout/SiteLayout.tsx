@@ -134,7 +134,10 @@ export function SiteLayout() {
               Precision, Performance, Perfection - Your Success, Our Mission.
             </p>
           </div>
-          <p className="text-soft text-sm">&copy; 2026 Bakhtech Solutions. All rights reserved.</p>
+          <div className="text-soft text-sm md:text-right">
+            <p>&copy; 2026 Bakhtech Solutions. All rights reserved.</p>
+            <p className="mt-1">Developed by Bakare Olayemi, Bakhtech Solutions.</p>
+          </div>
         </div>
       </footer>
     </div>

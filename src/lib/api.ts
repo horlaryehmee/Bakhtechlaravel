@@ -117,6 +117,11 @@ export type CmsData = {
 }
 
 const tokenKey = 'bakhtech_admin_token'
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+function apiUrl(path: string) {
+  return `${apiBaseUrl}${path}`
+}
 
 export function getAdminToken() {
   return localStorage.getItem(tokenKey)
@@ -132,7 +137,7 @@ export function clearAdminToken() {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getAdminToken()
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -213,7 +218,7 @@ export const api = {
     const formData = new FormData()
     formData.append('file', file)
 
-    return fetch('/api/admin/media', {
+    return fetch(apiUrl('/api/admin/media'), {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
@@ -250,7 +255,7 @@ export const api = {
     return request<void>(`/api/admin/projects/${id}`, { method: 'DELETE' })
   },
   trackVisit(path: string) {
-    return fetch('/api/visits', {
+    return fetch(apiUrl('/api/visits'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path, referrer: document.referrer }),
