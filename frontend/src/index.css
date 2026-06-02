@@ -336,12 +336,30 @@ a {
 
 .portfolio-visual-panel {
   position: relative;
-  border: 1px solid rgba(132, 151, 171, 0.42);
-  background: #05080c;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(48, 55, 63, 0.46), rgba(12, 16, 21, 0.82)) padding-box,
+    linear-gradient(135deg, rgba(88, 125, 159, 0.5), rgba(48, 55, 63, 0.86), rgba(26, 32, 39, 0.96)) border-box;
   box-shadow:
+    inset 0 0 52px rgba(48, 55, 63, 0.34),
     0 0 34px rgba(88, 125, 159, 0.2),
     0 24px 60px rgba(0, 0, 0, 0.24);
   isolation: isolate;
+}
+
+.portfolio-visual-panel::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  border-radius: inherit;
+  padding: 1px;
+  background: rgba(88, 125, 159, 0.45);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
 }
 
 .portfolio-glass-pill,
