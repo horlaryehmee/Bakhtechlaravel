@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Menu, Moon, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Menu, Moon, Play, Plus, SearchCheck, ShoppingCart, Sun, X } from 'lucide-react'
 import { type Variants } from 'framer-motion'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
@@ -10,8 +10,8 @@ import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { Sparkles } from '@/components/ui/sparkles'
 import { FeatureCard } from '@/components/ui/grid-feature-cards'
-import { ButtonLink } from '@/components/ui/button'
 import { useTheme } from '@/components/theme/ThemeProvider'
+import { api, type Project } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const services = [
@@ -21,13 +21,6 @@ const services = [
   { icon: CalendarCheck, title: 'Booking Systems', description: 'Appointment flows, service selection, reminders, and lead capture built around your operations.' },
   { icon: SearchCheck, title: 'SEO, UI/UX & Performance', description: 'Search-ready structure, modern interfaces, fast pages, and content flows built to convert.' },
   { icon: Megaphone, title: 'Social Media Management', description: 'Content planning, creative direction, post design, and brand consistency across social channels.' },
-]
-
-const process = [
-  'We clarify your offer, audience, and the actions your website must drive.',
-  'We design a polished interface that makes your business look trustworthy.',
-  'We build the system, connect the features, test it, and prepare it for launch.',
-  'We help you go live with a website or app that is easy to use and ready to grow.',
 ]
 
 const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
@@ -97,10 +90,181 @@ const transitionVariants: { item: Variants } = {
 
 const menuItems = [
   { name: 'Services', href: '#services' },
-  { name: 'Process', href: '#process' },
-  { name: 'Proof', href: '#proof' },
   { name: 'Contact', href: '/contact' },
 ]
+
+function cleanProjectUrl(url: string) {
+  const value = url.trim()
+  if (!value || value === '#') return undefined
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+type VideoMedia = {
+  title: string
+  type: 'youtube' | 'video'
+  url: string
+}
+
+function getYoutubeVideoId(url: string) {
+  const value = url.trim()
+  const match = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match?.[1]
+}
+
+function getYoutubeEmbedUrl(url: string) {
+  const id = getYoutubeVideoId(url)
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : undefined
+}
+
+function getYoutubeThumbnailUrl(url: string) {
+  const id = getYoutubeVideoId(url)
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined
+}
+
+function isVideoUrl(url: string) {
+  return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)
+}
+
+function getProjectVideoUrl(project: Project) {
+  const explicitVideo = project.videoUrl?.trim()
+  if (explicitVideo) return explicitVideo
+
+  const legacyMedia = project.image?.trim()
+  return legacyMedia && (getYoutubeVideoId(legacyMedia) || isVideoUrl(legacyMedia)) ? legacyMedia : ''
+}
+
+function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (media: VideoMedia) => void }) {
+  const videoUrl = getProjectVideoUrl(project)
+  const youtubeThumbnailUrl = getYoutubeThumbnailUrl(videoUrl)
+  const coverImage = project.coverImage?.trim()
+  const image = project.image?.trim()
+
+  if (youtubeThumbnailUrl) {
+    return (
+      <>
+        <img src={coverImage || youtubeThumbnailUrl} alt={project.title} className="h-full w-full object-cover" loading="lazy" />
+        <button
+          type="button"
+          onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })}
+          className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28"
+          aria-label={`Play ${project.title}`}
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  if (isVideoUrl(videoUrl)) {
+    return (
+      <>
+        {coverImage || image ? (
+          <img src={coverImage || image} alt={project.title} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
+            <source src={videoUrl} />
+          </video>
+        )}
+        <button
+          type="button"
+          onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })}
+          className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28"
+          aria-label={`Play ${project.title}`}
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  return <img src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" />
+}
+
+function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: VideoMedia) => void }) {
+  const projectUrl = cleanProjectUrl(project.websiteUrl)
+  const videoUrl = getProjectVideoUrl(project)
+  const videoMedia: VideoMedia | null = getYoutubeEmbedUrl(videoUrl)
+    ? { title: project.title, type: 'youtube', url: videoUrl }
+    : isVideoUrl(videoUrl)
+      ? { title: project.title, type: 'video', url: videoUrl }
+      : null
+
+  return (
+    <article className="portfolio-glass-card flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
+      <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
+        <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,36,0.08),rgba(8,12,36,0.18))]" />
+        <div className="pointer-events-none absolute inset-0 opacity-14 mix-blend-screen [background-image:linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] [background-size:18px_18px]" />
+      </div>
+
+      <div className="mt-6 flex flex-1 flex-col">
+        <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#b9c4ff]">
+          {project.category}
+        </span>
+        <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">{project.title}</h3>
+        {showDescription ? <p className="mt-3 flex-1 text-sm leading-6 text-white/72">{project.summary}</p> : null}
+
+        <div className={cn('flex flex-wrap items-center gap-2', showDescription ? 'mt-5' : 'mt-4')}>
+          {projectUrl ? (
+            <a
+              href={projectUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#8ea0ff] transition hover:text-white sm:text-xs"
+            >
+              View live project
+              <ArrowRight className="h-3 w-3" />
+            </a>
+          ) : null}
+          {videoMedia ? (
+            <button
+              type="button"
+              onClick={() => onPlayMedia(videoMedia)}
+              className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#8ea0ff] transition hover:text-white sm:text-xs"
+            >
+              Play presentation
+              <Play className="h-3 w-3 fill-current" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () => void }) {
+  const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
+
+  return (
+    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+          <h3 className="truncate text-sm font-bold text-white">{media.title}</h3>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="aspect-video bg-black">
+          {youtubeEmbedUrl ? (
+            <iframe
+              className="h-full w-full"
+              src={youtubeEmbedUrl}
+              title={media.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          ) : (
+            <video className="h-full w-full" src={media.url} controls autoPlay playsInline />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Home2Header() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -220,6 +384,23 @@ function Home2Header() {
 export function Home2() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
+  const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
+  const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
+
+  useEffect(() => {
+    async function loadPortfolioData() {
+      try {
+        const [projectResult, settingsResult] = await Promise.all([api.publicProjects(), api.publicSettings()])
+        setPortfolioProjects(projectResult.projects.slice(0, 6))
+        setShowPortfolioDescriptions(settingsResult.settings.homePortfolioShowDescriptions !== 'false')
+      } catch {
+        setPortfolioProjects([])
+      }
+    }
+
+    void loadPortfolioData()
+  }, [])
 
   return (
     <>
@@ -379,53 +560,42 @@ export function Home2() {
         </div>
       </section>
 
-      <section id="process" className="section-strong py-20 md:py-28">
-        <div className="container-x grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <div>
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#1261ff]">Our Approach</p>
-            <h2 className="text-main text-3xl font-black tracking-tight md:text-5xl">
-              A smooth path from idea to launch.
+      <section id="portfolio" className="relative overflow-hidden bg-black py-20 md:py-28">
+        <div className="pointer-events-none absolute inset-x-0 top-12 h-32 opacity-40 [background-image:linear-gradient(120deg,transparent_0%,rgba(98,120,255,0.65)_48%,transparent_100%)] blur-2xl" />
+        <div className="container-x relative z-10">
+          <div className="mx-auto mb-12 max-w-3xl text-center">
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#8ea0ff]">Portfolio</p>
+            <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">
+              Projects built for real businesses.
             </h2>
-            <p className="text-soft mt-5 text-lg leading-8">
-              We keep the process clear so you always know what is being built, why it matters, and how it helps your business grow.
-            </p>
-            <div className="mt-8">
-              <ButtonLink href="/contact">Start Your Project</ButtonLink>
-            </div>
           </div>
 
-          <div className="grid gap-4">
-            {process.map((step, index) => (
-              <div key={step} className="surface-card flex gap-4 rounded-lg p-5">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#1261ff] text-sm font-black text-white">
-                  {index + 1}
-                </div>
-                <p className="text-main leading-7">{step}</p>
-              </div>
+          <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {portfolioProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} showDescription={showPortfolioDescriptions} onPlayMedia={setActiveVideo} />
             ))}
           </div>
+
+          {portfolioProjects.length ? (
+            <div className="mt-10 flex justify-center">
+              <Link
+                to="/portfolio"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/10 px-5 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/16"
+              >
+                Show all projects
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : (
+            <div className="portfolio-glass-card mx-auto max-w-xl rounded-3xl p-8 text-center text-white/70">
+              Published backend projects will appear here.
+            </div>
+          )}
         </div>
       </section>
 
-      <section id="proof" className="bg-[#30373f] py-20 text-white md:py-24">
-        <div className="container-x grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#67e8cf]">Ready To Build?</p>
-            <h2 className="max-w-3xl text-3xl font-black tracking-tight md:text-5xl">
-              Tell us what you want your website or web app to do.
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-              We will help you shape the pages, features, content, and launch plan needed to turn visitors into customers.
-            </p>
-          </div>
-          <a
-            href="/contact"
-            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-black text-[#07101f] transition hover:-translate-y-0.5"
-          >
-            Get a Quote <ArrowRight className="h-4 w-4" />
-          </a>
-        </div>
-      </section>
+      {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
+
       </main>
     </>
   )

@@ -1,8 +1,47 @@
+import { useEffect, useState } from 'react'
 import { PageHero } from '@/components/ui/PageHero'
 import { Section } from '@/components/ui/Section'
 import { portfolio } from '@/data/site'
+import { api, type Project } from '@/lib/api'
+
+type PortfolioItem = {
+  title: string
+  category: string
+  image: string
+  summary: string
+  services?: string[]
+  websiteUrl?: string
+}
+
+function fromProject(project: Project): PortfolioItem {
+  return {
+    title: project.title,
+    category: project.category,
+    image: project.image,
+    summary: project.summary,
+    services: project.services,
+    websiteUrl: project.websiteUrl,
+  }
+}
 
 export function Portfolio() {
+  const [items, setItems] = useState<PortfolioItem[]>(portfolio)
+
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const result = await api.publicProjects()
+        if (result.projects.length) {
+          setItems(result.projects.map(fromProject))
+        }
+      } catch {
+        setItems(portfolio)
+      }
+    }
+
+    void loadProjects()
+  }, [])
+
   return (
     <>
       <PageHero
@@ -13,7 +52,7 @@ export function Portfolio() {
       />
       <Section eyebrow="Projects" title="Explore Project">
         <div className="grid gap-6">
-          {portfolio.map((item) => (
+          {items.map((item) => (
             <article key={item.title} className="surface-card grid overflow-hidden rounded-lg md:grid-cols-[0.9fr_1.1fr]">
               <img className="h-72 w-full object-cover md:h-full" src={item.image} alt="" />
               <div className="p-7 md:p-10">
@@ -21,13 +60,18 @@ export function Portfolio() {
                 <h2 className="text-main mt-4 text-3xl font-black tracking-tight">{item.title}</h2>
                 <p className="text-soft mt-4 leading-8">{item.summary}</p>
                 <dl className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {['CMS', 'SEO', 'Security'].map((metric) => (
+                  {(item.services?.length ? item.services.slice(0, 3) : ['CMS', 'SEO', 'Security']).map((metric) => (
                     <div key={metric} className="surface-muted rounded-lg p-4">
                       <dt className="text-soft text-xs font-bold uppercase tracking-[0.16em]">{metric}</dt>
                       <dd className="text-main mt-2 font-black">Explore Project</dd>
                     </div>
                   ))}
                 </dl>
+                {item.websiteUrl ? (
+                  <a className="mt-7 inline-flex font-black text-[#1261ff]" href={item.websiteUrl} target="_blank" rel="noreferrer">
+                    Visit project
+                  </a>
+                ) : null}
               </div>
             </article>
           ))}
