@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Play, Plus, SearchCheck, ShoppingCart, X } from 'lucide-react'
 import { type Variants } from 'framer-motion'
@@ -10,7 +10,6 @@ import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
-import { Sparkles } from '@/components/ui/sparkles'
 import { FeatureCard } from '@/components/ui/grid-feature-cards'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { api, type Project } from '@/lib/api'
@@ -24,6 +23,8 @@ const services = [
   { icon: SearchCheck, title: 'SEO, UI/UX & Performance', description: 'Search-ready structure, modern interfaces, fast pages, and content flows built to convert.' },
   { icon: Megaphone, title: 'Social Media Management', description: 'Content planning, creative direction, post design, and brand consistency across social channels.' },
 ]
+
+const Sparkles = lazy(() => import('@/components/ui/sparkles').then((module) => ({ default: module.Sparkles })))
 
 const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
 
@@ -270,19 +271,68 @@ export function Home2() {
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
+  const [showDeferredEffects, setShowDeferredEffects] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
     async function loadPortfolioData() {
       try {
         const [projectResult, settingsResult] = await Promise.all([api.publicProjects(), api.publicSettings()])
+        if (cancelled) return
         setPortfolioProjects(projectResult.projects.slice(0, 6))
         setShowPortfolioDescriptions(settingsResult.settings.homePortfolioShowDescriptions !== 'false')
       } catch {
+        if (cancelled) return
         setPortfolioProjects([])
       }
     }
 
-    void loadPortfolioData()
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(() => {
+        void loadPortfolioData()
+      }, { timeout: 1800 })
+
+      return () => {
+        cancelled = true
+        idleWindow.cancelIdleCallback?.(idleId)
+      }
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadPortfolioData()
+    }, 900)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [])
+
+  useEffect(() => {
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(() => {
+        setShowDeferredEffects(true)
+      }, { timeout: 2200 })
+
+      return () => idleWindow.cancelIdleCallback?.(idleId)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowDeferredEffects(true)
+    }, 1500)
+
+    return () => window.clearTimeout(timeoutId)
   }, [])
 
   return (
@@ -414,11 +464,15 @@ export function Home2() {
         <div className="relative -mt-16 h-40 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-52">
           <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
           <div className="absolute -left-1/2 top-1/2 z-10 aspect-[1/0.7] w-[200%] rounded-[100%] border-t border-zinc-900/20 bg-[var(--background)] dark:border-white/20" />
-          <Sparkles
-            density={520}
-            className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
-            color={isDark ? '#ffffff' : '#000000'}
-          />
+          {showDeferredEffects ? (
+            <Suspense fallback={null}>
+              <Sparkles
+                density={360}
+                className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
+                color={isDark ? '#ffffff' : '#000000'}
+              />
+            </Suspense>
+          ) : null}
         </div>
       </section>
 

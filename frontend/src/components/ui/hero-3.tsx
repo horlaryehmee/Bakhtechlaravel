@@ -77,7 +77,14 @@ export function AnimatedImageMarquee({
               rotate: straight ? '0deg' : `${index % 2 === 0 ? -1.5 : 2.5}deg`,
             }}
           >
-            <img src={src} alt={`Website showcase ${index + 1}`} className="h-full w-full object-cover object-top" draggable={false} />
+            <img
+              src={src}
+              alt={`Website showcase ${index + 1}`}
+              className="h-full w-full object-cover object-top"
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/24 to-transparent" />
           </div>
         ))}

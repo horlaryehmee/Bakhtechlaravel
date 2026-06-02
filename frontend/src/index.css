@@ -334,6 +334,16 @@ a {
   -webkit-backdrop-filter: blur(18px);
 }
 
+.portfolio-css-grid {
+  transform: translate3d(-50%, -50%, 0) skewX(-48deg) skewY(14deg) scale(0.68);
+  background-image:
+    linear-gradient(rgba(95, 109, 122, 0.58) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95, 109, 122, 0.58) 1px, transparent 1px),
+    radial-gradient(circle at 0 0, rgba(160, 181, 200, 0.34) 0 2px, transparent 2.5px);
+  background-size: 64px 32px, 64px 32px, 128px 64px;
+  opacity: 0.92;
+}
+
 .portfolio-visual-panel {
   position: relative;
   border: 2px solid transparent;
@@ -385,6 +395,15 @@ a {
 
 .schema-delay {
   animation-delay: 0.55s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-icon-ring,
+  .schema-card-float,
+  .schema-data-stream,
+  .schema-delay {
+    animation: none !important;
+  }
 }
 
 @keyframes schema-float {
