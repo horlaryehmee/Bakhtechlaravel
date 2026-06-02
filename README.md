@@ -59,6 +59,45 @@ CLIENT_ORIGIN=https://your-domain.com
 
 Important: `DB_PATH` and `UPLOAD_DIR` must point to persistent storage on the live server. If they point inside an ephemeral deployment folder, projects, settings, admin data, and uploaded media can be lost on redeploy.
 
+### cPanel Node.js Deployment
+
+If Terminal says `npm: command not found`, use cPanel's Node.js virtual environment instead of the global shell.
+
+Find the Node environment:
+
+```bash
+find ~/nodevenv -type f \( -name npm -o -name node -o -name activate \) | head -30
+```
+
+Activate the environment shown for this app. The path differs by server, but it usually looks like:
+
+```bash
+source ~/nodevenv/solutions.bakhtech.com.ng/20/bin/activate
+```
+
+Then run:
+
+```bash
+cd ~/solutions.bakhtech.com.ng
+npm install
+npm run build
+```
+
+In cPanel's **Setup Node.js App** screen, use:
+
+- Application root: `solutions.bakhtech.com.ng`
+- Startup file: `server/index.js`
+- Node version: 20 or newer
+- Environment variables:
+  - `NODE_ENV=production`
+  - `JWT_SECRET=use-a-long-random-secret`
+  - `ADMIN_EMAIL=your-admin@email.com`
+  - `ADMIN_PASSWORD=use-a-strong-password`
+  - `DB_PATH=/home/bakhtech/solutions.bakhtech.com.ng/server/data/bakhtech.sqlite`
+  - `UPLOAD_DIR=/home/bakhtech/solutions.bakhtech.com.ng/public/uploads`
+
+If cPanel provides a `PORT` variable, the server will use it automatically.
+
 If the frontend is hosted separately from the API, build the frontend with:
 
 ```bash

@@ -9,7 +9,7 @@ import path from 'node:path'
 import { database, initDb } from './db.js'
 
 const app = express()
-const port = Number(process.env.API_PORT || 4174)
+const port = Number(process.env.PORT || process.env.API_PORT || 4174)
 const jwtSecret = process.env.JWT_SECRET || 'dev-only-change-this-secret'
 const uploadDir = process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.resolve('public/uploads')
 const distDir = path.resolve('dist')
