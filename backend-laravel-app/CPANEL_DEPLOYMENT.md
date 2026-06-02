@@ -46,6 +46,16 @@ frontend changes.
 Upload `backend-laravel-app` as the Laravel app root. The domain document root
 must point to `backend-laravel-app/public`.
 
+Preferred cPanel document root:
+
+```text
+/home/YOUR_CPANEL_USER/REPO_FOLDER/backend-laravel-app/public
+```
+
+If cPanel cannot point the domain directly to that folder and instead serves
+the repository root, the root `.htaccess` rewrites requests into
+`backend-laravel-app/public`.
+
 If the site is blank after pulling from GitHub, confirm these files/folders
 exist in the cPanel document root:
 

@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^$ backend-laravel-app/public/index.php [L]
+    RewriteRule ^index\.html$ backend-laravel-app/public/index.php [L]
+
+    RewriteRule ^api(/.*)?$ backend-laravel-app/public/index.php [L]
+
+    RewriteRule ^assets/(.*)$ backend-laravel-app/public/assets/$1 [L]
+    RewriteRule ^showcase/(.*)$ backend-laravel-app/public/showcase/$1 [L]
+    RewriteRule ^portfolio-marquee/(.*)$ backend-laravel-app/public/portfolio-marquee/$1 [L]
+    RewriteRule ^uploads/(.*)$ backend-laravel-app/public/uploads/$1 [L]
+
+    RewriteRule ^(bakhtech-logo-dark\.png|bakhtech-logo-light\.png|bg1\.jpg|favicon\.svg|icons\.svg|robots\.txt)$ backend-laravel-app/public/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ backend-laravel-app/public/index.php [L]
+</IfModule>
