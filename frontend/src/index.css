@@ -321,7 +321,6 @@ a {
 }
 
 .portfolio-glass-card {
-  isolation: isolate;
   border: 1px solid rgba(48, 55, 63, 0.88);
   background:
     linear-gradient(180deg, rgba(48, 55, 63, 0.58), rgba(7, 10, 14, 0.92)) padding-box,
@@ -333,29 +332,6 @@ a {
     0 0 42px rgba(48, 55, 63, 0.34);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-}
-
-.portfolio-glass-card::before {
-  content: '';
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--portfolio-border-angle, 0deg),
-    rgba(88, 125, 159, 0.15),
-    rgba(183, 213, 236, 0.9),
-    rgba(88, 125, 159, 0.22),
-    rgba(183, 213, 236, 0.9),
-    rgba(88, 125, 159, 0.15)
-  );
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  animation: portfolio-border-spin 7s linear infinite;
 }
 
 .portfolio-visual-panel {
@@ -377,18 +353,6 @@ a {
     0 10px 28px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-}
-
-@property --portfolio-border-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes portfolio-border-spin {
-  to {
-    --portfolio-border-angle: 360deg;
-  }
 }
 
 .schema-inner-glow {
