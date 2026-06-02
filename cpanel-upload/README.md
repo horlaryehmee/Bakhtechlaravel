@@ -1,41 +1,14 @@
-# Bakhtech Local Laravel API
+# Bakhtech Live Laravel API
 
-This is the runnable local Laravel backend for the React frontend in the parent
-folder. It uses SQLite locally and exposes the same `/api/...` routes used by
-the frontend.
+This folder is prepared for cPanel live deployment. It contains the Laravel API
+and the built React frontend in `public`.
 
-## Run Locally
+See `CPANEL_DEPLOYMENT.md` for live setup steps.
 
-From the project root:
+Required live runtime:
 
-```bash
-npm run backend
-npm run dev
-```
+- PHP 8.3 or newer
+- Composer
+- MySQL or MariaDB
 
-Or from this folder:
-
-```bash
-php artisan serve --host=127.0.0.1 --port=8000
-```
-
-Reset local data:
-
-```bash
-php artisan migrate:fresh --seed
-```
-
-Default admin login:
-
-- Email: `admin@bakhtech.com.ng`
-- Password: `ChangeMe123!`
-
-## cPanel
-
-Use MySQL or MariaDB on cPanel. The portable cPanel-oriented source and setup
-notes are in `../backend-laravel`.
-
-The backend does not require Node on cPanel. Build the React frontend from the
-project root and upload the built `dist` files into Laravel's `public`
-folder if you want one cPanel Laravel app to serve both frontend and API.
-Preserve Laravel's existing `public/index.php` and `.htaccess` files.
+The backend does not require Node on cPanel.
