@@ -282,8 +282,8 @@ export function Home2() {
       <main className="overflow-hidden">
       <section className="relative min-h-[100svh] overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
         <FluidParticles
-          className="absolute inset-0 h-full w-full"
-          particleDensity={220}
+          className="absolute inset-0 hidden h-full w-full md:block"
+          particleDensity={150}
           particleSize={1}
           particleColor={isDark ? '#555555' : '#555555'}
           activeColor={isDark ? '#ffffff' : '#000000'}
@@ -403,11 +403,11 @@ export function Home2() {
           </div>
         </div>
 
-        <div className="relative -mt-16 h-40 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-52">
+        <div className="relative -mt-16 hidden h-40 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:block md:h-52">
           <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
           <div className="absolute -left-1/2 top-1/2 z-10 aspect-[1/0.7] w-[200%] rounded-[100%] border-t border-zinc-900/20 bg-[var(--background)] dark:border-white/20" />
           <Sparkles
-            density={520}
+            density={260}
             className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
             color={isDark ? '#ffffff' : '#000000'}
           />
@@ -435,9 +435,9 @@ export function Home2() {
       </section>
 
       <section id="portfolio" className="relative overflow-hidden bg-[#151a20] py-20 md:py-28">
-        <Boxes className="opacity-95" />
-        <div className="pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
-        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
+        <Boxes className="hidden opacity-45 md:block" />
+        <div className="pointer-events-none absolute inset-0 z-20 hidden h-full w-full bg-[#151a20]/32 [mask-image:radial-gradient(transparent_12%,white_88%)] md:block" />
+        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.08),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.18)_90%)]" />
         <div className="container-x relative z-30">
           <div className="mx-auto mb-12 max-w-3xl text-center">
             <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#8ea0ff]">Portfolio</p>
