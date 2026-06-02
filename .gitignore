@@ -12,7 +12,11 @@ node_modules
 dist-ssr
 *.local
 server/data/*.sqlite
+backend-laravel-app/database/*.sqlite
+backend-laravel-app/bootstrap/cache/*.php
 tools/composer.phar
+laravel-api*.log
+vite-frontend*.log
 
 # Editor directories and files
 .vscode/*
