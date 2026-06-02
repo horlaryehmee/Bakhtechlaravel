@@ -1,31 +1,53 @@
+# Local environment
+.env
+.env.backup
+.env.production
+*.local
+
 # Logs
 logs
 *.log
-.env
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-backend-laravel
-cpanel-upload
-bakhtech-cpanel-upload.zip
-server/data/*.sqlite
-backend-laravel-app/database/*.sqlite
-backend-laravel-app/bootstrap/cache/*.php
-backend-laravel-app/vendor
-backend-laravel-app/public/uploads/*
-!backend-laravel-app/public/uploads/.gitkeep
-tools/composer.phar
 laravel-api*.log
 vite-frontend*.log
 
-# Editor directories and files
+# Dependencies and generated caches
+node_modules
+frontend/node_modules
+vendor
+frontend/dist
+dist
+dist-ssr
+tools/composer.phar
+
+# Laravel runtime files
+database/*.sqlite
+bootstrap/cache/*.php
+public/build
+public/fonts-manifest.dev.json
+public/hot
+public/storage
+public/uploads/*
+!public/uploads/.gitkeep
+storage/*.key
+storage/pail
+.phpunit.cache
+.phpunit.result.cache
+_ide_helper.php
+auth.json
+
+# Old deployment artifacts
+backend-laravel
+backend-laravel-app
+cpanel-upload
+bakhtech-cpanel-upload.zip
+server/data/*.sqlite
+
+# Editor/system files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -35,3 +57,4 @@ vite-frontend*.log
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
