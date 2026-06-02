@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { api, getAdminToken, setAdminToken } from '@/lib/api'
+import { ApiError, api, clearAdminToken, getAdminToken, setAdminToken } from '@/lib/api'
 
 export function AdminLogin() {
   const navigate = useNavigate()
@@ -10,10 +10,28 @@ export function AdminLogin() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
 
-  if (getAdminToken()) {
-    return <Navigate to="/admin/dashboard" replace />
-  }
+  useEffect(() => {
+    const token = getAdminToken()
+
+    if (!token) {
+      setCheckingSession(false)
+      return
+    }
+
+    api
+      .me()
+      .then(() => navigate('/admin/dashboard', { replace: true }))
+      .catch((sessionError) => {
+        if (sessionError instanceof ApiError && sessionError.status === 401) {
+          clearAdminToken()
+        } else {
+          setError(sessionError instanceof Error ? sessionError.message : 'Unable to verify your session.')
+        }
+      })
+      .finally(() => setCheckingSession(false))
+  }, [navigate])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -29,6 +47,14 @@ export function AdminLogin() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[var(--background)] px-4 py-10 text-[var(--foreground)]">
+        <p className="text-soft font-bold">Checking session...</p>
+      </main>
+    )
   }
 
   return (

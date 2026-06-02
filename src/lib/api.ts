@@ -119,6 +119,16 @@ export type CmsData = {
 const tokenKey = 'bakhtech_admin_token'
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`
 }
@@ -148,7 +158,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ message: 'Request failed.' }))
-    throw new Error(body.message || 'Request failed.')
+    throw new ApiError(body.message || 'Request failed.', response.status)
   }
 
   if (response.status === 204) {
@@ -164,6 +174,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
+  },
+  me() {
+    return request<{ admin: { id: number; email: string; name: string } }>('/api/admin/me')
   },
   dashboard() {
     return request<DashboardData>('/api/admin/dashboard')
@@ -225,7 +238,7 @@ export const api = {
     }).then(async (response) => {
       if (!response.ok) {
         const body = await response.json().catch(() => ({ message: 'Upload failed.' }))
-        throw new Error(body.message || 'Upload failed.')
+        throw new ApiError(body.message || 'Upload failed.', response.status)
       }
       return response.json() as Promise<{ media: MediaItem }>
     })

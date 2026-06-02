@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   api,
+  ApiError,
   clearAdminToken,
   getAdminToken,
   type Booking,
@@ -188,6 +189,12 @@ export function AdminDashboard() {
       setCms(cmsResult)
       setSettingsForm(cmsResult.settings)
     } catch (loadError) {
+      if (loadError instanceof ApiError && loadError.status === 401) {
+        clearAdminToken()
+        navigate('/admin/login', { replace: true })
+        return
+      }
+
       setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard.')
     } finally {
       setLoading(false)
@@ -387,7 +394,7 @@ export function AdminDashboard() {
   function renderPages() {
     return (
       <div>
-        <PanelHeader eyebrow="Pages" title="Database-backed pages" text="Edit page content and SEO fields. These records are stored in SQLite and ready to connect to page rendering." />
+        <PanelHeader eyebrow="Pages" title="Database-backed pages" text="Edit page content and SEO fields. These records are stored in the Laravel SQL database and ready to connect to page rendering." />
         <div className="grid gap-4">
           {cms?.pages.map((page) => (
             <article key={page.id} className="surface-card rounded-2xl p-5">

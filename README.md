@@ -1,6 +1,6 @@
 # Bakhtech Solutions Website
 
-React + TypeScript frontend with an Express admin/API backend for the Bakhtech Solutions agency website. The backend stores CMS, portfolio, media, bookings, visits, and admin data in a SQLite file.
+React + TypeScript frontend with a Laravel/MySQL admin/API backend for the Bakhtech Solutions agency website. The backend stores CMS, portfolio, media, bookings, visits, and admin data in SQL tables for cPanel hosting.
 
 Developed by Bakare Olayemi, Bakhtech Solutions.
 
@@ -11,15 +11,15 @@ Developed by Bakare Olayemi, Bakhtech Solutions.
 - Motion: GSAP cinematic homepage hero
 - UI structure: `src/components/ui` for shadcn-style reusable components
 - Assets: remote Unsplash image URLs in `src/data/site.ts`
-- Backend: Express API with file-backed SQLite, JWT admin auth, media uploads, and production static serving
+- Backend: runnable local Laravel API in `backend-laravel-app`, plus cPanel-ready Laravel source files in `backend-laravel`
 
 ## Local Commands
 
 ```bash
 npm install
+npm run backend
 npm run dev
 npm run build
-npm run dev:full
 ```
 
 PowerShell may block `npm.ps1` on this computer. Use `npm.cmd` if needed:
@@ -28,81 +28,37 @@ PowerShell may block `npm.ps1` on this computer. Use `npm.cmd` if needed:
 npm.cmd run dev
 ```
 
-## Production / Live Deployment
+The local frontend is configured by `.env.development` to call the Laravel API at
+`http://127.0.0.1:8000`.
 
-Build the frontend and run the Express server:
+## Laravel Backend / cPanel Deployment
+
+The Node backend has been replaced by the Laravel backend in `backend-laravel`.
+Create a Laravel app on cPanel, copy the contents of `backend-laravel` into it,
+configure MySQL in `.env`, then run:
+
+```bash
+php artisan migrate --seed
+php artisan storage:link
+```
+
+See `backend-laravel/README.md` for the full cPanel setup.
+
+Build the React frontend separately:
 
 ```bash
 npm install
 npm run build
-npm run start
 ```
 
-The Express server serves:
-
-- `/` and all frontend pages from `dist`
-- `/admin/login` and `/admin/dashboard`
-- `/api/*` backend routes
-- `/uploads/*` uploaded media files
-
-For live use, set these environment variables:
-
-```bash
-API_PORT=4174
-JWT_SECRET=use-a-long-random-secret
-ADMIN_EMAIL=your-admin@email.com
-ADMIN_PASSWORD=use-a-strong-password
-DB_PATH=/persistent/data/bakhtech.sqlite
-UPLOAD_DIR=/persistent/uploads
-CLIENT_ORIGIN=https://your-domain.com
-```
-
-Important: `DB_PATH` and `UPLOAD_DIR` must point to persistent storage on the live server. If they point inside an ephemeral deployment folder, projects, settings, admin data, and uploaded media can be lost on redeploy.
-
-### cPanel Node.js Deployment
-
-If Terminal says `npm: command not found`, use cPanel's Node.js virtual environment instead of the global shell.
-
-Find the Node environment:
-
-```bash
-find ~/nodevenv -type f \( -name npm -o -name node -o -name activate \) | head -30
-```
-
-Activate the environment shown for this app. The path differs by server, but it usually looks like:
-
-```bash
-source ~/nodevenv/solutions.bakhtech.com.ng/20/bin/activate
-```
-
-Then run:
-
-```bash
-cd ~/solutions.bakhtech.com.ng
-npm install
-npm run build
-```
-
-In cPanel's **Setup Node.js App** screen, use:
-
-- Application root: `solutions.bakhtech.com.ng`
-- Startup file: `server/index.js`
-- Node version: 20 or newer
-- Environment variables:
-  - `NODE_ENV=production`
-  - `JWT_SECRET=use-a-long-random-secret`
-  - `ADMIN_EMAIL=your-admin@email.com`
-  - `ADMIN_PASSWORD=use-a-strong-password`
-  - `DB_PATH=/home/bakhtech/solutions.bakhtech.com.ng/server/data/bakhtech.sqlite`
-  - `UPLOAD_DIR=/home/bakhtech/solutions.bakhtech.com.ng/public/uploads`
-
-If cPanel provides a `PORT` variable, the server will use it automatically.
-
-If the frontend is hosted separately from the API, build the frontend with:
+If the frontend is hosted separately from Laravel, build the frontend with:
 
 ```bash
 VITE_API_BASE_URL=https://your-api-domain.com npm run build
 ```
+
+For same-domain cPanel hosting, leave `VITE_API_BASE_URL` empty before building
+so browser requests use `/api/...` on the current domain.
 
 ## Key Files
 
@@ -111,56 +67,25 @@ VITE_API_BASE_URL=https://your-api-domain.com npm run build
 - `src/components/layout/SiteLayout.tsx` - navigation and footer
 - `src/pages` - starter website pages
 - `src/lib/api.ts` - API client for admin and public data
-- `server/index.js` - Express API and production static server
-- `server/db.js` - SQLite database setup, migrations, seed data, and CMS methods
+- `backend-laravel-app` - full local Laravel app, configured for SQLite
+- `backend-laravel/routes/api.php` - Laravel API routes
+- `backend-laravel/app/Http/Controllers/Api/BakhtechApiController.php` - Laravel API implementation
+- `backend-laravel/database/migrations` - MySQL/MariaDB schema
 
-## Laravel Setup When Composer Is Available
+## Local Laravel Backend
 
-Install Composer, then create or move this frontend into a Laravel app:
+The local Laravel app is already created in `backend-laravel-app`. It uses
+SQLite locally because MySQL is not installed on this PC. cPanel should still
+use MySQL/MariaDB with the `.env` values shown in `backend-laravel/README.md`.
+
+To reset local data:
 
 ```bash
-composer create-project laravel/laravel bakhtech
-cd bakhtech
-php artisan install:api
-npm install
-npm install @vitejs/plugin-react react react-dom react-router-dom gsap lucide-react clsx tailwind-merge class-variance-authority
-npm install -D typescript tailwindcss @tailwindcss/vite
+cd backend-laravel-app
+php artisan migrate:fresh --seed
 ```
 
-Recommended Laravel frontend paths:
+Default local admin login:
 
-- React entry: `resources/js/main.tsx`
-- React pages/components: `resources/js`
-- Global CSS: `resources/css/app.css`
-- Blade shell: `resources/views/app.blade.php`
-
-If you keep shadcn defaults, create `resources/js/components/ui`. This matters because shadcn CLI and generated imports expect reusable UI primitives to live in `components/ui`, making future component installs predictable.
-
-## CMS Plan
-
-Use Laravel + MySQL with these core tables:
-
-- `users`, `roles`, `permissions`
-- `pages`: slug, title, status, template, SEO fields
-- `content_blocks`: page_id, type, sort_order, JSON payload
-- `media_assets`: path, alt_text, focal_point, metadata
-- `portfolio_items`: title, slug, category, summary, body, image_id
-- `career_posts`: title, slug, department, location, status, description
-- `contact_submissions`: name, email, company, message, source
-- `redirects`: from_path, to_path, status_code
-- `activity_logs`: user_id, action, auditable type/id, metadata
-
-Security baseline:
-
-- Laravel Sanctum or session auth for admin
-- CSRF protection, validation requests, rate limits, signed uploads
-- Role-based authorization policies
-- Secure headers, backups, audit logs, and spam controls
-
-SEO baseline:
-
-- Per-page title, description, canonical, robots, Open Graph, and JSON-LD schema
-- Auto sitemap and robots.txt
-- Redirect manager
-- Image alt text and responsive image generation
-- Analytics and conversion events
+- Email: `admin@bakhtech.com.ng`
+- Password: `ChangeMe123!`
