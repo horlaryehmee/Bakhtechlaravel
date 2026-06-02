@@ -20,14 +20,15 @@ artisan
 composer.json
 ```
 
-The domain document root should point to:
+Best setup: the domain document root should point to:
 
 ```text
 /home/YOUR_CPANEL_USER/REPO_FOLDER/public
 ```
 
-If cPanel forces the repository itself to be the domain folder, move or point
-the domain to the `public/` folder. Do not serve the repository root directly.
+If cPanel forces the repository itself to be the domain folder, the root
+`.htaccess` forwards requests into `public/`. The `public/.htaccess` file must
+remain Laravel's rewrite file so `/api/...` routes reach `public/index.php`.
 
 ## Configure Backend
 

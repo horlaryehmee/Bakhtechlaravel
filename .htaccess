@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^$ public/index.php [L]
+    RewriteRule ^index\.html$ public/index.php [L]
+
+    RewriteRule ^api(/.*)?$ public/index.php [L]
+
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+    RewriteRule ^showcase/(.*)$ public/showcase/$1 [L]
+    RewriteRule ^portfolio-marquee/(.*)$ public/portfolio-marquee/$1 [L]
+    RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
+
+    RewriteRule ^(bakhtech-logo-dark\.png|bakhtech-logo-light\.png|bg1\.jpg|favicon\.svg|icons\.svg|robots\.txt)$ public/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ public/index.php [L]
+</IfModule>
