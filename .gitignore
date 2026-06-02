@@ -9,11 +9,20 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+dist
 dist-ssr
 *.local
+backend-laravel
+cpanel-upload
+bakhtech-cpanel-upload.zip
 server/data/*.sqlite
 backend-laravel-app/database/*.sqlite
 backend-laravel-app/bootstrap/cache/*.php
+backend-laravel-app/vendor
+backend-laravel-app/public/assets
+backend-laravel-app/public/index.html
+backend-laravel-app/public/uploads/*
+!backend-laravel-app/public/uploads/.gitkeep
 tools/composer.phar
 laravel-api*.log
 vite-frontend*.log

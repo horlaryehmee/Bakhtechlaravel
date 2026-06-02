@@ -11,7 +11,7 @@ Developed by Bakare Olayemi, Bakhtech Solutions.
 - Motion: GSAP cinematic homepage hero
 - UI structure: `src/components/ui` for shadcn-style reusable components
 - Assets: remote Unsplash image URLs in `src/data/site.ts`
-- Backend: runnable local Laravel API in `backend-laravel-app`, plus cPanel-ready Laravel source files in `backend-laravel`
+- Backend: Laravel API in `backend-laravel-app`
 
 ## Local Commands
 
@@ -33,16 +33,8 @@ The local frontend is configured by `.env.development` to call the Laravel API a
 
 ## Laravel Backend / cPanel Deployment
 
-The Node backend has been replaced by the Laravel backend in `backend-laravel`.
-Create a Laravel app on cPanel, copy the contents of `backend-laravel` into it,
-configure MySQL in `.env`, then run:
-
-```bash
-php artisan migrate --seed
-php artisan storage:link
-```
-
-See `backend-laravel/README.md` for the full cPanel setup.
+The Laravel app is in `backend-laravel-app`. See
+`backend-laravel-app/CPANEL_DEPLOYMENT.md` for the full cPanel setup.
 
 Build the React frontend separately:
 
@@ -68,15 +60,15 @@ so browser requests use `/api/...` on the current domain.
 - `src/pages` - starter website pages
 - `src/lib/api.ts` - API client for admin and public data
 - `backend-laravel-app` - full local Laravel app, configured for SQLite
-- `backend-laravel/routes/api.php` - Laravel API routes
-- `backend-laravel/app/Http/Controllers/Api/BakhtechApiController.php` - Laravel API implementation
-- `backend-laravel/database/migrations` - MySQL/MariaDB schema
+- `backend-laravel-app/routes/api.php` - Laravel API routes
+- `backend-laravel-app/app/Http/Controllers/Api/BakhtechApiController.php` - Laravel API implementation
+- `backend-laravel-app/database/migrations` - MySQL/MariaDB schema
 
 ## Local Laravel Backend
 
 The local Laravel app is already created in `backend-laravel-app`. It uses
-SQLite locally because MySQL is not installed on this PC. cPanel should still
-use MySQL/MariaDB with the `.env` values shown in `backend-laravel/README.md`.
+SQLite locally. cPanel should use MySQL/MariaDB with the `.env` values shown in
+`backend-laravel-app/.env.live.example`.
 
 To reset local data:
 
