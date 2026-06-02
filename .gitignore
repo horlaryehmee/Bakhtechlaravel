@@ -19,8 +19,6 @@ server/data/*.sqlite
 backend-laravel-app/database/*.sqlite
 backend-laravel-app/bootstrap/cache/*.php
 backend-laravel-app/vendor
-backend-laravel-app/public/assets
-backend-laravel-app/public/index.html
 backend-laravel-app/public/uploads/*
 !backend-laravel-app/public/uploads/.gitkeep
 tools/composer.phar

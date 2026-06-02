@@ -20,6 +20,11 @@ Copy the contents of root `dist` into `backend-laravel-app/public`, preserving:
 - `public/index.php`
 - `public/.htaccess`
 
+The repository also tracks the current built frontend inside
+`backend-laravel-app/public` so cPanel Git deployments can serve the site
+without running Node on the server. Rebuild and commit these files whenever the
+frontend changes.
+
 ## Configure Backend
 
 1. In cPanel, create a MySQL database and user.
@@ -40,6 +45,15 @@ Copy the contents of root `dist` into `backend-laravel-app/public`, preserving:
 
 Upload `backend-laravel-app` as the Laravel app root. The domain document root
 must point to `backend-laravel-app/public`.
+
+If the site is blank after pulling from GitHub, confirm these files/folders
+exist in the cPanel document root:
+
+- `index.html`
+- `index.php`
+- `assets/`
+- `showcase/`
+- `portfolio-marquee/`
 
 ## First Run
 
@@ -73,4 +87,3 @@ Expected API health:
 ```json
 {"ok":true,"service":"bakhtech-api"}
 ```
-
