@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactTyped } from 'react-typed'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 type TypeWriterProps = {
@@ -8,18 +8,25 @@ type TypeWriterProps = {
 }
 
 export function TypeWriter({ strings }: TypeWriterProps) {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (strings.length < 2) return undefined
+
+    const intervalId = window.setInterval(() => {
+      setIndex((value) => (value + 1) % strings.length)
+    }, 1800)
+
+    return () => window.clearInterval(intervalId)
+  }, [strings.length])
+
   return (
-    <ReactTyped
-      loop
-      typeSpeed={80}
-      backSpeed={20}
-      strings={strings}
-      smartBackspace
-      backDelay={1000}
-      loopCount={0}
-      showCursor
-      cursorChar="|"
-    />
+    <span className="inline-flex min-w-[8.5ch] items-baseline">
+      <span className="motion-safe:animate-[content-reveal_360ms_ease-out_both]">{strings[index] ?? strings[0]}</span>
+      <span className="ml-0.5 animate-pulse opacity-70" aria-hidden>
+        |
+      </span>
+    </span>
   )
 }
 

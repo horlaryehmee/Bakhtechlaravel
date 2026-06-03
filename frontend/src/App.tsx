@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { SiteLayout } from '@/components/layout/SiteLayout'
-import { Home2 } from '@/pages/Home2'
 
 const VisitTracker = lazy(() => import('@/components/analytics/VisitTracker').then((module) => ({ default: module.VisitTracker })))
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
@@ -10,6 +9,7 @@ const About = lazy(() => import('@/pages/About').then((module) => ({ default: mo
 const Career = lazy(() => import('@/pages/Career').then((module) => ({ default: module.Career })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const Ebook = lazy(() => import('@/pages/Ebook').then((module) => ({ default: module.Ebook })))
+const Home2 = lazy(() => import('@/pages/Home2').then((module) => ({ default: module.Home2 })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 
 function App() {
