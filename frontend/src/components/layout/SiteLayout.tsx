@@ -34,6 +34,9 @@ export function SiteLayout() {
                     src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
                     alt="Bakhtech"
                     className="h-10 w-auto"
+                    width="160"
+                    height="40"
+                    decoding="async"
                   />
                 </Link>
 

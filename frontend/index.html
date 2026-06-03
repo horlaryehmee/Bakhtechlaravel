@@ -14,6 +14,22 @@
       content="Secure CMS websites, advanced SEO, responsive frontend engineering, and fast Laravel delivery."
     />
     <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#101729" />
+    <script>
+      (() => {
+        try {
+          const stored = localStorage.getItem('bakhtech-theme')
+          const theme = stored === 'light' || stored === 'dark'
+            ? stored
+            : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          document.documentElement.classList.toggle('dark', theme === 'dark')
+          document.documentElement.style.colorScheme = theme
+        } catch {
+          document.documentElement.classList.add('dark')
+          document.documentElement.style.colorScheme = 'dark'
+        }
+      })()
+    </script>
     <title>Bakhtech Solutions - Laravel, React, Vue CMS Websites</title>
   </head>
   <body>
