@@ -1,6 +1,7 @@
 'use client'
 
 import type React from 'react'
+import { motion, type Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface AnimatedMarqueeHeroProps {
@@ -12,13 +13,20 @@ interface AnimatedMarqueeHeroProps {
   className?: string
 }
 
+const FADE_IN_ANIMATION_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100, damping: 20 } },
+}
+
 const ActionButton = ({ children }: { children: React.ReactNode }) => (
-  <button
+  <motion.button
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
     className="mt-8 rounded-full bg-red-500 px-8 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75"
     type="button"
   >
     {children}
-  </button>
+  </motion.button>
 )
 
 export function AnimatedImageMarquee({
@@ -28,6 +36,7 @@ export function AnimatedImageMarquee({
   straight = false,
   trackClassName,
   cardClassName,
+  priority = false,
 }: {
   images: string[]
   className?: string
@@ -35,25 +44,28 @@ export function AnimatedImageMarquee({
   straight?: boolean
   trackClassName?: string
   cardClassName?: string
+  priority?: boolean
 }) {
   const repeatedImages = [...images, ...images, ...images]
 
   return (
     <div
       className={cn(
-        'pointer-events-none absolute bottom-0 left-0 w-full overflow-hidden',
+        'pointer-events-none absolute inset-x-0 bottom-0 z-20 w-full overflow-hidden opacity-100',
         !straight && '[mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]',
         className,
       )}
       >
-        <div
-        className={cn('marquee-track flex w-max transform-gpu gap-4 px-4 will-change-transform', trackClassName)}
-        style={
-          {
-            '--marquee-duration': `${duration}s`,
-            '--marquee-distance': '-33.333%',
-          } as React.CSSProperties
-        }
+        <motion.div
+        className={cn('flex w-max transform-gpu gap-4 px-4 will-change-transform', trackClassName)}
+        animate={{
+          x: ['0%', '-33.333%'],
+          transition: {
+            ease: 'linear',
+            duration,
+            repeat: Infinity,
+          },
+        }}
       >
         {repeatedImages.map((src, index) => (
           <div
@@ -72,14 +84,15 @@ export function AnimatedImageMarquee({
               alt={`Website showcase ${index + 1}`}
               className="h-full w-full object-cover object-top"
               draggable={false}
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
               decoding="async"
+              fetchPriority={priority ? 'high' : 'auto'}
               sizes="(min-width: 768px) 320px, 216px"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/24 to-transparent" />
           </div>
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -100,33 +113,50 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
       )}
     >
       <div className="z-10 flex flex-col items-center">
-        <div
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={FADE_IN_ANIMATION_VARIANTS}
           className="mb-4 inline-block rounded-full border border-[var(--line)] bg-[var(--surface)]/50 px-4 py-1.5 text-sm font-medium text-[var(--muted)] backdrop-blur-sm"
         >
           {tagline}
-        </div>
+        </motion.div>
 
-        <h1
+        <motion.h1
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: {},
+            show: {
+              transition: {
+                staggerChildren: 0.1,
+              },
+            },
+          }}
           className="text-5xl font-bold tracking-tight text-[var(--foreground)] md:text-7xl"
         >
           {typeof title === 'string'
             ? title.split(' ').map((word, index) => (
-                <span key={`${word}-${index}`} className="inline-block motion-safe:animate-[content-reveal_520ms_ease-out_both]" style={{ animationDelay: `${index * 70}ms` }}>
+                <motion.span key={`${word}-${index}`} variants={FADE_IN_ANIMATION_VARIANTS} className="inline-block">
                   {word}&nbsp;
-                </span>
+                </motion.span>
               ))
             : title}
-        </h1>
+        </motion.h1>
 
-        <p
+        <motion.p
+          initial="hidden"
+          animate="show"
+          variants={FADE_IN_ANIMATION_VARIANTS}
+          transition={{ delay: 0.5 }}
           className="mt-6 max-w-xl text-lg text-[var(--muted)]"
         >
           {description}
-        </p>
+        </motion.p>
 
-        <div>
+        <motion.div initial="hidden" animate="show" variants={FADE_IN_ANIMATION_VARIANTS} transition={{ delay: 0.6 }}>
           <ActionButton>{ctaText}</ActionButton>
-        </div>
+        </motion.div>
       </div>
 
       <AnimatedImageMarquee images={images} className="h-1/3 md:h-2/5" />

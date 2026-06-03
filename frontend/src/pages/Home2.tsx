@@ -146,16 +146,17 @@ export function Home2() {
             </Link>
           </AnimatedGroup>
 
-          <AnimatedGroup preset="slide" className="relative mt-7 h-[7.6rem] w-full overflow-hidden sm:h-[9.2rem] md:mt-10 md:h-[11.25rem]">
+          <div className="relative mt-7 h-[7.6rem] w-full overflow-hidden sm:h-[9.2rem] md:mt-10 md:h-[11.25rem]">
             <AnimatedImageMarquee
               images={showcaseImages}
               className="h-full [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)]"
               duration={68}
               straight
+              priority
               trackClassName="gap-4 px-4 sm:gap-5 md:gap-10 md:px-10"
               cardClassName="h-[7.6rem] w-[13.5rem] rounded-md border border-[var(--line)] bg-[var(--surface)] shadow-[0_18px_48px_rgba(15,23,42,0.12)] sm:h-[9.2rem] sm:w-[16.35rem] md:h-[11.25rem] md:w-[20rem]"
             />
-          </AnimatedGroup>
+          </div>
 
         </div>
       </section>
