@@ -7,6 +7,7 @@ use App\Support\AdminToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class BakhtechApiController extends Controller
@@ -78,6 +79,10 @@ class BakhtechApiController extends Controller
 
     public function publicReviews()
     {
+        if (!Schema::hasTable('reviews')) {
+            return ['reviews' => []];
+        }
+
         return ['reviews' => $this->reviewQuery(false)->limit(6)->get()->map(fn ($row) => $this->reviewShape($row))];
     }
 
@@ -87,7 +92,7 @@ class BakhtechApiController extends Controller
             'pages' => DB::table('pages')->orderBy('id')->get()->map(fn ($row) => $this->pageShape($row)),
             'posts' => DB::table('posts')->orderByDesc('updated_at')->get()->map(fn ($row) => $this->postShape($row)),
             'bookings' => DB::table('bookings')->orderByDesc('created_at')->get()->map(fn ($row) => $this->bookingShape($row)),
-            'reviews' => $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)),
+            'reviews' => Schema::hasTable('reviews') ? $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)) : collect(),
             'users' => DB::table('admins')->orderBy('id')->get()->map(fn ($row) => $this->adminUserShape($row)),
             'settings' => $this->settings(),
             'media' => $this->mediaList(),

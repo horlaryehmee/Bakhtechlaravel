@@ -211,17 +211,12 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
     let cancelled = false
 
     async function loadPortfolioData() {
-      try {
-        const [projectResult, settingsResult, reviewResult] = await Promise.all([api.publicProjects(), api.publicSettings(), api.publicReviews()])
-        if (cancelled) return
-        setPortfolioProjects(projectResult.projects.slice(0, 6))
-        setReviews(reviewResult.reviews)
-        setShowPortfolioDescriptions(settingsResult.settings.homePortfolioShowDescriptions !== 'false')
-      } catch {
-        if (cancelled) return
-        setPortfolioProjects([])
-        setReviews([])
-      }
+      const [projectResult, settingsResult, reviewResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings(), api.publicReviews()])
+      if (cancelled) return
+
+      setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
+      setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
+      setShowPortfolioDescriptions(settingsResult.status === 'fulfilled' ? settingsResult.value.settings.homePortfolioShowDescriptions !== 'false' : true)
     }
 
     const timeoutId = window.setTimeout(() => {
