@@ -10,6 +10,7 @@ import {
   Images,
   LayoutDashboard,
   LogOut,
+  MessageSquareText,
   Newspaper,
   Pencil,
   Plus,
@@ -34,10 +35,12 @@ import {
   type MediaItem,
   type Project,
   type ProjectInput,
+  type Review,
+  type ReviewInput,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'library' | 'seo' | 'bookings' | 'users' | 'settings'
+type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'users' | 'settings'
 
 const emptyProject: ProjectInput = {
   title: '',
@@ -72,11 +75,34 @@ const emptyBooking = {
   scheduledAt: '',
 }
 
+const emptyReview: ReviewInput = {
+  provider: 'google',
+  authorName: '',
+  authorImage: '',
+  rating: 5,
+  content: '',
+  externalUrl: '',
+  reviewedAt: new Date().toISOString().slice(0, 10),
+  isFeatured: true,
+  isPublished: true,
+}
+
+const reviewProviders: Array<{ value: ReviewInput['provider']; label: string }> = [
+  { value: 'google', label: 'Google' },
+  { value: 'trustpilot', label: 'Trustpilot' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'website', label: 'Website' },
+  { value: 'manual', label: 'Manual' },
+]
+
 const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pages', label: 'Pages', icon: FileText },
   { id: 'posts', label: 'Posts', icon: Newspaper },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
+  { id: 'reviews', label: 'Reviews', icon: MessageSquareText },
   { id: 'library', label: 'Library', icon: Images },
   { id: 'seo', label: 'SEO', icon: SearchCheck },
   { id: 'bookings', label: 'Bookings', icon: CalendarDays },
@@ -157,8 +183,10 @@ export function AdminDashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
+  const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [projectForm, setProjectForm] = useState<ProjectInput>(emptyProject)
   const [postForm, setPostForm] = useState(emptyPost)
+  const [reviewForm, setReviewForm] = useState<ReviewInput>(emptyReview)
   const [bookingForm, setBookingForm] = useState(emptyBooking)
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -291,6 +319,28 @@ export function AdminDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function editReview(review: Review) {
+    setEditingReview(review)
+    setReviewForm({
+      provider: review.provider,
+      authorName: review.authorName,
+      authorImage: review.authorImage,
+      rating: review.rating,
+      content: review.content,
+      externalUrl: review.externalUrl,
+      reviewedAt: review.reviewedAt || new Date().toISOString().slice(0, 10),
+      isFeatured: review.isFeatured,
+      isPublished: review.isPublished,
+    })
+    setActiveSection('reviews')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function resetReviewForm() {
+    setEditingReview(null)
+    setReviewForm({ ...emptyReview, reviewedAt: new Date().toISOString().slice(0, 10) })
+  }
+
   async function savePost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -319,6 +369,37 @@ export function AdminDashboard() {
     await api.deletePost(id)
     setCms((current) => (current ? { ...current, posts: current.posts.filter((post) => post.id !== id) } : current))
     notify('Post deleted.')
+  }
+
+  async function saveReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = editingReview ? await api.updateReview(editingReview.id, reviewForm) : await api.createReview(reviewForm)
+      setCms((current) => {
+        if (!current) return current
+        const exists = current.reviews.some((review) => review.id === result.review.id)
+        return {
+          ...current,
+          reviews: exists ? current.reviews.map((review) => (review.id === result.review.id ? result.review : review)) : [result.review, ...current.reviews],
+        }
+      })
+      resetReviewForm()
+      notify(editingReview ? 'Review updated.' : 'Review added.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save review.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteReview(id: number) {
+    if (!window.confirm('Delete this review?')) return
+    await api.deleteReview(id)
+    setCms((current) => (current ? { ...current, reviews: current.reviews.filter((review) => review.id !== id) } : current))
+    notify('Review deleted.')
   }
 
   async function saveBooking(event: FormEvent<HTMLFormElement>) {
@@ -581,6 +662,77 @@ export function AdminDashboard() {
     )
   }
 
+  function renderReviews() {
+    return (
+      <div>
+        <PanelHeader eyebrow="Reviews" title="Customer reviews" text="Add manual customer reviews and choose where each review came from." />
+        <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
+          <form className="surface-card grid gap-4 rounded-2xl p-5 md:p-6" onSubmit={saveReview}>
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-2xl font-black">{editingReview ? 'Edit review' : 'Add review'}</h3>
+              {editingReview ? <Button type="button" variant="ghost" onClick={resetReviewForm}><Plus className="h-4 w-4" />New</Button> : null}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold">
+                Platform
+                <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={reviewForm.provider} onChange={(event) => setReviewForm((current) => ({ ...current, provider: event.target.value as ReviewInput['provider'] }))}>
+                  {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold">
+                Rating
+                <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}>
+                  {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
+                </select>
+              </label>
+            </div>
+            <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Reviewer name" value={reviewForm.authorName} onChange={(event) => setReviewForm((current) => ({ ...current, authorName: event.target.value }))} required />
+            <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Reviewer image URL or uploaded path" value={reviewForm.authorImage} onChange={(event) => setReviewForm((current) => ({ ...current, authorImage: event.target.value }))} />
+            <textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" placeholder="Review text" value={reviewForm.content} onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))} required />
+            <div className="grid gap-4 md:grid-cols-2">
+              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="date" value={reviewForm.reviewedAt} onChange={(event) => setReviewForm((current) => ({ ...current, reviewedAt: event.target.value }))} />
+              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="External review URL" value={reviewForm.externalUrl} onChange={(event) => setReviewForm((current) => ({ ...current, externalUrl: event.target.value }))} />
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input type="checkbox" checked={reviewForm.isPublished} onChange={(event) => setReviewForm((current) => ({ ...current, isPublished: event.target.checked }))} />
+                Published
+              </label>
+              <label className="flex items-center gap-3 text-sm font-bold">
+                <input type="checkbox" checked={reviewForm.isFeatured} onChange={(event) => setReviewForm((current) => ({ ...current, isFeatured: event.target.checked }))} />
+                Featured
+              </label>
+            </div>
+            <Button type="submit" className="rounded-xl" disabled={saving}>{saving ? 'Saving...' : editingReview ? 'Update Review' : 'Add Review'}</Button>
+          </form>
+          <section className="surface-card rounded-2xl p-5 md:p-6">
+            <h3 className="mb-6 text-2xl font-black">Manage reviews</h3>
+            <div className="grid gap-4">
+              {cms?.reviews.map((review) => (
+                <article key={review.id} className="surface-muted grid gap-4 rounded-xl p-4 md:grid-cols-[1fr_auto] md:items-center">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-black">{review.authorName}</h4>
+                      <span className="rounded-full bg-[#1261ff]/10 px-3 py-1 text-xs font-black uppercase text-[#1261ff]">{review.providerLabel}</span>
+                      {!review.isPublished ? <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black uppercase text-amber-500">Draft</span> : null}
+                    </div>
+                    <p className="mt-2 text-sm text-amber-500">{'★'.repeat(review.rating)}<span className="text-soft">{'★'.repeat(5 - review.rating)}</span></p>
+                    <p className="text-soft mt-2 line-clamp-2 text-sm leading-6">{review.content}</p>
+                  </div>
+                  <div className="flex gap-2 md:flex-col">
+                    <Button type="button" variant="ghost" className="min-h-10 px-3" onClick={() => editReview(review)}><Pencil className="h-4 w-4" />Edit</Button>
+                    <Button type="button" variant="ghost" className="min-h-10 px-3 text-red-500" onClick={() => void deleteReview(review.id)}><Trash2 className="h-4 w-4" />Delete</Button>
+                  </div>
+                </article>
+              ))}
+              {cms?.reviews.length === 0 ? <p className="text-soft">No reviews yet.</p> : null}
+            </div>
+          </section>
+        </div>
+      </div>
+    )
+  }
+
   function renderLibrary() {
     return (
       <div>
@@ -684,6 +836,7 @@ export function AdminDashboard() {
     if (activeSection === 'pages') return renderPages()
     if (activeSection === 'posts') return renderPosts()
     if (activeSection === 'projects') return renderProjects()
+    if (activeSection === 'reviews') return renderReviews()
     if (activeSection === 'library') return renderLibrary()
     if (activeSection === 'seo') return renderSeo()
     if (activeSection === 'bookings') return renderBookings()

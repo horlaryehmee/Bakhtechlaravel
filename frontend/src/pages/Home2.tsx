@@ -69,7 +69,7 @@ export function Home2() {
 
   return (
     <>
-      <main className="overflow-hidden">
+      <main className="home-page overflow-hidden">
       <section className="relative min-h-[100svh] overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
         <FluidParticles
           className="absolute inset-0 h-full w-full"

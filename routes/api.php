@@ -8,6 +8,7 @@ Route::get('/health', [BakhtechApiController::class, 'health']);
 Route::post('/admin/login', [BakhtechApiController::class, 'login']);
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
+Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
 Route::post('/visits', [BakhtechApiController::class, 'trackVisit']);
 
 Route::middleware(RequireAdminToken::class)->group(function () {
@@ -19,6 +20,9 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/posts', [BakhtechApiController::class, 'createPost']);
     Route::put('/admin/posts/{id}', [BakhtechApiController::class, 'updatePost']);
     Route::delete('/admin/posts/{id}', [BakhtechApiController::class, 'deletePost']);
+    Route::post('/admin/reviews', [BakhtechApiController::class, 'createReview']);
+    Route::put('/admin/reviews/{id}', [BakhtechApiController::class, 'updateReview']);
+    Route::delete('/admin/reviews/{id}', [BakhtechApiController::class, 'deleteReview']);
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);
     Route::put('/admin/settings', [BakhtechApiController::class, 'updateSettings']);
@@ -29,4 +33,3 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::put('/admin/projects/{id}', [BakhtechApiController::class, 'updateProject']);
     Route::delete('/admin/projects/{id}', [BakhtechApiController::class, 'deleteProject']);
 });
-

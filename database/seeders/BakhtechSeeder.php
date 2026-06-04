@@ -88,6 +88,69 @@ class BakhtechSeeder extends Seeder
                 ]);
             }
         }
+
+        $this->seedDemoReviews($now);
+    }
+
+    private function seedDemoReviews($now): void
+    {
+        DB::table('review_sources')->updateOrInsert(
+            ['provider' => 'google'],
+            [
+                'name' => 'Google Reviews',
+                'external_url' => '',
+                'api_key' => '',
+                'place_id' => '',
+                'business_unit_id' => '',
+                'enabled' => true,
+                'oauth_account_name' => '',
+                'oauth_location_name' => '',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        );
+
+        $sourceId = DB::table('review_sources')->where('provider', 'google')->value('id');
+
+        $reviews = [
+            [
+                'external_id' => 'demo-google-ryaz-bello',
+                'author_name' => 'Ryaz Bello',
+                'rating' => 5,
+                'content' => 'Professionalism at its peak! Bakhtech delivered exceptional service from start to finish.',
+                'reviewed_at' => '2026-04-29',
+            ],
+            [
+                'external_id' => 'demo-google-ugo-amaeshi',
+                'author_name' => 'UGO AMAESHI',
+                'rating' => 5,
+                'content' => 'Bakhtech did an amazing job on our website. I highly recommend their team.',
+                'reviewed_at' => '2025-06-18',
+            ],
+            [
+                'external_id' => 'demo-google-amina-yusuf',
+                'author_name' => 'Amina Yusuf',
+                'rating' => 5,
+                'content' => 'The process was smooth, communication was clear, and the finished website looks excellent.',
+                'reviewed_at' => '2026-03-12',
+            ],
+        ];
+
+        foreach ($reviews as $review) {
+            DB::table('reviews')->updateOrInsert(
+                ['external_id' => $review['external_id']],
+                array_merge($review, [
+                    'review_source_id' => $sourceId,
+                    'provider' => 'google',
+                    'author_image' => '',
+                    'external_url' => '',
+                    'is_featured' => true,
+                    'is_published' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]),
+            );
+        }
     }
 
     private function defaultSettings(): array
@@ -101,4 +164,3 @@ class BakhtechSeeder extends Seeder
         ];
     }
 }
-

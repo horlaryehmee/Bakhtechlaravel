@@ -99,6 +99,34 @@ export type Booking = {
   createdAt: string
 }
 
+export type Review = {
+  id: number
+  provider: 'google' | 'trustpilot' | 'facebook' | 'instagram' | 'linkedin' | 'website' | 'manual'
+  providerLabel: string
+  authorName: string
+  authorImage: string
+  rating: number
+  content: string
+  externalUrl: string
+  reviewedAt: string
+  isFeatured: boolean
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type ReviewInput = {
+  provider: Review['provider']
+  authorName: string
+  authorImage: string
+  rating: number
+  content: string
+  externalUrl: string
+  reviewedAt: string
+  isFeatured: boolean
+  isPublished: boolean
+}
+
 export type AdminUser = {
   id: number
   email: string
@@ -111,6 +139,7 @@ export type CmsData = {
   pages: CmsPage[]
   posts: CmsPost[]
   bookings: Booking[]
+  reviews: Review[]
   users: AdminUser[]
   settings: Record<string, string>
   media: MediaItem[]
@@ -208,6 +237,21 @@ export const api = {
   deletePost(id: number) {
     return request<void>(`/api/admin/posts/${id}`, { method: 'DELETE' })
   },
+  createReview(review: ReviewInput) {
+    return request<{ review: Review }>('/api/admin/reviews', {
+      method: 'POST',
+      body: JSON.stringify(review),
+    })
+  },
+  updateReview(id: number, review: ReviewInput) {
+    return request<{ review: Review }>(`/api/admin/reviews/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(review),
+    })
+  },
+  deleteReview(id: number) {
+    return request<void>(`/api/admin/reviews/${id}`, { method: 'DELETE' })
+  },
   createBooking(booking: Partial<Booking>) {
     return request<{ booking: Booking }>('/api/admin/bookings', {
       method: 'POST',
@@ -251,6 +295,9 @@ export const api = {
   },
   publicSettings() {
     return request<{ settings: Record<string, string> }>('/api/settings')
+  },
+  publicReviews() {
+    return request<{ reviews: Review[] }>('/api/reviews')
   },
   createProject(project: ProjectInput) {
     return request<{ project: Project }>('/api/admin/projects', {

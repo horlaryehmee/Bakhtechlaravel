@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, Play, SearchCheck, ShoppingCart, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, MessageCircle, Play, SearchCheck, ShoppingCart, X } from 'lucide-react'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { FeatureCard } from '@/components/ui/grid-feature-cards'
-import { api, type Project } from '@/lib/api'
+import { StaggerReviews } from '@/components/ui/stagger-reviews'
+import { api, type Project, type Review } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const Sparkles = lazy(() => import('@/components/ui/sparkles').then((module) => ({ default: module.Sparkles })))
@@ -201,6 +202,7 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
 
 export function HomeBelowFold({ isDark }: { isDark: boolean }) {
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
   const [showDeferredEffects, setShowDeferredEffects] = useState(false)
@@ -210,13 +212,15 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
 
     async function loadPortfolioData() {
       try {
-        const [projectResult, settingsResult] = await Promise.all([api.publicProjects(), api.publicSettings()])
+        const [projectResult, settingsResult, reviewResult] = await Promise.all([api.publicProjects(), api.publicSettings(), api.publicReviews()])
         if (cancelled) return
         setPortfolioProjects(projectResult.projects.slice(0, 6))
+        setReviews(reviewResult.reviews)
         setShowPortfolioDescriptions(settingsResult.settings.homePortfolioShowDescriptions !== 'false')
       } catch {
         if (cancelled) return
         setPortfolioProjects([])
+        setReviews([])
       }
     }
 
@@ -272,7 +276,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
       <section id="services" className="section-bg pt-10 pb-20 md:pt-14 md:pb-28">
         <div className="mx-auto w-full max-w-5xl space-y-8 px-4">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#1261ff]">What We Build</p>
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#1261ff]">What We Build</p>
             <h2 className="text-main text-balance text-3xl font-bold tracking-wide md:text-4xl lg:text-5xl xl:font-extrabold">Strategy. Design. Development. Launch.</h2>
             <p className="text-soft mt-4 text-balance text-sm tracking-wide md:text-base">Complete web development services for brands that need fast, secure, scalable digital products.</p>
           </div>
@@ -291,7 +295,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
         <div className="container-x relative z-30">
           <div className="mx-auto mb-12 max-w-3xl text-center">
-            <p className="mb-3 text-sm font-black uppercase tracking-[0.22em] text-[#8ea0ff]">Portfolio</p>
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#8ea0ff]">Portfolio</p>
             <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">Projects built for real businesses.</h2>
           </div>
 
@@ -313,6 +317,33 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
           )}
         </div>
       </section>
+
+      {reviews.length ? (
+        <section id="reviews" className="overflow-hidden bg-[#f8f8fb] py-14 md:py-20">
+          <div className="container-x">
+            <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
+              <div className="pt-2 lg:pt-5">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-cyan-200 text-[#008dd2]">
+                    <MessageCircle className="h-5 w-5" />
+                  </span>
+                  <p className="text-lg font-medium text-[#111827]">Customer Satisfaction</p>
+                </div>
+                <h2 className="mt-10 max-w-xs text-4xl font-black leading-tight tracking-tight text-[#030a2b] md:mt-14 md:text-5xl">
+                  Hear from <span className="text-[#6079ff]">happy</span> customers.
+                </h2>
+                <a href="#contact" className="mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-md bg-[#2b2940] px-8 text-base font-bold text-white transition hover:bg-[#1f1d31]">
+                  Review us on
+                  <span className="font-black">G</span>
+                </a>
+              </div>
+              <div className="lg:pt-2">
+                <StaggerReviews reviews={reviews} />
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
     </>

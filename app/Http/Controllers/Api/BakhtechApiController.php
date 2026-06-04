@@ -76,12 +76,18 @@ class BakhtechApiController extends Controller
         return ['settings' => $this->settings()];
     }
 
+    public function publicReviews()
+    {
+        return ['reviews' => $this->reviewQuery(false)->limit(6)->get()->map(fn ($row) => $this->reviewShape($row))];
+    }
+
     public function cms()
     {
         return [
             'pages' => DB::table('pages')->orderBy('id')->get()->map(fn ($row) => $this->pageShape($row)),
             'posts' => DB::table('posts')->orderByDesc('updated_at')->get()->map(fn ($row) => $this->postShape($row)),
             'bookings' => DB::table('bookings')->orderByDesc('created_at')->get()->map(fn ($row) => $this->bookingShape($row)),
+            'reviews' => $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)),
             'users' => DB::table('admins')->orderBy('id')->get()->map(fn ($row) => $this->adminUserShape($row)),
             'settings' => $this->settings(),
             'media' => $this->mediaList(),
@@ -154,6 +160,49 @@ class BakhtechApiController extends Controller
     public function deletePost(int $id)
     {
         DB::table('posts')->where('id', $id)->delete();
+        return response()->noContent();
+    }
+
+    public function createReview(Request $request)
+    {
+        $payload = $this->reviewPayload($request);
+        if ($payload['author_name'] === '' || $payload['content'] === '') {
+            return response()->json(['message' => 'Reviewer name and review text are required.'], 400);
+        }
+
+        $payload['review_source_id'] = $this->reviewSourceId($payload['provider']);
+        $payload['external_id'] = 'manual-' . Str::uuid();
+        $payload['created_at'] = now();
+        $payload['updated_at'] = now();
+
+        $id = DB::table('reviews')->insertGetId($payload);
+
+        return response()->json(['review' => $this->reviewShape(DB::table('reviews')->where('id', $id)->first())], 201);
+    }
+
+    public function updateReview(Request $request, int $id)
+    {
+        $existing = DB::table('reviews')->where('id', $id)->first();
+        if (!$existing) {
+            return response()->json(['message' => 'Review not found.'], 404);
+        }
+
+        $payload = $this->reviewPayload($request, $existing);
+        if ($payload['author_name'] === '' || $payload['content'] === '') {
+            return response()->json(['message' => 'Reviewer name and review text are required.'], 400);
+        }
+
+        $payload['review_source_id'] = $this->reviewSourceId($payload['provider']);
+        $payload['updated_at'] = now();
+
+        DB::table('reviews')->where('id', $id)->update($payload);
+
+        return ['review' => $this->reviewShape(DB::table('reviews')->where('id', $id)->first())];
+    }
+
+    public function deleteReview(int $id)
+    {
+        DB::table('reviews')->where('id', $id)->delete();
         return response()->noContent();
     }
 
@@ -319,6 +368,17 @@ class BakhtechApiController extends Controller
         return $query->orderByDesc('updated_at')->get();
     }
 
+    private function reviewQuery(bool $includeUnpublished)
+    {
+        $query = DB::table('reviews');
+
+        if (!$includeUnpublished) {
+            $query->where('is_published', true);
+        }
+
+        return $query->orderByDesc('is_featured')->orderByDesc('reviewed_at')->orderByDesc('created_at');
+    }
+
     private function projectPayload(Request $request, ?object $existing = null): array
     {
         $services = $request->input('services', $existing?->services_json ? json_decode($existing->services_json, true) : []);
@@ -346,6 +406,41 @@ class BakhtechApiController extends Controller
             'is_featured' => (bool) $request->input('isFeatured', $request->input('is_featured', $existing?->is_featured ?? false)),
             'status' => $request->input('status', $existing?->status ?? 'published') === 'draft' ? 'draft' : 'published',
         ];
+    }
+
+    private function reviewPayload(Request $request, ?object $existing = null): array
+    {
+        $provider = strtolower(trim((string) $request->input('provider', $existing?->provider ?? 'google')));
+        $allowedProviders = ['google', 'trustpilot', 'facebook', 'instagram', 'linkedin', 'website', 'manual'];
+        if (!in_array($provider, $allowedProviders, true)) {
+            $provider = 'manual';
+        }
+
+        return [
+            'review_source_id' => $existing?->review_source_id,
+            'provider' => $provider,
+            'external_id' => $existing?->external_id ?? '',
+            'author_name' => trim((string) $request->input('authorName', $request->input('author_name', $existing?->author_name ?? ''))),
+            'author_image' => trim((string) $request->input('authorImage', $request->input('author_image', $existing?->author_image ?? ''))),
+            'rating' => max(1, min(5, (int) $request->input('rating', $existing?->rating ?? 5))),
+            'content' => trim((string) $request->input('content', $existing?->content ?? '')),
+            'external_url' => trim((string) $request->input('externalUrl', $request->input('external_url', $existing?->external_url ?? ''))),
+            'reviewed_at' => trim((string) $request->input('reviewedAt', $request->input('reviewed_at', $existing?->reviewed_at ?? now()->toDateString()))),
+            'is_featured' => (bool) $request->input('isFeatured', $request->input('is_featured', $existing?->is_featured ?? true)),
+            'is_published' => (bool) $request->input('isPublished', $request->input('is_published', $existing?->is_published ?? true)),
+        ];
+    }
+
+    private function reviewSourceId(string $provider): int
+    {
+        $name = $this->providerLabel($provider);
+
+        DB::table('review_sources')->updateOrInsert(
+            ['provider' => $provider],
+            ['name' => $name, 'enabled' => true, 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        return (int) DB::table('review_sources')->where('provider', $provider)->value('id');
     }
 
     private function settings(): array
@@ -426,6 +521,38 @@ class BakhtechApiController extends Controller
             'url' => $row->url,
             'createdAt' => (string) $row->created_at,
         ];
+    }
+
+    private function reviewShape(object $row): array
+    {
+        return [
+            'id' => $row->id,
+            'provider' => $row->provider,
+            'providerLabel' => $this->providerLabel($row->provider),
+            'authorName' => $row->author_name,
+            'authorImage' => $row->author_image ?: '',
+            'rating' => (int) $row->rating,
+            'content' => $row->content,
+            'externalUrl' => $row->external_url ?: '',
+            'reviewedAt' => $row->reviewed_at ?: '',
+            'isFeatured' => (bool) $row->is_featured,
+            'isPublished' => (bool) $row->is_published,
+            'createdAt' => (string) $row->created_at,
+            'updatedAt' => (string) $row->updated_at,
+        ];
+    }
+
+    private function providerLabel(string $provider): string
+    {
+        return [
+            'google' => 'Google',
+            'trustpilot' => 'Trustpilot',
+            'facebook' => 'Facebook',
+            'instagram' => 'Instagram',
+            'linkedin' => 'LinkedIn',
+            'website' => 'Website',
+            'manual' => 'Manual',
+        ][$provider] ?? 'Manual';
     }
 
     private function pageShape(object $row): array
