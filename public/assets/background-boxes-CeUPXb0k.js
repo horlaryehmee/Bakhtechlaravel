@@ -1,0 +1,1 @@
+import{i as e,m as t}from"./index-C1-tejuu.js";var n=t();function r({className:t}){return(0,n.jsx)(`div`,{"aria-hidden":`true`,className:e(`pointer-events-none absolute inset-0 z-0 overflow-hidden`,t),children:(0,n.jsx)(`div`,{className:`portfolio-css-grid absolute left-1/2 top-1/2 h-[150%] w-[170%] -translate-x-1/2 -translate-y-1/2`})})}export{r as t};

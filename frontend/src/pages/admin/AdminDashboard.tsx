@@ -169,11 +169,17 @@ function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string;
 const settingLabels: Record<string, string> = {
   activeHome: 'Active home page',
   contactEmail: 'Contact email',
+  facebookUrl: 'Facebook link',
   googleReviewUrl: 'Google review link',
   homePortfolioShowDescriptions: 'Show homepage portfolio descriptions',
+  instagramUrl: 'Instagram link',
+  linkedinUrl: 'LinkedIn link',
   phone: 'Phone',
   siteName: 'Site name',
+  tiktokUrl: 'TikTok link',
   trustpilotReviewUrl: 'Trustpilot review link',
+  twitterUrl: 'X / Twitter link',
+  youtubeUrl: 'YouTube link',
 }
 
 export function AdminDashboard() {

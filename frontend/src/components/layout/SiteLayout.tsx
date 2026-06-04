@@ -1,13 +1,16 @@
 import { Menu, Moon, Sun, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
+import { CinematicFooter } from '@/components/ui/motion-footer'
 import { navigation } from '@/data/site'
 import { cn } from '@/lib/utils'
 
 export function SiteLayout() {
   const [open, setOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isFooterVisible, setIsFooterVisible] = useState(false)
+  const footerRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -17,10 +20,26 @@ export function SiteLayout() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    const footer = footerRef.current
+    if (!footer) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFooterVisible(entry.isIntersecting)
+        if (entry.isIntersecting) setOpen(false)
+      },
+      { rootMargin: '-12% 0px 0px 0px', threshold: 0.02 },
+    )
+
+    observer.observe(footer)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className="site-bg min-h-screen">
       <header>
-        <nav data-state={open ? 'active' : undefined} className="group fixed inset-x-0 top-0 z-[120] px-2">
+        <nav data-state={open ? 'active' : undefined} className={cn('group fixed inset-x-0 top-0 z-[120] px-2 transition duration-300', isFooterVisible && 'pointer-events-none -translate-y-8 opacity-0')}>
           <div
             className={cn(
               'mx-auto mt-2 max-w-6xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/58 px-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 lg:px-8',
@@ -128,21 +147,9 @@ export function SiteLayout() {
       <main>
         <Outlet />
       </main>
-      <footer className="border-t py-10" style={{ background: 'var(--section-strong)', borderColor: 'var(--line)' }}>
-        <div className="container-x flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-main text-sm font-black uppercase tracking-[0.2em]">Bakhtech Solutions</p>
-            <p className="text-soft mt-2 max-w-xl text-sm">
-              Elevate Your Digital Presence with Bakhtech Solutions. Crafting Professional Websites for Every Business.
-              Precision, Performance, Perfection - Your Success, Our Mission.
-            </p>
-          </div>
-          <div className="text-soft text-sm md:text-right">
-            <p>&copy; 2026 Bakhtech Solutions. All rights reserved.</p>
-            <p className="mt-1">Developed by Bakare Olayemi, Bakhtech Solutions.</p>
-          </div>
-        </div>
-      </footer>
+      <div ref={footerRef}>
+        <CinematicFooter />
+      </div>
     </div>
   )
 }

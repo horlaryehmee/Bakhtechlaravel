@@ -363,10 +363,10 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         </div>
       </section>
 
-      <section id="portfolio" className="relative overflow-hidden bg-[#151a20] py-20 md:py-28">
-        <Boxes className="opacity-95" />
-        <div className="pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
-        <div className="pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
+      <section id="portfolio" className="home-portfolio-section relative overflow-hidden bg-[#151a20] py-20 md:py-28">
+        <Boxes className="portfolio-bg-effect opacity-95" />
+        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
+        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
         <div className="container-x relative z-30">
           <div className="mx-auto mb-12 max-w-3xl text-center">
             <p className="home-eyebrow mb-3 text-sm uppercase text-[#8ea0ff]">Portfolio</p>
@@ -393,11 +393,11 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
       </section>
 
       {reviews.length ? (
-        <section id="reviews" className="overflow-hidden bg-[#f8f8fb] py-14 md:py-20">
+        <section id="reviews" className="home-reviews-section overflow-hidden bg-[#f8f8fb] py-14 md:py-20">
           <div className="container-x">
             <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-              <div className="flex min-h-[13rem] flex-col items-start justify-center pt-2 text-left lg:min-h-[25rem] lg:pt-2">
-                <h2 className="max-w-sm text-3xl font-bold leading-tight tracking-tight text-[#030a2b] sm:text-4xl md:text-5xl">
+              <div className="flex min-h-[13rem] flex-col items-center justify-center pt-2 text-center lg:min-h-[25rem] lg:items-start lg:pt-2 lg:text-left">
+                <h2 className="max-w-sm text-3xl font-bold leading-tight tracking-tight text-[var(--foreground)] sm:text-4xl md:text-5xl">
                   Hear from <span className="text-[#6079ff]">happy</span> customers.
                 </h2>
                 <button type="button" onClick={() => setShowReviewModal(true)} className="mt-5 inline-flex min-h-10 w-full max-w-[12rem] items-center justify-center gap-2 rounded-md bg-[#2b2940] px-4 text-sm font-bold text-white transition hover:bg-[#1f1d31] sm:w-auto sm:min-h-11 sm:px-5">

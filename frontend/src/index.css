@@ -411,6 +411,235 @@ a {
   animation: schema-float 6s ease-in-out infinite;
 }
 
+.about-tags-panel {
+  position: relative;
+  display: grid;
+  min-height: 18rem;
+  align-content: center;
+  gap: 1.55rem;
+  overflow: hidden;
+  padding: 1.25rem 0;
+  isolation: isolate;
+}
+
+.about-tags-panel::before {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  z-index: -1;
+  width: min(34rem, 78%);
+  height: 12rem;
+  content: "";
+  background: radial-gradient(circle, rgba(131, 80, 232, 0.28), rgba(131, 80, 232, 0.1) 42%, transparent 72%);
+  filter: blur(22px);
+  transform: translate(-50%, -50%);
+}
+
+.about-tags-row {
+  width: 100%;
+  overflow: hidden;
+}
+
+.about-tags-track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  padding-inline: 1rem;
+  animation: about-tags-marquee 38s linear infinite;
+}
+
+.about-tags-track-reverse {
+  animation-direction: reverse;
+  animation-duration: 44s;
+}
+
+.about-tag-pill {
+  display: inline-flex;
+  min-height: 3.3rem;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--foreground);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  padding: 0.85rem 1.55rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.about-tags-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: min(7.5rem, 24%);
+  pointer-events: none;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.about-tags-fade-left {
+  left: -1rem;
+  background: linear-gradient(90deg, var(--section), color-mix(in srgb, var(--section) 82%, transparent), transparent);
+}
+
+.about-tags-fade-right {
+  right: -1rem;
+  background: linear-gradient(270deg, var(--section), color-mix(in srgb, var(--section) 82%, transparent), transparent);
+}
+
+.about-cta-card {
+  position: relative;
+  display: flex;
+  min-height: 30rem;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: var(--surface);
+}
+
+.about-cta-orbit-wrap {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: 50%;
+  overflow: hidden;
+}
+
+.about-cta-orbit-stage {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 50rem;
+  height: 50rem;
+  transform: translate(50%, -50%);
+}
+
+.about-cta-orbit-core,
+.about-cta-orbit-icon {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.about-cta-orbit-core {
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--line));
+  background: var(--surface);
+  box-shadow:
+    0 22px 60px rgba(18, 97, 255, 0.16),
+    0 0 0 10px color-mix(in srgb, var(--surface) 72%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  transform: translate(-50%, -50%);
+}
+
+.about-cta-orbit-logo {
+  width: 4.2rem;
+  height: 4.2rem;
+  object-fit: contain;
+}
+
+.about-cta-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  border: 2px dotted color-mix(in srgb, var(--foreground) 16%, transparent);
+  border-radius: 999px;
+  animation: about-cta-spin 16s linear infinite;
+}
+
+.about-cta-orbit-1 {
+  width: 20rem;
+  height: 20rem;
+  margin: -10rem 0 0 -10rem;
+}
+
+.about-cta-orbit-2 {
+  width: 28rem;
+  height: 28rem;
+  margin: -14rem 0 0 -14rem;
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.about-cta-orbit-3 {
+  width: 36rem;
+  height: 36rem;
+  margin: -18rem 0 0 -18rem;
+  animation-duration: 30s;
+}
+
+.about-cta-orbit-icon {
+  z-index: 2;
+  width: 3.25rem;
+  height: 3.25rem;
+  transform: translate(-50%, -50%);
+}
+
+.about-cta-orbit-icon svg {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.process-noise-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.process-noise-spotlight,
+.process-noise-grid,
+.process-noise-canvas,
+.process-noise-section::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.process-noise-spotlight {
+  background: radial-gradient(circle 560px at 50% 190px, color-mix(in srgb, #30373f 54%, white 24%), transparent 72%);
+}
+
+.process-noise-grid {
+  opacity: 0.28;
+  background-image:
+    linear-gradient(to right, rgba(203, 213, 225, 0.26) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 213, 225, 0.2) 1px, transparent 1px);
+  background-size: 14px 20px;
+}
+
+.process-noise-canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  opacity: 0.55;
+}
+
+.process-noise-section::before {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(48, 55, 63, 0.84), rgba(48, 55, 63, 0.66) 48%, #30373f 100%);
+}
+
 .portfolio-glass-card {
   border: 1px solid rgba(48, 55, 63, 0.88);
   background:
@@ -455,6 +684,16 @@ a {
   -webkit-backdrop-filter: blur(16px);
 }
 
+:root.dark .home-portfolio-section,
+:root.dark .home-reviews-section,
+:root.dark .stagger-reviews-stage {
+  background: var(--background);
+}
+
+:root.dark .portfolio-bg-effect {
+  display: none;
+}
+
 .schema-inner-glow {
   box-shadow:
     inset 0 0 42px rgba(139, 92, 246, 0.16),
@@ -486,6 +725,40 @@ a {
 
   50% {
     transform: translateY(-10px);
+  }
+}
+
+@keyframes about-tags-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes about-cta-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .about-cta-card {
+    min-height: auto;
+    padding-bottom: 14rem;
+  }
+
+  .about-cta-orbit-wrap {
+    top: auto;
+    bottom: -10rem;
+    left: 0;
+    width: 100%;
+    height: 22rem;
+  }
+
+  .about-cta-orbit-stage {
+    left: 50%;
+    width: 34rem;
+    height: 34rem;
+    transform: translate(-50%, -50%);
   }
 }
 

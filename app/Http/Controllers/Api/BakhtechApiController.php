@@ -463,6 +463,12 @@ class BakhtechApiController extends Controller
             'homePortfolioShowDescriptions' => 'true',
             'googleReviewUrl' => '',
             'trustpilotReviewUrl' => '',
+            'facebookUrl' => '',
+            'instagramUrl' => '',
+            'linkedinUrl' => '',
+            'tiktokUrl' => '',
+            'twitterUrl' => '',
+            'youtubeUrl' => '',
         ];
     }
 

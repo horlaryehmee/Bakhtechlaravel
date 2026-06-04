@@ -333,7 +333,7 @@ export function StaggerReviews({ reviews }: { reviews: Review[] }) {
 
   return (
     <div
-      className="relative mx-auto h-[23rem] w-full max-w-[45rem] touch-pan-y overflow-hidden bg-[#f8f8fb] sm:h-[25rem]"
+      className="stagger-reviews-stage relative mx-auto h-[23rem] w-full max-w-[45rem] touch-pan-y overflow-hidden bg-[#f8f8fb] sm:h-[25rem]"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={() => {
