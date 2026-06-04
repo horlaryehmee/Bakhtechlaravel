@@ -231,8 +231,8 @@ function ReviewCard({ cardSize, expanded, handleMove, onToggleExpanded, position
         )}
       </div>
       <ReviewRating provider={review.provider} rating={review.rating} />
-      <div className={cn('min-h-0', expanded ? 'flex-1 overflow-y-auto pr-1' : 'shrink-0', isCenter ? 'scrollbar-thin scrollbar-track-white/10 scrollbar-thumb-white/30' : 'scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300')}>
-        <p className={cn(expanded ? 'text-base font-medium leading-7' : 'line-clamp-4 text-base font-medium leading-7', isCenter ? 'text-white' : 'text-[#111827]')}>"{review.content}"</p>
+      <div className={cn('min-h-0 flex-1', expanded ? 'overflow-y-auto pr-1' : 'overflow-hidden', isCenter ? 'scrollbar-thin scrollbar-track-white/10 scrollbar-thumb-white/30' : 'scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300')}>
+        <p className={cn(expanded ? 'text-base font-medium leading-7' : 'line-clamp-3 text-base font-medium leading-6 sm:line-clamp-4 sm:leading-7', isCenter ? 'text-white' : 'text-[#111827]')}>"{review.content}"</p>
       </div>
       {canExpand ? (
         <button
@@ -248,7 +248,7 @@ function ReviewCard({ cardSize, expanded, handleMove, onToggleExpanded, position
           {expanded ? 'Collapse text' : 'Read more'}
         </button>
       ) : null}
-      <p className={cn('mt-auto truncate pt-3 text-xs italic sm:text-sm', isCenter ? 'text-white/78' : 'text-[#6b7280]')}>
+      <p className={cn('shrink-0 truncate pt-3 text-xs italic sm:text-sm', isCenter ? 'text-white/78' : 'text-[#6b7280]')}>
         - {review.authorName}
       </p>
     </article>

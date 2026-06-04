@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarCheck, Globe2, Layers3, Megaphone, MessageCircle, Play, SearchCheck, ShoppingCart, X } from 'lucide-react'
+import { ArrowRight, CalendarCheck, ExternalLink, Globe2, Layers3, Megaphone, MessageCircle, Play, SearchCheck, ShoppingCart, X } from 'lucide-react'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
@@ -57,6 +57,11 @@ type VideoMedia = {
   title: string
   type: 'youtube' | 'video'
   url: string
+}
+
+type ReviewLinks = {
+  google: string
+  trustpilot: string
 }
 
 function cleanProjectUrl(url: string) {
@@ -148,8 +153,6 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
       <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
       <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(48,55,63,0.08),rgba(8,11,14,0.2))]" />
-        <div className="pointer-events-none absolute inset-0 opacity-14 mix-blend-screen [background-image:linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px)] [background-size:18px_18px]" />
       </div>
 
       <div className="mt-6 flex flex-1 flex-col">
@@ -200,11 +203,82 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
   )
 }
 
+function GoogleReviewLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.4 0 6.4 1.2 8.8 3.4l6.6-6.6C35.4 2.6 30.1.5 24 .5 14.8.5 6.9 5.8 3.1 13.5l7.7 6c1.8-5.8 7.1-10 13.2-10z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.3h12.9c-.3 2.1-1.7 5.3-4.9 7.5l7.5 5.8c4.4-4.1 7-10.1 7-17.5z" />
+      <path fill="#FBBC05" d="M10.8 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.7-6C1.4 16.7.5 20.2.5 24s.9 7.3 2.6 10.5l7.7-6z" />
+      <path fill="#34A853" d="M24 47.5c6.1 0 11.3-2 15.1-5.5l-7.5-5.8c-2 1.4-4.7 2.3-7.6 2.3-6.1 0-11.4-4.1-13.2-9.9l-7.7 6C6.9 42.2 14.8 47.5 24 47.5z" />
+    </svg>
+  )
+}
+
+function TrustpilotReviewLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="currentColor" d="M17.227 16.67l2.19 6.742-7.413-5.388 5.223-1.354zM24 9.31h-9.165L12.005.589l-2.84 8.723L0 9.3l7.422 5.397-2.84 8.714 7.422-5.388 4.583-3.326L24 9.311z" />
+    </svg>
+  )
+}
+
+function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: () => void }) {
+  const platforms = [
+    { name: 'Google', href: links.google, icon: <GoogleReviewLogo className="h-7 w-7" /> },
+    { name: 'Trustpilot', href: links.trustpilot, icon: <TrustpilotReviewLogo className="h-7 w-7" /> },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-[170] grid place-items-center bg-[#030712]/70 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Choose review platform">
+      <div className="w-full max-w-md rounded-2xl border border-white/12 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.28)] sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-black text-[#111827]">Drop a review</h3>
+            <p className="mt-1 text-sm leading-6 text-[#6b7280]">Choose where you would like to leave your feedback.</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#d7dbe5] text-[#111827] transition hover:bg-[#f8f8fb]" aria-label="Close review options">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {platforms.map((platform) => {
+            const disabled = !platform.href.trim()
+            const className = cn('flex min-h-24 flex-col justify-between rounded-xl border p-4 text-left transition', disabled ? 'cursor-not-allowed border-[#d7dbe5] bg-[#f8f8fb] text-[#9ca3af]' : 'border-[#d7dbe5] bg-white text-[#111827] hover:border-[#1261ff] hover:bg-[#f8fbff]')
+
+            if (disabled) {
+              return (
+                <div key={platform.name} className={className} aria-disabled="true">
+                  <span>{platform.icon}</span>
+                  <span className="mt-3 text-sm font-black">{platform.name}</span>
+                  <span className="mt-1 text-xs font-medium">Link not added yet</span>
+                </div>
+              )
+            }
+
+            return (
+              <a key={platform.name} href={platform.href} target="_blank" rel="noreferrer" className={className}>
+                <span>{platform.icon}</span>
+                <span className="mt-3 flex items-center justify-between gap-2 text-sm font-black">
+                  {platform.name}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </span>
+              </a>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function HomeBelowFold({ isDark }: { isDark: boolean }) {
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
+  const [reviewLinks, setReviewLinks] = useState<ReviewLinks>({ google: '', trustpilot: '' })
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [showDeferredEffects, setShowDeferredEffects] = useState(false)
 
   useEffect(() => {
@@ -216,7 +290,12 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
 
       setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
       setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
-      setShowPortfolioDescriptions(settingsResult.status === 'fulfilled' ? settingsResult.value.settings.homePortfolioShowDescriptions !== 'false' : true)
+      const settings = settingsResult.status === 'fulfilled' ? settingsResult.value.settings : {}
+      setShowPortfolioDescriptions(settings.homePortfolioShowDescriptions !== 'false')
+      setReviewLinks({
+        google: settings.googleReviewUrl || '',
+        trustpilot: settings.trustpilotReviewUrl || '',
+      })
     }
 
     const timeoutId = window.setTimeout(() => {
@@ -317,20 +396,14 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         <section id="reviews" className="overflow-hidden bg-[#f8f8fb] py-14 md:py-20">
           <div className="container-x">
             <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-              <div className="pt-2 lg:pt-5">
-                <div className="flex items-center gap-4">
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-cyan-200 text-[#008dd2]">
-                    <MessageCircle className="h-5 w-5" />
-                  </span>
-                  <p className="text-lg font-medium text-[#111827]">Customer Satisfaction</p>
-                </div>
-                <h2 className="mt-10 max-w-xs text-4xl font-black leading-tight tracking-tight text-[#030a2b] md:mt-14 md:text-5xl">
+              <div className="flex min-h-[13rem] flex-col items-start justify-center pt-2 text-left lg:min-h-[25rem] lg:pt-2">
+                <h2 className="max-w-sm text-3xl font-bold leading-tight tracking-tight text-[#030a2b] sm:text-4xl md:text-5xl">
                   Hear from <span className="text-[#6079ff]">happy</span> customers.
                 </h2>
-                <a href="#contact" className="mt-6 inline-flex min-h-14 items-center justify-center gap-3 rounded-md bg-[#2b2940] px-8 text-base font-bold text-white transition hover:bg-[#1f1d31]">
-                  Review us on
-                  <span className="font-black">G</span>
-                </a>
+                <button type="button" onClick={() => setShowReviewModal(true)} className="mt-5 inline-flex min-h-10 w-full max-w-[12rem] items-center justify-center gap-2 rounded-md bg-[#2b2940] px-4 text-sm font-bold text-white transition hover:bg-[#1f1d31] sm:w-auto sm:min-h-11 sm:px-5">
+                  <MessageCircle className="h-4 w-4" />
+                  Review us
+                </button>
               </div>
               <div className="lg:pt-2">
                 <StaggerReviews reviews={reviews} />
@@ -341,6 +414,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
       ) : null}
 
       {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
+      {showReviewModal ? <ReviewPlatformModal links={reviewLinks} onClose={() => setShowReviewModal(false)} /> : null}
     </>
   )
 }

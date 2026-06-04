@@ -461,6 +461,8 @@ class BakhtechApiController extends Controller
             'phone' => '+234 708 637 2833',
             'activeHome' => 'home',
             'homePortfolioShowDescriptions' => 'true',
+            'googleReviewUrl' => '',
+            'trustpilotReviewUrl' => '',
         ];
     }
 

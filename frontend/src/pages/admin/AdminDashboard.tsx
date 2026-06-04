@@ -169,9 +169,11 @@ function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string;
 const settingLabels: Record<string, string> = {
   activeHome: 'Active home page',
   contactEmail: 'Contact email',
+  googleReviewUrl: 'Google review link',
   homePortfolioShowDescriptions: 'Show homepage portfolio descriptions',
   phone: 'Phone',
   siteName: 'Site name',
+  trustpilotReviewUrl: 'Trustpilot review link',
 }
 
 export function AdminDashboard() {
