@@ -1,10 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    RewriteRule ^$ public/index.php [L]
-    RewriteRule ^index\.html$ public/index.php [L]
+    RewriteRule ^$ public/index.html [L]
+    RewriteRule ^index\.html$ public/index.html [L]
 
     RewriteRule ^api(/.*)?$ public/index.php [L]
+    RewriteRule ^up$ public/index.php [L]
 
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
     RewriteRule ^showcase/(.*)$ public/showcase/$1 [L]
@@ -15,5 +16,5 @@
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ public/index.php [L]
+    RewriteRule ^ public/index.html [L]
 </IfModule>
