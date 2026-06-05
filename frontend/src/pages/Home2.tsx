@@ -9,7 +9,7 @@ import { useTheme } from '@/components/theme/ThemeProvider'
 
 const HomeBelowFold = lazy(() => import('@/pages/home/HomeBelowFold').then((module) => ({ default: module.HomeBelowFold })))
 
-const talkAbout = ['Websites', 'Web Apps', 'Ecommerce', 'Booking Systems', 'Dashboards', 'Client Portals', 'UI/UX']
+const impactWords = ['trust', 'sales', 'growth', 'clarity', 'impact']
 
 const showcaseImages = [
   '/showcase/showcase-01.jpg',
@@ -108,9 +108,9 @@ export function Home2() {
             </h2>
 
             <p className="text-soft mx-auto max-w-2xl py-4 text-base leading-7 md:text-lg">
-              We craft high-converting digital products for businesses, including{' '}
-              <span className="font-bold text-[#1261ff]">
-                <TypeWriter strings={talkAbout} />
+              We build digital experiences that turn attention into{' '}
+              <span className="font-bold text-[#ef4444]">
+                <TypeWriter strings={impactWords} />
               </span>
               .
             </p>
@@ -134,7 +134,7 @@ export function Home2() {
               <ShineBorder
                 borderWidth={3}
                 className="h-auto w-full cursor-pointer border bg-white/5 p-2 backdrop-blur-md dark:bg-black/5"
-                color={['#FF007F', '#39FF14', '#00FFFF']}
+                color={['#ef4444', '#f97316', '#fca5a5']}
               >
                 <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--foreground)] px-3 text-xs font-bold text-[var(--background)] sm:px-5 sm:text-sm">
                   Start Building

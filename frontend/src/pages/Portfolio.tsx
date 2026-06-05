@@ -1,22 +1,16 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { portfolio } from '@/data/site'
 import { api, type Project } from '@/lib/api'
-import { cn } from '@/lib/utils'
-
-const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
-const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
 
 type VideoMedia = {
   title: string
   type: 'video' | 'youtube'
   url: string
 }
-
-const heroBallColors = ['rgba(48,55,63,0.28)', 'rgba(88,125,159,0.34)', 'rgba(214,224,237,0.58)', 'rgba(239,68,68,0.16)']
 
 function fromProject(project: Project): Project {
   return project
@@ -183,7 +177,6 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
 }
 
 export function Portfolio() {
-  const [activeCategory, setActiveCategory] = useState('All')
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
   const [items, setItems] = useState<Project[]>(() => portfolio.map(fromFallback))
 
@@ -207,41 +200,9 @@ export function Portfolio() {
     }
   }, [])
 
-  const categories = useMemo(() => ['All', ...Array.from(new Set(items.map((item) => item.category).filter(Boolean)))], [items])
-  const filteredItems = activeCategory === 'All' ? items : items.filter((item) => item.category === activeCategory)
-
   return (
     <main className="projects-page home-page overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-      <section className="relative grid min-h-[92svh] place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pt-24 md:pt-28">
-        <Suspense fallback={null}>
-          <RetroGrid className="pointer-events-none absolute inset-0 opacity-60" glowEffect={false} gridColor="#587d9f" />
-          <BouncingBalls className="pointer-events-none absolute inset-0" colors={heroBallColors} interactive={false} maxRadius={2.2} minRadius={0.6} numBalls={110} speed={0.24} />
-        </Suspense>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_78%)]" style={{ opacity: 0.7 }} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--background)_0%,transparent_22%,transparent_70%,var(--background)_100%)]" />
-
-        <div className="container-x relative z-10 py-20 text-center">
-          <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.28em] text-[#587d9f]">Projects by Bakhtech</p>
-          <h1 className="projects-hero-title mx-auto max-w-5xl text-balance text-5xl font-black leading-[0.96] tracking-tight md:text-7xl">
-            <span className="block font-medium italic md:text-6xl">Proof of what</span>
-            we can build.
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-black md:text-lg dark:text-[#d6e0ed]">
-            A look at real websites, shops, booking flows, dashboards, and digital tools created to help businesses look sharper and work better online.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
-              Start a project
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a href="#projects" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 px-5 text-sm font-black text-[var(--foreground)] backdrop-blur-md transition hover:bg-[var(--surface)]">
-              Browse work
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section id="projects" className="relative overflow-hidden bg-[var(--background)] py-20 md:py-28">
+      <section id="projects" className="relative overflow-hidden bg-[var(--background)] pb-20 pt-32 md:pb-28 md:pt-36">
         <Boxes className="portfolio-bg-effect opacity-50" />
         <div className="container-x relative z-30">
           <div className="mx-auto mb-12 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
@@ -254,22 +215,9 @@ export function Portfolio() {
             </p>
           </div>
 
-          <div className="mb-8 flex gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setActiveCategory(category)}
-                className={cn('shrink-0 rounded-full border px-4 py-2 text-sm font-black transition', activeCategory === category ? 'border-[#ef4444] bg-[#ef4444] text-white' : 'border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-2)]')}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {filteredItems.length ? (
-              filteredItems.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} onPlayMedia={setActiveVideo} />)
+            {items.length ? (
+              items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} onPlayMedia={setActiveVideo} />)
             ) : (
               <div className="surface-card mx-auto max-w-xl rounded-3xl p-8 text-center text-[var(--foreground)]/70">Published projects will appear here.</div>
             )}

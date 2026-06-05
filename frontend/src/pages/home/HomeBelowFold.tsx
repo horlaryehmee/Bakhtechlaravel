@@ -150,7 +150,7 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
 
   return (
     <article className="portfolio-glass-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
-      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
+      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#ef4444" colorTo="#fca5a5" delay={project.id % 4} />
       <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
       </div>
@@ -244,7 +244,7 @@ function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {platforms.map((platform) => {
             const disabled = !platform.href.trim()
-            const className = cn('flex min-h-24 flex-col justify-between rounded-xl border p-4 text-left transition', disabled ? 'cursor-not-allowed border-[#d7dbe5] bg-[#f8f8fb] text-[#9ca3af]' : 'border-[#d7dbe5] bg-white text-[#111827] hover:border-[#1261ff] hover:bg-[#f8fbff]')
+            const className = cn('flex min-h-24 flex-col justify-between rounded-xl border p-4 text-left transition', disabled ? 'cursor-not-allowed border-[#d7dbe5] bg-[#f8f8fb] text-[#9ca3af]' : 'border-[#d7dbe5] bg-white text-[#111827] hover:border-[#ef4444] hover:bg-[#fff7f7]')
 
             if (disabled) {
               return (
@@ -337,7 +337,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         </div>
 
         <div className="relative -mt-16 h-40 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)] md:h-52">
-          <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
+          <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#ef4444,transparent_70%)] before:opacity-40" />
           <div className="absolute -left-1/2 top-1/2 z-10 aspect-[1/0.7] w-[200%] rounded-[100%] border-t border-zinc-900/20 bg-[var(--background)] dark:border-white/20" />
           {showDeferredEffects ? (
             <Suspense fallback={null}>
@@ -350,7 +350,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
       <section id="services" className="section-bg pt-10 pb-20 md:pt-14 md:pb-28">
         <div className="mx-auto w-full max-w-5xl space-y-8 px-4">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="home-eyebrow mb-3 text-sm uppercase text-[#1261ff]">What We Build</p>
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">What We Build</p>
             <h2 className="text-main text-balance text-3xl font-bold tracking-wide md:text-4xl lg:text-5xl xl:font-extrabold">Strategy. Design. Development. Launch.</h2>
             <p className="text-soft mt-4 text-balance text-sm tracking-wide md:text-base">Complete web development services for brands that need fast, secure, scalable digital products.</p>
           </div>
@@ -369,7 +369,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
         <div className="container-x relative z-30">
           <div className="mx-auto mb-12 max-w-3xl text-center">
-            <p className="home-eyebrow mb-3 text-sm uppercase text-[#8ea0ff]">Portfolio</p>
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Portfolio</p>
             <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">Projects built for real businesses.</h2>
           </div>
 
@@ -398,9 +398,9 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
             <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
               <div className="flex min-h-[13rem] flex-col items-center justify-center pt-2 text-center lg:min-h-[25rem] lg:items-start lg:pt-2 lg:text-left">
                 <h2 className="max-w-sm text-3xl font-bold leading-tight tracking-tight text-[var(--foreground)] sm:text-4xl md:text-5xl">
-                  Hear from <span className="text-[#6079ff]">happy</span> customers.
+                  Hear from <span className="text-[#ef4444]">happy</span> customers.
                 </h2>
-                <button type="button" onClick={() => setShowReviewModal(true)} className="mt-5 inline-flex min-h-10 w-full max-w-[12rem] items-center justify-center gap-2 rounded-md bg-[#2b2940] px-4 text-sm font-bold text-white transition hover:bg-[#1f1d31] sm:w-auto sm:min-h-11 sm:px-5">
+                <button type="button" onClick={() => setShowReviewModal(true)} className="mt-5 inline-flex min-h-10 w-full max-w-[12rem] items-center justify-center gap-2 rounded-md bg-[#ef4444] px-4 text-sm font-bold text-white transition hover:bg-[#dc2626] sm:w-auto sm:min-h-11 sm:px-5">
                   <MessageCircle className="h-4 w-4" />
                   Review us
                 </button>

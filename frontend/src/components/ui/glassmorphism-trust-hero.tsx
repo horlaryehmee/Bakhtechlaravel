@@ -102,7 +102,7 @@ export default function HeroSection() {
         className={cn(
           'pointer-events-none absolute inset-0 z-[2]',
           isDark
-            ? 'bg-[radial-gradient(circle_at_28%_18%,rgba(139,184,255,0.22),transparent_32%),radial-gradient(circle_at_84%_30%,rgba(103,232,207,0.16),transparent_34%),linear-gradient(180deg,rgba(16,23,41,0.34),rgba(16,23,41,0.58)_78%,#101729_100%)]'
+            ? 'bg-[radial-gradient(circle_at_28%_18%,rgba(139,184,255,0.22),transparent_32%),radial-gradient(circle_at_84%_30%,rgba(103,232,207,0.16),transparent_34%),linear-gradient(180deg,rgba(0,0,0,0.34),rgba(0,0,0,0.58)_78%,#000000_100%)]'
             : 'bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(248,250,252,0.3)_76%,#f8fafc_100%)]',
         )}
       />

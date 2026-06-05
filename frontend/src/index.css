@@ -49,23 +49,23 @@
 }
 
 :root.dark {
-  --background: #101729;
+  --background: #000000;
   --foreground: #f5f8ff;
   --muted: #b8c3d8;
   --muted-foreground: #b8c3d8;
   --primary: #8bb8ff;
   --primary-foreground: #07101f;
-  --secondary: #202d48;
+  --secondary: #0f1115;
   --secondary-foreground: #f5f8ff;
   --border: rgba(226, 232, 240, 0.14);
   --brand: #8bb8ff;
   --brand-2: #67e8cf;
-  --surface: #172137;
-  --surface-2: #202d48;
+  --surface: #080a0d;
+  --surface-2: #11161b;
   --line: rgba(226, 232, 240, 0.14);
-  --section: #101729;
-  --section-strong: #141d31;
-  --header-bg: rgba(20, 29, 49, 0.78);
+  --section: #000000;
+  --section-strong: #000000;
+  --header-bg: rgba(0, 0, 0, 0.78);
   --header-border: rgba(226, 232, 240, 0.16);
   --header-text: #ffffff;
   --header-muted: rgba(245, 248, 255, 0.62);

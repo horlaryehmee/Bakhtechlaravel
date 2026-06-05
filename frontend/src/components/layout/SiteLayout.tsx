@@ -49,8 +49,8 @@ export function SiteLayout() {
               isScrolled && 'max-w-4xl bg-[var(--surface)]/72 shadow-[var(--shadow-soft)] lg:px-5',
             )}
           >
-            <div className="relative flex flex-wrap items-center justify-between gap-5 py-3 lg:gap-0 lg:py-4">
-              <div className="flex w-full justify-between lg:w-auto">
+            <div className="relative flex flex-wrap items-center justify-between gap-4 py-3 lg:gap-0 lg:py-4">
+              <div className="flex w-full items-center justify-between gap-3 lg:w-auto">
                 <Link to="/" className="flex items-center gap-3 text-[var(--foreground)]" onClick={() => setOpen(false)} aria-label="Bakhtech home">
                   <img
                     src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
@@ -62,15 +62,26 @@ export function SiteLayout() {
                   />
                 </Link>
 
-                <button
-                  type="button"
-                  onClick={() => setOpen((value) => !value)}
-                  aria-label={open ? 'Close menu' : 'Open menu'}
-                  className="relative z-20 -m-2 grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] lg:hidden"
-                >
-                  <Menu className="h-5 w-5 transition duration-200 group-data-[state=active]:rotate-180 group-data-[state=active]:scale-0 group-data-[state=active]:opacity-0" />
-                  <X className="absolute h-5 w-5 -rotate-180 scale-0 opacity-0 transition duration-200 group-data-[state=active]:rotate-0 group-data-[state=active]:scale-100 group-data-[state=active]:opacity-100" />
-                </button>
+                <div className="flex items-center gap-2 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    className="grid h-11 w-11 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/82 text-[var(--foreground)] shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:bg-[var(--surface-2)]"
+                  >
+                    {theme === 'dark' ? <Sun className="h-5 w-5 text-[#facc15]" /> : <Moon className="h-5 w-5 text-[#30373f]" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpen((value) => !value)}
+                    aria-label={open ? 'Close menu' : 'Open menu'}
+                    className="relative z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-[var(--line)] bg-[var(--foreground)] text-[var(--background)] shadow-[0_10px_30px_rgba(15,23,42,0.12)] transition hover:opacity-90"
+                  >
+                    <Menu className="h-5 w-5 transition duration-200 group-data-[state=active]:rotate-180 group-data-[state=active]:scale-0 group-data-[state=active]:opacity-0" />
+                    <X className="absolute h-5 w-5 -rotate-180 scale-0 opacity-0 transition duration-200 group-data-[state=active]:rotate-0 group-data-[state=active]:scale-100 group-data-[state=active]:opacity-100" />
+                  </button>
+                </div>
               </div>
 
               <div className="absolute inset-0 m-auto hidden size-fit lg:block">
@@ -93,9 +104,9 @@ export function SiteLayout() {
                 </ul>
               </div>
 
-              <div className="hidden w-full flex-wrap items-center justify-end rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-2xl shadow-black/20 group-data-[state=active]:block lg:m-0 lg:flex lg:w-fit lg:gap-4 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none">
+              <div className="hidden w-full flex-wrap items-center justify-end rounded-2xl border border-[var(--line)] bg-[var(--surface)]/96 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl group-data-[state=active]:block lg:m-0 lg:flex lg:w-fit lg:gap-4 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none">
                 <div className="lg:hidden">
-                  <ul className="space-y-5 text-base">
+                  <ul className="grid gap-2 text-base">
                     {navigation.map((item) => (
                       <li key={item.href}>
                         <NavLink
@@ -103,8 +114,8 @@ export function SiteLayout() {
                           onClick={() => setOpen(false)}
                           className={({ isActive }) =>
                             cn(
-                              'text-soft block transition hover:text-[var(--foreground)]',
-                              isActive && 'font-bold text-[var(--foreground)]',
+                              'flex min-h-12 items-center justify-between rounded-xl px-4 text-sm font-black text-soft transition hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]',
+                              isActive && 'bg-[var(--surface-2)] text-[var(--foreground)]',
                             )
                           }
                         >
@@ -115,15 +126,14 @@ export function SiteLayout() {
                   </ul>
                 </div>
 
-                <div className="mt-6 flex w-full flex-col gap-3 sm:flex-row lg:mt-0 lg:w-fit">
+                <div className="mt-3 flex w-full flex-col gap-3 border-t border-[var(--line)] pt-3 sm:flex-row lg:mt-0 lg:w-fit lg:border-t-0 lg:pt-0">
                   <button
                     type="button"
                     onClick={toggleTheme}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)]"
+                    className="hidden min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] lg:inline-flex"
                     aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                   >
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    <span className="lg:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
                   </button>
 
                   <NavLink

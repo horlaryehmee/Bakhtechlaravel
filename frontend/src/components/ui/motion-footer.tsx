@@ -14,6 +14,7 @@ const footerStyles = `
 .cinematic-footer-wrapper {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  --footer-accent: #ef4444;
   --footer-pill-bg-1: color-mix(in srgb, var(--foreground) 8%, transparent);
   --footer-pill-bg-2: color-mix(in srgb, var(--foreground) 2%, transparent);
   --footer-pill-border: color-mix(in srgb, var(--foreground) 12%, transparent);
@@ -49,7 +50,7 @@ const footerStyles = `
 }
 
 .footer-aurora {
-  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--brand) 18%, transparent) 0%, color-mix(in srgb, var(--brand-2) 16%, transparent) 38%, transparent 70%);
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--footer-accent) 24%, transparent) 0%, color-mix(in srgb, var(--footer-accent) 14%, transparent) 42%, transparent 70%);
 }
 
 .footer-glass-pill {
@@ -64,9 +65,24 @@ const footerStyles = `
 }
 
 .footer-glass-pill:hover {
-  border-color: color-mix(in srgb, var(--brand) 40%, var(--foreground) 16%);
-  background: linear-gradient(145deg, color-mix(in srgb, var(--foreground) 12%, transparent), color-mix(in srgb, var(--brand) 8%, transparent));
+  border-color: color-mix(in srgb, var(--footer-accent) 48%, var(--foreground) 16%);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--foreground) 12%, transparent), color-mix(in srgb, var(--footer-accent) 10%, transparent));
   color: var(--foreground);
+}
+
+.footer-primary-cta {
+  border-color: color-mix(in srgb, var(--footer-accent) 58%, white 20%);
+  background: var(--footer-accent);
+  color: #ffffff;
+  box-shadow:
+    0 18px 42px -20px var(--footer-accent),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22);
+}
+
+.footer-primary-cta:hover {
+  border-color: var(--footer-accent);
+  background: #dc2626;
+  color: #ffffff;
 }
 
 .footer-giant-bg-text {
@@ -87,7 +103,7 @@ const footerStyles = `
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--brand) 20%, transparent));
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--footer-accent) 24%, transparent));
 }
 `
 
@@ -171,11 +187,11 @@ function MarqueeItem() {
   return (
     <div className="flex items-center gap-12 px-6">
       <span>Websites that convert</span>
-      <span className="text-[#1261ff]">+</span>
+      <span className="text-[#ef4444]">+</span>
       <span>Booking systems</span>
-      <span className="text-[#1261ff]">+</span>
+      <span className="text-[#ef4444]">+</span>
       <span>Ecommerce experiences</span>
-      <span className="text-[#12c8a0]">+</span>
+      <span className="text-[#ef4444]">+</span>
       <span>SEO-ready launches</span>
     </div>
   )
@@ -204,6 +220,7 @@ export function CinematicFooter() {
   const headingRef = useRef<HTMLHeadingElement>(null)
   const linksRef = useRef<HTMLDivElement>(null)
   const [settings, setSettings] = useState<Record<string, string>>({})
+  const currentYear = new Date().getFullYear()
 
   useEffect(() => {
     let cancelled = false
@@ -300,14 +317,14 @@ export function CinematicFooter() {
           </div>
 
           <div className="relative z-10 mx-auto mt-24 flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 md:mt-20">
-            <p className="mb-5 text-center text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-[#1261ff] md:text-xs">Bakhtech Solutions</p>
+            <p className="mb-5 text-center text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-[#ef4444] md:text-xs">Bakhtech Solutions</p>
             <h2 ref={headingRef} className="footer-text-glow mb-10 max-w-3xl text-center text-4xl font-black leading-[1.02] tracking-tight md:text-7xl">
-              Ready to build your next digital advantage?
+              Ready to build?
             </h2>
 
             <div ref={linksRef} className="flex w-full flex-col items-center gap-6">
               <div className="flex w-full flex-wrap justify-center gap-3">
-                <MagneticLink href="/contact" className="flex items-center gap-3 rounded-full px-7 py-4 text-sm font-extrabold text-[var(--foreground)] md:px-9 md:text-base">
+                <MagneticLink href="/contact" className="footer-primary-cta flex items-center gap-3 rounded-full px-7 py-4 text-sm font-extrabold md:px-9 md:text-base">
                   Start a project
                   <ExternalLink className="h-4 w-4" />
                 </MagneticLink>
@@ -341,19 +358,18 @@ export function CinematicFooter() {
             </div>
           </div>
 
-          <div className="relative z-20 grid w-full gap-5 px-6 pb-7 md:grid-cols-[1fr_auto_1fr] md:items-end md:px-12">
-            <div className="order-2 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)] md:order-1 md:text-left md:text-xs">
-              <p>(c) 2026 Bakhtech Solutions. All rights reserved.</p>
-              <p className="mt-1">Designed and developed by Bakare Olayemi.</p>
+          <div className="relative z-20 grid w-full gap-4 px-6 pb-7 md:px-12">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)] md:text-xs">
+              <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#ef4444]" /> Lekki, Lagos</span>
+              <span className="inline-flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-[#ef4444]" /> solutions@bakhtech.com.ng</span>
+              <span className="inline-flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-[#ef4444]" /> +234 708 637 2833</span>
             </div>
 
-            <div className="order-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)] md:order-2 md:text-xs">
-              <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5" /> Lekki, Lagos</span>
-              <span className="inline-flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> solutions@bakhtech.com.ng</span>
-              <span className="inline-flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> +234 708 637 2833</span>
-            </div>
+            <p className="mx-auto rounded-full border border-[#ef4444]/24 bg-[#ef4444]/8 px-4 py-2 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)] backdrop-blur-xl md:text-xs">
+              (c) {currentYear} Bakhtech Solutions. All rights reserved.
+            </p>
 
-            <div className="order-3 flex justify-center md:justify-end">
+            <div className="absolute bottom-7 right-6 hidden md:block md:right-12">
               <MagneticLink type="button" onClick={scrollToTop} className="grid h-11 w-11 place-items-center rounded-full text-[var(--muted)] hover:text-[var(--foreground)]" ariaLabel="Back to top">
                 <ArrowUp className="h-5 w-5" />
               </MagneticLink>

@@ -18,8 +18,6 @@ export const navigation = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   { label: 'Portfolio', href: '/portfolio' },
-  { label: 'Ebook', href: '/ebook' },
-  { label: 'Career', href: '/career' },
   { label: 'Contact', href: '/contact' },
 ]
 
@@ -114,7 +112,6 @@ export const websiteTypes = [
   'Music & Entertainment',
   'Charity & Nonprofit Website',
   'Government',
-  'Job & Career',
   'Real Estate Website',
   'Restaurant & Food Website',
   'Health & Wellness Website',
