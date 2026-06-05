@@ -179,12 +179,11 @@ export function About() {
           <div className="mx-auto max-w-5xl text-center">
             <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.28em] text-[#1261ff]">About Bakhtech Solutions</p>
             <h1 className="text-balance text-5xl font-black leading-[0.96] tracking-tight md:text-7xl">
-              <span className="block font-medium italic text-[var(--muted)] md:text-6xl">Digital products that speak</span>
-              louder than ordinary websites.
+              <span className="block font-medium italic text-[var(--muted)] md:text-6xl">Websites built</span>
+              to grow brands.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[var(--muted)] md:text-lg">
-              Bakhtech Solutions is a web design and development studio in Lagos helping brands launch polished websites,
-              ecommerce platforms, booking systems, dashboards, and custom web workflows.
+              Bakhtech Solutions creates fast websites, ecommerce stores, and digital systems for growing businesses.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] px-5 text-sm font-black text-[var(--background)] transition hover:opacity-90">
@@ -195,7 +194,17 @@ export function About() {
                 See our work
               </Link>
             </div>
-            <div className="mx-auto mt-12 grid max-w-3xl gap-3 sm:grid-cols-3">
+            <div className="about-stats-marquee mt-10 sm:hidden" aria-label="Bakhtech Solutions highlights">
+              <div className="about-stats-track">
+                {[...highlights, ...highlights].map((item, index) => (
+                  <div key={`${item.label}-${index}`} className="about-stats-pill" aria-hidden={index >= highlights.length}>
+                    <span className="about-stats-value">{item.value}</span>
+                    <span className="about-stats-label">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mx-auto mt-12 hidden max-w-3xl gap-3 sm:grid sm:grid-cols-3">
               {highlights.map((item) => (
                 <div key={item.label} className="surface-card rounded-2xl p-5 backdrop-blur-md">
                   <p className="text-3xl font-black text-[var(--foreground)]">{item.value}</p>
