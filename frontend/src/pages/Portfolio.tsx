@@ -1,26 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, ExternalLink, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { Boxes } from '@/components/ui/background-boxes'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { portfolio } from '@/data/site'
 import { api, type Project } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
 const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
-
-type PortfolioItem = {
-  category: string
-  coverImage?: string
-  description?: string
-  id: number
-  image: string
-  metrics?: Record<string, string>
-  services?: string[]
-  summary: string
-  title: string
-  videoUrl?: string
-  websiteUrl?: string
-}
 
 type VideoMedia = {
   title: string
@@ -30,36 +18,28 @@ type VideoMedia = {
 
 const heroBallColors = ['rgba(48,55,63,0.28)', 'rgba(88,125,159,0.34)', 'rgba(214,224,237,0.58)', 'rgba(239,68,68,0.16)']
 
-const projectStats = [
-  { label: 'Digital projects delivered', value: '200+' },
-  { label: 'Core build areas', value: '8+' },
-  { label: 'Client feedback', value: '98%' },
-]
-
-function fromProject(project: Project): PortfolioItem {
-  return {
-    category: project.category,
-    coverImage: project.coverImage,
-    description: project.description,
-    id: project.id,
-    image: project.image,
-    metrics: project.metrics,
-    services: project.services,
-    summary: project.summary,
-    title: project.title,
-    videoUrl: project.videoUrl,
-    websiteUrl: project.websiteUrl,
-  }
+function fromProject(project: Project): Project {
+  return project
 }
 
-function fromFallback(item: (typeof portfolio)[number], index: number): PortfolioItem {
+function fromFallback(item: (typeof portfolio)[number], index: number): Project {
   return {
-    category: item.category,
     id: index + 1,
-    image: item.image,
-    services: ['Design', 'Development', 'Launch'],
-    summary: item.summary,
+    slug: item.title.toLowerCase().replace(/\s+/g, '-'),
+    category: item.category,
     title: item.title,
+    summary: item.summary,
+    description: '',
+    image: item.image,
+    coverImage: '',
+    videoUrl: '',
+    websiteUrl: '',
+    services: [],
+    metrics: {},
+    isFeatured: false,
+    status: 'published',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -89,7 +69,7 @@ function isVideoUrl(url?: string) {
   return url ? /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) : false
 }
 
-function getProjectVideoUrl(project: PortfolioItem) {
+function getProjectVideoUrl(project: Project) {
   const explicitVideo = project.videoUrl?.trim()
   if (explicitVideo) return explicitVideo
 
@@ -97,82 +77,81 @@ function getProjectVideoUrl(project: PortfolioItem) {
   return legacyMedia && (getYoutubeVideoId(legacyMedia) || isVideoUrl(legacyMedia)) ? legacyMedia : ''
 }
 
-function ProjectMedia({ project, onPlay }: { onPlay: (media: VideoMedia) => void; project: PortfolioItem }) {
+function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (media: VideoMedia) => void }) {
   const videoUrl = getProjectVideoUrl(project)
   const youtubeThumbnailUrl = getYoutubeThumbnailUrl(videoUrl)
-  const image = project.coverImage?.trim() || youtubeThumbnailUrl || project.image?.trim() || '/showcase/showcase-01.jpg'
-  const youtubeEmbedUrl = getYoutubeEmbedUrl(videoUrl)
-  const videoMedia: VideoMedia | null = youtubeEmbedUrl
+  const coverImage = project.coverImage?.trim()
+  const image = project.image?.trim()
+
+  if (youtubeThumbnailUrl) {
+    return (
+      <>
+        <img src={coverImage || youtubeThumbnailUrl} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  if (isVideoUrl(videoUrl)) {
+    return (
+      <>
+        {coverImage || image ? (
+          <img src={coverImage || image} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        ) : (
+          <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
+            <source src={videoUrl} />
+          </video>
+        )}
+        <button type="button" onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  return <img src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+}
+
+function ProjectCard({ project, onPlayMedia }: { project: Project; onPlayMedia: (media: VideoMedia) => void }) {
+  const projectUrl = cleanProjectUrl(project.websiteUrl)
+  const videoUrl = getProjectVideoUrl(project)
+  const videoMedia: VideoMedia | null = getYoutubeEmbedUrl(videoUrl)
     ? { title: project.title, type: 'youtube', url: videoUrl }
     : isVideoUrl(videoUrl)
       ? { title: project.title, type: 'video', url: videoUrl }
       : null
 
   return (
-    <div className="relative h-full overflow-hidden rounded-lg border border-white/10 bg-[#0f141a]">
-      <img src={image} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(0,0,0,0.48))]" />
-      {videoMedia ? (
-        <button type="button" onClick={() => onPlay(videoMedia)} className="absolute inset-0 z-10 grid place-items-center bg-black/10 text-white transition hover:bg-black/24" aria-label={`Play ${project.title}`}>
-          <span className="grid h-14 w-14 place-items-center rounded-full border border-white/25 bg-white/15 backdrop-blur-md">
-            <Play className="ml-1 h-6 w-6 fill-current" />
-          </span>
-        </button>
-      ) : null}
-    </div>
-  )
-}
-
-function ProjectCard({ index, project, onPlay }: { index: number; onPlay: (media: VideoMedia) => void; project: PortfolioItem }) {
-  const projectUrl = cleanProjectUrl(project.websiteUrl)
-  const services = project.services?.length ? project.services.slice(0, 4) : ['Strategy', 'Design', 'Build']
-  const metrics = Object.entries(project.metrics ?? {}).slice(0, 2)
-
-  return (
-    <article className={cn('grid gap-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.08)] md:grid-cols-[0.95fr_1.05fr] md:p-4', index % 2 === 1 && 'md:grid-cols-[1.05fr_0.95fr]')}>
-      <div className={cn('h-72 md:h-full', index % 2 === 1 && 'md:order-2')}>
-        <ProjectMedia project={project} onPlay={onPlay} />
+    <article className="surface-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-[var(--foreground)]">
+      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
+      <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
+        <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
       </div>
 
-      <div className="flex flex-col p-3 md:p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full bg-[#ef4444]/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#ef4444]">{project.category}</span>
-          <span className="text-soft text-xs font-black uppercase tracking-[0.18em]">Case 0{index + 1}</span>
-        </div>
+      <div className="mt-6 flex flex-1 flex-col">
+        <span className="mb-4 w-fit rounded-full bg-[#ef4444]/10 px-3.5 py-1 text-xs font-medium text-[#ef4444]">{project.category}</span>
+        <h3 className="text-lg font-semibold leading-tight text-[var(--foreground)] sm:text-xl">{project.title}</h3>
+        <p className="mt-3 flex-1 text-sm leading-6 text-[var(--foreground)]/70">{project.summary}</p>
 
-        <h2 className="text-main mt-5 text-2xl font-black tracking-tight md:text-4xl">{project.title}</h2>
-        <p className="text-soft mt-4 leading-7">{project.description || project.summary}</p>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          {services.map((service) => (
-            <span key={service} className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1.5 text-xs font-bold text-[var(--foreground)]">
-              {service}
-            </span>
-          ))}
-        </div>
-
-        {metrics.length ? (
-          <dl className="mt-7 grid gap-3 sm:grid-cols-2">
-            {metrics.map(([label, value]) => (
-              <div key={label} className="rounded-lg border border-[var(--line)] bg-[var(--surface-2)] p-4">
-                <dt className="text-soft text-xs font-black uppercase tracking-[0.16em]">{label}</dt>
-                <dd className="text-main mt-2 text-lg font-black">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-
-        <div className="mt-7 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           {projectUrl ? (
-            <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-4 text-sm font-black text-white transition hover:opacity-90">
-              Visit project
-              <ExternalLink className="h-4 w-4" />
+            <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[#ef4444]/10 px-3 text-[0.7rem] font-medium text-[#ef4444] transition hover:bg-[#ef4444]/20 sm:text-xs">
+              View live project
+              <ArrowRight className="h-3 w-3" />
             </a>
           ) : null}
-          <Link to="/contact" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-black text-[var(--foreground)] transition hover:bg-[var(--surface-2)]">
-            Build something similar
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {videoMedia ? (
+            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 text-[0.7rem] font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:text-xs">
+              Play presentation
+              <Play className="h-3 w-3 fill-current" />
+            </button>
+          ) : null}
         </div>
       </div>
     </article>
@@ -180,20 +159,20 @@ function ProjectCard({ index, project, onPlay }: { index: number; onPlay: (media
 }
 
 function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () => void }) {
-  const embedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
+  const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
 
   return (
-    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/12 bg-black shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white">
-          <h2 className="text-sm font-black">{media.title}</h2>
-          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/16" aria-label="Close video">
-            <X className="h-5 w-5" />
+    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+          <h3 className="truncate text-sm font-bold text-white">{media.title}</h3>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
+            <X className="h-4 w-4" />
           </button>
         </div>
         <div className="aspect-video bg-black">
-          {embedUrl ? (
-            <iframe className="h-full w-full" src={embedUrl} title={media.title} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+          {youtubeEmbedUrl ? (
+            <iframe className="h-full w-full" src={youtubeEmbedUrl} title={media.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
           ) : (
             <video className="h-full w-full" src={media.url} controls autoPlay playsInline />
           )}
@@ -206,7 +185,7 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
 export function Portfolio() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
-  const [items, setItems] = useState<PortfolioItem[]>(() => portfolio.map(fromFallback))
+  const [items, setItems] = useState<Project[]>(() => portfolio.map(fromFallback))
 
   useEffect(() => {
     let cancelled = false
@@ -238,7 +217,7 @@ export function Portfolio() {
           <RetroGrid className="pointer-events-none absolute inset-0 opacity-60" glowEffect={false} gridColor="#587d9f" />
           <BouncingBalls className="pointer-events-none absolute inset-0" colors={heroBallColors} interactive={false} maxRadius={2.2} minRadius={0.6} numBalls={110} speed={0.24} />
         </Suspense>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_78%)] opacity-70" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_78%)]" style={{ opacity: 0.7 }} />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--background)_0%,transparent_22%,transparent_70%,var(--background)_100%)]" />
 
         <div className="container-x relative z-10 py-20 text-center">
@@ -259,27 +238,18 @@ export function Portfolio() {
               Browse work
             </a>
           </div>
-
-          <div className="mx-auto mt-12 grid max-w-3xl gap-3 sm:grid-cols-3">
-            {projectStats.map((item) => (
-              <div key={item.label} className="surface-card rounded-2xl p-5 backdrop-blur-md">
-                <p className="text-3xl font-black text-[var(--foreground)]">{item.value}</p>
-                <p className="text-soft mt-2 text-xs font-semibold leading-5">{item.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
-      <section id="projects" className="relative overflow-hidden bg-[#151a20] py-16 text-white md:py-24">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(88,125,159,0.18),transparent_42%),linear-gradient(180deg,#151a20,#0f141a_92%)]" />
-        <div className="container-x relative z-10">
-          <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+      <section id="projects" className="relative overflow-hidden bg-[var(--background)] py-20 md:py-28">
+        <Boxes className="portfolio-bg-effect opacity-50" />
+        <div className="container-x relative z-30">
+          <div className="mx-auto mb-12 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
-              <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Selected Work</p>
-              <h2 className="text-balance text-3xl font-bold tracking-tight text-white md:text-5xl">Projects built around business goals.</h2>
+              <p className="home-eyebrow mb-3 text-sm uppercase text-[#587d9f]">Portfolio</p>
+              <h2 className="text-balance text-3xl font-black tracking-tight text-[var(--foreground)] md:text-5xl">Projects built for real businesses.</h2>
             </div>
-            <p className="leading-8 text-[#d6e0ed]/78 lg:justify-self-end lg:text-right">
+            <p className="leading-8 text-[var(--foreground)]/70 lg:justify-self-end lg:text-right">
               Each project starts with a practical question: what should this help the business do better?
             </p>
           </div>
@@ -290,18 +260,18 @@ export function Portfolio() {
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
-                className={cn('shrink-0 rounded-full border px-4 py-2 text-sm font-black transition', activeCategory === category ? 'border-[#ef4444] bg-[#ef4444] text-white' : 'border-white/12 bg-white/[0.06] text-[#d6e0ed] hover:bg-white/[0.1]')}
+                className={cn('shrink-0 rounded-full border px-4 py-2 text-sm font-black transition', activeCategory === category ? 'border-[#ef4444] bg-[#ef4444] text-white' : 'border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-2)]')}
               >
                 {category}
               </button>
             ))}
           </div>
 
-          <div className="grid gap-6">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredItems.length ? (
-              filteredItems.map((item, index) => <ProjectCard key={`${item.id}-${item.title}`} index={index} project={item} onPlay={setActiveVideo} />)
+              filteredItems.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} onPlayMedia={setActiveVideo} />)
             ) : (
-              <div className="rounded-2xl border border-white/12 bg-white/[0.06] p-8 text-center text-[#d6e0ed]">Published projects will appear here.</div>
+              <div className="surface-card mx-auto max-w-xl rounded-3xl p-8 text-center text-[var(--foreground)]/70">Published projects will appear here.</div>
             )}
           </div>
         </div>
