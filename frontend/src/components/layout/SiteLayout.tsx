@@ -1,16 +1,18 @@
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Menu, Moon, Sun, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
-import { CinematicFooter } from '@/components/ui/motion-footer'
 import { navigation } from '@/data/site'
 import { cn } from '@/lib/utils'
+
+const CinematicFooter = lazy(() => import('@/components/ui/motion-footer').then((module) => ({ default: module.CinematicFooter })))
 
 export function SiteLayout() {
   const [open, setOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isFooterVisible, setIsFooterVisible] = useState(false)
-  const footerRef = useRef<HTMLDivElement>(null)
+  const [shouldRenderFooter, setShouldRenderFooter] = useState(false)
+  const footerSentinelRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -21,18 +23,19 @@ export function SiteLayout() {
   }, [])
 
   useEffect(() => {
-    const footer = footerRef.current
-    if (!footer) return
+    const footerSentinel = footerSentinelRef.current
+    if (!footerSentinel) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsFooterVisible(entry.isIntersecting)
+        if (entry.isIntersecting) setShouldRenderFooter(true)
         if (entry.isIntersecting) setOpen(false)
       },
-      { rootMargin: '-12% 0px 0px 0px', threshold: 0.02 },
+      { rootMargin: '900px 0px 0px 0px', threshold: 0.02 },
     )
 
-    observer.observe(footer)
+    observer.observe(footerSentinel)
     return () => observer.disconnect()
   }, [])
 
@@ -147,8 +150,14 @@ export function SiteLayout() {
       <main>
         <Outlet />
       </main>
-      <div ref={footerRef}>
-        <CinematicFooter />
+      <div ref={footerSentinelRef}>
+        {shouldRenderFooter ? (
+          <Suspense fallback={<div className="h-screen bg-[var(--background)]" />}>
+            <CinematicFooter />
+          </Suspense>
+        ) : (
+          <div className="h-screen bg-[var(--background)]" aria-hidden="true" />
+        )}
       </div>
     </div>
   )

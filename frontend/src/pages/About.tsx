@@ -167,7 +167,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="bg-[var(--background)] py-14 md:py-20">
+      <section className="about-section-deferred bg-[var(--background)] py-14 md:py-20">
         <div className="container-x">
           <div className="mx-auto max-w-3xl text-center">
             <p className="home-eyebrow mb-3 text-sm uppercase text-[#587d9f]">What Drives Us</p>
@@ -192,7 +192,7 @@ export function About() {
         </div>
       </section>
 
-      <section className="how-help-dark py-14 md:py-20">
+      <section className="about-section-deferred how-help-dark py-14 md:py-20">
         <div className="container-x">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
