@@ -25,7 +25,8 @@ import {
 import { Link } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
 
-const GLSLHills = lazy(() => import('@/components/ui/glsl-hills').then((module) => ({ default: module.GLSLHills })))
+const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
+const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
 
 const highlights = [
   { label: 'Years building digital products', value: '7+' },
@@ -65,6 +66,8 @@ const capabilities = [
 ]
 
 const capabilityRows = [capabilities, [...capabilities].reverse()]
+
+const heroBallColors = ['rgba(48,55,63,0.3)', 'rgba(88,125,159,0.34)', 'rgba(214,224,237,0.58)', 'rgba(239,68,68,0.18)']
 
 const process = [
   {
@@ -120,7 +123,16 @@ export function About() {
     <main className="about-page home-page overflow-hidden bg-[var(--background)]">
       <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
         <Suspense fallback={null}>
-          <GLSLHills className="pointer-events-none absolute inset-0" cameraZ={118} speed={0.42} />
+          <RetroGrid className="pointer-events-none absolute inset-0 opacity-70" glowEffect={false} gridColor="#587d9f" />
+          <BouncingBalls
+            className="pointer-events-none absolute inset-0"
+            colors={heroBallColors}
+            interactive={false}
+            maxRadius={2.4}
+            minRadius={0.7}
+            numBalls={120}
+            speed={0.28}
+          />
         </Suspense>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_78%)] opacity-70" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--background)_0%,transparent_22%,transparent_70%,var(--background)_100%)]" />
@@ -130,11 +142,11 @@ export function About() {
           <div className="mx-auto max-w-5xl text-center">
             <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.28em] text-[#587d9f]">About Bakhtech Solutions</p>
             <h1 className="about-hero-title text-balance text-5xl font-black leading-[0.96] tracking-tight md:text-7xl">
-              <span className="block font-medium italic text-[var(--muted)] md:text-6xl">Websites built</span>
-              to grow brands.
+              <span className="block font-medium italic text-[var(--muted)] md:text-6xl">We turn ideas</span>
+              into digital tools.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-[var(--muted)] md:text-lg">
-              Bakhtech Solutions creates fast websites, ecommerce stores, and digital systems for growing businesses.
+              Bakhtech Solutions helps businesses look better, work smarter, and serve customers online with websites, shops, booking systems, and custom tools.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
