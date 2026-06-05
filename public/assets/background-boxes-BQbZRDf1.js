@@ -1,0 +1,1 @@
+import{h as e,i as t}from"./index-CfPLKcvq.js";var n=e();function r({className:e}){return(0,n.jsx)(`div`,{"aria-hidden":`true`,className:t(`pointer-events-none absolute inset-0 z-0 overflow-hidden`,e),children:(0,n.jsx)(`div`,{className:`portfolio-css-grid absolute left-1/2 top-1/2 h-[150%] w-[170%] -translate-x-1/2 -translate-y-1/2`})})}export{r as t};

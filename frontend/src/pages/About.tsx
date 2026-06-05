@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense } from 'react'
 import {
   ArrowRight,
   CalendarDays,
@@ -23,7 +23,7 @@ import {
   Smartphone,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { GlowCard } from '@/components/ui/spotlight-card'
+import { useTheme } from '@/components/theme/ThemeProvider'
 
 const GLSLHills = lazy(() => import('@/components/ui/glsl-hills').then((module) => ({ default: module.GLSLHills })))
 
@@ -89,8 +89,6 @@ const process = [
   },
 ]
 
-const processGlowColors = ['blue', 'purple', 'green', 'orange'] as const
-
 const ctaOrbitItems = [
   { icon: Code2, color: '#1261ff' },
   { icon: ShoppingCart, color: '#12c8a0' },
@@ -115,59 +113,12 @@ const ctaOrbitRows = [
   ctaOrbitItems.slice(10, 15),
 ]
 
-function ProcessNoise({ patternAlpha = 18, patternRefreshInterval = 2 }: { patternAlpha?: number; patternRefreshInterval?: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const context = canvas.getContext('2d', { alpha: true })
-    if (!context) return
-
-    let frame = 0
-    let animationFrame = 0
-    const canvasSize = 768
-
-    const resize = () => {
-      canvas.width = canvasSize
-      canvas.height = canvasSize
-    }
-
-    const draw = () => {
-      const imageData = context.createImageData(canvasSize, canvasSize)
-      const data = imageData.data
-
-      for (let index = 0; index < data.length; index += 4) {
-        const value = Math.random() * 255
-        data[index] = value
-        data[index + 1] = value
-        data[index + 2] = value
-        data[index + 3] = patternAlpha
-      }
-
-      context.putImageData(imageData, 0, 0)
-    }
-
-    const loop = () => {
-      if (frame % patternRefreshInterval === 0) draw()
-      frame += 1
-      animationFrame = window.requestAnimationFrame(loop)
-    }
-
-    resize()
-    loop()
-
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [patternAlpha, patternRefreshInterval])
-
-  return <canvas ref={canvasRef} className="process-noise-canvas" aria-hidden="true" />
-}
-
 export function About() {
+  const { theme } = useTheme()
+
   return (
-    <main className="home-page overflow-hidden bg-[var(--background)]">
-      <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(18,97,255,0.12),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
+    <main className="about-page home-page overflow-hidden bg-[var(--background)]">
+      <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
         <Suspense fallback={null}>
           <GLSLHills className="pointer-events-none absolute inset-0" cameraZ={118} speed={0.42} />
         </Suspense>
@@ -177,8 +128,8 @@ export function About() {
 
         <div className="container-x relative z-10 py-20">
           <div className="mx-auto max-w-5xl text-center">
-            <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.28em] text-[#1261ff]">About Bakhtech Solutions</p>
-            <h1 className="text-balance text-5xl font-black leading-[0.96] tracking-tight md:text-7xl">
+            <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.28em] text-[#587d9f]">About Bakhtech Solutions</p>
+            <h1 className="about-hero-title text-balance text-5xl font-black leading-[0.96] tracking-tight md:text-7xl">
               <span className="block font-medium italic text-[var(--muted)] md:text-6xl">Websites built</span>
               to grow brands.
             </h1>
@@ -186,7 +137,7 @@ export function About() {
               Bakhtech Solutions creates fast websites, ecommerce stores, and digital systems for growing businesses.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] px-5 text-sm font-black text-[var(--background)] transition hover:opacity-90">
+              <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
                 Start a project
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -219,7 +170,7 @@ export function About() {
       <section className="bg-[var(--background)] py-14 md:py-20">
         <div className="container-x">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="home-eyebrow mb-3 text-sm uppercase text-[#1261ff]">What Drives Us</p>
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#587d9f]">What Drives Us</p>
             <h2 className="text-main text-balance text-3xl font-bold tracking-tight md:text-5xl">Strategy, design, and engineering in one clear process.</h2>
             <p className="text-soft mt-4 leading-8">
               We are not only trying to make a website look good. We are building the digital layer your customers use to
@@ -231,7 +182,7 @@ export function About() {
             {principles.map((item) => (
               <article key={item.title} className="group p-6 md:p-8">
                 <span className="feature-icon-ring grid h-12 w-12 place-items-center rounded-xl border-2 border-transparent">
-                  <item.icon className="h-5 w-5 text-[#1261ff]" />
+                  <item.icon className="h-5 w-5 text-[#ef4444]" />
                 </span>
                 <h3 className="text-main mt-6 text-xl font-black">{item.title}</h3>
                 <p className="text-soft mt-3 leading-7">{item.text}</p>
@@ -241,11 +192,11 @@ export function About() {
         </div>
       </section>
 
-      <section className="section-bg py-14 md:py-20">
+      <section className="how-help-dark py-14 md:py-20">
         <div className="container-x">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <p className="home-eyebrow mb-3 text-sm uppercase text-[#1261ff]">How We Help</p>
+              <p className="home-eyebrow mb-3 text-sm uppercase text-[#d6e0ed]">How We Help</p>
               <h2 className="text-main text-balance text-3xl font-bold tracking-tight md:text-5xl">Built for brands that need more than a basic page online.</h2>
               <p className="text-soft mt-5 leading-8">
                 From the first conversation to launch day, we focus on practical outcomes: clearer messaging, better user
@@ -265,58 +216,48 @@ export function About() {
                   </div>
                 </div>
               ))}
-              <div className="about-tags-fade about-tags-fade-left" />
-              <div className="about-tags-fade about-tags-fade-right" />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="process-noise-section relative overflow-hidden bg-[#30373f] py-14 md:py-20">
-        <div className="process-noise-bg" aria-hidden="true">
-          <div className="process-noise-spotlight" />
-          <div className="process-noise-grid" />
-          <ProcessNoise patternAlpha={18} />
-        </div>
-
-        <div className="container-x relative z-10">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <p className="home-eyebrow mb-3 text-sm uppercase text-[#8bb8ff]">Our Process</p>
-            <h2 className="text-balance text-3xl font-bold leading-tight tracking-tight text-white md:text-5xl">A focused path from idea to launch.</h2>
+      <section className="gradient-grid-bg relative overflow-hidden">
+        <div className="gradient-grid-bg-layer" aria-hidden="true" />
+        <div className="container-x relative z-10 py-14 md:py-20">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#587d9f]">Our Process</p>
+            <h2 className="text-main text-balance text-3xl font-bold tracking-tight md:text-5xl">A focused path from idea to launch.</h2>
+            <p className="text-soft mt-4 leading-8">
+              We keep every project clear, practical, and easy to follow from the first conversation to launch day.
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {process.map((step, index) => (
-              <GlowCard key={step.title} customSize glowColor={processGlowColors[index]} className="min-h-72 w-full border-white/10 bg-white/5">
-                <article className="flex h-full flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="grid h-12 w-12 place-items-center rounded-xl border border-white/20 bg-white/90 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-                      <step.icon className="h-6 w-6 text-black" />
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white/45">0{index + 1}</span>
-                  </div>
-                  <div className="mt-10">
-                    <h3 className="text-xl font-black text-white">{step.title}</h3>
-                    <p className="mt-3 text-sm leading-6 text-white/70">{step.text}</p>
-                  </div>
-                </article>
-              </GlowCard>
+              <article key={step.title} className="surface-card rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--surface-2)] text-[#ef4444]">
+                    <step.icon className="h-5 w-5" />
+                  </span>
+                  <span className="text-soft text-xs font-black uppercase tracking-[0.2em]">0{index + 1}</span>
+                </div>
+                <h3 className="text-main mt-7 text-lg font-black">{step.title}</h3>
+                <p className="text-soft mt-3 text-sm leading-6">{step.text}</p>
+              </article>
             ))}
           </div>
         </div>
-      </section>
 
-      <section className="section-strong py-14 md:py-20">
-        <div className="container-x">
+        <div className="container-x relative z-10 pb-14 md:pb-20">
           <div className="about-cta-card">
             <div className="relative z-10 max-w-2xl p-6 md:p-10 lg:w-1/2">
-              <p className="home-eyebrow mb-3 text-sm uppercase text-[#1261ff]">Your Digital Partner</p>
+              <p className="home-eyebrow mb-3 text-sm uppercase text-[#587d9f]">Your Digital Partner</p>
               <h2 className="text-main text-balance text-4xl font-bold tracking-tight md:text-6xl">Build your next digital advantage.</h2>
               <p className="text-soft mt-4 max-w-2xl leading-8">
                 Let us turn your business goals into a fast, modern, trustworthy website or platform that is easy to manage and built to grow.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] px-5 text-sm font-black text-[var(--background)] transition hover:opacity-90">
+                <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
                   Start a project
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -329,7 +270,7 @@ export function About() {
             <div className="about-cta-orbit-wrap" aria-hidden="true">
               <div className="about-cta-orbit-stage">
                 <div className="about-cta-orbit-core">
-                  <img src="/bakhtech-logo-light.png" alt="" className="about-cta-orbit-logo" />
+                  <img src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'} alt="" className="about-cta-orbit-logo" />
                 </div>
                 {ctaOrbitRows.map((orbitItems, orbitIndex) => (
                   <div key={orbitIndex} className={`about-cta-orbit about-cta-orbit-${orbitIndex + 1}`}>
