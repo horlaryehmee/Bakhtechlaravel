@@ -18,6 +18,7 @@ export const navigation = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   { label: 'Portfolio', href: '/portfolio' },
+  { label: 'Booking', href: '/booking' },
   { label: 'Contact', href: '/contact' },
 ]
 

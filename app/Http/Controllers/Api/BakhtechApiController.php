@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\GoogleCalendarService;
+use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +49,10 @@ class BakhtechApiController extends Controller
             'totals' => [
                 'projects' => DB::table('projects')->count(),
                 'publishedProjects' => DB::table('projects')->where('status', 'published')->count(),
+                'bookings' => DB::table('bookings')->count(),
+                'upcomingBookings' => Schema::hasColumn('bookings', 'starts_at')
+                    ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
+                    : 0,
                 'visits' => DB::table('visits')->count(),
                 'todayVisits' => DB::table('visits')->whereDate('created_at', $today)->count(),
             ],
@@ -92,6 +99,7 @@ class BakhtechApiController extends Controller
             'pages' => DB::table('pages')->orderBy('id')->get()->map(fn ($row) => $this->pageShape($row)),
             'posts' => DB::table('posts')->orderByDesc('updated_at')->get()->map(fn ($row) => $this->postShape($row)),
             'bookings' => DB::table('bookings')->orderByDesc('created_at')->get()->map(fn ($row) => $this->bookingShape($row)),
+            'bookingEventTypes' => Schema::hasTable('booking_event_types') ? DB::table('booking_event_types')->orderBy('name')->get()->map(fn ($row) => $this->bookingEventTypeShape($row, true)) : collect(),
             'reviews' => Schema::hasTable('reviews') ? $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)) : collect(),
             'users' => DB::table('admins')->orderBy('id')->get()->map(fn ($row) => $this->adminUserShape($row)),
             'settings' => $this->settings(),
@@ -99,23 +107,70 @@ class BakhtechApiController extends Controller
         ];
     }
 
+    public function createPage(Request $request)
+    {
+        $existing = (object) [
+            'id' => 0,
+            'title' => '',
+            'slug' => '',
+            'template' => 'default',
+            'parent_id' => null,
+            'sort_order' => 0,
+            'content' => '',
+            'excerpt' => '',
+            'seo_title' => '',
+            'seo_description' => '',
+            'canonical_url' => '',
+            'meta_robots' => 'index,follow',
+            'focus_keyword' => '',
+            'og_title' => '',
+            'og_description' => '',
+            'og_image' => '',
+            'twitter_title' => '',
+            'twitter_description' => '',
+            'twitter_image' => '',
+            'schema_type' => 'WebPage',
+            'schema_json' => '',
+            'status' => 'draft',
+            'published_at' => null,
+        ];
+        $payload = $this->pagePayload($request, $existing);
+
+        if ($payload['title'] === '') {
+            return response()->json(['message' => 'Page title is required.'], 400);
+        }
+
+        $payload['created_at'] = now();
+        $payload['updated_at'] = now();
+
+        $id = DB::table('pages')->insertGetId($payload);
+
+        return response()->json(['page' => $this->pageShape(DB::table('pages')->where('id', $id)->first())], 201);
+    }
+
     public function updatePage(Request $request, int $id)
     {
-        $exists = DB::table('pages')->where('id', $id)->exists();
-        if (!$exists) {
+        $existing = DB::table('pages')->where('id', $id)->first();
+        if (!$existing) {
             return response()->json(['message' => 'Page not found.'], 404);
         }
 
-        DB::table('pages')->where('id', $id)->update([
-            'title' => (string) $request->input('title'),
-            'content' => (string) $request->input('content', ''),
-            'seo_title' => (string) $request->input('seoTitle', ''),
-            'seo_description' => (string) $request->input('seoDescription', ''),
-            'status' => (string) $request->input('status', 'published'),
-            'updated_at' => now(),
-        ]);
+        $payload = $this->pagePayload($request, $existing);
+        if ($payload['title'] === '') {
+            return response()->json(['message' => 'Page title is required.'], 400);
+        }
+
+        $payload['updated_at'] = now();
+
+        DB::table('pages')->where('id', $id)->update($payload);
 
         return ['page' => $this->pageShape(DB::table('pages')->where('id', $id)->first())];
+    }
+
+    public function deletePage(int $id)
+    {
+        DB::table('pages')->where('id', $id)->delete();
+        return response()->noContent();
     }
 
     public function createPost(Request $request)
@@ -213,6 +268,10 @@ class BakhtechApiController extends Controller
 
     public function createBooking(Request $request)
     {
+        if (Schema::hasTable('booking_event_types') && $request->filled('eventTypeId') && $request->filled('startsAt')) {
+            return $this->storeBooking($request, true);
+        }
+
         $id = DB::table('bookings')->insertGetId([
             'name' => (string) $request->input('name', 'Website visitor'),
             'email' => (string) $request->input('email', ''),
@@ -247,6 +306,96 @@ class BakhtechApiController extends Controller
         ]);
 
         return ['booking' => $this->bookingShape(DB::table('bookings')->where('id', $id)->first())];
+    }
+
+    public function bookingEventTypes()
+    {
+        if (!Schema::hasTable('booking_event_types')) {
+            return ['eventTypes' => []];
+        }
+
+        return [
+            'eventTypes' => DB::table('booking_event_types')
+                ->where('is_active', true)
+                ->when(request('calendar'), fn ($query, $slug) => $query->whereIn('booking_calendar_id', DB::table('booking_calendars')->where('slug', $slug)->pluck('id')))
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($row) => $this->bookingEventTypeShape($row)),
+        ];
+    }
+
+    public function bookingCalendars()
+    {
+        if (!Schema::hasTable('booking_calendars')) {
+            return ['calendars' => []];
+        }
+
+        return [
+            'calendars' => DB::table('booking_calendars')
+                ->where('is_active', true)
+                ->orderByDesc('id')
+                ->get()
+                ->map(fn ($calendar) => [
+                    'id' => $calendar->id,
+                    'name' => $calendar->name,
+                    'slug' => $calendar->slug,
+                    'description' => $calendar->description ?: '',
+                    'timezone' => $calendar->timezone,
+                    'color' => $calendar->color,
+                    'settings' => json_decode($calendar->settings_json ?: '{}', true) ?: [],
+                    'publicUrl' => '/book/' . $calendar->slug,
+                    'isActive' => (bool) $calendar->is_active,
+                ]),
+        ];
+    }
+
+    public function bookingCalendar(string $slug)
+    {
+        $calendar = DB::table('booking_calendars')->where('slug', $slug)->where('is_active', true)->first();
+        if (!$calendar) {
+            return response()->json(['message' => 'Calendar not found.'], 404);
+        }
+
+        return [
+            'calendar' => [
+                'id' => $calendar->id,
+                'name' => $calendar->name,
+                'slug' => $calendar->slug,
+                'description' => $calendar->description ?: '',
+                'timezone' => $calendar->timezone,
+                'color' => $calendar->color,
+                'settings' => json_decode($calendar->settings_json ?: '{}', true) ?: [],
+            ],
+            'eventTypes' => DB::table('booking_event_types')
+                ->where('booking_calendar_id', $calendar->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($row) => $this->bookingEventTypeShape($row)),
+        ];
+    }
+
+    public function bookingAvailability(Request $request, string $slug)
+    {
+        $eventType = DB::table('booking_event_types')->where('slug', $slug)->where('is_active', true)->first();
+        if (!$eventType) {
+            return response()->json(['message' => 'Booking type not found.'], 404);
+        }
+
+        $from = $request->input('from') ? Carbon::parse((string) $request->input('from'), $eventType->timezone) : now($eventType->timezone);
+        $to = $request->input('to')
+            ? Carbon::parse((string) $request->input('to'), $eventType->timezone)
+            : $from->copy()->addDays((int) $eventType->max_future_days);
+
+        return [
+            'eventType' => $this->bookingEventTypeShape($eventType),
+            'availability' => $this->availableSlots($eventType, $from, $to),
+        ];
+    }
+
+    public function bookPublicAppointment(Request $request)
+    {
+        return $this->storeBooking($request, false);
     }
 
     public function updateSettings(Request $request)
@@ -469,7 +618,215 @@ class BakhtechApiController extends Controller
             'tiktokUrl' => '',
             'twitterUrl' => '',
             'youtubeUrl' => '',
+            'bookingIntro' => 'Choose a service, pick an available time, and receive a calendar invitation with reminders.',
         ];
+    }
+
+    private function storeBooking(Request $request, bool $adminCreated)
+    {
+        $eventType = DB::table('booking_event_types')
+            ->where('id', (int) $request->input('eventTypeId'))
+            ->when(!$adminCreated, fn ($query) => $query->where('is_active', true))
+            ->first();
+
+        if (!$eventType) {
+            return response()->json(['message' => 'Booking type is required.'], 422);
+        }
+
+        $name = trim((string) $request->input('name'));
+        $email = strtolower(trim((string) $request->input('email')));
+        $startsAt = (string) $request->input('startsAt');
+
+        if ($name === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $startsAt === '') {
+            return response()->json(['message' => 'Name, valid email, and appointment time are required.'], 422);
+        }
+
+        $start = Carbon::parse($startsAt, $eventType->timezone)->setTimezone($eventType->timezone);
+        $end = $start->copy()->addMinutes((int) $eventType->duration_minutes);
+        $minimumStart = now($eventType->timezone)->addHours((int) $eventType->min_notice_hours);
+        if (!$adminCreated && $start->lessThan($minimumStart)) {
+            return response()->json(['message' => 'Please choose a later time.'], 422);
+        }
+
+        if (!$this->slotIsAvailable($eventType, $start)) {
+            return response()->json(['message' => 'That time is no longer available.'], 409);
+        }
+
+        $selectedLocation = $this->selectedBookingLocation($eventType, (string) $request->input('meetingPlatform', ''));
+
+        $id = DB::table('bookings')->insertGetId([
+            'booking_event_type_id' => $eventType->id,
+            'name' => $name,
+            'email' => $email,
+            'phone' => trim((string) $request->input('phone', '')),
+            'service' => (string) $request->input('service', $eventType->name),
+            'message' => trim((string) $request->input('message', '')),
+            'status' => (string) $request->input('status', 'confirmed'),
+            'scheduled_at' => $start->toDateTimeString(),
+            'timezone' => $eventType->timezone,
+            'starts_at' => $start->toDateTimeString(),
+            'ends_at' => $end->toDateTimeString(),
+            'duration_minutes' => $eventType->duration_minutes,
+            'price_amount' => $eventType->payment_required ? (float) ($eventType->price_amount ?? 0) : 0,
+            'currency' => $eventType->currency ?? 'NGN',
+            'payment_provider' => $eventType->payment_required ? 'paystack' : null,
+            'payment_status' => $eventType->payment_required ? 'unpaid' : 'not_required',
+            'location_type' => $selectedLocation['type'],
+            'location_value' => $selectedLocation['value'],
+            'google_calendar_sync_status' => 'not_configured',
+            'cancel_token' => (string) Str::uuid(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $booking = DB::table('bookings')->where('id', $id)->first();
+        $zoomSync = app(ZoomMeetingService::class)->createBookingMeeting($booking, $eventType);
+
+        if (($zoomSync['status'] ?? '') === 'synced' && !empty($zoomSync['joinUrl'])) {
+            DB::table('bookings')->where('id', $id)->update([
+                'location_value' => $zoomSync['joinUrl'],
+                'updated_at' => now(),
+            ]);
+            $booking = DB::table('bookings')->where('id', $id)->first();
+        }
+
+        $sync = app(GoogleCalendarService::class)->createBookingEvent($booking, $eventType);
+
+        DB::table('bookings')->where('id', $id)->update([
+            'google_calendar_event_id' => $sync['eventId'] ?? null,
+            'google_calendar_event_url' => $sync['eventUrl'] ?? null,
+            'google_calendar_sync_status' => $sync['status'] === 'not_configured' && ($zoomSync['status'] ?? '') === 'synced' ? 'zoom_synced' : $sync['status'],
+            'location_value' => $sync['locationValue'] ?? $booking->location_value,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['booking' => $this->bookingShape(DB::table('bookings')->where('id', $id)->first())], 201);
+    }
+
+    private function selectedBookingLocation(object $eventType, string $selectedId): array
+    {
+        $fallback = [
+            'type' => $eventType->location_type,
+            'value' => $eventType->location_label,
+        ];
+
+        if (!$selectedId || empty($eventType->booking_calendar_id)) {
+            return $fallback;
+        }
+
+        $calendar = DB::table('booking_calendars')->where('id', $eventType->booking_calendar_id)->first();
+        if (!$calendar) {
+            return $fallback;
+        }
+
+        $settings = json_decode($calendar->settings_json ?: '{}', true);
+        $locations = is_array($settings) && isset($settings['locations']) && is_array($settings['locations']) ? $settings['locations'] : [];
+
+        foreach ($locations as $location) {
+            if (($location['id'] ?? '') === $selectedId && ($location['enabled'] ?? true)) {
+                return [
+                    'type' => (string) ($location['type'] ?? $fallback['type']),
+                    'value' => trim((string) (($location['details'] ?? '') ?: ($location['label'] ?? $fallback['value']))),
+                ];
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function availableSlots(object $eventType, Carbon $from, Carbon $to): array
+    {
+        $slots = [];
+        $cursor = $from->copy()->startOfDay();
+        $limit = $to->copy()->endOfDay();
+
+        while ($cursor->lessThanOrEqualTo($limit) && count($slots) < 220) {
+            $dayName = strtolower($cursor->englishDayOfWeek);
+            foreach ($this->eventAvailability($eventType)[$dayName] ?? [] as $window) {
+                $slot = $cursor->copy()->setTimeFromTimeString($window['start']);
+                $windowEnd = $cursor->copy()->setTimeFromTimeString($window['end']);
+
+                while ($slot->copy()->addMinutes((int) $eventType->duration_minutes)->lessThanOrEqualTo($windowEnd)) {
+                    if ($slot->greaterThanOrEqualTo($from) && $slot->lessThanOrEqualTo($limit) && $this->slotIsAvailable($eventType, $slot)) {
+                        $slots[] = [
+                            'date' => $slot->toDateString(),
+                            'time' => $slot->format('H:i'),
+                            'label' => $slot->format('g:i A'),
+                            'startsAt' => $slot->toIso8601String(),
+                        ];
+                    }
+                    $slot->addMinutes((int) $eventType->duration_minutes + (int) $eventType->buffer_minutes);
+                }
+            }
+            $cursor->addDay();
+        }
+
+        return collect($slots)->groupBy('date')->map(fn ($items, $date) => [
+            'date' => $date,
+            'label' => Carbon::parse($date, $eventType->timezone)->format('D, M j'),
+            'slots' => $items->values(),
+        ])->values()->all();
+    }
+
+    private function slotIsAvailable(object $eventType, Carbon $start): bool
+    {
+        $end = $start->copy()->addMinutes((int) $eventType->duration_minutes);
+        $minimumStart = now($eventType->timezone)->addHours((int) $eventType->min_notice_hours);
+        if ($start->lessThan($minimumStart)) {
+            return false;
+        }
+
+        $dayName = strtolower($start->englishDayOfWeek);
+        $insideWindow = collect($this->eventAvailability($eventType)[$dayName] ?? [])->contains(function ($window) use ($start, $end) {
+            $windowStart = $start->copy()->setTimeFromTimeString($window['start']);
+            $windowEnd = $start->copy()->setTimeFromTimeString($window['end']);
+            return $start->greaterThanOrEqualTo($windowStart) && $end->lessThanOrEqualTo($windowEnd);
+        });
+
+        if (!$insideWindow) {
+            return false;
+        }
+
+        return !DB::table('bookings')
+            ->where('booking_event_type_id', $eventType->id)
+            ->whereNotIn('status', ['cancelled', 'closed'])
+            ->where(function ($query) use ($start, $end) {
+                $query->where('starts_at', '<', $end->toDateTimeString())
+                    ->where('ends_at', '>', $start->toDateTimeString());
+            })
+            ->exists();
+    }
+
+    private function eventAvailability(object $eventType): array
+    {
+        $decoded = json_decode($eventType->availability_json ?: '{}', true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function bookingEventTypeShape(object $row, bool $includeAvailability = false): array
+    {
+        $shape = [
+            'id' => $row->id,
+            'calendarId' => $row->booking_calendar_id ?? null,
+            'name' => $row->name,
+            'slug' => $row->slug,
+            'description' => $row->description ?: '',
+            'durationMinutes' => (int) $row->duration_minutes,
+            'bufferMinutes' => (int) $row->buffer_minutes,
+            'locationType' => $row->location_type,
+            'locationLabel' => $row->location_label ?: '',
+            'timezone' => $row->timezone,
+            'minNoticeHours' => (int) $row->min_notice_hours,
+            'maxFutureDays' => (int) $row->max_future_days,
+            'reminderMinutesBefore' => (int) $row->reminder_minutes_before,
+            'isActive' => (bool) $row->is_active,
+        ];
+
+        if ($includeAvailability) {
+            $shape['availability'] = $this->eventAvailability($row);
+        }
+
+        return $shape;
     }
 
     private function uniqueSlug(string $table, string $title, ?int $ignoreId = null): string
@@ -486,14 +843,47 @@ class BakhtechApiController extends Controller
         return $candidate;
     }
 
+    private function pagePayload(Request $request, object $existing): array
+    {
+        $title = trim((string) $request->input('title', $existing->title));
+        $status = in_array($request->input('status', $existing->status), ['published', 'draft'], true)
+            ? (string) $request->input('status', $existing->status)
+            : 'draft';
+
+        return [
+            'title' => $title,
+            'slug' => $this->uniqueSlug('pages', (string) $request->input('slug', $title), (int) $existing->id),
+            'template' => (string) $request->input('template', $existing->template ?? 'default'),
+            'parent_id' => $request->filled('parentId') ? (int) $request->input('parentId') : null,
+            'sort_order' => (int) $request->input('sortOrder', $existing->sort_order ?? 0),
+            'content' => (string) $request->input('content', $existing->content ?? ''),
+            'excerpt' => (string) $request->input('excerpt', $existing->excerpt ?? ''),
+            'seo_title' => (string) $request->input('seoTitle', $existing->seo_title ?? ''),
+            'seo_description' => (string) $request->input('seoDescription', $existing->seo_description ?? ''),
+            'canonical_url' => (string) $request->input('canonicalUrl', $existing->canonical_url ?? ''),
+            'meta_robots' => (string) $request->input('metaRobots', $existing->meta_robots ?? 'index,follow'),
+            'focus_keyword' => (string) $request->input('focusKeyword', $existing->focus_keyword ?? ''),
+            'og_title' => (string) $request->input('ogTitle', $existing->og_title ?? ''),
+            'og_description' => (string) $request->input('ogDescription', $existing->og_description ?? ''),
+            'og_image' => (string) $request->input('ogImage', $existing->og_image ?? ''),
+            'twitter_title' => (string) $request->input('twitterTitle', $existing->twitter_title ?? ''),
+            'twitter_description' => (string) $request->input('twitterDescription', $existing->twitter_description ?? ''),
+            'twitter_image' => (string) $request->input('twitterImage', $existing->twitter_image ?? ''),
+            'schema_type' => (string) $request->input('schemaType', $existing->schema_type ?? 'WebPage'),
+            'schema_json' => (string) $request->input('schemaJson', $existing->schema_json ?? ''),
+            'status' => $status,
+            'published_at' => $status === 'published' ? ($existing->published_at ?? now()) : null,
+        ];
+    }
+
     private function adminShape(object $row): array
     {
-        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name];
+        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin'];
     }
 
     private function adminUserShape(object $row): array
     {
-        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => 'Owner', 'createdAt' => (string) $row->created_at];
+        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin', 'createdAt' => (string) $row->created_at];
     }
 
     private function projectShape(object $row): array
@@ -574,10 +964,26 @@ class BakhtechApiController extends Controller
             'id' => $row->id,
             'title' => $row->title,
             'slug' => $row->slug,
+            'template' => $row->template ?? 'default',
+            'parentId' => $row->parent_id ?? null,
+            'sortOrder' => (int) ($row->sort_order ?? 0),
             'content' => $row->content ?: '',
+            'excerpt' => $row->excerpt ?? '',
             'seoTitle' => $row->seo_title ?: '',
             'seoDescription' => $row->seo_description ?: '',
+            'canonicalUrl' => $row->canonical_url ?? '',
+            'metaRobots' => $row->meta_robots ?? 'index,follow',
+            'focusKeyword' => $row->focus_keyword ?? '',
+            'ogTitle' => $row->og_title ?? '',
+            'ogDescription' => $row->og_description ?? '',
+            'ogImage' => $row->og_image ?? '',
+            'twitterTitle' => $row->twitter_title ?? '',
+            'twitterDescription' => $row->twitter_description ?? '',
+            'twitterImage' => $row->twitter_image ?? '',
+            'schemaType' => $row->schema_type ?? 'WebPage',
+            'schemaJson' => $row->schema_json ?? '',
             'status' => $row->status,
+            'publishedAt' => (string) ($row->published_at ?? ''),
             'updatedAt' => (string) $row->updated_at,
         ];
     }
@@ -602,6 +1008,7 @@ class BakhtechApiController extends Controller
     {
         return [
             'id' => $row->id,
+            'eventTypeId' => $row->booking_event_type_id ?? null,
             'name' => $row->name,
             'email' => $row->email ?: '',
             'phone' => $row->phone ?: '',
@@ -609,6 +1016,15 @@ class BakhtechApiController extends Controller
             'message' => $row->message ?: '',
             'status' => $row->status,
             'scheduledAt' => $row->scheduled_at ?: '',
+            'startsAt' => $row->starts_at ?? ($row->scheduled_at ?: ''),
+            'endsAt' => $row->ends_at ?? '',
+            'timezone' => $row->timezone ?? '',
+            'durationMinutes' => (int) ($row->duration_minutes ?? 30),
+            'locationType' => $row->location_type ?? '',
+            'locationValue' => $row->location_value ?? '',
+            'googleCalendarEventUrl' => $row->google_calendar_event_url ?? '',
+            'googleCalendarSyncStatus' => $row->google_calendar_sync_status ?? 'not_configured',
+            'reminderSentAt' => (string) ($row->reminder_sent_at ?? ''),
             'createdAt' => (string) $row->created_at,
         ];
     }

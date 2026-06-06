@@ -37,7 +37,7 @@ class AdminToken
         }
 
         return DB::table('admins')
-            ->select('id', 'email', 'name', 'created_at')
+            ->select('id', 'email', 'name', 'role', 'created_at')
             ->where('id', $adminId)
             ->first();
     }
@@ -47,4 +47,3 @@ class AdminToken
         return env('API_TOKEN_SECRET') ?: env('APP_KEY', 'dev-only-change-this-secret');
     }
 }
-

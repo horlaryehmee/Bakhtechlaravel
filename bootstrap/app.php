@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->alias([
+            'admin.role' => \App\Http\Middleware\RequireAdminRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

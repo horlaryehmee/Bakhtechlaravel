@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Menu, Moon, Sun, X } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTheme } from '@/components/theme/ThemeProvider'
 import { navigation } from '@/data/site'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,8 @@ export function SiteLayout() {
   const [shouldRenderFooter, setShouldRenderFooter] = useState(false)
   const footerSentinelRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
+  const location = useLocation()
+  const isBookingPage = location.pathname.startsWith('/booking') || location.pathname.startsWith('/book/')
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50)
@@ -23,6 +25,10 @@ export function SiteLayout() {
   }, [])
 
   useEffect(() => {
+    if (isBookingPage) {
+      setShouldRenderFooter(false)
+      return
+    }
     const footerSentinel = footerSentinelRef.current
     if (!footerSentinel) return
 
@@ -37,7 +43,7 @@ export function SiteLayout() {
 
     observer.observe(footerSentinel)
     return () => observer.disconnect()
-  }, [])
+  }, [isBookingPage])
 
   return (
     <div className="site-bg min-h-screen">
@@ -137,19 +143,19 @@ export function SiteLayout() {
                   </button>
 
                   <NavLink
-                    to="/contact"
+                    to="/booking"
                     onClick={() => setOpen(false)}
                     className={cn('inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:hidden')}
                   >
-                    Get Started
+                    Book a Call
                   </NavLink>
 
                   <NavLink
-                    to="/contact"
+                    to="/booking"
                     onClick={() => setOpen(false)}
                     className={cn('hidden min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:inline-flex')}
                   >
-                    Get Started
+                    Book a Call
                   </NavLink>
                 </div>
               </div>
@@ -160,15 +166,17 @@ export function SiteLayout() {
       <main>
         <Outlet />
       </main>
-      <div ref={footerSentinelRef}>
-        {shouldRenderFooter ? (
-          <Suspense fallback={<div className="h-screen bg-[var(--background)]" />}>
-            <CinematicFooter />
-          </Suspense>
-        ) : (
-          <div className="h-screen bg-[var(--background)]" aria-hidden="true" />
-        )}
-      </div>
+      {!isBookingPage && (
+        <div ref={footerSentinelRef}>
+          {shouldRenderFooter ? (
+            <Suspense fallback={<div className="h-screen bg-[var(--background)]" />}>
+              <CinematicFooter />
+            </Suspense>
+          ) : (
+            <div className="h-screen bg-[var(--background)]" aria-hidden="true" />
+          )}
+        </div>
+      )}
     </div>
   )
 }

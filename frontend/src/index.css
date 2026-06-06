@@ -258,7 +258,43 @@ a {
   --sparkles-color: #d6e0ed;
 }
 
+.booking-page {
+  --background: #ffffff;
+  --foreground: #30373f;
+  --muted: #64748b;
+  --muted-foreground: #64748b;
+  --primary: #587d9f;
+  --primary-foreground: #d6e0ed;
+  --brand: #587d9f;
+  --brand-2: #d6e0ed;
+  --surface: #ffffff;
+  --surface-2: #f4f8fc;
+  --line: rgba(48, 55, 63, 0.16);
+  --section: #ffffff;
+  --section-strong: #ffffff;
+  --gradient-color: #587d9f;
+  --sparkles-color: #d6e0ed;
+}
+
 :root.dark .projects-page {
+  --background: #000000;
+  --foreground: #d6e0ed;
+  --muted: #a9b8c8;
+  --muted-foreground: #a9b8c8;
+  --primary: #d6e0ed;
+  --primary-foreground: #30373f;
+  --brand: #d6e0ed;
+  --brand-2: #587d9f;
+  --surface: #080a0d;
+  --surface-2: #11161b;
+  --line: rgba(214, 224, 237, 0.18);
+  --section: #000000;
+  --section-strong: #000000;
+  --gradient-color: #587d9f;
+  --sparkles-color: #d6e0ed;
+}
+
+:root.dark .booking-page {
   --background: #000000;
   --foreground: #d6e0ed;
   --muted: #a9b8c8;

@@ -1,22 +1,37 @@
 <?php
 
 use App\Http\Controllers\Api\BakhtechApiController;
+use App\Http\Controllers\Api\BookingCmsController;
 use App\Http\Middleware\RequireAdminToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [BakhtechApiController::class, 'health']);
+Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/admin/login', [BakhtechApiController::class, 'login']);
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
+Route::get('/booking/event-types', [BakhtechApiController::class, 'bookingEventTypes']);
+Route::get('/booking/calendars', [BakhtechApiController::class, 'bookingCalendars']);
+Route::get('/booking/calendars/{slug}', [BakhtechApiController::class, 'bookingCalendar']);
+Route::get('/booking/event-types/{slug}/availability', [BakhtechApiController::class, 'bookingAvailability']);
+Route::post('/booking/bookings', [BakhtechApiController::class, 'bookPublicAppointment']);
+Route::post('/booking/payments/paystack/initialize', [BookingCmsController::class, 'initializePaystackPayment'])->middleware('throttle:20,1');
+Route::post('/booking/payments/paystack/verify', [BookingCmsController::class, 'verifyPaystackPayment'])->middleware('throttle:30,1');
+Route::get('/booking/google/callback', [BookingCmsController::class, 'googleCallback'])->middleware('throttle:20,1');
 Route::post('/visits', [BakhtechApiController::class, 'trackVisit']);
 
 Route::middleware(RequireAdminToken::class)->group(function () {
+    Route::get('/auth/me', [BakhtechApiController::class, 'me']);
+    Route::post('/auth/logout', fn () => response()->noContent());
+
     Route::get('/admin/me', [BakhtechApiController::class, 'me']);
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::post('/admin/pages', [BakhtechApiController::class, 'createPage']);
     Route::put('/admin/pages/{id}', [BakhtechApiController::class, 'updatePage']);
+    Route::delete('/admin/pages/{id}', [BakhtechApiController::class, 'deletePage']);
     Route::post('/admin/posts', [BakhtechApiController::class, 'createPost']);
     Route::put('/admin/posts/{id}', [BakhtechApiController::class, 'updatePost']);
     Route::delete('/admin/posts/{id}', [BakhtechApiController::class, 'deletePost']);
@@ -32,4 +47,39 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/projects', [BakhtechApiController::class, 'createProject']);
     Route::put('/admin/projects/{id}', [BakhtechApiController::class, 'updateProject']);
     Route::delete('/admin/projects/{id}', [BakhtechApiController::class, 'deleteProject']);
+
+    Route::prefix('/admin/booking')->middleware('throttle:60,1')->group(function () {
+        Route::get('/dashboard/overview', [BookingCmsController::class, 'overview']);
+        Route::get('/calendar-view', [BookingCmsController::class, 'calendarView']);
+        Route::get('/activity', [BookingCmsController::class, 'activity']);
+
+        Route::get('/calendars', [BookingCmsController::class, 'calendars']);
+        Route::get('/calendars/{id}', [BookingCmsController::class, 'calendar']);
+        Route::post('/calendars', [BookingCmsController::class, 'createCalendar'])->middleware('admin.role:manager');
+        Route::put('/calendars/{id}', [BookingCmsController::class, 'updateCalendar'])->middleware('admin.role:manager');
+        Route::delete('/calendars/{id}', [BookingCmsController::class, 'deleteCalendar'])->middleware('admin.role:admin');
+
+        Route::get('/event-types', [BookingCmsController::class, 'eventTypes']);
+        Route::post('/event-types', [BookingCmsController::class, 'createEventType'])->middleware('admin.role:manager');
+        Route::put('/event-types/{id}', [BookingCmsController::class, 'updateEventType'])->middleware('admin.role:manager');
+
+        Route::get('/bookings', [BookingCmsController::class, 'bookings']);
+        Route::get('/bookings/{id}', [BookingCmsController::class, 'booking']);
+        Route::post('/bookings', [BookingCmsController::class, 'createBooking'])->middleware('admin.role:staff');
+        Route::put('/bookings/{id}', [BookingCmsController::class, 'updateBooking'])->middleware('admin.role:staff');
+        Route::put('/bookings/{id}/status', [BookingCmsController::class, 'updateBookingStatus'])->middleware('admin.role:staff');
+        Route::post('/bookings/{id}/reschedule', [BookingCmsController::class, 'rescheduleBooking'])->middleware('admin.role:staff');
+        Route::post('/bookings/{id}/cancel', [BookingCmsController::class, 'cancelBooking'])->middleware('admin.role:staff');
+
+        Route::get('/availability', [BookingCmsController::class, 'availability']);
+        Route::post('/availability', [BookingCmsController::class, 'saveAvailability'])->middleware('admin.role:manager');
+        Route::post('/availability/blackouts', [BookingCmsController::class, 'createBlackout'])->middleware('admin.role:manager');
+        Route::post('/availability/check', [BookingCmsController::class, 'checkAvailability']);
+
+        Route::get('/settings', [BookingCmsController::class, 'settings']);
+        Route::put('/settings', [BookingCmsController::class, 'updateSettings'])->middleware('admin.role:admin');
+        Route::get('/google/oauth-url', [BookingCmsController::class, 'googleOauthUrl'])->middleware('admin.role:admin');
+        Route::get('/google/calendars', [BookingCmsController::class, 'googleCalendars'])->middleware('admin.role:admin');
+        Route::put('/google/calendar', [BookingCmsController::class, 'selectGoogleCalendar'])->middleware('admin.role:admin');
+    });
 });

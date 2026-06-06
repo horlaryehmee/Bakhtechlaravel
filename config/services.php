@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    'google_calendar' => [
+        'calendar_id' => env('GOOGLE_CALENDAR_ID', 'primary'),
+        'access_token' => env('GOOGLE_CALENDAR_ACCESS_TOKEN', ''),
+        'oauth_client_id' => env('GOOGLE_OAUTH_CLIENT_ID', ''),
+        'oauth_client_secret' => env('GOOGLE_OAUTH_CLIENT_SECRET', ''),
+    ],
+
+    'zoom' => [
+        'account_id' => env('ZOOM_ACCOUNT_ID', ''),
+        'client_id' => env('ZOOM_CLIENT_ID', ''),
+        'client_secret' => env('ZOOM_CLIENT_SECRET', ''),
+        'user_id' => env('ZOOM_USER_ID', 'me'),
+    ],
+
+    'paystack' => [
+        'secret_key' => env('PAYSTACK_SECRET_KEY', ''),
+        'public_key' => env('PAYSTACK_PUBLIC_KEY', ''),
+        'callback_url' => env('PAYSTACK_CALLBACK_URL', ''),
+    ],
+
 ];
