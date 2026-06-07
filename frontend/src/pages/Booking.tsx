@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarCheck, Clock, Loader2, MapPin, ChevronRight, ChevronLeft, Video, Phone, MessageSquare } from "lucide-react";
+import { CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Clock, Globe2, Loader2, MapPin, MessageSquare, MonitorUp, Phone, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { api, ApiError, type Booking, type BookingAvailabilityDay, type BookingEventType, type BookingCalendar, type BookingSlot } from "@/lib/api";
@@ -46,6 +46,47 @@ function formatTime12Hour(timeStr: string) {
   return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
+function detectedBrowserTimezone() {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return timezone && timezone.includes("/") ? timezone : "";
+}
+
+function timezoneOptions(fallback: string) {
+  const detectedTimezone = detectedBrowserTimezone();
+  const common = [
+    detectedTimezone,
+    fallback,
+    "Africa/Lagos",
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Paris",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+  ];
+  const supported = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  return Array.from(new Set([...common, ...supported].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function formatTimezoneLabel(timezone: string) {
+  const now = new Date();
+  const offset = new Intl.DateTimeFormat("en", { timeZone: timezone, timeZoneName: "shortOffset" })
+    .formatToParts(now)
+    .find((part) => part.type === "timeZoneName")?.value.replace("GMT", "UTC") || timezone;
+  return `${timezone.replaceAll("_", " ")} (${offset})`;
+}
+
+function formatTimeInTimezone(value: string, timezone: string, timeFormat: "12h" | "24h") {
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: timeFormat === "12h",
+    timeZone: timezone,
+  }).format(new Date(value));
+}
+
 export function Booking() {
   const { slug } = useParams();
   const [calendar, setCalendar] = useState<BookingCalendar | null>(null);
@@ -62,6 +103,8 @@ export function Booking() {
   const [currentStep, setCurrentStep] = useState(1);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [timeFormat, setTimeFormat] = useState<"12h" | "24h">("12h");
+  const [autoDetectedTimezone] = useState(detectedBrowserTimezone);
+  const [selectedTimezone, setSelectedTimezone] = useState(() => autoDetectedTimezone || "Africa/Lagos");
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +136,7 @@ export function Booking() {
         const calendarResult = result as { calendar: BookingCalendar; eventTypes: BookingEventType[] };
         setCalendar(calendarResult.calendar);
         setSelectedType(result.eventTypes[0] || null);
+        setSelectedTimezone((current) => current || autoDetectedTimezone || calendarResult.calendar.timezone || result.eventTypes[0]?.timezone || "Africa/Lagos");
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Unable to load booking options.");
       } finally {
@@ -104,7 +148,7 @@ export function Booking() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, autoDetectedTimezone]);
 
   useEffect(() => {
     if (!selectedType) return;
@@ -120,7 +164,7 @@ export function Booking() {
       setSelectedDate(null);
 
       try {
-        const result = await api.publicBookingAvailability(eventType.slug);
+        const result = await api.publicBookingAvailability(eventType.slug, undefined, undefined, selectedTimezone);
         if (cancelled) return;
         setAvailability(result.availability);
       } catch (loadError) {
@@ -134,7 +178,7 @@ export function Booking() {
     return () => {
       cancelled = true;
     };
-  }, [selectedType]);
+  }, [selectedType, selectedTimezone]);
 
   const availableDates = useMemo(() => {
     return availability.map((day) => day.date);
@@ -160,7 +204,7 @@ export function Booking() {
     if (enabledMeetingLocations.length > 0 && !fields.some((field) => field.type === "location" || field.key === "location")) {
       fields.push({
         key: "location",
-        label: "Preferred Meeting Platform",
+        label: "Preferred platform/location",
         type: "location",
         enabled: true,
         required: true,
@@ -194,12 +238,12 @@ export function Booking() {
       const result = await api.createPublicBooking({
         eventTypeId: selectedType.id,
         startsAt: selectedSlot.startsAt,
+        timezone: selectedTimezone,
         service: calendar?.name || selectedType.name,
         ...form,
       });
       setConfirmedBooking(result.booking);
       setCurrentStep(4);
-      setForm(emptyForm);
     } catch (saveError) {
       if (saveError instanceof ApiError && saveError.status === 409) {
         setError("That time was just taken. Please choose another slot.");
@@ -244,14 +288,21 @@ export function Booking() {
   const selectedDateShort = selectedDate?.toLocaleDateString("default", { weekday: "short", day: "numeric" }) ?? "";
   const selectedDateLong = selectedDate?.toLocaleDateString("default", { month: "long", day: "numeric", year: "numeric" }) ?? "";
   const selectedSlotEndLabel = selectedSlot && selectedType
-    ? new Date(new Date(selectedSlot.startsAt).getTime() + selectedType.durationMinutes * 60000).toTimeString().slice(0, 5)
+    ? new Date(new Date(selectedSlot.startsAt).getTime() + selectedType.durationMinutes * 60000).toISOString()
     : "";
-  const displaySlotTime = (slot: BookingSlot) => timeFormat === "12h" ? formatTime12Hour(slot.label) : slot.label;
+  const displaySlotTime = (slot: BookingSlot) => formatTimeInTimezone(slot.startsAt, selectedTimezone, timeFormat);
   const displaySelectedRange = selectedSlot
-    ? `${displaySlotTime(selectedSlot)} - ${timeFormat === "12h" ? formatTime12Hour(selectedSlotEndLabel) : selectedSlotEndLabel}`
+    ? `${displaySlotTime(selectedSlot)} - ${formatTimeInTimezone(selectedSlotEndLabel, selectedTimezone, timeFormat)}`
     : "";
+  const calendarTimezone = calendar?.timezone || selectedType?.timezone || "Africa/Lagos";
+  const timezoneChoices = useMemo(() => timezoneOptions(calendarTimezone), [calendarTimezone]);
+  const timezoneHelperText = autoDetectedTimezone
+    ? selectedTimezone === autoDetectedTimezone
+      ? `Auto-detected from your device: ${formatTimezoneLabel(autoDetectedTimezone)}.`
+      : `Auto-detected ${formatTimezoneLabel(autoDetectedTimezone)}. You changed it to ${formatTimezoneLabel(selectedTimezone)}.`
+    : "We could not detect your device timezone, so you can choose it here.";
 
-  function renderBookingSummary(compact = false) {
+  function renderBookingSummary(compact = false, showDescription = true) {
     if (!selectedType) return null;
     return (
       <div className={cn("grid gap-3", compact ? "text-sm" : "")}>
@@ -262,7 +313,7 @@ export function Booking() {
             <span>{selectedType.durationMinutes} Minutes</span>
           </div>
           <div className="flex items-start gap-2">
-            <MapPin className="mt-0.5 h-4 w-4" />
+            <MonitorUp className="mt-0.5 h-4 w-4" />
             <span>{locationSummary}</span>
           </div>
           {selectedSlot && selectedDate ? (
@@ -272,11 +323,11 @@ export function Booking() {
             </div>
           ) : null}
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>{calendar?.timezone || selectedType.timezone || "Africa/Lagos"}</span>
+            <Globe2 className="h-4 w-4" />
+            <span>{formatTimezoneLabel(selectedTimezone)}</span>
           </div>
         </div>
-        {bookingDescription ? <p className="pt-2 leading-7 text-gray-700">{bookingDescription}</p> : null}
+        {showDescription && bookingDescription ? <p className="pt-2 leading-7 text-gray-700">{bookingDescription}</p> : null}
       </div>
     );
   }
@@ -287,7 +338,7 @@ export function Booking() {
     const required = Boolean(question.required);
     const value = form[key] ?? "";
     const updateValue = (nextValue: string) => setForm((current) => ({ ...current, [key]: nextValue }));
-    const inputClass = "h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500";
+    const inputClass = "h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-[var(--brand)]";
 
     if (question.type === "location") {
       return (
@@ -303,7 +354,7 @@ export function Booking() {
                   onClick={() => updateValue(location.id)}
                   className={cn(
                     "flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all",
-                    value === location.id ? "border-blue-600 bg-blue-50 text-blue-600" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    value === location.id ? "border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,var(--surface))] text-[var(--brand)]" : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -320,7 +371,7 @@ export function Booking() {
       return (
         <div key={question.key} className="grid gap-2">
           <label htmlFor={question.key} className="text-xs font-semibold text-gray-700">{label}{required ? "" : " (optional)"}</label>
-          <textarea id={question.key} className="h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" value={value} onChange={(event) => updateValue(event.target.value)} required={required} />
+          <textarea id={question.key} className="h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[var(--brand)]" value={value} onChange={(event) => updateValue(event.target.value)} required={required} />
           {question.helpMessage ? <p className="text-xs text-gray-500">{question.helpMessage}</p> : null}
         </div>
       );
@@ -360,7 +411,7 @@ export function Booking() {
 
   if (loadingBooking) {
     return (
-      <div className="grid min-h-screen place-items-center bg-white px-6 pt-24">
+      <div className="booking-page grid min-h-screen place-items-center bg-[var(--background)] px-6 pt-24 text-[var(--foreground)]">
         <div className="flex items-center gap-3 text-gray-500">
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading booking calendar...
@@ -371,7 +422,7 @@ export function Booking() {
 
   if (!selectedType || !calendar) {
     return (
-      <div className="grid min-h-screen place-items-center bg-white px-6 pt-24 text-center">
+      <div className="booking-page grid min-h-screen place-items-center bg-[var(--background)] px-6 pt-24 text-center text-[var(--foreground)]">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Booking calendar unavailable</h1>
           <p className="mt-3 text-gray-500">{error || "No active booking type has been configured for this calendar."}</p>
@@ -381,11 +432,11 @@ export function Booking() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-8 pt-24">
+      <div className="booking-page min-h-screen bg-[var(--background)] px-4 py-8 pt-24 text-[var(--foreground)]">
       {currentStep === 1 && (
         <div className="mx-auto hidden max-w-7xl overflow-hidden rounded-2xl border border-gray-200 bg-white lg:grid lg:grid-cols-[0.8fr_1fr_0.75fr]">
           <aside className="border-r border-gray-200 p-8">
-            {renderBookingSummary(false)}
+            {renderBookingSummary(false, true)}
           </aside>
 
           <section className="border-r border-gray-200 p-8">
@@ -397,7 +448,7 @@ export function Booking() {
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-gray-500" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}>
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-blue-600" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-[var(--brand)]" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
@@ -416,7 +467,18 @@ export function Booking() {
 
             <div className="mt-8">
               <h4 className="mb-3 text-lg font-black text-gray-900">Timezone</h4>
-              <div className="h-12 rounded-xl border border-gray-200 px-4 py-3 text-gray-700">{calendar.timezone || selectedType.timezone || "Africa/Lagos"}</div>
+              <label className="relative block">
+                <Globe2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <select
+                  className="theme-input h-12 w-full appearance-none rounded-xl pl-11 pr-10 text-sm font-bold outline-none"
+                  value={selectedTimezone}
+                  onChange={(event) => setSelectedTimezone(event.target.value)}
+                >
+                  {timezoneChoices.map((timezone) => <option key={timezone} value={timezone}>{formatTimezoneLabel(timezone)}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+              </label>
+              <p className="mt-2 text-xs font-semibold text-soft">{timezoneHelperText} Times are shown in this timezone. The calendar owner uses {calendarTimezone}.</p>
             </div>
           </section>
 
@@ -424,8 +486,8 @@ export function Booking() {
             <div className="mb-5 flex items-center justify-between">
               <h4 className="text-lg font-black text-gray-900">{selectedDateShort || "Select date"}</h4>
               <div className="rounded-lg border border-gray-200 bg-white p-1 text-xs font-bold">
-                <button type="button" onClick={() => setTimeFormat("12h")} className={cn("rounded-md px-2 py-1", timeFormat === "12h" ? "bg-gray-100 text-gray-900" : "text-gray-500")}>12h</button>
-                <button type="button" onClick={() => setTimeFormat("24h")} className={cn("rounded-md px-2 py-1", timeFormat === "24h" ? "bg-gray-100 text-gray-900" : "text-gray-500")}>24h</button>
+                <button type="button" onClick={() => setTimeFormat("12h")} className={cn("rounded-md px-2 py-1", timeFormat === "12h" ? "bg-[var(--brand)] text-white" : "text-gray-500")}>12h</button>
+                <button type="button" onClick={() => setTimeFormat("24h")} className={cn("rounded-md px-2 py-1", timeFormat === "24h" ? "bg-[var(--brand)] text-white" : "text-gray-500")}>24h</button>
               </div>
             </div>
 
@@ -439,7 +501,7 @@ export function Booking() {
                       setSelectedSlot(slot);
                       setCurrentStep(3);
                     }}
-                    className="h-14 rounded-lg border border-gray-200 bg-white px-5 text-left text-base font-medium text-gray-900 transition hover:border-blue-500 hover:bg-blue-50"
+                    className="h-14 rounded-lg border border-gray-200 bg-white px-5 text-left text-base font-medium text-gray-900 transition hover:border-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_10%,var(--surface))]"
                   >
                     {displaySlotTime(slot)}
                   </button>
@@ -456,7 +518,7 @@ export function Booking() {
 
       {currentStep === 1 && (
         <div className="mx-auto grid max-w-md gap-8 lg:hidden">
-          {renderBookingSummary(true)}
+          {renderBookingSummary(true, false)}
           <div className="grid gap-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-gray-900">
@@ -466,7 +528,7 @@ export function Booking() {
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-gray-500" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}>
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-blue-600" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-[var(--brand)]" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
@@ -482,6 +544,22 @@ export function Booking() {
             ) : (
               <Calendar currentMonth={currentMonth} onMonthChange={setCurrentMonth} availableDates={availableDates} selectedDate={selectedDate} onDateSelect={handleDateSelect} />
             )}
+
+            <div className="grid gap-2">
+              <label className="text-sm font-black text-gray-900">Timezone</label>
+              <label className="relative block">
+                <Globe2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <select
+                  className="theme-input h-12 w-full appearance-none rounded-2xl pl-11 pr-10 text-sm font-bold outline-none"
+                  value={selectedTimezone}
+                  onChange={(event) => setSelectedTimezone(event.target.value)}
+                >
+                  {timezoneChoices.map((timezone) => <option key={timezone} value={timezone}>{formatTimezoneLabel(timezone)}</option>)}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+              </label>
+              <p className="text-xs font-semibold text-soft">{timezoneHelperText}</p>
+            </div>
           </div>
         </div>
       )}
@@ -496,8 +574,8 @@ export function Booking() {
                 {selectedDateShort}
               </button>
               <div className="rounded-lg border border-gray-200 bg-white p-1 text-xs font-bold">
-                <button type="button" onClick={() => setTimeFormat("12h")} className={cn("rounded-md px-2 py-1", timeFormat === "12h" ? "bg-gray-100 text-gray-900" : "text-gray-500")}>12h</button>
-                <button type="button" onClick={() => setTimeFormat("24h")} className={cn("rounded-md px-2 py-1", timeFormat === "24h" ? "bg-gray-100 text-gray-900" : "text-gray-500")}>24h</button>
+                <button type="button" onClick={() => setTimeFormat("12h")} className={cn("rounded-md px-2 py-1", timeFormat === "12h" ? "bg-[var(--brand)] text-white" : "text-gray-500")}>12h</button>
+                <button type="button" onClick={() => setTimeFormat("24h")} className={cn("rounded-md px-2 py-1", timeFormat === "24h" ? "bg-[var(--brand)] text-white" : "text-gray-500")}>24h</button>
               </div>
             </div>
 
@@ -511,7 +589,7 @@ export function Booking() {
                       setSelectedSlot(slot);
                       setCurrentStep(3);
                     }}
-                    className="h-11 rounded border border-gray-200 bg-white px-4 text-left text-sm font-medium text-gray-900 transition hover:border-blue-500 hover:bg-blue-50"
+                    className="h-11 rounded border border-gray-200 bg-white px-4 text-left text-sm font-medium text-gray-900 transition hover:border-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_10%,var(--surface))]"
                   >
                     {displaySlotTime(slot)}
                   </button>
@@ -527,7 +605,7 @@ export function Booking() {
       {currentStep === 3 && selectedSlot && (
         <div className="mx-auto grid max-w-md gap-6 lg:max-w-5xl lg:grid-cols-[0.85fr_1.15fr] lg:overflow-hidden lg:rounded-2xl lg:border lg:border-gray-200">
           <aside className="hidden border-r border-gray-200 p-8 lg:block">
-            {renderBookingSummary(false)}
+            {renderBookingSummary(false, false)}
           </aside>
 
           <div className="grid gap-6 lg:p-8">
@@ -543,7 +621,7 @@ export function Booking() {
             </div>
 
             <div className="lg:hidden">
-              {renderBookingSummary(true)}
+              {renderBookingSummary(true, false)}
             </div>
 
             <form onSubmit={submitBooking} className="grid gap-4">
@@ -555,7 +633,7 @@ export function Booking() {
 
               <Button
                 type="submit"
-                className="h-11 w-full rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                className="h-11 w-full rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))]"
                 disabled={saving || !requiredQuestionsAnswered}
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -582,8 +660,8 @@ export function Booking() {
             </div>
 
             <div className="bg-gray-50 rounded-xl p-4 mb-6 flex items-center gap-4">
-              <div className="bg-blue-100 rounded-lg p-3">
-                <Clock className="h-5 w-5 text-blue-600" />
+              <div className="rounded-lg bg-[color-mix(in_srgb,var(--brand)_12%,var(--surface))] p-3">
+                <Clock className="h-5 w-5 text-[var(--brand)]" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
@@ -610,7 +688,7 @@ export function Booking() {
 
               <Button
                 type="submit"
-                className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white w-full"
+                className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
                 disabled={saving || !requiredQuestionsAnswered}
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -647,8 +725,9 @@ export function Booking() {
                       month: "long",
                       day: "numeric",
                       year: "numeric",
+                      timeZone: confirmedBooking.attendeeTimezone || confirmedBooking.timezone || selectedTimezone,
                     })}{" "}
-                    at {formatTime12Hour(new Date(confirmedBooking.startsAt).toTimeString().slice(0, 5))}
+                    at {formatTimeInTimezone(confirmedBooking.startsAt, confirmedBooking.attendeeTimezone || confirmedBooking.timezone || selectedTimezone, timeFormat)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -663,9 +742,11 @@ export function Booking() {
             </div>
 
             <Button
-              className="h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white w-full"
+              className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
               onClick={() => {
                 setCurrentStep(1);
+                setSelectedDate(null);
+                setSelectedSlot(null);
                 setConfirmedBooking(null);
               }}
             >

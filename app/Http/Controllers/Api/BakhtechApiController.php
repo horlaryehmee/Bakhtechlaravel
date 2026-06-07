@@ -382,6 +382,7 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Booking type not found.'], 404);
         }
 
+        $displayTimezone = $this->validTimezone((string) $request->input('timezone', $eventType->timezone), $eventType->timezone);
         $from = $request->input('from') ? Carbon::parse((string) $request->input('from'), $eventType->timezone) : now($eventType->timezone);
         $to = $request->input('to')
             ? Carbon::parse((string) $request->input('to'), $eventType->timezone)
@@ -389,7 +390,7 @@ class BakhtechApiController extends Controller
 
         return [
             'eventType' => $this->bookingEventTypeShape($eventType),
-            'availability' => $this->availableSlots($eventType, $from, $to),
+            'availability' => $this->availableSlots($eventType, $from, $to, $displayTimezone),
         ];
     }
 
@@ -641,7 +642,8 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Name, valid email, and appointment time are required.'], 422);
         }
 
-        $start = Carbon::parse($startsAt, $eventType->timezone)->setTimezone($eventType->timezone);
+        $attendeeTimezone = $this->validTimezone((string) $request->input('timezone', $eventType->timezone), $eventType->timezone);
+        $start = Carbon::parse($startsAt, $attendeeTimezone)->setTimezone($eventType->timezone);
         $end = $start->copy()->addMinutes((int) $eventType->duration_minutes);
         $minimumStart = now($eventType->timezone)->addHours((int) $eventType->min_notice_hours);
         if (!$adminCreated && $start->lessThan($minimumStart)) {
@@ -656,6 +658,7 @@ class BakhtechApiController extends Controller
 
         $id = DB::table('bookings')->insertGetId([
             'booking_event_type_id' => $eventType->id,
+            'booking_calendar_id' => $eventType->booking_calendar_id ?? null,
             'name' => $name,
             'email' => $email,
             'phone' => trim((string) $request->input('phone', '')),
@@ -664,6 +667,7 @@ class BakhtechApiController extends Controller
             'status' => (string) $request->input('status', 'confirmed'),
             'scheduled_at' => $start->toDateTimeString(),
             'timezone' => $eventType->timezone,
+            ...$this->attendeeTimezonePayload($attendeeTimezone),
             'starts_at' => $start->toDateTimeString(),
             'ends_at' => $end->toDateTimeString(),
             'duration_minutes' => $eventType->duration_minutes,
@@ -734,8 +738,9 @@ class BakhtechApiController extends Controller
         return $fallback;
     }
 
-    private function availableSlots(object $eventType, Carbon $from, Carbon $to): array
+    private function availableSlots(object $eventType, Carbon $from, Carbon $to, ?string $displayTimezone = null): array
     {
+        $displayTimezone = $this->validTimezone($displayTimezone ?: $eventType->timezone, $eventType->timezone);
         $slots = [];
         $cursor = $from->copy()->startOfDay();
         $limit = $to->copy()->endOfDay();
@@ -748,11 +753,13 @@ class BakhtechApiController extends Controller
 
                 while ($slot->copy()->addMinutes((int) $eventType->duration_minutes)->lessThanOrEqualTo($windowEnd)) {
                     if ($slot->greaterThanOrEqualTo($from) && $slot->lessThanOrEqualTo($limit) && $this->slotIsAvailable($eventType, $slot)) {
+                        $displaySlot = $slot->copy()->setTimezone($displayTimezone);
                         $slots[] = [
-                            'date' => $slot->toDateString(),
-                            'time' => $slot->format('H:i'),
-                            'label' => $slot->format('g:i A'),
+                            'date' => $displaySlot->toDateString(),
+                            'time' => $displaySlot->format('H:i'),
+                            'label' => $displaySlot->format('g:i A'),
                             'startsAt' => $slot->toIso8601String(),
+                            'timezone' => $displayTimezone,
                         ];
                     }
                     $slot->addMinutes((int) $eventType->duration_minutes + (int) $eventType->buffer_minutes);
@@ -763,9 +770,19 @@ class BakhtechApiController extends Controller
 
         return collect($slots)->groupBy('date')->map(fn ($items, $date) => [
             'date' => $date,
-            'label' => Carbon::parse($date, $eventType->timezone)->format('D, M j'),
+            'label' => Carbon::parse($date, $displayTimezone)->format('D, M j'),
             'slots' => $items->values(),
         ])->values()->all();
+    }
+
+    private function validTimezone(string $timezone, string $fallback = 'Africa/Lagos'): string
+    {
+        return in_array($timezone, timezone_identifiers_list(), true) ? $timezone : $fallback;
+    }
+
+    private function attendeeTimezonePayload(string $timezone): array
+    {
+        return Schema::hasColumn('bookings', 'attendee_timezone') ? ['attendee_timezone' => $timezone] : [];
     }
 
     private function slotIsAvailable(object $eventType, Carbon $start): bool
@@ -1019,6 +1036,7 @@ class BakhtechApiController extends Controller
             'startsAt' => $row->starts_at ?? ($row->scheduled_at ?: ''),
             'endsAt' => $row->ends_at ?? '',
             'timezone' => $row->timezone ?? '',
+            'attendeeTimezone' => $row->attendee_timezone ?? ($row->timezone ?? ''),
             'durationMinutes' => (int) ($row->duration_minutes ?? 30),
             'locationType' => $row->location_type ?? '',
             'locationValue' => $row->location_value ?? '',

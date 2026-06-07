@@ -443,6 +443,7 @@ class BookingCmsService
             'endsAt' => (string) ($booking->ends_at ?? ''),
             'durationMinutes' => (int) ($booking->duration_minutes ?? 30),
             'timezone' => $booking->timezone ?? '',
+            'attendeeTimezone' => $booking->attendee_timezone ?? ($booking->timezone ?? ''),
             'status' => $booking->status,
             'notes' => $booking->message ?: '',
             'adminRemarks' => $booking->admin_remarks ?? '',
@@ -489,6 +490,7 @@ class BookingCmsService
             'status' => $data['status'] ?? $existing?->status ?? 'pending',
             'scheduled_at' => $start->toDateTimeString(),
             'timezone' => $timezone,
+            ...$this->attendeeTimezonePayload((string) ($data['attendeeTimezone'] ?? $data['timezone'] ?? $existing?->attendee_timezone ?? $timezone)),
             'starts_at' => $start->toDateTimeString(),
             'ends_at' => $end->toDateTimeString(),
             'duration_minutes' => $duration,
@@ -573,6 +575,11 @@ class BookingCmsService
     private function setting(string $key, ?string $fallback = null): ?string
     {
         return DB::table('booking_settings')->where('key', $key)->value('value') ?? $fallback;
+    }
+
+    private function attendeeTimezonePayload(string $timezone): array
+    {
+        return \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'attendee_timezone') ? ['attendee_timezone' => $timezone] : [];
     }
 
     private function resourceShape(object $row): array

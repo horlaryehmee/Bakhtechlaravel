@@ -23,7 +23,7 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #0b1220;
   --border: #dbe4ef;
-  --brand: #1261ff;
+  --brand: #ef4444;
   --brand-2: #12c8a0;
   --surface: #ffffff;
   --surface-2: #f1f5f9;
@@ -58,7 +58,7 @@
   --secondary: #0f1115;
   --secondary-foreground: #f5f8ff;
   --border: rgba(226, 232, 240, 0.14);
-  --brand: #8bb8ff;
+  --brand: #ef4444;
   --brand-2: #67e8cf;
   --surface: #080a0d;
   --surface-2: #11161b;
@@ -259,21 +259,21 @@ a {
 }
 
 .booking-page {
-  --background: #ffffff;
-  --foreground: #30373f;
+  --background: #f8fafc;
+  --foreground: #0b1220;
   --muted: #64748b;
   --muted-foreground: #64748b;
-  --primary: #587d9f;
-  --primary-foreground: #d6e0ed;
-  --brand: #587d9f;
-  --brand-2: #d6e0ed;
+  --primary: #ef4444;
+  --primary-foreground: #ffffff;
+  --brand: #ef4444;
+  --brand-2: #12c8a0;
   --surface: #ffffff;
-  --surface-2: #f4f8fc;
-  --line: rgba(48, 55, 63, 0.16);
-  --section: #ffffff;
+  --surface-2: #f1f5f9;
+  --line: #dbe4ef;
+  --section: #f8fafc;
   --section-strong: #ffffff;
-  --gradient-color: #587d9f;
-  --sparkles-color: #d6e0ed;
+  --gradient-color: #8350e8;
+  --sparkles-color: #8350e8;
 }
 
 :root.dark .projects-page {
@@ -296,20 +296,85 @@ a {
 
 :root.dark .booking-page {
   --background: #000000;
-  --foreground: #d6e0ed;
-  --muted: #a9b8c8;
-  --muted-foreground: #a9b8c8;
-  --primary: #d6e0ed;
-  --primary-foreground: #30373f;
-  --brand: #d6e0ed;
-  --brand-2: #587d9f;
+  --foreground: #f5f8ff;
+  --muted: #b8c3d8;
+  --muted-foreground: #b8c3d8;
+  --primary: #ef4444;
+  --primary-foreground: #ffffff;
+  --brand: #ef4444;
+  --brand-2: #67e8cf;
   --surface: #080a0d;
   --surface-2: #11161b;
-  --line: rgba(214, 224, 237, 0.18);
+  --line: rgba(226, 232, 240, 0.14);
   --section: #000000;
   --section-strong: #000000;
-  --gradient-color: #587d9f;
-  --sparkles-color: #d6e0ed;
+  --gradient-color: #8350e8;
+  --sparkles-color: #ffffff;
+}
+
+.booking-page .bg-white {
+  background-color: var(--surface) !important;
+}
+
+.booking-page .bg-gray-50,
+.booking-page .bg-gray-100,
+.booking-page .bg-gray-200 {
+  background-color: var(--surface-2) !important;
+}
+
+.booking-page .text-gray-900,
+.booking-page .text-gray-800,
+.booking-page .text-gray-700 {
+  color: var(--foreground) !important;
+}
+
+.booking-page .text-gray-600,
+.booking-page .text-gray-500,
+.booking-page .text-gray-400 {
+  color: var(--muted) !important;
+}
+
+.booking-page .border-gray-200 {
+  border-color: var(--line) !important;
+}
+
+.booking-page :is(input, select, textarea) {
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.booking-page :is(input, select, textarea)::placeholder {
+  color: var(--muted);
+}
+
+.booking-page .hover\:bg-gray-50:hover,
+.booking-page .hover\:bg-gray-100:hover,
+.booking-page .hover\:bg-gray-300:hover {
+  background-color: var(--surface-2) !important;
+}
+
+.booking-page .hover\:bg-blue-50:hover,
+.booking-page .bg-blue-50 {
+  background-color: color-mix(in srgb, var(--brand) 10%, var(--surface)) !important;
+}
+
+.booking-page .text-blue-600,
+.booking-page .hover\:text-blue-600:hover {
+  color: var(--brand) !important;
+}
+
+.booking-page .border-blue-600,
+.booking-page .hover\:border-blue-500:hover {
+  border-color: var(--brand) !important;
+}
+
+.booking-page .bg-blue-600 {
+  background-color: var(--brand) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.booking-page .hover\:bg-blue-700:hover {
+  background-color: color-mix(in srgb, var(--brand) 84%, var(--foreground)) !important;
 }
 
 .about-page :is(p, li) {

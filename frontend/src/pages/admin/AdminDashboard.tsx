@@ -41,6 +41,10 @@ import {
   type CmsPage,
   type CmsPost,
   type DashboardData,
+  type InvoiceClient,
+  type InvoiceDocument,
+  type InvoiceItem,
+  type InvoiceOverview,
   type MediaItem,
   type Project,
   type ProjectInput,
@@ -49,7 +53,7 @@ import {
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'users' | 'settings'
+type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
@@ -223,6 +227,55 @@ const emptyReview: ReviewInput = {
   isPublished: true,
 }
 
+const emptyInvoiceItem: InvoiceItem = {
+  name: '',
+  description: '',
+  quantity: 1,
+  unitPrice: 0,
+  discountRate: 0,
+  taxRate: 0,
+}
+
+const emptyInvoiceForm: Partial<InvoiceDocument> & {
+  type: 'invoice' | 'quote' | 'receipt'
+  title: string
+  status: string
+  currency: string
+  exchangeRate: number
+  issueDate: string
+  dueDate: string
+  paymentGateway: string
+  paymentEnabled: boolean
+  notes: string
+  terms: string
+  client: InvoiceClient
+  items: InvoiceItem[]
+  branding: NonNullable<InvoiceDocument['branding']>
+} = {
+  type: 'invoice',
+  title: 'Website project',
+  status: 'draft',
+  currency: 'NGN',
+  exchangeRate: 1,
+  issueDate: new Date().toISOString().slice(0, 10),
+  dueDate: '',
+  paymentGateway: 'paystack',
+  paymentEnabled: true,
+  notes: 'Thank you for your business.',
+  terms: 'Payment is due by the due date.',
+  client: { name: '', email: '', phone: '', companyName: '', address: '' },
+  items: [{ ...emptyInvoiceItem, name: 'Professional service', unitPrice: 0 }],
+  branding: {
+    businessName: 'Bakhtech Solutions',
+    logoUrl: '/bakhtech-logo-light.png',
+    primaryColor: '#ef4444',
+    accentColor: '#12c8a0',
+    email: 'solutions@bakhtech.com.ng',
+    phone: '+234 708 637 2833',
+    address: '',
+  },
+}
+
 const reviewProviders: Array<{ value: ReviewInput['provider']; label: string }> = [
   { value: 'google', label: 'Google' },
   { value: 'trustpilot', label: 'Trustpilot' },
@@ -242,6 +295,7 @@ const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDas
   { id: 'library', label: 'Library', icon: Images },
   { id: 'seo', label: 'SEO', icon: SearchCheck },
   { id: 'bookings', label: 'Bookings', icon: CalendarDays },
+  { id: 'invoices', label: 'Invoices', icon: Wallet },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
@@ -362,6 +416,11 @@ export function AdminDashboard() {
   const [bookingCmsBookings, setBookingCmsBookings] = useState<BookingCmsBooking[]>([])
   const [bookingAvailabilityRules, setBookingAvailabilityRules] = useState<BookingAvailabilityRule[]>([])
   const [bookingCmsSettings, setBookingCmsSettings] = useState<Record<string, string>>({})
+  const [invoiceOverview, setInvoiceOverview] = useState<InvoiceOverview | null>(null)
+  const [invoiceDocuments, setInvoiceDocuments] = useState<InvoiceDocument[]>([])
+  const [invoiceClients, setInvoiceClients] = useState<InvoiceClient[]>([])
+  const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm)
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceDocument | null>(null)
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
   const [editingPageId, setEditingPageId] = useState<number | null>(null)
@@ -395,6 +454,11 @@ export function AdminDashboard() {
   useEffect(() => {
     if (!token || activeSection !== 'bookings') return
     void loadBookingCmsData()
+  }, [token, activeSection])
+
+  useEffect(() => {
+    if (!token || activeSection !== 'invoices') return
+    void loadInvoiceData()
   }, [token, activeSection])
 
   useEffect(() => {
@@ -719,6 +783,21 @@ export function AdminDashboard() {
 
   function updateEditingSettings(section: keyof CalendarSettings, value: CalendarSettings[keyof CalendarSettings]) {
     setEditingCalendar((current) => current ? { ...current, settings: { ...(current.settings ?? defaultCalendarSettings), [section]: value } } : current)
+  }
+
+  async function loadInvoiceData() {
+    try {
+      const [overviewResult, documentsResult, clientsResult] = await Promise.all([
+        api.invoiceOverview(),
+        api.invoiceDocuments(),
+        api.invoiceClients(),
+      ])
+      setInvoiceOverview(overviewResult)
+      setInvoiceDocuments(documentsResult.documents)
+      setInvoiceClients(clientsResult.clients)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load invoices.')
+    }
   }
 
   function normalizeQuestions(formSettings: CalendarSettings['form']): BookingQuestion[] {
@@ -2291,6 +2370,202 @@ export function AdminDashboard() {
     )
   }
 
+  function invoiceMoney(amount: number, currency = 'NGN') {
+    return new Intl.NumberFormat('en', { style: 'currency', currency }).format(Number(amount || 0))
+  }
+
+  function invoicePreviewTotals(items: InvoiceItem[]) {
+    return items.reduce((totals, item) => {
+      const base = Number(item.quantity || 0) * Number(item.unitPrice || 0)
+      const discount = base * (Number(item.discountRate || 0) / 100)
+      const taxable = Math.max(0, base - discount)
+      const tax = taxable * (Number(item.taxRate || 0) / 100)
+      return {
+        subtotal: totals.subtotal + base,
+        discount: totals.discount + discount,
+        tax: totals.tax + tax,
+        total: totals.total + taxable + tax,
+      }
+    }, { subtotal: 0, discount: 0, tax: 0, total: 0 })
+  }
+
+  function updateInvoiceItem(index: number, patch: Partial<InvoiceItem>) {
+    setInvoiceForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  async function editInvoice(document: InvoiceDocument) {
+    const fullDocument = document.id ? (await api.invoiceDocument(document.id)).document : document
+    setEditingInvoice(fullDocument)
+    setInvoiceForm({
+      ...emptyInvoiceForm,
+      ...fullDocument,
+      client: fullDocument.client,
+      items: fullDocument.items.length ? fullDocument.items : emptyInvoiceForm.items,
+      branding: fullDocument.branding,
+      paymentGateway: fullDocument.paymentGateway || 'paystack',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function resetInvoiceForm() {
+    setEditingInvoice(null)
+    setInvoiceForm(emptyInvoiceForm)
+  }
+
+  async function saveInvoiceDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = editingInvoice?.id
+        ? await api.updateInvoiceDocument(editingInvoice.id, invoiceForm)
+        : await api.createInvoiceDocument(invoiceForm)
+      setInvoiceDocuments((current) => {
+        const exists = current.some((item) => item.id === result.document.id)
+        return exists ? current.map((item) => (item.id === result.document.id ? result.document : item)) : [result.document, ...current]
+      })
+      setEditingInvoice(result.document)
+      setInvoiceForm({
+        ...emptyInvoiceForm,
+        ...result.document,
+        client: result.document.client,
+        items: result.document.items,
+        branding: result.document.branding,
+      })
+      notify(`${result.document.type} saved.`)
+      void loadInvoiceData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save document.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function sendInvoiceDocument(document: InvoiceDocument) {
+    if (!document.id) return
+    const result = await api.sendInvoiceDocument(document.id)
+    setInvoiceDocuments((current) => current.map((item) => (item.id === result.document.id ? result.document : item)))
+    notify('Document marked as sent and email activity logged.')
+    void loadInvoiceData()
+  }
+
+  async function copyInvoiceLink(document: InvoiceDocument) {
+    await navigator.clipboard.writeText(`${window.location.origin}${document.publicUrl}`)
+    notify('Public document link copied.')
+  }
+
+  function renderInvoices() {
+    const totals = invoicePreviewTotals(invoiceForm.items)
+    const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR']
+
+    return (
+      <div>
+        <PanelHeader eyebrow="Revenue System" title="Invoice, quote, and receipt management" text="Create branded payment documents, share public links, track views, and optimize payment conversion." />
+
+        <section className="mb-6 grid gap-4 md:grid-cols-4">
+          {[
+            { label: 'Documents', value: invoiceOverview?.totals.documents ?? 0 },
+            { label: 'Clients', value: invoiceClients.length },
+            { label: 'Paid revenue', value: invoiceMoney(invoiceOverview?.revenue.paid ?? 0, invoiceOverview?.revenue.currency ?? 'NGN') },
+            { label: 'Outstanding', value: invoiceMoney(invoiceOverview?.revenue.outstanding ?? 0, invoiceOverview?.revenue.currency ?? 'NGN') },
+            { label: 'View to click', value: `${invoiceOverview?.conversion.viewToPaymentClickRate ?? 0}%` },
+          ].map((metric) => (
+            <article key={metric.label} className="surface-card rounded-2xl p-5">
+              <p className="text-soft text-sm font-bold">{metric.label}</p>
+              <p className="mt-2 text-2xl font-black">{metric.value}</p>
+            </article>
+          ))}
+        </section>
+
+        <form onSubmit={saveInvoiceDocument} className="surface-card mb-6 grid gap-5 rounded-2xl p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-2xl font-black">{editingInvoice ? `Editing ${editingInvoice.number}` : 'Create document'}</h3>
+              <p className="text-soft mt-1 text-sm">Server-side totals protect against invoice tampering.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={resetInvoiceForm}>New</Button>
+              <Button type="submit" className="rounded-xl" disabled={saving}><Save className="h-4 w-4" />{saving ? 'Saving...' : 'Save document'}</Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            <label className="grid gap-2 text-sm font-bold">Type<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.type} onChange={(event) => setInvoiceForm((current) => ({ ...current, type: event.target.value as 'invoice' | 'quote' | 'receipt' }))}><option value="invoice">Invoice</option><option value="quote">Quote</option><option value="receipt">Receipt</option></select></label>
+            <label className="grid gap-2 text-sm font-bold">Status<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.status} onChange={(event) => setInvoiceForm((current) => ({ ...current, status: event.target.value }))}><option value="draft">Draft</option><option value="sent">Sent</option><option value="viewed">Viewed</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option></select></label>
+            <label className="grid gap-2 text-sm font-bold">Currency<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.currency} onChange={(event) => setInvoiceForm((current) => ({ ...current, currency: event.target.value }))}>{currencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
+            <label className="grid gap-2 text-sm font-bold">Gateway<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.paymentGateway} onChange={(event) => setInvoiceForm((current) => ({ ...current, paymentGateway: event.target.value }))}><option value="paystack">Paystack</option><option value="flutterwave">Flutterwave</option><option value="manual">Manual</option></select></label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold">Title<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.title} onChange={(event) => setInvoiceForm((current) => ({ ...current, title: event.target.value }))} /></label>
+            <label className="grid gap-2 text-sm font-bold">Client name<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.client.name} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, name: event.target.value } }))} required /></label>
+            <label className="grid gap-2 text-sm font-bold">Client email<input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="email" value={invoiceForm.client.email} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, email: event.target.value } }))} /></label>
+            <label className="grid gap-2 text-sm font-bold">Company<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.client.companyName ?? ''} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, companyName: event.target.value } }))} /></label>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-black">Line items</h4>
+              <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => setInvoiceForm((current) => ({ ...current, items: [...current.items, { ...emptyInvoiceItem }] }))}><Plus className="h-4 w-4" />Add item</Button>
+            </div>
+            {invoiceForm.items.map((item, index) => (
+              <div key={index} className="grid gap-3 rounded-xl border border-[var(--line)] p-3 md:grid-cols-[1.5fr_0.5fr_0.7fr_0.5fr_0.5fr_auto]">
+                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" placeholder="Item name" value={item.name} onChange={(event) => updateInvoiceItem(index, { name: event.target.value })} required />
+                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Qty" value={item.quantity} onChange={(event) => updateInvoiceItem(index, { quantity: Number(event.target.value) })} />
+                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Price" value={item.unitPrice} onChange={(event) => updateInvoiceItem(index, { unitPrice: Number(event.target.value) })} />
+                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Disc %" value={item.discountRate} onChange={(event) => updateInvoiceItem(index, { discountRate: Number(event.target.value) })} />
+                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Tax %" value={item.taxRate} onChange={(event) => updateInvoiceItem(index, { taxRate: Number(event.target.value) })} />
+                <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--line)] text-red-500" onClick={() => setInvoiceForm((current) => {
+                  const items = current.items.filter((_, itemIndex) => itemIndex !== index)
+                  return { ...current, items: items.length ? items : [{ ...emptyInvoiceItem }] }
+                })}><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
+            <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" value={invoiceForm.notes} onChange={(event) => setInvoiceForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
+            <div className="rounded-xl border border-[var(--line)] p-4 text-sm">
+              <div className="flex justify-between"><span className="text-soft">Subtotal</span><b>{invoiceMoney(totals.subtotal, invoiceForm.currency)}</b></div>
+              <div className="mt-2 flex justify-between"><span className="text-soft">Discount</span><b>{invoiceMoney(totals.discount, invoiceForm.currency)}</b></div>
+              <div className="mt-2 flex justify-between"><span className="text-soft">Tax</span><b>{invoiceMoney(totals.tax, invoiceForm.currency)}</b></div>
+              <div className="mt-3 border-t border-[var(--line)] pt-3 flex justify-between text-lg"><span className="font-black">Total</span><b>{invoiceMoney(totals.total, invoiceForm.currency)}</b></div>
+            </div>
+          </div>
+        </form>
+
+        <section className="grid gap-4">
+          {invoiceDocuments.map((document) => (
+            <article key={document.id ?? document.number} className="surface-card rounded-2xl p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-xl font-black">{document.number}</h3>
+                    <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs font-black uppercase text-soft">{document.type}</span>
+                    <span className={cn('rounded-full px-3 py-1 text-xs font-black uppercase', document.status === 'paid' || document.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-600' : document.status === 'overdue' || document.status === 'rejected' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600')}>{document.status}</span>
+                  </div>
+                  <p className="text-soft mt-1 text-sm">{document.client.name} · {document.title}</p>
+                  <p className="mt-2 text-sm font-black">{invoiceMoney(document.total, document.currency)} · {document.analytics.uniqueViews} unique views · {document.analytics.paymentClicks} payment clicks</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void editInvoice(document)}><Pencil className="h-4 w-4" />Edit</Button>
+                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void copyInvoiceLink(document)}><Link2 className="h-4 w-4" />Copy link</Button>
+                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => window.open(document.publicUrl, '_blank')}><Eye className="h-4 w-4" />View</Button>
+                  <Button type="button" className="rounded-xl" onClick={() => void sendInvoiceDocument(document)}><Upload className="h-4 w-4" />Send</Button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {invoiceDocuments.length === 0 ? <section className="surface-card rounded-2xl p-8 text-center"><p className="text-soft">No invoices yet. Create your first document above.</p></section> : null}
+        </section>
+      </div>
+    )
+  }
+
   function renderUsers() {
     return (
       <div>
@@ -2332,6 +2607,7 @@ export function AdminDashboard() {
     if (activeSection === 'library') return renderLibrary()
     if (activeSection === 'seo') return renderSeo()
     if (activeSection === 'bookings') return renderBookings()
+    if (activeSection === 'invoices') return renderInvoices()
     if (activeSection === 'users') return renderUsers()
     if (activeSection === 'settings') return renderSettings()
     return renderDashboard()

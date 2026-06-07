@@ -24,17 +24,17 @@ const CalendarDay: React.FC<CalendarDayProps> = ({
     <div
       onClick={!isHeader && onClick ? onClick : undefined}
       className={cn(
-        "col-span-1 row-span-1 flex items-center justify-center rounded-xl cursor-pointer transition-all",
-        "h-10 w-full sm:h-12 md:h-14",
-        isHeader && "h-8 cursor-default text-gray-600 text-xs font-semibold py-2",
-        !isHeader && !isAvailable && "text-gray-400 bg-gray-200 cursor-not-allowed",
-        !isHeader && isAvailable && !isSelected && "text-gray-800 bg-gray-200 hover:bg-gray-300",
-        !isHeader && isSelected && "bg-blue-600 text-white"
+        "col-span-1 row-span-1 flex items-center justify-center rounded-2xl cursor-pointer transition-all",
+        "h-11 w-full border text-sm shadow-sm sm:h-12 md:h-14",
+        isHeader && "h-8 cursor-default border-transparent bg-transparent py-2 text-xs font-black text-[var(--muted)] shadow-none",
+        !isHeader && !isAvailable && "cursor-not-allowed border-transparent bg-[var(--surface-2)] text-[var(--muted)] opacity-45 shadow-none",
+        !isHeader && isAvailable && !isSelected && "border-[var(--line)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_9%,var(--surface))] hover:text-[var(--brand)]",
+        !isHeader && isSelected && "border-[var(--brand)] bg-[var(--brand)] text-[var(--primary-foreground)] shadow-[0_16px_34px_rgba(88,125,159,0.22)]"
       )}
     >
       <div className="grid gap-1 items-center justify-center">
         <span className={cn("font-medium", isHeader && "text-sm")}>{day}</span>
-        {isToday && !isSelected && <span className="h-1.5 w-1.5 rounded-full bg-blue-600 mx-auto" />}
+        {isToday && !isSelected && <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] mx-auto" />}
         {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white mx-auto" />}
       </div>
     </div>
@@ -103,7 +103,7 @@ export function Calendar({
   };
 
   return (
-    <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+    <div className="grid grid-cols-7 gap-1.5 rounded-3xl border border-[var(--line)] bg-[var(--surface-2)] p-2 sm:gap-2 sm:p-3">
       {renderCalendarDays()}
     </div>
   );

@@ -118,6 +118,7 @@ export type Booking = {
   startsAt: string
   endsAt: string
   timezone: string
+  attendeeTimezone?: string
   durationMinutes: number
   locationType: string
   locationValue: string
@@ -154,6 +155,7 @@ export type BookingSlot = {
   time: string
   label: string
   startsAt: string
+  timezone?: string
 }
 
 export type BookingAvailabilityDay = {
@@ -165,6 +167,7 @@ export type BookingAvailabilityDay = {
 export type PublicBookingInput = {
   eventTypeId: number
   startsAt: string
+  timezone: string
   name: string
   email: string
   phone: string
@@ -265,6 +268,76 @@ export type BookingCmsOverview = {
   }
   recentActivity: Array<{ id: number; actorName: string; action: string; entityType: string; entityId: number | null; createdAt: string }>
   quickActions: Array<{ key: string; label: string }>
+}
+
+export type InvoiceClient = {
+  id?: number | null
+  name: string
+  email: string
+  phone?: string
+  companyName?: string
+  address?: string
+}
+
+export type InvoiceItem = {
+  id?: number
+  name: string
+  description: string
+  quantity: number
+  unitPrice: number
+  discountRate: number
+  taxRate: number
+  lineTotal?: number
+}
+
+export type InvoiceDocument = {
+  id: number | null
+  type: 'invoice' | 'quote' | 'receipt'
+  number: string
+  title: string
+  publicToken?: string | null
+  publicUrl: string
+  status: string
+  currency: string
+  exchangeRate: number
+  subtotal: number
+  discountTotal: number
+  taxTotal: number
+  total: number
+  amountPaid: number
+  balanceDue: number
+  issueDate: string
+  dueDate: string
+  paymentGateway: string
+  paymentEnabled: boolean
+  notes: string
+  terms: string
+  branding: {
+    businessName: string
+    logoUrl: string
+    primaryColor: string
+    accentColor: string
+    email: string
+    phone: string
+    address: string
+  }
+  client: InvoiceClient
+  items: InvoiceItem[]
+  analytics: {
+    totalViews: number
+    uniqueViews: number
+    paymentClicks: number
+    conversionRate: number
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export type InvoiceOverview = {
+  totals: { documents: number; invoices: number; quotes: number; receipts: number; paid: number; unpaid: number }
+  revenue: { paid: number; outstanding: number; currency: string }
+  conversion: { uniqueViews: number; paymentClicks: number; viewToPaymentClickRate: number }
+  recentEvents: Array<{ id: number; documentId: number; documentNumber: string; documentType: string; eventType: string; deviceType: string; metadata: Record<string, unknown>; createdAt: string }>
 }
 
 export type BookingAvailabilityRule = {
@@ -551,10 +624,11 @@ export const api = {
   publicBookingCalendar(slug: string) {
     return request<{ calendar: BookingCalendar; eventTypes: BookingEventType[] }>(`/api/booking/calendars/${slug}`)
   },
-  publicBookingAvailability(slug: string, from?: string, to?: string) {
+  publicBookingAvailability(slug: string, from?: string, to?: string, timezone?: string) {
     const params = new URLSearchParams()
     if (from) params.set('from', from)
     if (to) params.set('to', to)
+    if (timezone) params.set('timezone', timezone)
     const suffix = params.toString() ? `?${params.toString()}` : ''
     return request<{ eventType: BookingEventType; availability: BookingAvailabilityDay[] }>(`/api/booking/event-types/${slug}/availability${suffix}`)
   },
@@ -620,5 +694,50 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path, referrer: document.referrer }),
     }).catch(() => undefined)
+  },
+  invoiceOverview() {
+    return request<InvoiceOverview>('/api/admin/invoices/overview')
+  },
+  invoiceClients() {
+    return request<{ clients: InvoiceClient[] }>('/api/admin/invoices/clients')
+  },
+  invoiceDocuments() {
+    return request<{ documents: InvoiceDocument[] }>('/api/admin/invoices/documents')
+  },
+  invoiceDocument(id: number) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}`)
+  },
+  createInvoiceDocument(document: Partial<InvoiceDocument>) {
+    return request<{ document: InvoiceDocument }>('/api/admin/invoices/documents', {
+      method: 'POST',
+      body: JSON.stringify(document),
+    })
+  },
+  updateInvoiceDocument(id: number, document: Partial<InvoiceDocument>) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(document),
+    })
+  },
+  sendInvoiceDocument(id: number) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send`, { method: 'POST' })
+  },
+  publicInvoiceDocument(token: string) {
+    return request<{ document: InvoiceDocument }>(`/api/invoices/${token}`)
+  },
+  trackInvoiceEvent(token: string, payload: { eventType: string; sessionId?: string; timeSpentSeconds?: number }) {
+    return request<void>(`/api/invoices/${token}/events`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  decideQuote(token: string, decision: 'accepted' | 'rejected') {
+    return request<{ document: InvoiceDocument }>(`/api/invoices/${token}/quote-decision`, {
+      method: 'POST',
+      body: JSON.stringify({ decision }),
+    })
+  },
+  initializeInvoicePayment(id: number) {
+    return request<{ payment: { reference: string; gateway: string; amount: number; currency: string; authorizationUrl: string } }>(`/api/admin/invoices/documents/${id}/payments/initialize`, { method: 'POST' })
   },
 }
