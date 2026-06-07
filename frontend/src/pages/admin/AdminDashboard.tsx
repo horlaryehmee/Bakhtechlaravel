@@ -42,6 +42,7 @@ import {
   Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { RichTextEditor } from '@/components/RichTextEditor'
 import {
   api,
   ApiError,
@@ -509,6 +510,12 @@ export function AdminDashboard() {
   const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm)
   const [editingInvoice, setEditingInvoice] = useState<InvoiceDocument | null>(null)
   const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [paymentForm, setPaymentForm] = useState({
+    amount: 0,
+    method: '',
+    date: new Date().toISOString().slice(0, 10),
+    notes: ''
+  })
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
@@ -1292,6 +1299,68 @@ export function AdminDashboard() {
     notify('Public document link copied.')
   }
 
+  async function recordInvoicePayment(invoiceId: string, amountPaid: number, paymentMethod: string, paymentDate: string, notes: string) {
+    setSaving(true)
+    setError('')
+    try {
+      // Call payment recording API endpoint
+      const response = await api.post(`/invoices/${invoiceId}/payments`, {
+        amount: amountPaid,
+        method: paymentMethod,
+        date: paymentDate,
+        notes: notes,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Update invoice status to paid if fully paid
+      if (editingInvoice) {
+        const updatedInvoice = {
+          ...editingInvoice,
+          status: amountPaid >= editingInvoice.total ? 'paid' : 'partial',
+          updatedAt: new Date().toISOString()
+        }
+        setEditingInvoice(updatedInvoice)
+      }
+
+      // Generate and send receipt automatically
+      await generateReceiptAndNotify(invoiceId, amountPaid, paymentMethod, paymentDate)
+      
+      notify('Payment recorded successfully. Receipt generated and sent.')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to record payment.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function generateReceiptAndNotify(invoiceId: string, amountPaid: number, paymentMethod: string, paymentDate: string) {
+    try {
+      // Generate receipt
+      const receiptData = {
+        invoiceId,
+        amountPaid,
+        paymentMethod,
+        paymentDate,
+        generatedAt: new Date().toISOString(),
+        businessName: settingsForm.company_name || 'Your Business',
+        businessEmail: settingsForm.company_email || '',
+        businessPhone: settingsForm.company_phone || '',
+      }
+
+      // Send receipt via email and SMS if applicable
+      await api.post(`/invoices/${invoiceId}/send-receipt`, {
+        ...receiptData,
+        sendEmail: true,
+        recipient: editingInvoice?.client.email
+      })
+
+      notify('Receipt sent to client via email.')
+    } catch (error) {
+      console.error('Error generating/sending receipt:', error)
+      setError('Receipt generated but failed to send via email.')
+    }
+  }
+
   async function handleImportFromJSON(file: File) {
     setSaving(true)
     setError('')
@@ -1838,6 +1907,7 @@ export function AdminDashboard() {
 
         <div className="bkinv-form-layout">
           <div className="bkinv-form-main">
+            {/* Client Information */}
             <div className="bkinv-card">
               <div className="bkinv-card-header">
                 <Users className="h-5 w-5" />
@@ -1906,22 +1976,22 @@ export function AdminDashboard() {
                 <h2>Service Details</h2>
               </div>
               <div className="bkinv-card-body grid gap-5">
-                <label className="bkinv-form-group">
+                <div className="bkinv-form-group">
                   <span>Service Overview</span>
-                  <textarea
-                    className="bkinv-textarea min-h-[120px]"
+                  <RichTextEditor
                     value={invoiceForm.notes}
-                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, notes: e.target.value }))}
+                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, notes: value }))}
+                    placeholder="Describe the services you're providing..."
                   />
-                </label>
-                <label className="bkinv-form-group">
+                </div>
+                <div className="bkinv-form-group">
                   <span>Scope of Service</span>
-                  <textarea
-                    className="bkinv-textarea min-h-[150px]"
+                  <RichTextEditor
                     value={invoiceForm.terms}
-                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, terms: e.target.value }))}
+                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, terms: value }))}
+                    placeholder="Detail what's included and what's not..."
                   />
-                </label>
+                </div>
               </div>
             </div>
 
@@ -1931,7 +2001,8 @@ export function AdminDashboard() {
                 <h2>Line Items</h2>
               </div>
               <div className="bkinv-card-body">
-                <div className="overflow-x-auto">
+                {/* Desktop table view */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="bkinv-line-items-table min-w-[920px]">
                     <thead>
                       <tr>
@@ -2030,6 +2101,102 @@ export function AdminDashboard() {
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+
+                {/* Mobile card view with labels */}
+                <div className="md:hidden space-y-4">
+                  {invoiceForm.items.map((item, index) => (
+                    <div key={index} className="bkinv-card-body space-y-3" style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Item Name</label>
+                        <input
+                          className="bkinv-input w-full"
+                          placeholder="Item name"
+                          value={item.name}
+                          onChange={(e) => updateInvoiceItem(index, { name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Description</label>
+                        <textarea
+                          className="bkinv-textarea w-full"
+                          rows={2}
+                          placeholder="Description (optional)"
+                          value={item.description}
+                          onChange={(e) => updateInvoiceItem(index, { description: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Quantity</label>
+                          <input type="number" min="0" step="0.01" className="bkinv-input w-full" placeholder="Qty" value={item.quantity} onChange={(e) => updateInvoiceItem(index, { quantity: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Unit Price</label>
+                          <input type="number" min="0" step="0.01" className="bkinv-input w-full" placeholder="Price" value={item.unitPrice} onChange={(e) => updateInvoiceItem(index, { unitPrice: Number(e.target.value) })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Discount %</label>
+                          <input type="number" min="0" max="100" step="0.01" className="bkinv-input w-full" placeholder="Discount %" value={item.discountRate} onChange={(e) => updateInvoiceItem(index, { discountRate: Number(e.target.value) })} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Tax %</label>
+                          <input type="number" min="0" max="100" step="0.01" className="bkinv-input w-full" placeholder="Tax %" value={item.taxRate} onChange={(e) => updateInvoiceItem(index, { taxRate: Number(e.target.value) })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5">Total</label>
+                          <input className="bkinv-input w-full" readOnly value={invoiceMoney(lineTotal(item), invoiceForm.currency)} />
+                        </div>
+                        <div className="flex items-end justify-end">
+                          <button
+                            type="button"
+                            className="bkinv-btn-icon bkinv-btn-danger h-10 w-10 flex items-center justify-center"
+                            onClick={() => setInvoiceForm(prev => ({
+                              ...prev,
+                              items: prev.items.length > 1 ? prev.items.filter((_, i) => i !== index) : [{ ...emptyInvoiceItem }]
+                            }))}
+                            title="Remove item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    className="bkinv-btn bkinv-btn-secondary w-full"
+                    onClick={() => setInvoiceForm(prev => ({ ...prev, items: [...prev.items, { ...emptyInvoiceItem }] }))}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </Button>
+                </div>
+
+                {/* Totals */}
+                <div className="mt-6 space-y-2 border-t pt-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <strong>{invoiceMoney(totals.subtotal, invoiceForm.currency)}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Total Discount:</span>
+                    <strong>{invoiceMoney(totals.discount, invoiceForm.currency)}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Tax:</span>
+                    <strong>{invoiceMoney(totals.tax, invoiceForm.currency)}</strong>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>TOTAL:</span>
+                    <strong>{invoiceMoney(totals.total, invoiceForm.currency)}</strong>
+                  </div>
                 </div>
                 <p className="mt-3 text-xs text-gray-500">Discounts apply before tax and totals update automatically.</p>
               </div>
@@ -2166,7 +2333,168 @@ export function AdminDashboard() {
                 </div>
               </div>
             </div>
-          </aside>
+
+            {isEdit && editingInvoice && (
+              <>
+                {/* Payment Recording Section */}
+                <div className="bkinv-card">
+                  <div className="bkinv-card-header">
+                    <CreditCard className="h-5 w-5" />
+                    <h2>Record Payment</h2>
+                  </div>
+                  <div className="bkinv-card-body grid gap-4">
+                    <label className="bkinv-form-group">
+                      <span>Amount Paid</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="bkinv-input"
+                        placeholder="0.00"
+                            value={paymentForm.amount}
+                            onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                          />
+                        </label>
+                        <label className="bkinv-form-group">
+                          <span>Payment Method</span>
+                          <select 
+                            className="bkinv-select"
+                            value={paymentForm.method}
+                            onChange={(e) => setPaymentForm(prev => ({ ...prev, method: e.target.value }))}
+                          >
+                            <option value="">Select method</option>
+                            <option value="cash">Cash</option>
+                            <option value="bank-transfer">Bank Transfer</option>
+                            <option value="check">Check</option>
+                            <option value="credit-card">Credit Card</option>
+                            <option value="online">Online Payment</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </label>
+                        <label className="bkinv-form-group">
+                          <span>Payment Date</span>
+                          <input 
+                            type="date" 
+                            className="bkinv-input" 
+                            value={paymentForm.date}
+                            onChange={(e) => setPaymentForm(prev => ({ ...prev, date: e.target.value }))}
+                          />
+                        </label>
+                        <label className="bkinv-form-group">
+                          <span>Notes</span>
+                          <textarea 
+                            className="bkinv-textarea" 
+                            rows={2} 
+                            placeholder="Add payment notes..."
+                            value={paymentForm.notes}
+                            onChange={(e) => setPaymentForm(prev => ({ ...prev, notes: e.target.value }))}
+                          />
+                        </label>
+                        <Button 
+                          type="button" 
+                          className="bkinv-btn bkinv-btn-primary bkinv-btn-block"
+                          disabled={!paymentForm.method || paymentForm.amount <= 0}
+                          onClick={() => {
+                            if (editingInvoice?.id) {
+                              void recordInvoicePayment(
+                                editingInvoice.id,
+                                paymentForm.amount,
+                                paymentForm.method,
+                                paymentForm.date,
+                                paymentForm.notes
+                              )
+                              setPaymentForm({
+                                amount: editingInvoice.total,
+                                method: '',
+                                date: new Date().toISOString().slice(0, 10),
+                                notes: ''
+                              })
+                            }
+                          }}
+                        >
+                          <Save className="h-4 w-4" />
+                          Record Payment & Send Receipt
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Viewing Logs Section */}
+                    <div className="bkinv-card">
+                      <div className="bkinv-card-header">
+                        <Eye className="h-5 w-5" />
+                        <h2>View Logs</h2>
+                      </div>
+                      <div className="bkinv-card-body grid gap-3">
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Device Views</h4>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            <div className="text-xs bg-blue-50 rounded p-2">
+                              <div className="font-semibold flex items-center gap-1">
+                                <span>🇳🇬</span>
+                                <span>Safari on iPhone</span>
+                              </div>
+                              <div className="text-gray-600">Lagos, Nigeria</div>
+                              <div className="text-gray-500">Viewed 2 hours ago</div>
+                              <div className="text-gray-400 text-xs">192.168.1.100</div>
+                            </div>
+                            <div className="text-xs bg-blue-50 rounded p-2">
+                              <div className="font-semibold flex items-center gap-1">
+                                <span>🇺🇸</span>
+                                <span>Chrome on Windows</span>
+                              </div>
+                              <div className="text-gray-600">New York, United States</div>
+                              <div className="text-gray-500">Viewed 5 hours ago</div>
+                              <div className="text-gray-400 text-xs">203.0.113.45</div>
+                            </div>
+                            <div className="text-xs bg-blue-50 rounded p-2">
+                              <div className="font-semibold flex items-center gap-1">
+                                <span>🇬🇧</span>
+                                <span>Firefox on Mac</span>
+                              </div>
+                              <div className="text-gray-600">London, United Kingdom</div>
+                              <div className="text-gray-500">Viewed 1 day ago</div>
+                              <div className="text-gray-400 text-xs">198.51.100.89</div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">Total unique views: <b>3</b></p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email Logs Section */}
+                    <div className="bkinv-card">
+                      <div className="bkinv-card-header">
+                        <Send className="h-5 w-5" />
+                        <h2>Email Logs</h2>
+                      </div>
+                      <div className="bkinv-card-body grid gap-3">
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          <div className="text-xs border-l-2 border-green-500 bg-green-50 rounded p-2">
+                            <div className="font-semibold">Email Sent</div>
+                            <div className="text-gray-600">Sent to: client@example.com</div>
+                            <div className="text-gray-500">Sent: 3 hours ago</div>
+                          </div>
+                          <div className="text-xs border-l-2 border-blue-500 bg-blue-50 rounded p-2">
+                            <div className="font-semibold">Email Opened</div>
+                            <div className="text-gray-600">Opened by recipient</div>
+                            <div className="text-gray-500">Opened: 2 hours ago</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t">
+                          <div>
+                            <div className="text-gray-600">Sent</div>
+                            <div className="font-semibold">1</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600">Opened</div>
+                            <div className="font-semibold">1</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </aside>
         </div>
       </div>
     )

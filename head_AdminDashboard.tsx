@@ -27,6 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { RichTextEditor } from '@/components/RichTextEditor'
 import {
   api,
   ApiError,
@@ -248,6 +249,8 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   paymentEnabled: boolean
   notes: string
   terms: string
+  serviceOverview: string
+  scopeOfService: string
   client: InvoiceClient
   items: InvoiceItem[]
   branding: NonNullable<InvoiceDocument['branding']>
@@ -263,6 +266,8 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   paymentEnabled: true,
   notes: 'Thank you for your business.',
   terms: 'Payment is due by the due date.',
+  serviceOverview: '<p>Overview of the services provided will appear here.</p>',
+  scopeOfService: '<p>Details of what is included in the scope will appear here.</p>',
   client: { name: '', email: '', phone: '', companyName: '', address: '' },
   items: [{ ...emptyInvoiceItem, name: 'Professional service', unitPrice: 0 }],
   branding: {
@@ -2507,28 +2512,78 @@ export function AdminDashboard() {
             <label className="grid gap-2 text-sm font-bold">Company<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.client.companyName ?? ''} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, companyName: event.target.value } }))} /></label>
           </div>
 
+          {/* Service Overview and Scope of Service - Rich Text Editors */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-bold">Service Overview</label>
+              <RichTextEditor
+                value={invoiceForm.serviceOverview || ''}
+                onChange={(value) => setInvoiceForm((current) => ({ ...current, serviceOverview: value }))}
+                placeholder="Describe the services you're providing..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-bold">Scope of Service</label>
+              <RichTextEditor
+                value={invoiceForm.scopeOfService || ''}
+                onChange={(value) => setInvoiceForm((current) => ({ ...current, scopeOfService: value }))}
+                placeholder="Detail what's included and what's not..."
+              />
+            </div>
+          </div>
+
+          {/* Line Items with Better Mobile UX */}
           <div className="grid gap-3">
             <div className="flex items-center justify-between">
               <h4 className="font-black">Line items</h4>
               <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => setInvoiceForm((current) => ({ ...current, items: [...current.items, { ...emptyInvoiceItem }] }))}><Plus className="h-4 w-4" />Add item</Button>
             </div>
             {invoiceForm.items.map((item, index) => (
-              <div key={index} className="grid gap-3 rounded-xl border border-[var(--line)] p-3 md:grid-cols-[1.5fr_0.5fr_0.7fr_0.5fr_0.5fr_auto]">
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" placeholder="Item name" value={item.name} onChange={(event) => updateInvoiceItem(index, { name: event.target.value })} required />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Qty" value={item.quantity} onChange={(event) => updateInvoiceItem(index, { quantity: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Price" value={item.unitPrice} onChange={(event) => updateInvoiceItem(index, { unitPrice: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Disc %" value={item.discountRate} onChange={(event) => updateInvoiceItem(index, { discountRate: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Tax %" value={item.taxRate} onChange={(event) => updateInvoiceItem(index, { taxRate: Number(event.target.value) })} />
-                <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--line)] text-red-500" onClick={() => setInvoiceForm((current) => {
-                  const items = current.items.filter((_, itemIndex) => itemIndex !== index)
-                  return { ...current, items: items.length ? items : [{ ...emptyInvoiceItem }] }
-                })}><Trash2 className="h-4 w-4" /></button>
+              <div key={index} className="grid gap-3 rounded-xl border border-[var(--line)] p-4">
+                {/* Mobile-friendly layout with labels */}
+                <div>
+                  <label className="text-xs font-bold text-soft mb-1 block">Item Name</label>
+                  <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" placeholder="Item name" value={item.name} onChange={(event) => updateInvoiceItem(index, { name: event.target.value })} required />
+                </div>
+                
+                <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+                  <div>
+                    <label className="text-xs font-bold text-soft mb-1 block">Quantity</label>
+                    <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Qty" value={item.quantity} onChange={(event) => updateInvoiceItem(index, { quantity: Number(event.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-soft mb-1 block">Unit Price</label>
+                    <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Price" value={item.unitPrice} onChange={(event) => updateInvoiceItem(index, { unitPrice: Number(event.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-soft mb-1 block">Discount %</label>
+                    <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Disc %" value={item.discountRate} onChange={(event) => updateInvoiceItem(index, { discountRate: Number(event.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-soft mb-1 block">Tax %</label>
+                    <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Tax %" value={item.taxRate} onChange={(event) => updateInvoiceItem(index, { taxRate: Number(event.target.value) })} />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-soft mb-1 block">Description</label>
+                    <input className="theme-input w-full min-h-10 rounded-xl px-3 outline-none" placeholder="Item description" value={item.description || ''} onChange={(event) => updateInvoiceItem(index, { description: event.target.value })} />
+                  </div>
+                  <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--line)] text-red-500 mt-6" onClick={() => setInvoiceForm((current) => {
+                    const items = current.items.filter((_, itemIndex) => itemIndex !== index)
+                    return { ...current, items: items.length ? items : [{ ...emptyInvoiceItem }] }
+                  })}><Trash2 className="h-4 w-4" /></button>
+                </div>
               </div>
             ))}
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
-            <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" value={invoiceForm.notes} onChange={(event) => setInvoiceForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
+            <div className="grid gap-2">
+              <label className="text-sm font-bold">Notes</label>
+              <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" value={invoiceForm.notes} onChange={(event) => setInvoiceForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
+            </div>
             <div className="rounded-xl border border-[var(--line)] p-4 text-sm">
               <div className="flex justify-between"><span className="text-soft">Subtotal</span><b>{invoiceMoney(totals.subtotal, invoiceForm.currency)}</b></div>
               <div className="mt-2 flex justify-between"><span className="text-soft">Discount</span><b>{invoiceMoney(totals.discount, invoiceForm.currency)}</b></div>
