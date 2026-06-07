@@ -1,8 +1,21 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
+    $legacyToken = $request->query('view_invoice')
+        ?: $request->query('view_quote')
+        ?: $request->query('view_receipt')
+        ?: $request->query('bkinv_receipt_pdf');
+
+    if (is_string($legacyToken) && trim($legacyToken) !== '') {
+        $token = rawurlencode(trim($legacyToken));
+        $isPdf = $request->query('download') === 'pdf' || $request->has('bkinv_receipt_pdf');
+
+        return redirect($isPdf ? "/api/invoices/{$token}/pdf" : "/invoice/{$token}");
+    }
+
     $index = public_path('index.html');
 
     if (is_file($index)) {

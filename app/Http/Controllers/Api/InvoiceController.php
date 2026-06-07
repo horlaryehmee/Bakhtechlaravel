@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -197,6 +199,106 @@ class InvoiceController extends Controller
         return ['document' => $this->documentShape($this->publicDocumentRow($token), true, true)];
     }
 
+    public function generateInvoiceFromQuote(Request $request, string $token)
+    {
+        $quote = $this->publicDocumentRow($token);
+        if (!$quote || $quote->type !== 'quote') {
+            return response()->json(['message' => 'Quote not found.'], 404);
+        }
+
+        if (in_array($quote->status, ['rejected', 'cancelled'], true)) {
+            return response()->json(['message' => 'An invoice cannot be generated from a rejected or cancelled quote.'], 422);
+        }
+
+        if (Schema::hasColumn('invoice_documents', 'source_quote_id')) {
+            $existing = DB::table('invoice_documents')
+                ->where('type', 'invoice')
+                ->where('source_quote_id', $quote->id)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($existing) {
+                $this->trackEvent((int) $quote->id, 'invoice.generated_existing_opened', $request, ['invoiceId' => $existing->id]);
+
+                return [
+                    'document' => $this->documentShape($this->documentRow((int) $existing->id), true, true),
+                    'quote' => $this->documentShape($this->publicDocumentRow($token), true, true),
+                    'alreadyGenerated' => true,
+                ];
+            }
+        }
+
+        $invoiceId = DB::transaction(function () use ($quote, $request) {
+            DB::table('invoice_documents')->where('id', $quote->id)->update([
+                'status' => 'accepted',
+                'accepted_at' => $quote->accepted_at ?: now(),
+                'updated_at' => now(),
+            ]);
+
+            $payload = [
+                'client_id' => $quote->client_id,
+                'type' => 'invoice',
+                'number' => $this->nextDocumentNumber('invoice'),
+                'title' => $quote->title ?: 'Invoice from quote ' . $quote->number,
+                'public_token' => (string) Str::uuid(),
+                'status' => 'sent',
+                'currency' => $quote->currency,
+                'exchange_rate' => $quote->exchange_rate,
+                'subtotal' => $quote->subtotal,
+                'discount_total' => $quote->discount_total,
+                'tax_total' => $quote->tax_total,
+                'total' => $quote->total,
+                'amount_paid' => 0,
+                'balance_due' => $quote->total,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(14)->toDateString(),
+                'sent_at' => now(),
+                'payment_gateway' => $quote->payment_gateway,
+                'payment_enabled' => (bool) $quote->payment_enabled,
+                'branding_json' => $quote->branding_json,
+                'notes' => $quote->notes,
+                'terms' => $quote->terms,
+                'created_by' => $quote->created_by,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            if (Schema::hasColumn('invoice_documents', 'source_quote_id')) {
+                $payload['source_quote_id'] = $quote->id;
+            }
+
+            $invoiceId = (int) DB::table('invoice_documents')->insertGetId($payload);
+
+            $items = DB::table('invoice_document_items')->where('document_id', $quote->id)->orderBy('sort_order')->get();
+            foreach ($items as $item) {
+                DB::table('invoice_document_items')->insert([
+                    'document_id' => $invoiceId,
+                    'name' => $item->name,
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'discount_rate' => $item->discount_rate,
+                    'tax_rate' => $item->tax_rate,
+                    'line_total' => $item->line_total,
+                    'sort_order' => $item->sort_order,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $this->trackEvent((int) $quote->id, 'invoice.generated_from_quote', $request, ['invoiceId' => $invoiceId], null, 'anonymous');
+            $this->trackEvent($invoiceId, 'invoice.created_from_quote', $request, ['quoteId' => $quote->id, 'quoteNumber' => $quote->number], null, 'system');
+
+            return $invoiceId;
+        });
+
+        return response()->json([
+            'document' => $this->documentShape($this->documentRow($invoiceId), true, true),
+            'quote' => $this->documentShape($this->publicDocumentRow($token), true, true),
+            'alreadyGenerated' => false,
+        ], 201);
+    }
+
     public function initializePayment(Request $request, int $id)
     {
         $document = $this->documentRow($id);
@@ -247,6 +349,491 @@ class InvoiceController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function importFromJSON(Request $request)
+    {
+        $result = DB::transaction(function () use ($request) {
+            $data = $request->all();
+            $import = $this->normalizeInvoiceImport($data);
+            $documentIdsBySourceId = [];
+            $count = 0;
+
+            foreach ($import['documents'] as $docData) {
+                $number = trim((string) ($docData['number'] ?? $docData['quote_number'] ?? ''));
+                if ($number === '') {
+                    continue;
+                }
+
+                $clientId = $this->saveImportedClient($docData);
+                $items = $docData['line_items'] ?? $docData['items'] ?? [];
+                $totals = $this->importedTotals($docData, $items);
+                $amountPaid = $this->money($docData['amount_paid'] ?? $docData['amountPaid'] ?? 0);
+                $status = $this->importedStatus((string) ($docData['status'] ?? 'draft'), $amountPaid, $totals['total'], (string) ($docData['type'] ?? 'invoice'));
+                $existing = DB::table('invoice_documents')->where('number', $number)->first();
+                $sourceId = $docData['_source_id'] ?? $docData['id'] ?? null;
+
+                $payload = [
+                    'client_id' => $clientId,
+                    'type' => in_array($docData['type'] ?? '', ['quote', 'invoice', 'receipt'], true) ? $docData['type'] : 'invoice',
+                    'number' => $number,
+                    'title' => $docData['title'] ?? ucfirst((string) ($docData['type'] ?? 'invoice')),
+                    'status' => $status,
+                    'currency' => strtoupper(substr((string) ($docData['currency'] ?? 'NGN'), 0, 3)),
+                    'exchange_rate' => (float) ($docData['exchange_rate'] ?? $docData['exchangeRate'] ?? 1),
+                    'subtotal' => $totals['subtotal'],
+                    'discount_total' => $totals['discountTotal'],
+                    'tax_total' => $totals['taxTotal'],
+                    'total' => $totals['total'],
+                    'amount_paid' => $amountPaid,
+                    'balance_due' => max(0, $totals['total'] - $amountPaid),
+                    'issue_date' => $this->dateOrNull($docData['issue_date'] ?? $docData['issueDate'] ?? null) ?: now()->toDateString(),
+                    'due_date' => $this->dateOrNull($docData['due_date'] ?? $docData['dueDate'] ?? $docData['valid_until'] ?? null),
+                    'sent_at' => $this->dateTimeOrNull($docData['sent_at'] ?? null),
+                    'viewed_at' => $this->dateTimeOrNull($docData['viewed_at'] ?? null),
+                    'paid_at' => $this->dateTimeOrNull($docData['paid_at'] ?? null),
+                    'payment_gateway' => $docData['payment_gateway'] ?? $docData['paymentGateway'] ?? null,
+                    'payment_enabled' => !empty($docData['payment_link_url']) || !empty($docData['paymentEnabled']),
+                    'branding_json' => json_encode($this->branding([])),
+                    'notes' => $this->cleanRichText($docData['notes'] ?? $docData['service_overview'] ?? ''),
+                    'terms' => $this->cleanRichText($docData['terms'] ?? $docData['scope_of_service'] ?? ''),
+                    'updated_at' => $this->dateTimeOrNull($docData['updated_at'] ?? $docData['updatedAt'] ?? null) ?: now(),
+                ];
+
+                if (Schema::hasColumn('invoice_documents', 'legacy_client_token')) {
+                    $payload['legacy_client_token'] = $docData['client_token'] ?? $docData['clientToken'] ?? null;
+                }
+
+                if ($existing) {
+                    DB::table('invoice_documents')->where('id', $existing->id)->update($payload);
+                    DB::table('invoice_document_items')->where('document_id', $existing->id)->delete();
+                    $documentId = (int) $existing->id;
+                } else {
+                    $payload['public_token'] = $this->uniqueImportedToken($docData['public_token'] ?? $docData['publicToken'] ?? null);
+                    $payload['created_by'] = $request->attributes->get('admin')->id ?? null;
+                    $payload['created_at'] = $this->dateTimeOrNull($docData['created_at'] ?? $docData['createdAt'] ?? null) ?: now();
+                    $documentId = (int) DB::table('invoice_documents')->insertGetId($payload);
+                }
+
+                if ($sourceId !== null) {
+                    $documentIdsBySourceId[(string) $sourceId] = $documentId;
+                }
+
+                foreach ($items as $index => $itemData) {
+                    $this->insertImportedItem($documentId, $itemData, $index);
+                }
+
+                $count++;
+            }
+
+            $payments = $this->importPayments($import['payments'], $documentIdsBySourceId);
+            $events = $this->importEvents($import['audit_logs'], $documentIdsBySourceId);
+            $emails = $this->importEmailLogs($import['email_logs'], $documentIdsBySourceId);
+
+            return [
+                'documents' => $count,
+                'payments' => $payments,
+                'events' => $events,
+                'emails' => $emails,
+            ];
+        });
+
+        return [
+            'imported' => $result['documents'],
+            'summary' => $result,
+            'message' => "Import completed successfully. {$result['documents']} documents imported.",
+        ];
+    }
+
+    private function normalizeInvoiceImport(array $data): array
+    {
+        $tables = $data['tables'] ?? [];
+        $documents = $tables['bk_quotes'] ?? $data['bk_quotes'] ?? $data['documents'] ?? (isset($data[0]) ? $data : [$data]);
+        $lineItems = $tables['bk_line_items'] ?? $data['bk_line_items'] ?? [];
+        $payments = $tables['bk_payments'] ?? $data['bk_payments'] ?? [];
+        $auditLogs = $tables['bk_audit_logs'] ?? $data['bk_audit_logs'] ?? [];
+        $emailLogs = $tables['bk_email_logs'] ?? $data['bk_email_logs'] ?? [];
+        $itemsByQuote = [];
+
+        foreach ($lineItems as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $quoteId = (string) ($item['quote_id'] ?? $item['document_id'] ?? '');
+            if ($quoteId === '') {
+                continue;
+            }
+            $itemsByQuote[$quoteId][] = $item;
+        }
+
+        $normalized = [];
+        foreach ($documents as $doc) {
+            if (!is_array($doc)) {
+                continue;
+            }
+            $sourceId = $doc['id'] ?? null;
+            if ($sourceId !== null && empty($doc['line_items']) && empty($doc['items']) && isset($itemsByQuote[(string) $sourceId])) {
+                $doc['line_items'] = $itemsByQuote[(string) $sourceId];
+            }
+            $doc['_source_id'] = $sourceId;
+            $doc['number'] = $doc['number'] ?? $doc['quote_number'] ?? null;
+            $normalized[] = $doc;
+        }
+
+        return [
+            'documents' => $normalized,
+            'payments' => is_array($payments) ? $payments : [],
+            'audit_logs' => is_array($auditLogs) ? $auditLogs : [],
+            'email_logs' => is_array($emailLogs) ? $emailLogs : [],
+        ];
+    }
+
+    private function saveImportedClient(array $docData): ?int
+    {
+        $client = $docData['client'] ?? [];
+        $name = trim((string) ($docData['client_name'] ?? $client['name'] ?? 'Imported Client'));
+        $email = trim((string) ($docData['client_email'] ?? $client['email'] ?? ''));
+        $payload = [
+            'name' => $name !== '' ? $name : 'Imported Client',
+            'email' => $email,
+            'phone' => $docData['client_phone'] ?? $client['phone'] ?? '',
+            'company_name' => $docData['client_company'] ?? $client['companyName'] ?? '',
+            'address' => $docData['client_address'] ?? $client['address'] ?? '',
+            'metadata_json' => json_encode(['wordpress_client_id' => $docData['client_id'] ?? null]),
+            'updated_at' => now(),
+        ];
+
+        $existing = $email !== ''
+            ? DB::table('invoice_clients')->where('email', $email)->first()
+            : DB::table('invoice_clients')->where('name', $payload['name'])->first();
+
+        if ($existing) {
+            DB::table('invoice_clients')->where('id', $existing->id)->update($payload);
+            return (int) $existing->id;
+        }
+
+        $payload['created_at'] = now();
+        return (int) DB::table('invoice_clients')->insertGetId($payload);
+    }
+
+    private function importedTotals(array $docData, array $items): array
+    {
+        $subtotal = $this->money($docData['subtotal'] ?? 0);
+        $discountTotal = $this->money($docData['discount_total'] ?? $docData['discountTotal'] ?? 0);
+        $taxTotal = $this->money($docData['tax_total'] ?? $docData['taxTotal'] ?? 0);
+        $total = $this->money($docData['total_amount'] ?? $docData['total'] ?? 0);
+
+        if ($subtotal <= 0 && !empty($items)) {
+            foreach ($items as $item) {
+                $subtotal += $this->money($item['quantity'] ?? 1) * $this->money($item['unit_price'] ?? $item['unitPrice'] ?? 0);
+                $discountTotal += $this->money($item['discount_amount'] ?? 0);
+                $taxTotal += $this->money($item['tax_amount'] ?? 0);
+                $total += $this->money($item['line_total'] ?? 0);
+            }
+        }
+
+        if ($total <= 0) {
+            $total = max(0, $subtotal - $discountTotal + $taxTotal);
+        }
+
+        return [
+            'subtotal' => round($subtotal, 2),
+            'discountTotal' => round($discountTotal, 2),
+            'taxTotal' => round($taxTotal, 2),
+            'total' => round($total, 2),
+        ];
+    }
+
+    private function insertImportedItem(int $documentId, array $itemData, int $index): void
+    {
+        $quantity = $this->money($itemData['quantity'] ?? 1);
+        $unitPrice = $this->money($itemData['unit_price'] ?? $itemData['unitPrice'] ?? 0);
+        $lineTotal = $this->money($itemData['line_total'] ?? 0);
+        $discountRate = 0;
+        $discountType = $itemData['discount_type'] ?? 'fixed';
+        $discountValue = $this->money($itemData['discount_value'] ?? 0);
+
+        if ($discountType === 'percent') {
+            $discountRate = $discountValue;
+        }
+
+        if ($lineTotal <= 0) {
+            $base = $quantity * $unitPrice;
+            $discountAmount = $discountType === 'percent' ? $base * ($discountValue / 100) : $discountValue;
+            $taxAmount = $this->money($itemData['tax_amount'] ?? 0);
+            $lineTotal = max(0, $base - $discountAmount + $taxAmount);
+        }
+
+        DB::table('invoice_document_items')->insert([
+            'document_id' => $documentId,
+            'name' => $itemData['name'] ?? 'Imported item',
+            'description' => $this->cleanRichText($itemData['description'] ?? ''),
+            'quantity' => $quantity,
+            'unit_price' => $unitPrice,
+            'discount_rate' => $discountRate,
+            'tax_rate' => $this->money($itemData['tax_rate'] ?? $itemData['taxRate'] ?? 0),
+            'line_total' => round($lineTotal, 2),
+            'sort_order' => (int) ($itemData['sort_order'] ?? ($index + 1)),
+            'created_at' => $this->dateTimeOrNull($itemData['created_at'] ?? null) ?: now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function importPayments(array $payments, array $documentIdsBySourceId): int
+    {
+        $count = 0;
+        foreach ($payments as $payment) {
+            if (!is_array($payment)) {
+                continue;
+            }
+            $documentId = $documentIdsBySourceId[(string) ($payment['quote_id'] ?? '')] ?? null;
+            if (!$documentId) {
+                continue;
+            }
+            $reference = trim((string) ($payment['reference'] ?? '')) ?: 'WP-PAY-' . ($payment['id'] ?? Str::upper(Str::random(10)));
+            if (DB::table('invoice_payments')->where('reference', $reference)->exists()) {
+                continue;
+            }
+            DB::table('invoice_payments')->insert([
+                'document_id' => $documentId,
+                'gateway' => $payment['gateway'] ?? $payment['method'] ?? 'manual',
+                'reference' => $reference,
+                'amount' => $this->money($payment['amount'] ?? 0),
+                'currency' => strtoupper(substr((string) ($payment['currency'] ?? 'NGN'), 0, 3)),
+                'status' => $payment['status'] ?? 'completed',
+                'authorization_url' => null,
+                'gateway_response_json' => $payment['txn_payload'] ?? null,
+                'paid_at' => ($payment['status'] ?? 'completed') === 'completed' ? ($this->dateTimeOrNull($payment['created_at'] ?? null) ?: now()) : null,
+                'created_at' => $this->dateTimeOrNull($payment['created_at'] ?? null) ?: now(),
+                'updated_at' => now(),
+            ]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function importEvents(array $auditLogs, array $documentIdsBySourceId): int
+    {
+        $count = 0;
+        foreach ($auditLogs as $log) {
+            if (!is_array($log)) {
+                continue;
+            }
+            $documentId = $documentIdsBySourceId[(string) ($log['quote_id'] ?? '')] ?? null;
+            if (!$documentId) {
+                continue;
+            }
+            DB::table('invoice_events')->insert([
+                'document_id' => $documentId,
+                'event_type' => $this->importedEventType((string) ($log['action'] ?? 'document.updated')),
+                'session_id' => null,
+                'actor_type' => !empty($log['user_id']) ? 'owner' : 'anonymous',
+                'actor_id' => $log['user_id'] ?? null,
+                'ip_address' => $log['ip_address'] ?? null,
+                'user_agent' => $log['user_agent'] ?? null,
+                'device_type' => $this->deviceType((string) ($log['user_agent'] ?? '')),
+                'metadata_json' => json_encode([
+                    'description' => $log['description'] ?? '',
+                    'oldValue' => $log['old_value'] ?? null,
+                    'newValue' => $log['new_value'] ?? null,
+                ]),
+                'created_at' => $this->dateTimeOrNull($log['created_at'] ?? null) ?: now(),
+                'updated_at' => now(),
+            ]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function importEmailLogs(array $emailLogs, array $documentIdsBySourceId): int
+    {
+        $count = 0;
+        foreach ($emailLogs as $log) {
+            if (!is_array($log)) {
+                continue;
+            }
+            $documentId = $documentIdsBySourceId[(string) ($log['quote_id'] ?? '')] ?? null;
+            if (!$documentId || empty($log['recipient_email'])) {
+                continue;
+            }
+            DB::table('invoice_email_logs')->insert([
+                'document_id' => $documentId,
+                'recipient_email' => $log['recipient_email'],
+                'subject' => $log['subject'] ?? 'Imported email',
+                'template_key' => $log['template_name'] ?? 'imported',
+                'status' => $log['status'] ?? 'sent',
+                'open_token' => (string) Str::uuid(),
+                'click_token' => (string) Str::uuid(),
+                'sent_at' => $this->dateTimeOrNull($log['sent_at'] ?? null),
+                'opened_at' => $this->dateTimeOrNull($log['opened_at'] ?? null),
+                'created_at' => $this->dateTimeOrNull($log['created_at'] ?? null) ?: now(),
+                'updated_at' => now(),
+            ]);
+            $count++;
+        }
+
+        return $count;
+    }
+
+    private function importedStatus(string $status, float $amountPaid, float $total, string $type): string
+    {
+        $status = strtolower($status);
+        if ($status === 'declined') {
+            return 'rejected';
+        }
+        if ($status === 'partial') {
+            return $amountPaid >= $total && $total > 0 ? 'paid' : 'sent';
+        }
+        if ($type === 'quote' && $status === 'paid') {
+            return 'accepted';
+        }
+
+        return in_array($status, ['draft', 'sent', 'viewed', 'paid', 'overdue', 'accepted', 'rejected', 'cancelled'], true)
+            ? $status
+            : 'draft';
+    }
+
+    private function importedEventType(string $action): string
+    {
+        return match (strtolower($action)) {
+            'viewed' => 'document.viewed',
+            'sent' => 'document.sent',
+            'paid' => 'payment.completed',
+            'accepted' => 'quote.accepted',
+            'declined', 'rejected' => 'quote.rejected',
+            default => 'document.' . preg_replace('/[^a-z0-9_]+/i', '_', strtolower($action)),
+        };
+    }
+
+    private function cleanRichText(mixed $value): string
+    {
+        $text = trim((string) $value);
+        if ($text === '') {
+            return '';
+        }
+
+        for ($i = 0; $i < 3; $i++) {
+            $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($decoded === $text) {
+                break;
+            }
+            $text = $decoded;
+        }
+
+        $text = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', '', $text) ?: '';
+        $text = preg_replace('/\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $text) ?: '';
+        $text = preg_replace('/\s+(href|src)\s*=\s*("|\')?\s*javascript:[^"\'>\s]+("|\')?/i', '', $text) ?: '';
+
+        return trim(strip_tags($text, '<p><br><ul><ol><li><strong><b><em><i><u><h2><h3><h4>'));
+    }
+
+    private function documentPdfHtml(array $document): string
+    {
+        $brand = $document['branding'];
+        $client = $document['client'];
+        $currency = $document['currency'];
+        $formatMoney = fn ($amount) => e($currency . ' ' . number_format((float) $amount, 2));
+        $items = '';
+
+        foreach ($document['items'] as $item) {
+            $items .= '<tr>'
+                . '<td><strong>' . e($item['name']) . '</strong>' . ($item['description'] ? '<div class="muted rich">' . $item['description'] . '</div>' : '') . '</td>'
+                . '<td class="right">' . e((string) $item['quantity']) . '</td>'
+                . '<td class="right">' . $formatMoney($item['unitPrice']) . '</td>'
+                . '<td class="right">' . ((float) $item['discountRate'] > 0 ? e((string) $item['discountRate']) . '%' : 'None') . '</td>'
+                . '<td class="right">' . e((string) $item['taxRate']) . '%</td>'
+                . '<td class="right"><strong>' . $formatMoney($item['lineTotal'] ?? 0) . '</strong></td>'
+                . '</tr>';
+        }
+
+        $notes = $document['notes'] ? '<section><h3>Service Overview</h3><div class="rich">' . $document['notes'] . '</div></section>' : '';
+        $terms = $document['terms'] ? '<section><h3>Terms</h3><div class="rich">' . $document['terms'] . '</div></section>' : '';
+
+        return '<!doctype html><html><head><meta charset="utf-8"><style>
+            @page { margin: 32px; }
+            body { font-family: DejaVu Sans, Arial, sans-serif; color: #18181b; font-size: 12px; line-height: 1.55; }
+            h1,h2,h3,p { margin: 0; }
+            .top { border-bottom: 2px solid #18181b; padding-bottom: 18px; margin-bottom: 22px; }
+            .brand { color: ' . e($brand['primaryColor']) . '; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+            .title { font-size: 30px; line-height: 1.1; margin-top: 7px; }
+            .status { display: inline-block; margin-top: 8px; padding: 4px 9px; border-radius: 20px; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+            .grid { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .grid td { width: 50%; vertical-align: top; padding-right: 18px; }
+            .box { border: 1px solid #e7e5e4; padding: 14px; border-radius: 6px; }
+            .label { color: #71717a; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+            .muted { color: #52525b; }
+            table.items { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            .items th { background: #f5f5f4; color: #52525b; font-size: 10px; text-transform: uppercase; text-align: left; padding: 9px; }
+            .items td { border-bottom: 1px solid #e7e5e4; padding: 10px 9px; vertical-align: top; }
+            .right { text-align: right; }
+            section { margin-top: 20px; }
+            section h3 { color: ' . e($brand['primaryColor']) . '; font-size: 11px; text-transform: uppercase; margin-bottom: 7px; }
+            .rich ul, .rich ol { margin: 6px 0 8px 18px; padding: 0; }
+            .totals { width: 260px; margin-left: auto; margin-top: 20px; border-collapse: collapse; }
+            .totals td { padding: 7px 0; border-bottom: 1px solid #e7e5e4; }
+            .totals .final td { border-bottom: 0; font-size: 16px; font-weight: 700; color: ' . e($brand['primaryColor']) . '; }
+        </style></head><body>
+            <div class="top">
+                <div class="brand">' . e($brand['businessName']) . '</div>
+                <h1 class="title">' . e(ucfirst($document['type'])) . ' #' . e($document['number']) . '</h1>
+                <span class="status">' . e($document['status']) . '</span>
+            </div>
+            <table class="grid"><tr>
+                <td><div class="box"><div class="label">From</div><strong>' . e($brand['businessName']) . '</strong><br><span class="muted">' . e($brand['email']) . '<br>' . e($brand['phone']) . '<br>' . nl2br(e($brand['address'])) . '</span></div></td>
+                <td><div class="box"><div class="label">Prepared For</div><strong>' . e($client['name']) . '</strong><br><span class="muted">' . e($client['companyName']) . '<br>' . e($client['email']) . '<br>' . nl2br(e($client['address'])) . '</span></div></td>
+            </tr></table>
+            ' . $notes . $terms . '
+            <section><h3>Line Items</h3><table class="items"><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Discount</th><th class="right">Tax</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
+            <table class="totals">
+                <tr><td>Subtotal</td><td class="right">' . $formatMoney($document['subtotal']) . '</td></tr>
+                <tr><td>Discount</td><td class="right">' . $formatMoney($document['discountTotal']) . '</td></tr>
+                <tr><td>Tax</td><td class="right">' . $formatMoney($document['taxTotal']) . '</td></tr>
+                <tr class="final"><td>' . ($document['type'] === 'quote' ? 'Total' : 'Balance') . '</td><td class="right">' . $formatMoney($document['type'] === 'quote' ? $document['total'] : $document['balanceDue']) . '</td></tr>
+            </table>
+        </body></html>';
+    }
+
+    private function money(mixed $value): float
+    {
+        return round((float) preg_replace('/[^\d.\-]/', '', (string) $value), 2);
+    }
+
+    private function dateOrNull(mixed $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function dateTimeOrNull(mixed $value): mixed
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function uniqueImportedToken(?string $token): string
+    {
+        $candidate = $token ?: (string) Str::uuid();
+        if (!DB::table('invoice_documents')->where('public_token', $candidate)->exists()) {
+            return $candidate;
+        }
+
+        return (string) Str::uuid();
+    }
+
     public function printablePdf(Request $request, string $token)
     {
         $document = $this->publicDocumentRow($token);
@@ -256,9 +843,21 @@ class InvoiceController extends Controller
 
         $this->trackEvent((int) $document->id, 'pdf.downloaded', $request);
 
-        return response()->json([
-            'message' => 'PDF renderer is ready to wire to Browsershot or DomPDF.',
-            'document' => $this->documentShape($document, true, true),
+        $shape = $this->documentShape($document, true, true);
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($this->documentPdfHtml($shape));
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
+
+        $filename = Str::slug($shape['type'] . '-' . $shape['number']) . '.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 
@@ -322,8 +921,8 @@ class InvoiceController extends Controller
                 'payment_gateway' => $data['paymentGateway'] ?? null,
                 'payment_enabled' => (bool) ($data['paymentEnabled'] ?? false),
                 'branding_json' => json_encode($this->branding($data['branding'] ?? [])),
-                'notes' => $data['notes'] ?? '',
-                'terms' => $data['terms'] ?? '',
+                'notes' => $this->cleanRichText($data['notes'] ?? ''),
+                'terms' => $this->cleanRichText($data['terms'] ?? ''),
                 'updated_at' => now(),
             ];
 
@@ -345,7 +944,7 @@ class InvoiceController extends Controller
                 DB::table('invoice_document_items')->insert([
                     'document_id' => $documentId,
                     'name' => $item['name'],
-                    'description' => $item['description'] ?? '',
+                    'description' => $this->cleanRichText($item['description'] ?? ''),
                     'quantity' => (float) $item['quantity'],
                     'unit_price' => (float) $item['unitPrice'],
                     'discount_rate' => (float) ($item['discountRate'] ?? 0),
@@ -448,7 +1047,13 @@ class InvoiceController extends Controller
         return DB::table('invoice_documents')
             ->leftJoin('invoice_clients', 'invoice_clients.id', '=', 'invoice_documents.client_id')
             ->select('invoice_documents.*', 'invoice_clients.name as client_name', 'invoice_clients.email as client_email', 'invoice_clients.phone as client_phone', 'invoice_clients.company_name as client_company_name', 'invoice_clients.address as client_address')
-            ->where('invoice_documents.public_token', $token)
+            ->where(function ($query) use ($token) {
+                $query->where('invoice_documents.public_token', $token);
+
+                if (Schema::hasColumn('invoice_documents', 'legacy_client_token')) {
+                    $query->orWhere('invoice_documents.legacy_client_token', $token);
+                }
+            })
             ->first();
     }
 
@@ -480,8 +1085,8 @@ class InvoiceController extends Controller
             'dueDate' => (string) ($row->due_date ?? ''),
             'paymentGateway' => $row->payment_gateway ?? '',
             'paymentEnabled' => (bool) $row->payment_enabled,
-            'notes' => $row->notes ?: '',
-            'terms' => $row->terms ?: '',
+            'notes' => $this->cleanRichText($row->notes ?: ''),
+            'terms' => $this->cleanRichText($row->terms ?: ''),
             'branding' => $this->branding(json_decode($row->branding_json ?: '{}', true) ?: []),
             'client' => [
                 'id' => $row->client_id,
@@ -498,8 +1103,33 @@ class InvoiceController extends Controller
                 'paymentClicks' => $paymentClicks,
                 'conversionRate' => (clone $views)->count() > 0 ? round(($paymentClicks / max(1, (clone $views)->count())) * 100, 1) : 0,
             ],
+            'generatedInvoice' => $row->type === 'quote' ? $this->generatedInvoiceShape((int) $row->id) : null,
             'createdAt' => (string) $row->created_at,
             'updatedAt' => (string) $row->updated_at,
+        ];
+    }
+
+    private function generatedInvoiceShape(int $quoteId): ?array
+    {
+        if (!Schema::hasColumn('invoice_documents', 'source_quote_id')) {
+            return null;
+        }
+
+        $invoice = DB::table('invoice_documents')
+            ->where('type', 'invoice')
+            ->where('source_quote_id', $quoteId)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$invoice) {
+            return null;
+        }
+
+        return [
+            'number' => $invoice->number,
+            'publicUrl' => '/invoice/' . $invoice->public_token,
+            'status' => $invoice->status,
+            'total' => (float) $invoice->total,
         ];
     }
 
@@ -508,7 +1138,7 @@ class InvoiceController extends Controller
         return [
             'id' => $row->id,
             'name' => $row->name,
-            'description' => $row->description ?: '',
+            'description' => $this->cleanRichText($row->description ?: ''),
             'quantity' => (float) $row->quantity,
             'unitPrice' => (float) $row->unit_price,
             'discountRate' => (float) $row->discount_rate,

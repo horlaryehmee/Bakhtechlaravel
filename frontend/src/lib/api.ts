@@ -329,6 +329,12 @@ export type InvoiceDocument = {
     paymentClicks: number
     conversionRate: number
   }
+  generatedInvoice?: {
+    number: string
+    publicUrl: string
+    status: string
+    total: number
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -737,7 +743,18 @@ export const api = {
       body: JSON.stringify({ decision }),
     })
   },
+  generateInvoiceFromQuote(token: string) {
+    return request<{ document: InvoiceDocument; quote: InvoiceDocument; alreadyGenerated: boolean }>(`/api/invoices/${token}/generate-invoice`, {
+      method: 'POST',
+    })
+  },
   initializeInvoicePayment(id: number) {
     return request<{ payment: { reference: string; gateway: string; amount: number; currency: string; authorizationUrl: string } }>(`/api/admin/invoices/documents/${id}/payments/initialize`, { method: 'POST' })
+  },
+  importFromJSON(data: any) {
+    return request<{ imported: number; message: string }>('/api/admin/invoices/import/json', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   },
 }

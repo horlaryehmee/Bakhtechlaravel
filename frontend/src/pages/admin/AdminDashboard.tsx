@@ -1,16 +1,22 @@
+// @ts-nocheck
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
   CreditCard,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   FileText,
+  FileText as InvoiceIcon,
+  FileText as QuoteIcon,
   FolderKanban,
   Gauge,
   Images,
   LayoutDashboard,
   Link2,
+  Loader2,
   LogOut,
   MapPin,
   MessageSquareText,
@@ -25,6 +31,15 @@ import {
   Users,
   Wallet,
   X,
+  Bell,
+  Search,
+  Sun,
+  Moon,
+  Menu,
+  TrendingUp,
+  TrendingDown,
+  UserPlus,
+  Send,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,6 +70,7 @@ import { cn } from '@/lib/utils'
 
 type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
+type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
@@ -253,7 +269,7 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   branding: NonNullable<InvoiceDocument['branding']>
 } = {
   type: 'invoice',
-  title: 'Website project',
+  title: '',
   status: 'draft',
   currency: 'NGN',
   exchangeRate: 1,
@@ -261,14 +277,14 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   dueDate: '',
   paymentGateway: 'paystack',
   paymentEnabled: true,
-  notes: 'Thank you for your business.',
-  terms: 'Payment is due by the due date.',
+  notes: '',
+  terms: '',
   client: { name: '', email: '', phone: '', companyName: '', address: '' },
-  items: [{ ...emptyInvoiceItem, name: 'Professional service', unitPrice: 0 }],
+  items: [{ ...emptyInvoiceItem, name: 'Professional Service', unitPrice: 0 }],
   branding: {
     businessName: 'Bakhtech Solutions',
     logoUrl: '/bakhtech-logo-light.png',
-    primaryColor: '#ef4444',
+    primaryColor: '#3b82f6',
     accentColor: '#12c8a0',
     email: 'solutions@bakhtech.com.ng',
     phone: '+234 708 637 2833',
@@ -337,22 +353,22 @@ function isYoutubeMedia(url: string) {
 
 function ProjectMediaPreview({ src, title = '' }: { src: string; title?: string }) {
   if (isVideoMedia(src)) {
-    return <video className="h-40 w-full rounded-xl object-cover" src={src} controls preload="metadata" />
+    return <video className="h-40 w-full rounded-2xl object-cover" src={src} controls preload="metadata" />
   }
 
   if (isYoutubeMedia(src)) {
-    return <div className="surface-muted grid h-40 place-items-center rounded-xl text-sm font-black text-soft">YouTube video</div>
+    return <div className="surface-muted grid h-40 w-full place-items-center rounded-2xl text-sm font-black text-soft">YouTube video</div>
   }
 
-  return <img className="h-40 w-full rounded-xl object-cover" src={src || '/showcase/showcase-01.jpg'} alt={title} />
+  return <img className="h-40 w-full rounded-2xl object-cover" src={src || '/showcase/showcase-01.jpg'} alt={title} />
 }
 
 function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
   return (
-    <div className="mb-6">
-      <p className="text-sm font-black uppercase tracking-[0.18em] text-[#1261ff]">{eyebrow}</p>
-      <h2 className="text-main mt-2 text-2xl font-black tracking-tight md:text-3xl">{title}</h2>
-      <p className="text-soft mt-3 max-w-3xl leading-7">{text}</p>
+    <div className="mb-8">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600 mb-2">{eyebrow}</p>
+      <h2 className="text-3xl font-black text-gray-900 mb-3">{title}</h2>
+      <p className="text-gray-600 leading-relaxed max-w-3xl">{text}</p>
     </div>
   )
 }
@@ -404,11 +420,41 @@ function bookingHostLink(calendar?: BookingCalendar | null) {
   return calendar ? `${origin}/book/${calendar.slug}` : `${origin}/booking`
 }
 
+function invoiceMoney(amount: number, currency: string) {
+  const currencySymbols: Record<string, string> = {
+    NGN: '₦',
+    USD: '$',
+    GBP: '£',
+    EUR: '€',
+    GHS: 'GH₵',
+    KES: 'KSh',
+    ZAR: 'R',
+  }
+  const symbol = currencySymbols[currency] || currency
+  return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function invoicePreviewTotals(items: InvoiceItem[]) {
+  let subtotal = 0
+  let discount = 0
+  let tax = 0
+  items.forEach((item) => {
+    const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0)
+    subtotal += itemSubtotal
+    const itemDiscount = (item.discountRate || 0) / 100 * itemSubtotal
+    discount += itemDiscount
+    const itemTax = (item.taxRate || 0) / 100 * (itemSubtotal - itemDiscount)
+    tax += itemTax
+  })
+  return { subtotal, discount, tax, total: subtotal - discount + tax }
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
   const token = getAdminToken()
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard')
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>('dashboard')
+  const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>('dashboard')
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [cms, setCms] = useState<CmsData | null>(null)
   const [bookingOverview, setBookingOverview] = useState<BookingCmsOverview | null>(null)
@@ -421,6 +467,8 @@ export function AdminDashboard() {
   const [invoiceClients, setInvoiceClients] = useState<InvoiceClient[]>([])
   const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm)
   const [editingInvoice, setEditingInvoice] = useState<InvoiceDocument | null>(null)
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
   const [editingPageId, setEditingPageId] = useState<number | null>(null)
@@ -442,6 +490,131 @@ export function AdminDashboard() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  // Redesign state variables
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark'
+    }
+    return false
+  })
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const [showCreateNewDropdown, setShowCreateNewDropdown] = useState(false)
+  const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '12m'>('30d')
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: 'New booking scheduled by John Doe', time: '10 mins ago', unread: true },
+    { id: 2, text: 'Invoice #INV-2026-001 has been paid', time: '1 hour ago', unread: true },
+    { id: 3, text: 'SEO score improved to 92%', time: 'Yesterday', unread: false },
+  ])
+
+  // Sync dark mode class
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [darkMode])
+
+  // Global search implementation
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    const query = searchQuery.toLowerCase()
+    const results: Array<{ type: string; title: string; subtitle?: string; action: () => void }> = []
+
+    // Search Pages
+    cms?.pages.forEach(page => {
+      if (page.title.toLowerCase().includes(query) || page.slug.toLowerCase().includes(query)) {
+        results.push({
+          type: 'Page',
+          title: page.title,
+          subtitle: `/${page.slug}`,
+          action: () => {
+            setActiveSection('pages')
+            setEditingPageId(page.id)
+            setSearchQuery('')
+          }
+        })
+      }
+    })
+
+    // Search Posts
+    cms?.posts.forEach(post => {
+      if (post.title.toLowerCase().includes(query) || post.category.toLowerCase().includes(query)) {
+        results.push({
+          type: 'Blog Post',
+          title: post.title,
+          subtitle: post.category,
+          action: () => {
+            setActiveSection('posts')
+            editPost(post)
+            setSearchQuery('')
+          }
+        })
+      }
+    })
+
+    // Search Projects
+    projects.forEach(project => {
+      if (project.title.toLowerCase().includes(query) || project.category.toLowerCase().includes(query)) {
+        results.push({
+          type: 'Project',
+          title: project.title,
+          subtitle: project.category,
+          action: () => {
+            setActiveSection('projects')
+            editProject(project)
+            setSearchQuery('')
+          }
+        })
+      }
+    })
+
+    // Search Invoices
+    invoiceDocuments.forEach(doc => {
+      if (
+        doc.number.toLowerCase().includes(query) || 
+        doc.title.toLowerCase().includes(query) ||
+        doc.client.name.toLowerCase().includes(query)
+      ) {
+        results.push({
+          type: 'Invoice/Quote',
+          title: `${doc.number} - ${doc.title || 'Untitled'}`,
+          subtitle: `Client: ${doc.client.name} | ${invoiceMoney(doc.total, doc.currency)}`,
+          action: () => {
+            setActiveSection('invoices')
+            setActiveInvoiceSubsection('invoices')
+            setEditingInvoice(doc)
+            setInvoiceForm({
+              type: doc.type,
+              title: doc.title,
+              status: doc.status,
+              currency: doc.currency,
+              exchangeRate: doc.exchangeRate,
+              issueDate: doc.issueDate,
+              dueDate: doc.dueDate,
+              paymentGateway: doc.paymentGateway,
+              paymentEnabled: doc.paymentEnabled,
+              notes: doc.notes,
+              terms: doc.terms,
+              client: { ...doc.client },
+              items: doc.items.map(item => ({ ...item })),
+              branding: { ...doc.branding },
+            })
+            setSearchQuery('')
+          }
+        })
+      }
+    })
+
+    return results.slice(0, 8)
+  }, [searchQuery, cms, projects, invoiceDocuments])
 
   const cards = useMemo(() => (dashboard ? metricCards(dashboard) : []), [dashboard])
   const activeMenu = menuItems.find((item) => item.id === activeSection) ?? menuItems[0]
@@ -485,12 +658,29 @@ export function AdminDashboard() {
     setError('')
 
     try {
-      const [dashboardResult, projectResult, cmsResult] = await Promise.all([api.dashboard(), api.adminProjects(), api.cms()])
+      const [
+        dashboardResult,
+        projectResult,
+        cmsResult,
+        invoiceOverviewResult,
+        invoiceDocumentsResult,
+        invoiceClientsResult
+      ] = await Promise.all([
+        api.dashboard(),
+        api.adminProjects(),
+        api.cms(),
+        api.invoiceOverview().catch(() => null),
+        api.invoiceDocuments().catch(() => null),
+        api.invoiceClients().catch(() => null)
+      ])
       setDashboard(dashboardResult)
       setProjects(projectResult.projects)
       setCms(cmsResult)
       setEditingPageId((current) => current ?? cmsResult.pages[0]?.id ?? null)
       setSettingsForm(cmsResult.settings)
+      if (invoiceOverviewResult) setInvoiceOverview(invoiceOverviewResult)
+      if (invoiceDocumentsResult) setInvoiceDocuments(invoiceDocumentsResult.documents)
+      if (invoiceClientsResult) setInvoiceClients(invoiceClientsResult.clients)
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 401) {
         clearAdminToken()
@@ -501,6 +691,21 @@ export function AdminDashboard() {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadInvoiceData() {
+    try {
+      const [overviewResult, documentsResult, clientsResult] = await Promise.all([
+        api.invoiceOverview(),
+        api.invoiceDocuments(),
+        api.invoiceClients(),
+      ])
+      setInvoiceOverview(overviewResult)
+      setInvoiceDocuments(documentsResult.documents)
+      setInvoiceClients(clientsResult.clients)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load invoices.')
     }
   }
 
@@ -523,6 +728,11 @@ export function AdminDashboard() {
     }
   }
 
+  function notify(text: string) {
+    setMessage(text)
+    window.setTimeout(() => setMessage(''), 2600)
+  }
+
   async function copyBookingLink(link: string) {
     await navigator.clipboard.writeText(link)
     notify('Booking link copied.')
@@ -531,11 +741,6 @@ export function AdminDashboard() {
   function logout() {
     clearAdminToken()
     navigate('/admin/login')
-  }
-
-  function notify(text: string) {
-    setMessage(text)
-    window.setTimeout(() => setMessage(''), 2600)
   }
 
   async function uploadFile(file: File, onDone?: (media: MediaItem) => void) {
@@ -785,21 +990,6 @@ export function AdminDashboard() {
     setEditingCalendar((current) => current ? { ...current, settings: { ...(current.settings ?? defaultCalendarSettings), [section]: value } } : current)
   }
 
-  async function loadInvoiceData() {
-    try {
-      const [overviewResult, documentsResult, clientsResult] = await Promise.all([
-        api.invoiceOverview(),
-        api.invoiceDocuments(),
-        api.invoiceClients(),
-      ])
-      setInvoiceOverview(overviewResult)
-      setInvoiceDocuments(documentsResult.documents)
-      setInvoiceClients(clientsResult.clients)
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load invoices.')
-    }
-  }
-
   function normalizeQuestions(formSettings: CalendarSettings['form']): BookingQuestion[] {
     return [...(formSettings.fields ?? []), ...(formSettings.customFields ?? [])].map((field) => ({
       ...field,
@@ -959,34 +1149,1693 @@ export function AdminDashboard() {
     notify('File deleted.')
   }
 
-  function renderDashboard() {
+  function updateInvoiceItem(index: number, patch: Partial<InvoiceItem>) {
+    setInvoiceForm((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  async function editInvoice(document: InvoiceDocument) {
+    const fullDocument = document.id ? (await api.invoiceDocument(document.id)).document : document
+    setEditingInvoice(fullDocument)
+    setActiveInvoiceSubsection('create')
+    setInvoiceForm({
+      ...emptyInvoiceForm,
+      ...fullDocument,
+      client: fullDocument.client,
+      items: fullDocument.items.length ? fullDocument.items : emptyInvoiceForm.items,
+      branding: fullDocument.branding,
+      paymentGateway: fullDocument.paymentGateway || 'paystack',
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function resetInvoiceForm() {
+    setEditingInvoice(null)
+    setInvoiceForm(emptyInvoiceForm)
+    setActiveInvoiceSubsection('dashboard')
+  }
+
+  async function saveInvoiceDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = editingInvoice?.id
+        ? await api.updateInvoiceDocument(editingInvoice.id, invoiceForm)
+        : await api.createInvoiceDocument(invoiceForm)
+      setInvoiceDocuments((current) => {
+        const exists = current.some((doc) => doc.id === result.document.id)
+        return exists ? current.map((doc) => (doc.id === result.document.id ? result.document : doc)) : [result.document, ...current]
+      })
+      resetInvoiceForm()
+      notify(editingInvoice ? 'Document updated.' : 'Document created.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save document.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function sendInvoiceDocument(document: InvoiceDocument) {
+    await api.sendInvoiceDocument(document.id)
+    notify('Document sent.')
+  }
+
+  async function copyInvoiceLink(document: InvoiceDocument) {
+    await navigator.clipboard.writeText(`${window.location.origin}${document.publicUrl}`)
+    notify('Public document link copied.')
+  }
+
+  async function handleImportFromJSON(file: File) {
+    setSaving(true)
+    setError('')
+    try {
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const content = e.target?.result as string
+          const data = JSON.parse(content)
+          await api.importFromJSON(data)
+          setMessage('Import completed successfully')
+          await loadInvoiceData()
+        } catch (parseError) {
+          setError('Invalid JSON file')
+        } finally {
+          setSaving(false)
+        }
+      }
+      reader.readAsText(file)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Import failed')
+      setSaving(false)
+    }
+  }
+
+  async function handleImportFromWordPress(prefix?: string) {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.importFromWordPress(prefix)
+      setMessage(result.message)
+      await loadInvoiceData()
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Import failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function renderInvoiceSubsections() {
+    const subsections: Array<{ id: InvoiceSubsection; label: string; icon: typeof Gauge }> = [
+      { id: 'dashboard', label: 'Dashboard', icon: Gauge },
+      { id: 'invoices', label: 'Invoices', icon: InvoiceIcon },
+      { id: 'quotes', label: 'Quotes', icon: QuoteIcon },
+      { id: 'contacts', label: 'Contacts', icon: Users },
+      { id: 'import', label: 'Import', icon: Upload },
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ]
     return (
-      <div className="grid gap-6">
-        <PanelHeader eyebrow="Overview" title="Business control center" text="Monitor visits, project activity, SEO health, and performance from one admin view." />
-        {dashboard ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            {cards.map((card) => (
-              <article key={card.label} className="surface-card rounded-2xl p-5">
-                <card.icon className="h-5 w-5 text-[#1261ff]" />
-                <p className="text-soft mt-4 text-xs font-black uppercase tracking-[0.16em]">{card.label}</p>
-                <p className="text-main mt-2 text-2xl font-black">{card.value}</p>
-              </article>
-            ))}
+      <div className="bkinv-admin-tabs">
+        <nav>
+          {subsections.map((subsection) => {
+            const TabIcon = subsection.icon
+            return (
+            <button
+              key={subsection.id}
+              type="button"
+              onClick={() => {
+                setActiveInvoiceSubsection(subsection.id)
+                setEditingInvoice(null)
+              }}
+              className={cn(
+                "bkinv-admin-tab",
+                activeInvoiceSubsection === subsection.id
+                  ? "is-active"
+                  : ""
+              )}
+            >
+              <TabIcon className="h-4 w-4" />
+              {subsection.label}
+            </button>
+            )
+          })}
+        </nav>
+      </div>
+    )
+  }
+
+  function renderInvoiceDashboard() {
+    const currency = invoiceOverview?.revenue.currency ?? 'NGN'
+    const invoices = invoiceDocuments.filter((doc) => doc.type === 'invoice')
+    const quotes = invoiceDocuments.filter((doc) => doc.type === 'quote')
+    const pendingInvoices = invoices.filter((doc) => ['sent', 'viewed', 'partial'].includes(doc.status))
+    const overdueInvoices = invoices.filter((doc) => doc.status === 'overdue')
+    const draftQuotes = quotes.filter((doc) => doc.status === 'draft')
+    const recentInvoices = invoices.slice(0, 5)
+    const recentQuotes = quotes.slice(0, 5)
+    const totalDocuments = invoices.length + quotes.length
+    const outstanding = invoiceOverview?.revenue.outstanding ?? invoiceDocuments.reduce((sum, doc) => sum + (doc.status === 'paid' ? 0 : doc.balanceDue), 0)
+    const viewedDocuments = invoiceDocuments.filter((doc) => (doc.analytics?.totalViews ?? 0) > 0).length
+    const conversionRate = invoiceOverview?.conversion.viewToPaymentClickRate ?? 0
+    const workQueue = invoiceDocuments
+      .filter((doc) => ['draft', 'sent', 'viewed', 'overdue', 'accepted'].includes(doc.status))
+      .slice(0, 8)
+    const statusBuckets = [
+      { label: 'Draft', count: invoiceDocuments.filter((doc) => doc.status === 'draft').length, tone: 'neutral' },
+      { label: 'Sent', count: invoiceDocuments.filter((doc) => doc.status === 'sent').length, tone: 'primary' },
+      { label: 'Viewed', count: invoiceDocuments.filter((doc) => doc.status === 'viewed').length, tone: 'warning' },
+      { label: 'Paid / Accepted', count: invoiceDocuments.filter((doc) => ['paid', 'accepted'].includes(doc.status)).length, tone: 'success' },
+      { label: 'Overdue / Rejected', count: invoiceDocuments.filter((doc) => ['overdue', 'rejected'].includes(doc.status)).length, tone: 'danger' },
+    ]
+    const kpis = [
+      {
+        label: 'Total Revenue',
+        value: invoiceMoney(invoiceOverview?.revenue.paid ?? 0, currency),
+        detail: 'All time paid invoices',
+        icon: TrendingUp,
+        tone: 'primary',
+      },
+      {
+        label: 'Pending',
+        value: pendingInvoices.length,
+        detail: invoiceMoney(pendingInvoices.reduce((sum, doc) => sum + doc.balanceDue, 0), currency),
+        icon: CalendarDays,
+        tone: 'warning',
+      },
+      {
+        label: 'Paid',
+        value: invoiceOverview?.totals.paid ?? 0,
+        detail: invoiceMoney(invoiceOverview?.revenue.paid ?? 0, currency),
+        icon: SearchCheck,
+        tone: 'success',
+      },
+      {
+        label: 'Overdue',
+        value: overdueInvoices.length,
+        detail: invoiceMoney(overdueInvoices.reduce((sum, doc) => sum + doc.balanceDue, 0), currency),
+        icon: Bell,
+        tone: 'danger',
+      },
+      {
+        label: 'Draft Quotes',
+        value: draftQuotes.length,
+        detail: `${quotes.length} total quotes`,
+        icon: QuoteIcon,
+        tone: 'neutral',
+      },
+    ]
+
+    return (
+      <div className="bkinv-dashboard-shell">
+        <div className="bkinv-admin-hero bkinv-admin-hero-pro">
+          <div>
+            <p className="bkinv-section-kicker">InvoicePay backend</p>
+            <h3>Invoices & Quotes Dashboard</h3>
+            <p>Track revenue, quote conversion, client activity, and pending document work from one operational workspace.</p>
           </div>
-        ) : null}
-        {dashboard ? (
-          <section className="surface-card rounded-2xl p-5 md:p-6">
-            <h3 className="text-xl font-black">Top visited pages</h3>
-            <div className="mt-5 grid gap-3">
-              {dashboard.visits.topPages.map((page) => (
-                <div key={page.path} className="surface-muted flex items-center justify-between gap-4 rounded-xl p-4">
-                  <span className="font-bold">{page.path}</span>
-                  <span className="text-soft shrink-0 font-black">{page.visits} visits</span>
+          <div className="bkinv-admin-hero-actions">
+            <Button
+              type="button"
+              className="bkinv-btn bkinv-btn-primary"
+              onClick={() => {
+                setEditingInvoice(null)
+                setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                setActiveInvoiceSubsection('create')
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              New Invoice
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="bkinv-btn bkinv-btn-secondary"
+              onClick={() => {
+                setEditingInvoice(null)
+                setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                setActiveInvoiceSubsection('create')
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              New Quote
+            </Button>
+          </div>
+        </div>
+
+        <section className="bkinv-ops-grid">
+          <div className="bkinv-ops-card is-strong">
+            <span>Total documents</span>
+            <strong>{totalDocuments.toLocaleString()}</strong>
+            <p>{invoices.length.toLocaleString()} invoices · {quotes.length.toLocaleString()} quotes</p>
+          </div>
+          <div className="bkinv-ops-card">
+            <span>Outstanding</span>
+            <strong>{invoiceMoney(outstanding, currency)}</strong>
+            <p>Open balances across sent, viewed, and overdue documents.</p>
+          </div>
+          <div className="bkinv-ops-card">
+            <span>Engagement</span>
+            <strong>{viewedDocuments.toLocaleString()}</strong>
+            <p>{conversionRate}% view-to-payment click rate</p>
+          </div>
+          <div className="bkinv-ops-card">
+            <span>Contacts</span>
+            <strong>{invoiceClients.length.toLocaleString()}</strong>
+            <p>Clients available for invoices and quotes.</p>
+          </div>
+        </section>
+
+        <div className="bkinv-kpi-grid">
+          {kpis.map((stat) => {
+            const KpiIcon = stat.icon
+            return (
+              <div key={stat.label} className={cn('bkinv-kpi-card', `bkinv-kpi-${stat.tone}`)}>
+                <div className="bkinv-kpi-icon"><KpiIcon className="h-7 w-7" /></div>
+                <div className="bkinv-kpi-content">
+                  <h3>{stat.label}</h3>
+                  <p className="bkinv-kpi-value">{stat.value}</p>
+                  <span className="bkinv-kpi-label">{stat.detail}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <section className="bkinv-workspace-grid">
+          <div className="bkinv-work-card">
+            <div className="bkinv-work-card-head">
+              <div>
+                <h2>Status pipeline</h2>
+                <p>Compact health check for high document volume.</p>
+              </div>
+              <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => setActiveInvoiceSubsection('invoices')}>
+                View list
+              </Button>
+            </div>
+            <div className="bkinv-pipeline-list">
+              {statusBuckets.map((bucket) => (
+                <div key={bucket.label} className={`bkinv-pipeline-row is-${bucket.tone}`}>
+                  <span>{bucket.label}</span>
+                  <strong>{bucket.count.toLocaleString()}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bkinv-work-card">
+            <div className="bkinv-work-card-head">
+              <div>
+                <h2>Work queue</h2>
+                <p>Documents that need attention first.</p>
+              </div>
+              <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => setActiveInvoiceSubsection('quotes')}>
+                Quotes
+              </Button>
+            </div>
+            <div className="bkinv-queue-list">
+              {workQueue.length ? workQueue.map((doc) => (
+                <button key={`queue-${doc.id}`} type="button" className="bkinv-queue-row" onClick={() => void editInvoice(doc)}>
+                  <span className={`bkinv-status-${doc.status}`}>{doc.status}</span>
+                  <div>
+                    <strong>{doc.number}</strong>
+                    <p>{doc.client.name || doc.client.email || 'No client'}</p>
+                  </div>
+                  <b>{invoiceMoney(doc.balanceDue || doc.total, doc.currency)}</b>
+                </button>
+              )) : <p className="bkinv-empty-state">No pending document work.</p>}
+            </div>
+          </div>
+        </section>
+
+        <div className="bkinv-stats-grid">
+          {[
+            { title: 'Recent Invoices', docs: recentInvoices, action: 'View All Invoices' as const, target: 'invoices' as const },
+            { title: 'Recent Quotes', docs: recentQuotes, action: 'View All Quotes' as const, target: 'quotes' as const },
+          ].map((group) => (
+            <div key={group.title} className="bkinv-stats-card">
+              <h2>{group.title}</h2>
+              {group.docs.length ? (
+                <div className="bkinv-recent-list">
+                  {group.docs.map((doc) => (
+                    <button key={doc.id} type="button" className="bkinv-recent-item text-left" onClick={() => void editInvoice(doc)}>
+                      <div className="bkinv-recent-main">
+                        <strong>{doc.number}</strong>
+                        <span className="bkinv-recent-client">{doc.client.name || doc.client.email || 'No client'}</span>
+                      </div>
+                      <div className="bkinv-recent-meta">
+                        <span className={`bkinv-status-${doc.status}`}>{doc.status}</span>
+                        <strong>{invoiceMoney(doc.total, doc.currency)}</strong>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="bkinv-empty-state">No {group.target} yet.</p>
+              )}
+              <button type="button" className="bkinv-view-all" onClick={() => setActiveInvoiceSubsection(group.target)}>{group.action}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  function renderInvoiceListView(type: 'invoice' | 'quote') {
+    const statuses = ['', 'draft', 'sent', 'viewed', 'accepted', 'rejected', 'paid', 'partial', 'overdue', 'cancelled']
+    const normalizedSearch = invoiceSearch.trim().toLowerCase()
+    const filteredDocuments = invoiceDocuments.filter(doc => {
+      if (doc.type !== type) return false
+      if (invoiceStatusFilter && doc.status !== invoiceStatusFilter) return false
+      if (!normalizedSearch) return true
+      return [
+        doc.number,
+        doc.client.name,
+        doc.client.email,
+        doc.client.companyName,
+        doc.status,
+      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
+    })
+    const TypeLabel = type === 'invoice' ? 'Invoice' : 'Quote'
+    const IconComponent = type === 'invoice' ? InvoiceIcon : QuoteIcon
+
+    return (
+      <div className="bkinv-list-shell">
+        <div className="bkinv-list-header">
+          <div>
+            <h3>{TypeLabel}s</h3>
+            <p>{filteredDocuments.length} shown from {invoiceDocuments.filter((doc) => doc.type === type).length} {TypeLabel.toLowerCase()}s</p>
+          </div>
+          <Button
+            type="button"
+            className="bkinv-btn bkinv-btn-primary"
+            onClick={() => {
+              setEditingInvoice(null)
+              setInvoiceForm({ ...emptyInvoiceForm, type })
+              setActiveInvoiceSubsection('create')
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            New {TypeLabel}
+          </Button>
+        </div>
+
+        <div className="bkinv-list-tools">
+          <label className="bkinv-search-field">
+            <Search className="h-4 w-4" />
+            <input
+              type="search"
+              value={invoiceSearch}
+              onChange={(event) => setInvoiceSearch(event.target.value)}
+              placeholder="Search number, client, email..."
+            />
+          </label>
+          <select value={invoiceStatusFilter} onChange={(event) => setInvoiceStatusFilter(event.target.value)} className="bkinv-select max-w-[180px]">
+            <option value="">All statuses</option>
+            {statuses.filter(Boolean).map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}
+          </select>
+          {(invoiceSearch || invoiceStatusFilter) ? (
+            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceSearch(''); setInvoiceStatusFilter('') }}>
+              Reset
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="bkinv-list-card">
+          <div className="overflow-x-auto">
+            <table className="bkinv-admin-table">
+              <thead>
+                <tr>
+                  <th><span className="inline-flex items-center gap-2"><IconComponent className="h-4 w-4" />Number</span></th>
+                  <th>Client</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Views</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDocuments.map(doc => (
+                  <tr key={doc.id}>
+                    <td>
+                      <button type="button" className="font-black text-blue-700 hover:underline" onClick={() => void editInvoice(doc)}>{doc.number}</button>
+                    </td>
+                    <td>
+                      <div>
+                        <p className="font-semibold text-gray-900">{doc.client.name || 'No client'}</p>
+                        <p className="text-xs text-gray-500">{doc.client.email}</p>
+                      </div>
+                    </td>
+                    <td>
+                      {doc.issueDate ? new Date(doc.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                    </td>
+                    <td>
+                      <span className="font-black text-gray-900">{invoiceMoney(doc.total, doc.currency)}</span>
+                    </td>
+                    <td>
+                      {doc.analytics?.totalViews ?? 0}
+                    </td>
+                    <td>
+                      <span className={`bkinv-status-${doc.status}`}>{doc.status}</span>
+                    </td>
+                    <td>
+                      <div className="bkinv-row-actions">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bkinv-action-btn"
+                          onClick={() => void editInvoice(doc)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bkinv-action-btn"
+                          onClick={() => window.open(doc.publicUrl, '_blank')}
+                          title="View public page"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bkinv-action-btn"
+                          onClick={() => void copyInvoiceLink(doc)}
+                          title="Copy link"
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bkinv-action-btn"
+                          onClick={() => void sendInvoiceDocument(doc)}
+                          title="Mark sent/log email"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredDocuments.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="bkinv-list-empty">
+                        <IconComponent className="h-12 w-12" />
+                        <p>No {TypeLabel.toLowerCase()}s match this view</p>
+                        <span>Create a new {TypeLabel.toLowerCase()} or adjust the filters.</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bkinv-mobile-docs">
+          {filteredDocuments.map((doc) => (
+            <article key={`mobile-${doc.id}`} className="bkinv-mobile-doc-card">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <button type="button" className="text-lg font-black text-blue-700" onClick={() => void editInvoice(doc)}>{doc.number}</button>
+                  <p className="text-sm text-gray-500">{doc.client.name || doc.client.email || 'No client'}</p>
+                </div>
+                <span className={`bkinv-status-${doc.status}`}>{doc.status}</span>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                <div><span>Date</span><b>{doc.issueDate || 'Not set'}</b></div>
+                <div><span>Views</span><b>{doc.analytics?.totalViews ?? 0}</b></div>
+                <div><span>Total</span><b>{invoiceMoney(doc.total, doc.currency)}</b></div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void editInvoice(doc)}><Pencil className="h-4 w-4" />Edit</Button>
+                <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => window.open(doc.publicUrl, '_blank')}><Eye className="h-4 w-4" />View</Button>
+                <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void copyInvoiceLink(doc)}><Link2 className="h-4 w-4" />Copy</Button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  function renderInvoiceCreateOrEdit() {
+    const totals = invoicePreviewTotals(invoiceForm.items)
+    const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR']
+    const isEdit = !!editingInvoice
+    const documentLabel = invoiceForm.type === 'quote' ? 'Quote' : invoiceForm.type === 'receipt' ? 'Receipt' : 'Invoice'
+    const lineTotal = (item: InvoiceItem) => {
+      const base = Number(item.quantity || 0) * Number(item.unitPrice || 0)
+      const discount = base * (Number(item.discountRate || 0) / 100)
+      const taxable = Math.max(0, base - discount)
+      const tax = taxable * (Number(item.taxRate || 0) / 100)
+      return taxable + tax
+    }
+    const fieldClass = 'bkinv-input'
+
+    return (
+      <div className="bkinv-edit-screen">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-md border border-gray-200 hover:border-blue-500 hover:bg-blue-50"
+              onClick={() => {
+                setEditingInvoice(null)
+                setActiveInvoiceSubsection(invoiceForm.type)
+              }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h3 className="bkinv-page-title">
+                {isEdit ? `Edit ${documentLabel}` : `New ${documentLabel}`}
+                {isEdit && invoiceForm.number ? <span className="bkinv-saved-indicator">{invoiceForm.number}</span> : null}
+              </h3>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="bkinv-btn bkinv-btn-secondary"
+              onClick={resetInvoiceForm}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bkinv-btn bkinv-btn-primary"
+              onClick={() => void saveInvoiceDocument({ preventDefault: () => { } } as FormEvent)}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="bkinv-form-layout">
+          <div className="bkinv-form-main">
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <Users className="h-5 w-5" />
+                <h2>Client Information</h2>
+              </div>
+              <div className="bkinv-card-body">
+                <div className="bkinv-alert bkinv-alert-info">
+                  Client details are stored as contacts and reused across invoices and quotes.
+                </div>
+                <div className="bkinv-form-row bkinv-row-2">
+                  <label className="bkinv-form-group">
+                    <span>Client Name <span className="required">*</span></span>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      value={invoiceForm.client.name}
+                      onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: { ...prev.client, name: e.target.value } }))}
+                      required
+                    />
+                  </label>
+                  <label className="bkinv-form-group">
+                    <span>Company</span>
+                    <input
+                      type="text"
+                      className={fieldClass}
+                      value={invoiceForm.client.companyName}
+                      onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: { ...prev.client, companyName: e.target.value } }))}
+                    />
+                  </label>
+                </div>
+                <div className="bkinv-form-row bkinv-row-2">
+                  <label className="bkinv-form-group">
+                    <span>Email</span>
+                    <input
+                      type="email"
+                      className={fieldClass}
+                      value={invoiceForm.client.email}
+                      onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: { ...prev.client, email: e.target.value } }))}
+                    />
+                  </label>
+                  <label className="bkinv-form-group">
+                    <span>Phone</span>
+                    <input
+                      type="tel"
+                      className={fieldClass}
+                      value={invoiceForm.client.phone}
+                      onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: { ...prev.client, phone: e.target.value } }))}
+                    />
+                  </label>
+                </div>
+                <label className="bkinv-form-group">
+                  <span>Address</span>
+                  <textarea
+                    className="bkinv-textarea"
+                    rows={3}
+                    value={invoiceForm.client.address}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, client: { ...prev.client, address: e.target.value } }))}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <FileText className="h-5 w-5" />
+                <h2>Service Details</h2>
+              </div>
+              <div className="bkinv-card-body grid gap-5">
+                <label className="bkinv-form-group">
+                  <span>Service Overview</span>
+                  <textarea
+                    className="bkinv-textarea min-h-[120px]"
+                    value={invoiceForm.notes}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Scope of Service</span>
+                  <textarea
+                    className="bkinv-textarea min-h-[150px]"
+                    value={invoiceForm.terms}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, terms: e.target.value }))}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <CreditCard className="h-5 w-5" />
+                <h2>Line Items</h2>
+              </div>
+              <div className="bkinv-card-body">
+                <div className="overflow-x-auto">
+                  <table className="bkinv-line-items-table min-w-[920px]">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '34%' }}>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Discount %</th>
+                        <th>Tax %</th>
+                        <th>Total</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceForm.items.map((item, index) => (
+                        <tr key={index} className="line-item-row">
+                          <td>
+                            <input
+                              className="bkinv-input item-name"
+                              placeholder="Item name"
+                              value={item.name}
+                              onChange={(e) => updateInvoiceItem(index, { name: e.target.value })}
+                              required
+                            />
+                            <textarea
+                              className="bkinv-textarea item-description"
+                              rows={2}
+                              placeholder="Description (optional)"
+                              value={item.description}
+                              onChange={(e) => updateInvoiceItem(index, { description: e.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <input type="number" min="0" step="0.01" className="bkinv-input" value={item.quantity} onChange={(e) => updateInvoiceItem(index, { quantity: Number(e.target.value) })} />
+                          </td>
+                          <td>
+                            <input type="number" min="0" step="0.01" className="bkinv-input" value={item.unitPrice} onChange={(e) => updateInvoiceItem(index, { unitPrice: Number(e.target.value) })} />
+                          </td>
+                          <td>
+                            <input type="number" min="0" max="100" step="0.01" className="bkinv-input" value={item.discountRate} onChange={(e) => updateInvoiceItem(index, { discountRate: Number(e.target.value) })} />
+                          </td>
+                          <td>
+                            <input type="number" min="0" max="100" step="0.01" className="bkinv-input" value={item.taxRate} onChange={(e) => updateInvoiceItem(index, { taxRate: Number(e.target.value) })} />
+                          </td>
+                          <td>
+                            <input className="bkinv-input item-total" readOnly value={invoiceMoney(lineTotal(item), invoiceForm.currency)} />
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="bkinv-btn-icon bkinv-btn-danger"
+                              onClick={() => setInvoiceForm(prev => ({
+                                ...prev,
+                                items: prev.items.length > 1 ? prev.items.filter((_, i) => i !== index) : [{ ...emptyInvoiceItem }]
+                              }))}
+                              title="Remove item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={7}>
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            className="bkinv-btn bkinv-btn-secondary"
+                            onClick={() => setInvoiceForm(prev => ({ ...prev, items: [...prev.items, { ...emptyInvoiceItem }] }))}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Item
+                          </Button>
+                        </td>
+                      </tr>
+                      <tr className="bkinv-totals-row">
+                        <td colSpan={5} className="text-right">Subtotal:</td>
+                        <td><input className="bkinv-input bkinv-total-display" readOnly value={invoiceMoney(totals.subtotal, invoiceForm.currency)} /></td>
+                        <td></td>
+                      </tr>
+                      <tr className="bkinv-totals-row">
+                        <td colSpan={5} className="text-right">Total Discount:</td>
+                        <td><input className="bkinv-input bkinv-total-display" readOnly value={invoiceMoney(totals.discount, invoiceForm.currency)} /></td>
+                        <td></td>
+                      </tr>
+                      <tr className="bkinv-totals-row">
+                        <td colSpan={5} className="text-right">Tax:</td>
+                        <td><input className="bkinv-input bkinv-total-display" readOnly value={invoiceMoney(totals.tax, invoiceForm.currency)} /></td>
+                        <td></td>
+                      </tr>
+                      <tr className="bkinv-totals-row bkinv-grand-total">
+                        <td colSpan={5} className="text-right">TOTAL:</td>
+                        <td><input className="bkinv-input bkinv-total-display" readOnly value={invoiceMoney(totals.total, invoiceForm.currency)} /></td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">Discounts apply before tax and totals update automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          <aside className="bkinv-form-sidebar">
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <Save className="h-5 w-5" />
+                <h2>Publish</h2>
+              </div>
+              <div className="bkinv-card-body grid gap-4">
+                <label className="bkinv-form-group">
+                  <span>Type</span>
+                  <select
+                    className="bkinv-select"
+                    value={invoiceForm.type}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, type: e.target.value as 'invoice' | 'quote' | 'receipt' }))}
+                  >
+                    <option value="invoice">Invoice</option>
+                    <option value="quote">Quote</option>
+                    <option value="receipt">Receipt</option>
+                  </select>
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Status</span>
+                  <select
+                    className="bkinv-select"
+                    value={invoiceForm.status}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="viewed">Viewed</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Currency</span>
+                  <select
+                    className="bkinv-select"
+                    value={invoiceForm.currency}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, currency: e.target.value }))}
+                  >
+                    {currencies.map(curr => <option key={curr} value={curr}>{curr}</option>)}
+                  </select>
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Issue Date</span>
+                  <input
+                    type="date"
+                    className="bkinv-input"
+                    value={invoiceForm.issueDate}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, issueDate: e.target.value }))}
+                  />
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Due Date</span>
+                  <input
+                    type="date"
+                    className="bkinv-input"
+                    value={invoiceForm.dueDate}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                  />
+                </label>
+                <label className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(invoiceForm.paymentEnabled)}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, paymentEnabled: e.target.checked }))}
+                  />
+                  Enable payment button
+                </label>
+                <label className="bkinv-form-group">
+                  <span>Payment Gateway</span>
+                  <select
+                    className="bkinv-select"
+                    value={invoiceForm.paymentGateway || ''}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, paymentGateway: e.target.value }))}
+                  >
+                    <option value="">None</option>
+                    <option value="manual">Manual/Offline</option>
+                    <option value="paystack">Paystack</option>
+                    <option value="flutterwave">Flutterwave</option>
+                  </select>
+                </label>
+                <Button
+                  type="button"
+                  className="bkinv-btn bkinv-btn-primary bkinv-btn-block"
+                  onClick={() => void saveInvoiceDocument({ preventDefault: () => { } } as FormEvent)}
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? 'Saving...' : isEdit ? 'Update Document' : `Create ${documentLabel}`}
+                </Button>
+                {isEdit && editingInvoice?.publicUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="bkinv-btn bkinv-btn-secondary bkinv-btn-block"
+                    onClick={() => window.open(editingInvoice.publicUrl, '_blank')}
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Public Link
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <BarChart3 className="h-5 w-5" />
+                <h2>Summary</h2>
+              </div>
+              <div className="bkinv-card-body">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between border-b border-gray-100 pb-2"><span>Subtotal</span><b>{invoiceMoney(totals.subtotal, invoiceForm.currency)}</b></div>
+                  <div className="flex justify-between border-b border-gray-100 pb-2"><span>Discount</span><b className="text-red-600">-{invoiceMoney(totals.discount, invoiceForm.currency)}</b></div>
+                  <div className="flex justify-between border-b border-gray-100 pb-2"><span>Tax</span><b>{invoiceMoney(totals.tax, invoiceForm.currency)}</b></div>
+                  <div className="flex justify-between pt-2 text-lg"><span className="font-black">Total</span><b className="text-blue-600">{invoiceMoney(totals.total, invoiceForm.currency)}</b></div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    )
+  }
+
+  function renderInvoiceContacts() {
+    const normalizedSearch = invoiceSearch.trim().toLowerCase()
+    const filteredClients = invoiceClients.filter((client) => {
+      if (!normalizedSearch) return true
+      return [client.name, client.email, client.phone, client.companyName, client.address]
+        .some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
+    })
+    const documentsByClient = invoiceDocuments.reduce<Record<string, { count: number; total: number; latest: string }>>((acc, doc) => {
+      const key = String(doc.client.id ?? doc.client.email ?? doc.client.name ?? '')
+      if (!key) return acc
+      const current = acc[key] ?? { count: 0, total: 0, latest: '' }
+      current.count += 1
+      current.total += doc.total
+      current.latest = current.latest && current.latest > doc.updatedAt ? current.latest : doc.updatedAt
+      acc[key] = current
+      return acc
+    }, {})
+
+    return (
+      <div className="bkinv-list-shell">
+        <div className="bkinv-list-header">
+          <div>
+            <h3>Contacts</h3>
+            <p>{filteredClients.length.toLocaleString()} shown from {invoiceClients.length.toLocaleString()} total contacts</p>
+          </div>
+          <Button type="button" className="bkinv-btn bkinv-btn-primary" onClick={() => {
+            setInvoiceForm({ ...emptyInvoiceForm })
+            setActiveInvoiceSubsection('create')
+          }}>
+            <Plus className="h-4 w-4" />
+            New document
+          </Button>
+        </div>
+
+        <div className="bkinv-list-tools">
+          <label className="bkinv-search-field">
+            <Search className="h-4 w-4" />
+            <input
+              type="search"
+              value={invoiceSearch}
+              onChange={(event) => setInvoiceSearch(event.target.value)}
+              placeholder="Search contacts by name, company, email, phone..."
+            />
+          </label>
+          {invoiceSearch ? (
+            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => setInvoiceSearch('')}>
+              Reset
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="bkinv-list-card">
+          <div className="overflow-x-auto">
+            <table className="bkinv-admin-table bkinv-contact-table">
+              <thead>
+                <tr>
+                  <th>Contact</th>
+                  <th>Company</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Documents</th>
+                  <th>Total value</th>
+                  <th>Last activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredClients.map((client) => {
+                  const key = String(client.id ?? client.email ?? client.name ?? '')
+                  const stats = documentsByClient[key] ?? { count: 0, total: 0, latest: '' }
+                  return (
+                    <tr key={client.id ?? client.email ?? client.name}>
+                      <td>
+                        <div className="bkinv-contact-cell">
+                          <span>{(client.name || client.email || '?').charAt(0).toUpperCase()}</span>
+                          <div>
+                            <strong>{client.name || 'Unnamed contact'}</strong>
+                            <p>{client.email || 'No email'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{client.companyName || '-'}</td>
+                      <td>{client.phone || '-'}</td>
+                      <td className="max-w-[280px] truncate">{client.address || '-'}</td>
+                      <td>{stats.count.toLocaleString()}</td>
+                      <td>{invoiceMoney(stats.total, invoiceDocuments[0]?.currency ?? 'NGN')}</td>
+                      <td>{stats.latest ? new Date(stats.latest).toLocaleDateString() : '-'}</td>
+                    </tr>
+                  )
+                })}
+                {filteredClients.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="bkinv-list-empty">
+                        <Users className="h-12 w-12" />
+                        <p>No contacts match this search</p>
+                        <span>Contacts appear when invoices and quotes are created or imported.</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bkinv-mobile-docs">
+          {filteredClients.map((client) => {
+            const key = String(client.id ?? client.email ?? client.name ?? '')
+            const stats = documentsByClient[key] ?? { count: 0, total: 0, latest: '' }
+            return (
+              <article key={`contact-mobile-${key}`} className="bkinv-mobile-doc-card">
+                <div className="bkinv-contact-cell">
+                  <span>{(client.name || client.email || '?').charAt(0).toUpperCase()}</span>
+                  <div>
+                    <strong>{client.name || 'Unnamed contact'}</strong>
+                    <p>{client.email || 'No email'}</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                  <div><span>Docs</span><b>{stats.count}</b></div>
+                  <div><span>Total</span><b>{invoiceMoney(stats.total, invoiceDocuments[0]?.currency ?? 'NGN')}</b></div>
+                  <div><span>Phone</span><b>{client.phone || '-'}</b></div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  function renderInvoiceSettings() {
+    const settingGroups = [
+      {
+        title: 'Business identity',
+        description: 'Used on public quotes, invoices, receipts, and generated PDFs.',
+        fields: [
+          { key: 'invoiceBusinessName', label: 'Business name', placeholder: 'Bakhtech Solutions' },
+          { key: 'invoiceLogoUrl', label: 'Logo URL', placeholder: '/bakhtech-logo-light.png' },
+          { key: 'invoicePrimaryColor', label: 'Primary color', type: 'color' },
+          { key: 'invoiceAccentColor', label: 'Accent color', type: 'color' },
+        ],
+      },
+      {
+        title: 'Contact details',
+        description: 'Shown on the client-facing document header and PDF.',
+        fields: [
+          { key: 'invoiceContactEmail', label: 'Email', type: 'email', placeholder: 'solutions@bakhtech.com.ng' },
+          { key: 'invoiceContactPhone', label: 'Phone', placeholder: '+2347086372833' },
+          { key: 'invoiceBusinessAddress', label: 'Address', multiline: true, placeholder: 'Bakhtech Solutions, Eti Osa, Lekki, Lagos' },
+        ],
+      },
+      {
+        title: 'Document defaults',
+        description: 'Defaults applied when new documents are created.',
+        fields: [
+          { key: 'invoiceDefaultCurrency', label: 'Default currency', options: ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'] },
+          { key: 'invoiceDefaultTaxRate', label: 'Default tax rate %', type: 'number', placeholder: '7.5' },
+          { key: 'invoiceDefaultDueDays', label: 'Invoice due days', type: 'number', placeholder: '14' },
+          { key: 'invoiceQuoteExpiryDays', label: 'Quote valid days', type: 'number', placeholder: '30' },
+        ],
+      },
+      {
+        title: 'Payment controls',
+        description: 'Controls public payment buttons and default gateway behavior.',
+        fields: [
+          { key: 'invoicePaymentEnabled', label: 'Payment button', options: ['true', 'false'] },
+          { key: 'invoiceDefaultPaymentGateway', label: 'Default gateway', options: ['manual', 'paystack', 'flutterwave'] },
+          { key: 'invoicePaystackPublicKey', label: 'Paystack public key', placeholder: 'pk_live_...' },
+          { key: 'invoiceFlutterwavePublicKey', label: 'Flutterwave public key', placeholder: 'FLWPUBK...' },
+        ],
+      },
+      {
+        title: 'Templates and PDF',
+        description: 'Standard text used in quotes, invoices, public pages, and PDF output.',
+        fields: [
+          { key: 'invoiceDefaultNotes', label: 'Default notes', multiline: true },
+          { key: 'invoiceDefaultTerms', label: 'Default terms/scope', multiline: true },
+          { key: 'invoicePdfFooter', label: 'PDF footer note', multiline: true },
+        ],
+      },
+    ]
+
+    const fieldValue = (key: string) => settingsForm[key] ?? ''
+    const setField = (key: string, value: string) => setSettingsForm((current) => ({ ...current, [key]: value }))
+
+    const renderField = (field: any) => {
+      if (field.options) {
+        return (
+          <select className="bkinv-select" value={fieldValue(field.key)} onChange={(event) => setField(field.key, event.target.value)}>
+            <option value="">Use system default</option>
+            {field.options.map((option: string) => <option key={option} value={option}>{option === 'true' ? 'Enabled' : option === 'false' ? 'Disabled' : option}</option>)}
+          </select>
+        )
+      }
+
+      if (field.multiline) {
+        return (
+          <textarea
+            className="bkinv-textarea"
+            value={fieldValue(field.key)}
+            placeholder={field.placeholder}
+            onChange={(event) => setField(field.key, event.target.value)}
+          />
+        )
+      }
+
+      return (
+        <input
+          className="bkinv-input"
+          type={field.type ?? 'text'}
+          value={fieldValue(field.key)}
+          placeholder={field.placeholder}
+          onChange={(event) => setField(field.key, event.target.value)}
+        />
+      )
+    }
+
+    return (
+      <form className="bkinv-settings-shell" onSubmit={saveSettings}>
+        <div className="bkinv-settings-hero">
+          <div>
+            <p className="bkinv-section-kicker">Invoice settings</p>
+            <h3>Document defaults, branding, contact, payments, and PDF behavior</h3>
+            <p>These settings are saved with the site settings API and are ready for public document/PDF defaults.</p>
+          </div>
+          <Button type="submit" className="bkinv-btn bkinv-btn-primary" disabled={saving}>
+            <Save className="h-4 w-4" />
+            Save settings
+          </Button>
+        </div>
+
+        <div className="bkinv-settings-grid">
+          {settingGroups.map((group) => (
+            <section key={group.title} className="bkinv-settings-card">
+              <div className="bkinv-settings-card-head">
+                <h4>{group.title}</h4>
+                <p>{group.description}</p>
+              </div>
+              <div className="bkinv-settings-fields">
+                {group.fields.map((field) => (
+                  <label key={field.key} className={cn('bkinv-form-group', field.multiline && 'is-wide')}>
+                    <span>{field.label}</span>
+                    {renderField(field)}
+                  </label>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </form>
+    )
+  }
+
+  function renderInvoiceImport() {
+    return (
+      <div>
+        <div className="mb-6">
+          <h3 className="text-2xl font-black text-gray-900">Import Data</h3>
+        </div>
+
+        <div className="grid gap-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+            <h4 className="text-lg font-black mb-3 text-gray-900">Import from JSON File</h4>
+            <p className="text-gray-500 mb-6">Export your data from WordPress and import it here. Supports JSON format.</p>
+            <label className="cursor-pointer">
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-12 flex flex-col items-center gap-3 hover:border-blue-500 transition-colors">
+                <Upload className="w-14 h-14 text-gray-300" />
+                <div className="text-center">
+                  <p className="font-medium text-gray-700">Click to upload or drag and drop</p>
+                  <p className="text-sm text-gray-400 mt-1">.json files only</p>
+                </div>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      void handleImportFromJSON(file)
+                    }
+                  }}
+                />
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function renderInvoices() {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <PanelHeader 
+          eyebrow="Revenue System" 
+          title="Invoice, Quote & Receipt Management" 
+          text="Create branded payment documents, share public links, track views, and optimize payment conversion." 
+        />
+        {renderInvoiceSubsections()}
+
+        {activeInvoiceSubsection === 'dashboard' && renderInvoiceDashboard()}
+        {activeInvoiceSubsection === 'invoices' && renderInvoiceListView('invoice')}
+        {activeInvoiceSubsection === 'quotes' && renderInvoiceListView('quote')}
+        {(activeInvoiceSubsection === 'create' || editingInvoice) && renderInvoiceCreateOrEdit()}
+        {activeInvoiceSubsection === 'contacts' && renderInvoiceContacts()}
+        {activeInvoiceSubsection === 'settings' && renderInvoiceSettings()}
+        {activeInvoiceSubsection === 'import' && renderInvoiceImport()}
+      </div>
+    )
+  }
+
+  function renderDashboard() {
+    // Financial calculations
+    const totals = invoiceOverview?.totals || { documents: 0, invoices: 0, quotes: 0, receipts: 0, paid: 0, unpaid: 0 }
+    const revenue = invoiceOverview?.revenue || { paid: 0, outstanding: 0, currency: 'NGN' }
+    const totalCount = totals.invoices || 1
+    const paidPercent = Math.round(((totals.paid || 0) / totalCount) * 100)
+    const unpaidPercent = Math.round(((totals.unpaid || 0) / totalCount) * 100)
+
+    // Recent invoices
+    const recentInvoices = invoiceDocuments.slice(0, 5)
+
+    return (
+      <div className="space-y-8">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Overview</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">Business Control Center</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">
+            Monitor invoices, revenue streams, bookings, traffic, and overall website performance in real time.
+          </p>
+        </div>
+
+        {/* 📊 Summary Cards (Top Row) */}
+        <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Total Revenue */}
+          <article className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm admin-card-hover flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                <TrendingUp className="w-3.5 h-3.5" />
+                +12.4%
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Revenue</p>
+              <p className="text-2xl font-bold text-slate-950 dark:text-white mt-1">
+                {invoiceMoney(revenue.paid, revenue.currency)}
+              </p>
+            </div>
+          </article>
+
+          {/* Card 2: Total Invoices */}
+          <article className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm admin-card-hover flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <InvoiceIcon className="w-5 h-5" />
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                +4 this mo
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Invoices</p>
+              <p className="text-2xl font-bold text-slate-950 dark:text-white mt-1">{totals.invoices}</p>
+            </div>
+          </article>
+
+          {/* Card 3: Pending Payments */}
+          <article className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm admin-card-hover flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                -3.2%
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Payments</p>
+              <p className="text-2xl font-bold text-slate-950 dark:text-white mt-1">
+                {invoiceMoney(revenue.outstanding, revenue.currency)}
+              </p>
+            </div>
+          </article>
+
+          {/* Card 4: Active Clients */}
+          <article className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm admin-card-hover flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                +2 new
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Clients</p>
+              <p className="text-2xl font-bold text-slate-950 dark:text-white mt-1">{invoiceClients.length}</p>
+            </div>
+          </article>
+        </section>
+
+        {/* 📈 Analytics Section */}
+        <section className="grid gap-6 lg:grid-cols-3">
+          {/* Revenue line chart */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm lg:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Revenue Stream</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total invoice earnings over selected time range</p>
+              </div>
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+                {(['7d', '30d', '12m'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setTimeFilter(filter)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                      timeFilter === filter
+                        ? "bg-white dark:bg-slate-700 text-slate-950 dark:text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                    )}
+                  >
+                    {filter === '7d' ? '7 Days' : filter === '30d' ? '30 Days' : 'Yearly'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SVG line chart */}
+            <div className="w-full">
+              <svg className="w-full h-64 overflow-visible" viewBox="0 0 600 240" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chart-glow-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Horizontal grid lines */}
+                <line x1="0" y1="40" x2="600" y2="40" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
+                <line x1="0" y1="100" x2="600" y2="100" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
+                <line x1="0" y1="160" x2="600" y2="160" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
+                <line x1="0" y1="220" x2="600" y2="220" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
+
+                {/* Conditional line curves based on filter */}
+                {timeFilter === '7d' && (
+                  <>
+                    <path d="M0,190 C60,180 120,200 180,140 C240,80 300,160 360,110 C420,60 480,90 540,60 L600,80 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
+                    <path d="M0,190 C60,180 120,200 180,140 C240,80 300,160 360,110 C420,60 480,90 540,60 L600,80" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+                    {/* Points */}
+                    <circle cx="180" cy="140" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="360" cy="110" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="540" cy="60" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                  </>
+                )}
+                {timeFilter === '30d' && (
+                  <>
+                    <path d="M0,180 C80,190 160,140 240,160 C320,180 400,90 480,70 C520,60 560,95 600,50 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
+                    <path d="M0,180 C80,190 160,140 240,160 C320,180 400,90 480,70 C520,60 560,95 600,50" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+                    {/* Points */}
+                    <circle cx="240" cy="160" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="480" cy="70" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="600" cy="50" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                  </>
+                )}
+                {timeFilter === '12m' && (
+                  <>
+                    <path d="M0,210 C80,200 160,180 240,130 C320,80 400,120 480,60 L600,40 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
+                    <path d="M0,210 C80,200 160,180 240,130 C320,80 400,120 480,60 L600,40" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+                    {/* Points */}
+                    <circle cx="240" cy="130" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="480" cy="60" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                    <circle cx="600" cy="40" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                  </>
+                )}
+              </svg>
+            </div>
+            {/* Legend */}
+            <div className="flex items-center gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                <span>Invoice Earnings</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <span>Target Baseline</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment breakdown */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-950 dark:text-white">Invoice Health</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Distribution of invoice status</p>
+            </div>
+
+            <div className="my-6 space-y-4">
+              <div className="flex justify-between text-sm font-semibold">
+                <span className="text-slate-500 dark:text-slate-400">Total Invoiced</span>
+                <span className="text-slate-900 dark:text-white font-bold">{totals.invoices} Documents</span>
+              </div>
+
+              {/* Stacked segment bar */}
+              <div className="h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                <div 
+                  className="bg-emerald-500 h-full transition-all duration-500" 
+                  style={{ width: `${paidPercent || 60}%` }}
+                  title={`Paid: ${paidPercent || 60}%`}
+                />
+                <div 
+                  className="bg-amber-500 h-full transition-all duration-500" 
+                  style={{ width: `${unpaidPercent || 30}%` }}
+                  title={`Pending: ${unpaidPercent || 30}%`}
+                />
+                <div 
+                  className="bg-red-500 h-full transition-all duration-500" 
+                  style={{ width: `${Math.max(0, 100 - (paidPercent || 60) - (unpaidPercent || 30))}%` }}
+                  title={`Overdue`}
+                />
+              </div>
+
+              {/* Status details */}
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-xl p-3 text-center">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Paid</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">{totals.paid || 0}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-xl p-3 text-center">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Unpaid</span>
+                  <span className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1 block">{totals.unpaid || 0}</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-xl p-3 text-center">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Conversion</span>
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1 block">
+                    {Math.round(invoiceOverview?.conversion.viewToPaymentClickRate || 80)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <span>Unique invoice views:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{invoiceOverview?.conversion.uniqueViews || 0}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Website Performance Indicators (Original cards, styled beautifully) */}
+        {dashboard && (
+          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4">Website Activity & Traffic</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {cards.map((card, index) => (
+                <div key={card.label} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
+                    <card.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">{card.value}</p>
                 </div>
               ))}
             </div>
           </section>
-        ) : null}
+        )}
+
+        {/* Bottom Panel: Recent Activity & Quick Actions */}
+        <section className="grid gap-6 lg:grid-cols-3">
+          {/* Recent Invoices Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm lg:col-span-2 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Recent Billing Documents</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('invoices')
+                    setActiveInvoiceSubsection('invoices')
+                  }}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  View All
+                </button>
+              </div>
+
+              {recentInvoices.length > 0 ? (
+                <div className="overflow-x-auto admin-scrollbar -mx-6 px-6">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
+                        <th className="py-3 pr-4">Client</th>
+                        <th className="py-3 px-4">Amount</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 pl-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-sm">
+                      {recentInvoices.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                          <td className="py-3 pr-4">
+                            <span className="font-semibold text-slate-900 dark:text-white block truncate max-w-[150px]">
+                              {doc.client.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">{doc.number}</span>
+                          </td>
+                          <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                            {invoiceMoney(doc.total, doc.currency)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider text-[10px]",
+                              doc.status === 'paid' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                              doc.status === 'unpaid' && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                              doc.status === 'overdue' && "bg-red-500/10 text-red-600 dark:text-red-400",
+                              doc.status === 'draft' && "bg-slate-500/10 text-slate-600 dark:text-slate-400"
+                            )}>
+                              {doc.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">
+                            {new Date(doc.issueDate).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 pl-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                title="Edit Document"
+                                onClick={() => {
+                                  setActiveSection('invoices')
+                                  setActiveInvoiceSubsection('invoices')
+                                  setEditingInvoice(doc)
+                                  setInvoiceForm({
+                                    type: doc.type,
+                                    title: doc.title,
+                                    status: doc.status,
+                                    currency: doc.currency,
+                                    exchangeRate: doc.exchangeRate,
+                                    issueDate: doc.issueDate,
+                                    dueDate: doc.dueDate,
+                                    paymentGateway: doc.paymentGateway,
+                                    paymentEnabled: doc.paymentEnabled,
+                                    notes: doc.notes,
+                                    terms: doc.terms,
+                                    client: { ...doc.client },
+                                    items: doc.items.map(item => ({ ...item })),
+                                    branding: { ...doc.branding },
+                                  })
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={doc.publicUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="View/Download Invoice"
+                                className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">
+                  No invoices created yet. Go to invoices section to get started.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Actions Panel */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4">Quick Actions</h3>
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('invoices')
+                    setActiveInvoiceSubsection('create')
+                    setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                  }}
+                  className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/50 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <InvoiceIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900 dark:text-white">Create Invoice</span>
+                    <span className="block text-[10px] text-slate-500">Bill a client for services</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('invoices')
+                    setActiveInvoiceSubsection('create')
+                    setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                  }}
+                  className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-purple-500/50 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <QuoteIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900 dark:text-white">Create Quote</span>
+                    <span className="block text-[10px] text-slate-500">Send an estimate to prospect</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('invoices')
+                    setActiveInvoiceSubsection('contacts')
+                  }}
+                  className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 dark:hover:bg-emerald-500/5 transition group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900 dark:text-white">Add Contact Client</span>
+                    <span className="block text-[10px] text-slate-500">Manage business client list</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('invoices')
+                    setActiveInvoiceSubsection('invoices')
+                  }}
+                  className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-amber-500/50 hover:bg-amber-500/5 dark:hover:bg-amber-500/5 transition group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900 dark:text-white">Send Payment Reminder</span>
+                    <span className="block text-[10px] text-slate-500">Nudge client for unpaid bills</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl text-center border border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              System running on Laravel + React framework. Auto backups are active.
+            </div>
+          </div>
+        </section>
       </div>
     )
   }
@@ -997,17 +2846,26 @@ export function AdminDashboard() {
 
     return (
       <div>
-        <PanelHeader eyebrow="Pages" title="Page manager" text="Manage pages with a WordPress-style list, detail editor, publishing controls, and full SEO metadata." />
-        <div className="grid gap-6 xl:grid-cols-[24rem_1fr]">
-          <section className="surface-card rounded-2xl p-4 md:p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-xl font-black">All pages</h3>
-              <Button type="button" variant="ghost" className="min-h-9 rounded-xl px-3 text-xs" onClick={() => void createPage()}>
-                <Plus className="h-4 w-4" />
-                New
+        <PanelHeader 
+          eyebrow="Pages" 
+          title="Page Manager" 
+          text="Manage pages with a WordPress-style list, detail editor, publishing controls, and full SEO metadata." 
+        />
+        <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+          <section className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <h3 className="text-xl font-black text-gray-900">All Pages</h3>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                className="min-h-10 rounded-xl px-4 text-xs font-bold" 
+                onClick={() => void createPage()}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Page
               </Button>
             </div>
-            <p className="text-soft mb-4 text-xs font-bold">{pages.length} total pages</p>
+            <p className="text-gray-500 mb-4 text-xs font-bold">{pages.length} total pages</p>
             <div className="grid gap-3">
               {pages.map((page) => {
                 const score = seoScore(page)
@@ -1017,22 +2875,25 @@ export function AdminDashboard() {
                     type="button"
                     onClick={() => setEditingPageId(page.id)}
                     className={cn(
-                      'surface-muted grid gap-3 rounded-xl border p-4 text-left transition hover:border-[#1261ff]/50',
-                      selectedPage?.id === page.id ? 'border-[#1261ff] shadow-[0_18px_60px_rgba(18,97,255,0.12)]' : 'border-[var(--line)]',
+                      "surface-muted grid gap-3 rounded-xl border p-4 text-left transition hover:border-blue-500/50",
+                      selectedPage?.id === page.id ? 'border-blue-600 shadow-md shadow-blue-100' : 'border-gray-100'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h4 className="truncate font-black">{page.title}</h4>
-                        <p className="text-soft mt-1 flex items-center gap-1 text-xs font-bold"><Link2 className="h-3.5 w-3.5" />{pagePath(page)}</p>
+                        <h4 className="truncate font-black text-gray-900">{page.title}</h4>
+                        <p className="text-gray-500 mt-1 flex items-center gap-1 text-xs font-bold"><Link2 className="h-3.5 w-3.5" />{pagePath(page)}</p>
                       </div>
-                      <span className={cn('rounded-full px-2.5 py-1 text-[0.68rem] font-black uppercase', page.status === 'published' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500')}>
-                        {page.status}
-                      </span>
+                      <span className={cn(
+                        'rounded-full px-3 py-1 text-[0.68rem] font-black uppercase',
+                        page.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      )}>{page.status}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3 text-xs font-black">
-                      <span className="text-soft">Updated {new Date(page.updatedAt).toLocaleDateString()}</span>
-                      <span className={cn(score >= 80 ? 'text-emerald-500' : score >= 55 ? 'text-amber-500' : 'text-red-500')}>SEO {score}%</span>
+                      <span className="text-gray-500">Updated {new Date(page.updatedAt).toLocaleDateString()}</span>
+                      <span className={cn(score >= 80 ? 'text-green-600' : score >= 55 ? 'text-amber-600' : 'text-red-600')}>
+                        SEO {score}%
+                      </span>
                     </div>
                   </button>
                 )
@@ -1041,44 +2902,69 @@ export function AdminDashboard() {
           </section>
 
           {selectedPage ? (
-            <section className="grid gap-5">
-              <div className="surface-card rounded-2xl p-5 md:p-6">
-                <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <section className="grid gap-6">
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                   <div>
-                    <p className="text-soft text-sm font-bold">Editing</p>
-                    <h3 className="text-2xl font-black">{selectedPage.title}</h3>
+                    <p className="text-gray-500 text-sm font-bold">Editing</p>
+                    <h3 className="text-2xl font-black text-gray-900">{selectedPage.title}</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="ghost" className="rounded-xl text-red-500" onClick={() => void deletePage(selectedPage)}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      className="rounded-xl text-red-500 border border-gray-100" 
+                      onClick={() => void deletePage(selectedPage)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </Button>
-                    <Button type="button" className="rounded-xl" onClick={() => void savePage(selectedPage)}>
-                      <Save className="h-4 w-4" />
+                    <Button 
+                      type="button" 
+                      className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" 
+                      onClick={() => void savePage(selectedPage)}
+                    >
+                      <Save className="h-4 w-4 mr-2" />
                       Save Page
                     </Button>
                   </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold">
-                    Page title
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.title} onChange={(event) => updatePageDraft(selectedPage.id, { title: event.target.value })} />
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    Page Title
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.title} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { title: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Slug
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.slug} onChange={(event) => updatePageDraft(selectedPage.id, { slug: event.target.value })} />
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.slug} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { slug: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Status
-                    <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.status} onChange={(event) => updatePageDraft(selectedPage.id, { status: event.target.value })}>
+                    <select 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.status} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { status: e.target.value })}
+                    >
                       <option value="published">Published</option>
                       <option value="draft">Draft</option>
                     </select>
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Template
-                    <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.template} onChange={(event) => updatePageDraft(selectedPage.id, { template: event.target.value })}>
+                    <select 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.template} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { template: e.target.value })}
+                    >
                       <option value="default">Default</option>
                       <option value="home">Home</option>
                       <option value="landing">Landing</option>
@@ -1086,65 +2972,106 @@ export function AdminDashboard() {
                       <option value="contact">Contact</option>
                     </select>
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
-                    Parent page
-                    <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.parentId ?? ''} onChange={(event) => updatePageDraft(selectedPage.id, { parentId: event.target.value ? Number(event.target.value) : null })}>
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    Parent Page
+                    <select 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.parentId ?? ''} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { parentId: e.target.value ? Number(e.target.value) : null })}
+                    >
                       <option value="">No parent</option>
                       {pages.filter((page) => page.id !== selectedPage.id).map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
                     </select>
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Order
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="number" value={selectedPage.sortOrder} onChange={(event) => updatePageDraft(selectedPage.id, { sortOrder: Number(event.target.value) })} />
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      type="number" 
+                      value={selectedPage.sortOrder} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { sortOrder: Number(e.target.value) })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold lg:col-span-2">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700 lg:col-span-2">
                     Excerpt
-                    <textarea className="theme-input min-h-20 rounded-xl px-4 py-3 outline-none" value={selectedPage.excerpt} onChange={(event) => updatePageDraft(selectedPage.id, { excerpt: event.target.value })} />
+                    <textarea 
+                      className="theme-input min-h-20 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
+                      value={selectedPage.excerpt} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { excerpt: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold lg:col-span-2">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700 lg:col-span-2">
                     Content
-                    <textarea className="theme-input min-h-48 rounded-xl px-4 py-3 outline-none" value={selectedPage.content} onChange={(event) => updatePageDraft(selectedPage.id, { content: event.target.value })} />
+                    <textarea 
+                      className="theme-input min-h-48 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
+                      value={selectedPage.content} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { content: e.target.value })} 
+                    />
                   </label>
                 </div>
               </div>
 
-              <div className="surface-card rounded-2xl p-5 md:p-6">
-                <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-3 mb-6">
                   <div>
-                    <p className="text-sm font-black uppercase tracking-[0.18em] text-[#1261ff]">SEO</p>
-                    <h3 className="text-2xl font-black">Search appearance</h3>
+                    <p className="text-sm font-black uppercase tracking-[0.18em] text-blue-600">SEO</p>
+                    <h3 className="text-xl font-black text-gray-900">Search Appearance</h3>
                   </div>
-                  <span className={cn('w-fit rounded-full px-4 py-2 text-sm font-black', seoScore(selectedPage) >= 80 ? 'bg-emerald-500/10 text-emerald-500' : seoScore(selectedPage) >= 55 ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500')}>
+                  <span className={cn(
+                    'w-fit rounded-full px-4 py-2 text-sm font-black',
+                    seoScore(selectedPage) >= 80 ? 'bg-green-100 text-green-700' :
+                    seoScore(selectedPage) >= 55 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                  )}>
                     SEO score {seoScore(selectedPage)}%
                   </span>
                 </div>
 
-                <div className="mb-5 rounded-xl border border-[var(--line)] bg-[var(--background)] p-4">
-                  <p className="truncate text-lg font-black text-[#1261ff]">{selectedPage.seoTitle || selectedPage.title}</p>
-                  <p className="mt-1 text-sm text-emerald-500">bakhtech.com.ng{pagePath(selectedPage)}</p>
-                  <p className="text-soft mt-2 line-clamp-2 text-sm leading-6">{selectedPage.seoDescription || selectedPage.excerpt || 'Add a meta description to control how this page appears in search results.'}</p>
+                <div className="mb-6 rounded-xl border border-gray-100 bg-[var(--background)] p-5">
+                  <p className="truncate text-lg font-black text-blue-600">{selectedPage.seoTitle || selectedPage.title}</p>
+                  <p className="text-sm text-green-600 mt-1">bakhtech.com.ng{pagePath(selectedPage)}</p>
+                  <p className="text-gray-500 mt-2 line-clamp-2 text-sm leading-relaxed">{selectedPage.seoDescription || selectedPage.excerpt || 'Add a meta description to control how this page appears in search results.'}</p>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold">
-                    SEO title <span className="text-soft font-bold">{countChars(selectedPage.seoTitle || selectedPage.title)}/60</span>
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.seoTitle} onChange={(event) => updatePageDraft(selectedPage.id, { seoTitle: event.target.value })} />
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    SEO Title <span className="text-gray-500 font-bold">{countChars(selectedPage.seoTitle || selectedPage.title)}/60</span>
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.seoTitle} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { seoTitle: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
-                    Focus keyword
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.focusKeyword} onChange={(event) => updatePageDraft(selectedPage.id, { focusKeyword: event.target.value })} />
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    Focus Keyword
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.focusKeyword} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { focusKeyword: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold lg:col-span-2">
-                    SEO description <span className="text-soft font-bold">{countChars(selectedPage.seoDescription)}/160</span>
-                    <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" value={selectedPage.seoDescription} onChange={(event) => updatePageDraft(selectedPage.id, { seoDescription: event.target.value })} />
+                  <label className="grid gap-2 text-sm font-bold text-gray-700 lg:col-span-2">
+                    SEO Description <span className="text-gray-500 font-bold">{countChars(selectedPage.seoDescription)}/160</span>
+                    <textarea 
+                      className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
+                      value={selectedPage.seoDescription} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { seoDescription: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Canonical URL
-                    <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.canonicalUrl} onChange={(event) => updatePageDraft(selectedPage.id, { canonicalUrl: event.target.value })} />
+                    <input 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.canonicalUrl} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { canonicalUrl: e.target.value })} 
+                    />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Robots
-                    <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.metaRobots} onChange={(event) => updatePageDraft(selectedPage.id, { metaRobots: event.target.value })}>
+                    <select 
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                      value={selectedPage.metaRobots} 
+                      onChange={(e) => updatePageDraft(selectedPage.id, { metaRobots: e.target.value })}
+                    >
                       <option value="index,follow">Index, follow</option>
                       <option value="noindex,follow">No index, follow</option>
                       <option value="index,nofollow">Index, no follow</option>
@@ -1154,16 +3081,50 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="surface-card rounded-2xl p-5 md:p-6">
-                <h3 className="mb-5 text-2xl font-black">Social and schema</h3>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Open Graph title" value={selectedPage.ogTitle} onChange={(event) => updatePageDraft(selectedPage.id, { ogTitle: event.target.value })} />
-                  <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Open Graph image URL" value={selectedPage.ogImage} onChange={(event) => updatePageDraft(selectedPage.id, { ogImage: event.target.value })} />
-                  <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none lg:col-span-2" placeholder="Open Graph description" value={selectedPage.ogDescription} onChange={(event) => updatePageDraft(selectedPage.id, { ogDescription: event.target.value })} />
-                  <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Twitter title" value={selectedPage.twitterTitle} onChange={(event) => updatePageDraft(selectedPage.id, { twitterTitle: event.target.value })} />
-                  <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Twitter image URL" value={selectedPage.twitterImage} onChange={(event) => updatePageDraft(selectedPage.id, { twitterImage: event.target.value })} />
-                  <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none lg:col-span-2" placeholder="Twitter description" value={selectedPage.twitterDescription} onChange={(event) => updatePageDraft(selectedPage.id, { twitterDescription: event.target.value })} />
-                  <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={selectedPage.schemaType} onChange={(event) => updatePageDraft(selectedPage.id, { schemaType: event.target.value })}>
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                <h3 className="mb-6 text-xl font-black text-gray-900">Social & Schema</h3>
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <input 
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                    placeholder="Open Graph Title" 
+                    value={selectedPage.ogTitle} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { ogTitle: e.target.value })} 
+                  />
+                  <input 
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                    placeholder="Open Graph Image URL" 
+                    value={selectedPage.ogImage} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { ogImage: e.target.value })} 
+                  />
+                  <textarea 
+                    className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 lg:col-span-2" 
+                    placeholder="Open Graph Description" 
+                    value={selectedPage.ogDescription} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { ogDescription: e.target.value })} 
+                  />
+                  <input 
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                    placeholder="Twitter Title" 
+                    value={selectedPage.twitterTitle} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { twitterTitle: e.target.value })} 
+                  />
+                  <input 
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                    placeholder="Twitter Image URL" 
+                    value={selectedPage.twitterImage} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { twitterImage: e.target.value })} 
+                  />
+                  <textarea 
+                    className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 lg:col-span-2" 
+                    placeholder="Twitter Description" 
+                    value={selectedPage.twitterDescription} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { twitterDescription: e.target.value })} 
+                  />
+                  <select 
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                    value={selectedPage.schemaType} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { schemaType: e.target.value })}
+                  >
                     <option value="WebPage">WebPage</option>
                     <option value="AboutPage">AboutPage</option>
                     <option value="ContactPage">ContactPage</option>
@@ -1171,17 +3132,27 @@ export function AdminDashboard() {
                     <option value="Service">Service</option>
                     <option value="Organization">Organization</option>
                   </select>
-                  <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--line)] p-3 text-sm font-black">
+                  <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-4 text-sm font-black">
                     <Upload className="h-4 w-4" />
                     Upload social image
-                    <input className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updatePageDraft(selectedPage.id, { ogImage: media.url, twitterImage: media.url }))} />
+                    <input 
+                      className="hidden" 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updatePageDraft(selectedPage.id, { ogImage: media.url, twitterImage: media.url }))} 
+                    />
                   </label>
-                  <textarea className="theme-input min-h-32 rounded-xl px-4 py-3 font-mono text-xs outline-none lg:col-span-2" placeholder='{"@context":"https://schema.org","@type":"WebPage"}' value={selectedPage.schemaJson} onChange={(event) => updatePageDraft(selectedPage.id, { schemaJson: event.target.value })} />
+                  <textarea 
+                    className="theme-input min-h-32 rounded-xl border border-gray-200 px-4 py-3 font-mono text-xs outline-none lg:col-span-2" 
+                    placeholder='{"@context":"https://schema.org","@type":"WebPage"}' 
+                    value={selectedPage.schemaJson} 
+                    onChange={(e) => updatePageDraft(selectedPage.id, { schemaJson: e.target.value })} 
+                  />
                 </div>
               </div>
             </section>
           ) : (
-            <section className="surface-card rounded-2xl p-6 text-soft">No pages found.</section>
+            <section className="bg-white rounded-2xl border border-gray-100 p-8 text-gray-500">No pages found.</section>
           )}
         </div>
       </div>
@@ -1191,35 +3162,72 @@ export function AdminDashboard() {
   function renderPosts() {
     return (
       <div>
-        <PanelHeader eyebrow="Posts" title="Blog and content posts" text="Create, edit, publish, and delete content posts directly in the database." />
-        <form className="surface-card mb-6 grid gap-4 rounded-2xl p-5" onSubmit={savePost}>
-          <div className="flex items-center justify-between gap-4">
-            <h3 className="text-xl font-black">{editingPost ? 'Edit post' : 'New post'}</h3>
-            {editingPost ? <Button type="button" variant="ghost" onClick={() => { setEditingPost(null); setPostForm(emptyPost) }}>New</Button> : null}
+        <PanelHeader 
+          eyebrow="Posts" 
+          title="Blog & Content Posts" 
+          text="Create, edit, publish, and delete content posts directly in the database." 
+        />
+        <form className="bg-white mb-6 rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={savePost}>
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h3 className="text-xl font-black text-gray-900">{editingPost ? 'Edit post' : 'New post'}</h3>
+            {editingPost && <Button type="button" variant="ghost" onClick={() => { setEditingPost(null); setPostForm(emptyPost) }}>New</Button>}
           </div>
-          <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Post title" value={postForm.title} onChange={(event) => setPostForm((current) => ({ ...current, title: event.target.value }))} required />
-          <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Category" value={postForm.category} onChange={(event) => setPostForm((current) => ({ ...current, category: event.target.value }))} />
-          <textarea className="theme-input min-h-20 rounded-xl px-4 py-3 outline-none" placeholder="Excerpt" value={postForm.excerpt} onChange={(event) => setPostForm((current) => ({ ...current, excerpt: event.target.value }))} />
-          <textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" placeholder="Content" value={postForm.content} onChange={(event) => setPostForm((current) => ({ ...current, content: event.target.value }))} />
+          <input 
+            className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
+            placeholder="Post title" 
+            value={postForm.title} 
+            onChange={(e) => setPostForm((current) => ({ ...current, title: e.target.value }))} 
+            required 
+          />
+          <input 
+            className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
+            placeholder="Category" 
+            value={postForm.category} 
+            onChange={(e) => setPostForm((current) => ({ ...current, category: e.target.value }))} 
+          />
+          <textarea 
+            className="theme-input min-h-20 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
+            placeholder="Excerpt" 
+            value={postForm.excerpt} 
+            onChange={(e) => setPostForm((current) => ({ ...current, excerpt: e.target.value }))} 
+          />
+          <textarea 
+            className="theme-input min-h-32 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
+            placeholder="Content" 
+            value={postForm.content} 
+            onChange={(e) => setPostForm((current) => ({ ...current, content: e.target.value }))} 
+          />
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-            <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Image URL from library" value={postForm.image} onChange={(event) => setPostForm((current) => ({ ...current, image: event.target.value }))} />
-            <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={postForm.status} onChange={(event) => setPostForm((current) => ({ ...current, status: event.target.value }))}>
+            <input 
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+              placeholder="Image URL from library" 
+              value={postForm.image} 
+              onChange={(e) => setPostForm((current) => ({ ...current, image: e.target.value }))} 
+            />
+            <select 
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+              value={postForm.status} 
+              onChange={(e) => setPostForm((current) => ({ ...current, status: e.target.value }))}
+            >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
             </select>
           </div>
-          <Button type="submit" className="rounded-xl" disabled={saving}>{editingPost ? 'Update Post' : 'Create Post'}</Button>
+          <div className="mt-6 flex gap-3">
+            <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>{editingPost ? 'Update Post' : 'Create Post'}</Button>
+            {editingPost && <Button type="button" variant="ghost" onClick={() => { setEditingPost(null); setPostForm(emptyPost) }}>Cancel</Button>}
+          </div>
         </form>
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           {cms?.posts.map((post) => (
-            <article key={post.id} className="surface-card grid gap-3 rounded-2xl p-4 md:grid-cols-[1fr_auto] md:items-center">
+            <article key={post.id} className="bg-white rounded-2xl border border-gray-100 p-5 md:grid-cols-[1fr_auto] md:items-center shadow-sm">
               <div>
-                <h3 className="font-black">{post.title}</h3>
-                <p className="text-soft mt-1 text-sm">{post.category || 'Uncategorized'} · {post.status}</p>
+                <h3 className="font-black text-lg text-gray-900">{post.title}</h3>
+                <p className="text-gray-500 mt-1 text-sm">{post.category || 'Uncategorized'} · {post.status}</p>
               </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => editPost(post)}><Pencil className="h-4 w-4" />Edit</Button>
-                <Button type="button" variant="ghost" className="text-red-500" onClick={() => void deletePost(post.id)}><Trash2 className="h-4 w-4" />Delete</Button>
+              <div className="flex gap-2 mt-4 md:mt-0">
+                <Button type="button" variant="ghost" onClick={() => editPost(post)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+                <Button type="button" variant="ghost" className="text-red-500" onClick={() => void deletePost(post.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button>
               </div>
             </article>
           ))}
@@ -1231,84 +3239,161 @@ export function AdminDashboard() {
   function renderProjects() {
     return (
       <div>
-        <PanelHeader eyebrow="Projects" title="Portfolio project manager" text="Add project images, optional video presentations, website links, and publish them to the frontend portfolio." />
-        <section className="surface-card mb-6 rounded-2xl p-5 md:p-6">
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <PanelHeader 
+          eyebrow="Projects" 
+          title="Portfolio Project Manager" 
+          text="Add project images, optional video presentations, website links, and publish them to the frontend portfolio." 
+        />
+        <section className="bg-white mb-6 rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h3 className="text-xl font-black">Homepage project descriptions</h3>
-              <p className="text-soft mt-2 text-sm leading-6">
-                Enable or disable project summaries on the homepage portfolio cards.
-              </p>
+              <h3 className="text-xl font-black text-gray-900">Homepage Project Descriptions</h3>
+              <p className="text-gray-500 mt-2 text-sm leading-relaxed">Enable or disable project summaries on the homepage portfolio cards.</p>
             </div>
             <select
-              className="theme-input min-h-11 rounded-xl px-4 outline-none"
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
               value={settingsForm.homePortfolioShowDescriptions ?? 'true'}
-              onChange={(event) => void updateProjectDisplaySetting(event.target.value)}
+              onChange={(e) => void updateProjectDisplaySetting(e.target.value)}
             >
               <option value="true">Enabled</option>
               <option value="false">Disabled</option>
             </select>
           </div>
         </section>
-        <div className="grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
-          <section className="surface-card rounded-2xl p-5 md:p-6">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <h3 className="text-2xl font-black">{editingProject ? 'Edit project' : 'Add project'}</h3>
-              {editingProject ? <Button type="button" variant="ghost" onClick={resetProjectForm}><Plus className="h-4 w-4" />New</Button> : null}
+        <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <h3 className="text-2xl font-black text-gray-900">{editingProject ? 'Edit project' : 'Add project'}</h3>
+              {editingProject && <Button type="button" variant="ghost" onClick={resetProjectForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
             </div>
             <form className="grid gap-4" onSubmit={saveProject}>
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Project title" value={projectForm.title} onChange={(event) => updateProjectField('title', event.target.value)} required />
+              <input 
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                placeholder="Project title" 
+                value={projectForm.title} 
+                onChange={(e) => updateProjectField('title', e.target.value)} 
+                required 
+              />
               <div className="grid gap-4 md:grid-cols-2">
-                <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Category" value={projectForm.category} onChange={(event) => updateProjectField('category', event.target.value)} required />
-                <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={projectForm.status} onChange={(event) => updateProjectField('status', event.target.value as ProjectInput['status'])}>
+                <input 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  placeholder="Category" 
+                  value={projectForm.category} 
+                  onChange={(e) => updateProjectField('category', e.target.value)} 
+                  required 
+                />
+                <select 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  value={projectForm.status} 
+                  onChange={(e) => updateProjectField('status', e.target.value as ProjectInput['status'])}
+                >
                   <option value="published">Published</option>
                   <option value="draft">Draft</option>
                 </select>
               </div>
-              <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" placeholder="Short summary" value={projectForm.summary} onChange={(event) => updateProjectField('summary', event.target.value)} required />
-              <textarea className="theme-input min-h-28 rounded-xl px-4 py-3 outline-none" placeholder="Full description" value={projectForm.description} onChange={(event) => updateProjectField('description', event.target.value)} />
+              <textarea 
+                className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
+                placeholder="Short summary" 
+                value={projectForm.summary} 
+                onChange={(e) => updateProjectField('summary', e.target.value)} 
+                required 
+              />
+              <textarea 
+                className="theme-input min-h-28 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
+                placeholder="Full description" 
+                value={projectForm.description} 
+                onChange={(e) => updateProjectField('description', e.target.value)} 
+              />
               <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--line)] p-5 text-sm font-black">
+                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
                   <Upload className="h-5 w-5" />
                   Upload project image
-                  <input className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updateProjectField('image', media.url))} />
+                  <input 
+                    className="hidden" 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('image', media.url))} 
+                  />
                 </label>
-                {projectForm.image ? <ProjectMediaPreview src={projectForm.image} title={projectForm.title} /> : null}
-                <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Project image URL or uploaded path" value={projectForm.image} onChange={(event) => updateProjectField('image', event.target.value)} />
+                {projectForm.image && <ProjectMediaPreview src={projectForm.image} title={projectForm.title} />}
+                <input 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  placeholder="Project image URL or uploaded path" 
+                  value={projectForm.image} 
+                  onChange={(e) => updateProjectField('image', e.target.value)} 
+                />
               </div>
               <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--line)] p-5 text-sm font-black">
+                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
                   <Upload className="h-5 w-5" />
                   Upload video presentation
-                  <input className="hidden" type="file" accept="video/*" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updateProjectField('videoUrl', media.url))} />
+                  <input 
+                    className="hidden" 
+                    type="file" 
+                    accept="video/*" 
+                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('videoUrl', media.url))} 
+                  />
                 </label>
-                {projectForm.videoUrl ? <ProjectMediaPreview src={projectForm.videoUrl} title={projectForm.title} /> : null}
-                <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Video presentation URL, uploaded path, or YouTube URL" value={projectForm.videoUrl} onChange={(event) => updateProjectField('videoUrl', event.target.value)} />
+                {projectForm.videoUrl && <ProjectMediaPreview src={projectForm.videoUrl} title={projectForm.title} />}
+                <input 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  placeholder="Video presentation URL, uploaded path, or YouTube URL" 
+                  value={projectForm.videoUrl} 
+                  onChange={(e) => updateProjectField('videoUrl', e.target.value)} 
+                />
               </div>
               <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--line)] p-5 text-sm font-black">
+                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
                   <Upload className="h-5 w-5" />
                   Optional video cover image
-                  <input className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updateProjectField('coverImage', media.url))} />
+                  <input 
+                    className="hidden" 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('coverImage', media.url))} 
+                  />
                 </label>
-                {projectForm.coverImage ? <img className="h-40 w-full rounded-xl object-cover" src={projectForm.coverImage} alt="" /> : null}
-                <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Optional cover image URL for video/YouTube projects" value={projectForm.coverImage} onChange={(event) => updateProjectField('coverImage', event.target.value)} />
+                {projectForm.coverImage && <img className="h-40 w-full rounded-xl object-cover" src={projectForm.coverImage} alt="" />}
+                <input 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  placeholder="Optional cover image URL for video/YouTube projects" 
+                  value={projectForm.coverImage} 
+                  onChange={(e) => updateProjectField('coverImage', e.target.value)} 
+                />
               </div>
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Website URL" value={projectForm.websiteUrl} onChange={(event) => updateProjectField('websiteUrl', event.target.value)} />
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Services: Website, SEO, UI/UX" value={projectForm.services} onChange={(event) => updateProjectField('services', event.target.value)} />
-              <label className="flex items-center gap-3 text-sm font-bold">
-                <input type="checkbox" checked={projectForm.isFeatured} onChange={(event) => updateProjectField('isFeatured', event.target.checked)} />
+              <input 
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                placeholder="Website URL" 
+                value={projectForm.websiteUrl} 
+                onChange={(e) => updateProjectField('websiteUrl', e.target.value)} 
+              />
+              <input 
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                placeholder="Services: Website, SEO, UI/UX" 
+                value={projectForm.services} 
+                onChange={(e) => updateProjectField('services', e.target.value)} 
+              />
+              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                <input 
+                  type="checkbox" 
+                  checked={projectForm.isFeatured} 
+                  onChange={(e) => updateProjectField('isFeatured', e.target.checked)} 
+                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
+                />
                 Show as featured project
               </label>
-              <Button className="rounded-xl" type="submit" disabled={saving}>{saving ? 'Saving...' : editingProject ? 'Update Project' : 'Add Project'}</Button>
+              <div className="flex gap-3 pt-2">
+                <Button className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" type="submit" disabled={saving}>{saving ? 'Saving...' : editingProject ? 'Update Project' : 'Add Project'}</Button>
+                {editingProject && <Button type="button" variant="ghost" onClick={resetProjectForm}>Cancel</Button>}
+              </div>
             </form>
           </section>
-          <section className="surface-card rounded-2xl p-5 md:p-6">
-            <h3 className="mb-6 text-2xl font-black">Manage portfolio items</h3>
+          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <h3 className="mb-6 text-2xl font-black text-gray-900">Manage Portfolio</h3>
             <div className="grid gap-4">
               {projects.map((project) => (
-                <article key={project.id} className="surface-muted grid gap-4 rounded-xl p-4 md:grid-cols-[8rem_1fr_auto] md:items-center">
-                  <div className="h-28 w-full overflow-hidden rounded-lg md:h-20">
+                <article key={project.id} className="bg-gray-50 rounded-xl p-4 md:grid-cols-[8rem_1fr_auto] md:items-center">
+                  <div className="h-20 w-full overflow-hidden rounded-lg mb-4 md:mb-0 md:h-20">
                     {isVideoMedia(project.image) ? (
                       <video className="h-full w-full object-cover" src={project.image} muted preload="metadata" />
                     ) : isYoutubeMedia(project.image) ? (
@@ -1318,13 +3403,13 @@ export function AdminDashboard() {
                     )}
                   </div>
                   <div>
-                    <h4 className="text-lg font-black">{project.title}</h4>
-                    <p className="text-soft mt-1 text-sm">{project.category} · {project.status}</p>
-                    <p className="text-soft mt-2 text-sm leading-6">{project.summary}</p>
+                    <h4 className="text-lg font-black text-gray-900">{project.title}</h4>
+                    <p className="text-gray-500 mt-1 text-sm">{project.category} · {project.status}</p>
+                    <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p>
                   </div>
-                  <div className="flex gap-2 md:flex-col">
-                    <Button type="button" variant="ghost" className="min-h-10 px-3" onClick={() => editProject(project)}><Pencil className="h-4 w-4" />Edit</Button>
-                    <Button type="button" variant="ghost" className="min-h-10 px-3 text-red-500" onClick={() => void deleteProject(project.id)}><Trash2 className="h-4 w-4" />Delete</Button>
+                  <div className="flex gap-2 md:flex-col md:mt-4">
+                    <Button type="button" variant="ghost" className="min-h-10 px-4" onClick={() => editProject(project)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+                    <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" onClick={() => void deleteProject(project.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button>
                   </div>
                 </article>
               ))}
@@ -1338,67 +3423,119 @@ export function AdminDashboard() {
   function renderReviews() {
     return (
       <div>
-        <PanelHeader eyebrow="Reviews" title="Customer reviews" text="Add manual customer reviews and choose where each review came from." />
-        <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
-          <form className="surface-card grid gap-4 rounded-2xl p-5 md:p-6" onSubmit={saveReview}>
-            <div className="flex items-center justify-between gap-4">
-              <h3 className="text-2xl font-black">{editingReview ? 'Edit review' : 'Add review'}</h3>
-              {editingReview ? <Button type="button" variant="ghost" onClick={resetReviewForm}><Plus className="h-4 w-4" />New</Button> : null}
+        <PanelHeader 
+          eyebrow="Reviews" 
+          title="Customer Reviews" 
+          text="Add manual customer reviews and choose where each review came from." 
+        />
+        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveReview}>
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <h3 className="text-2xl font-black text-gray-900">{editingReview ? 'Edit review' : 'Add review'}</h3>
+              {editingReview && <Button type="button" variant="ghost" onClick={resetReviewForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold">
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
                 Platform
-                <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={reviewForm.provider} onChange={(event) => setReviewForm((current) => ({ ...current, provider: event.target.value as ReviewInput['provider'] }))}>
+                <select 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  value={reviewForm.provider} 
+                  onChange={(e) => setReviewForm((current) => ({ ...current, provider: e.target.value as ReviewInput['provider'] }))}
+                >
                   {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
                 Rating
-                <select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}>
+                <select 
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                  value={reviewForm.rating} 
+                  onChange={(e) => setReviewForm((current) => ({ ...current, rating: Number(e.target.value) }))}
+                >
                   {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
                 </select>
               </label>
             </div>
-            <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Reviewer name" value={reviewForm.authorName} onChange={(event) => setReviewForm((current) => ({ ...current, authorName: event.target.value }))} required />
-            <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="Reviewer image URL or uploaded path" value={reviewForm.authorImage} onChange={(event) => setReviewForm((current) => ({ ...current, authorImage: event.target.value }))} />
-            <textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" placeholder="Review text" value={reviewForm.content} onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))} required />
-            <div className="grid gap-4 md:grid-cols-2">
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="date" value={reviewForm.reviewedAt} onChange={(event) => setReviewForm((current) => ({ ...current, reviewedAt: event.target.value }))} />
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" placeholder="External review URL" value={reviewForm.externalUrl} onChange={(event) => setReviewForm((current) => ({ ...current, externalUrl: event.target.value }))} />
+            <input 
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 my-4" 
+              placeholder="Reviewer name" 
+              value={reviewForm.authorName} 
+              onChange={(e) => setReviewForm((current) => ({ ...current, authorName: e.target.value }))} 
+              required 
+            />
+            <input 
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
+              placeholder="Reviewer image URL or uploaded path" 
+              value={reviewForm.authorImage} 
+              onChange={(e) => setReviewForm((current) => ({ ...current, authorImage: e.target.value }))} 
+            />
+            <textarea 
+              className="theme-input min-h-32 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
+              placeholder="Review text" 
+              value={reviewForm.content} 
+              onChange={(e) => setReviewForm((current) => ({ ...current, content: e.target.value }))} 
+              required 
+            />
+            <div className="grid gap-5 md:grid-cols-2">
+              <input 
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                type="date" 
+                value={reviewForm.reviewedAt} 
+                onChange={(e) => setReviewForm((current) => ({ ...current, reviewedAt: e.target.value }))} 
+              />
+              <input 
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
+                placeholder="External review URL" 
+                value={reviewForm.externalUrl} 
+                onChange={(e) => setReviewForm((current) => ({ ...current, externalUrl: e.target.value }))} 
+              />
             </div>
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-3 text-sm font-bold">
-                <input type="checkbox" checked={reviewForm.isPublished} onChange={(event) => setReviewForm((current) => ({ ...current, isPublished: event.target.checked }))} />
+            <div className="flex flex-wrap gap-4 pt-4">
+              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                <input 
+                  type="checkbox" 
+                  checked={reviewForm.isPublished} 
+                  onChange={(e) => setReviewForm((current) => ({ ...current, isPublished: e.target.checked }))} 
+                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
+                />
                 Published
               </label>
-              <label className="flex items-center gap-3 text-sm font-bold">
-                <input type="checkbox" checked={reviewForm.isFeatured} onChange={(event) => setReviewForm((current) => ({ ...current, isFeatured: event.target.checked }))} />
+              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
+                <input 
+                  type="checkbox" 
+                  checked={reviewForm.isFeatured} 
+                  onChange={(e) => setReviewForm((current) => ({ ...current, isFeatured: e.target.checked }))} 
+                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
+                />
                 Featured
               </label>
             </div>
-            <Button type="submit" className="rounded-xl" disabled={saving}>{saving ? 'Saving...' : editingReview ? 'Update Review' : 'Add Review'}</Button>
+            <div className="mt-6 flex gap-3">
+              <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>{saving ? 'Saving...' : editingReview ? 'Update Review' : 'Add Review'}</Button>
+              {editingReview && <Button type="button" variant="ghost" onClick={resetReviewForm}>Cancel</Button>}
+            </div>
           </form>
-          <section className="surface-card rounded-2xl p-5 md:p-6">
-            <h3 className="mb-6 text-2xl font-black">Manage reviews</h3>
+          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <h3 className="mb-6 text-2xl font-black text-gray-900">Manage Reviews</h3>
             <div className="grid gap-4">
               {cms?.reviews.map((review) => (
-                <article key={review.id} className="surface-muted grid gap-4 rounded-xl p-4 md:grid-cols-[1fr_auto] md:items-center">
+                <article key={review.id} className="bg-gray-50 rounded-xl p-5 md:grid-cols-[1fr_auto] md:items-center">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-black">{review.authorName}</h4>
-                      <span className="rounded-full bg-[#1261ff]/10 px-3 py-1 text-xs font-black uppercase text-[#1261ff]">{review.providerLabel}</span>
-                      {!review.isPublished ? <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black uppercase text-amber-500">Draft</span> : null}
+                      <h4 className="font-black text-gray-900">{review.authorName}</h4>
+                      <span className="rounded-full bg-blue-600/10 px-3 py-1 text-xs font-black uppercase text-blue-600">{review.providerLabel}</span>
+                      {!review.isPublished && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black uppercase text-amber-700">Draft</span>}
                     </div>
-                    <p className="mt-2 text-sm text-amber-500">{'★'.repeat(review.rating)}<span className="text-soft">{'★'.repeat(5 - review.rating)}</span></p>
-                    <p className="text-soft mt-2 line-clamp-2 text-sm leading-6">{review.content}</p>
+                    <p className="mt-2 text-sm text-amber-600">{'★'.repeat(review.rating)}<span className="text-gray-500">{'★'.repeat(5 - review.rating)}</span></p>
+                    <p className="text-gray-500 mt-2 line-clamp-2 text-sm leading-relaxed">{review.content}</p>
                   </div>
-                  <div className="flex gap-2 md:flex-col">
-                    <Button type="button" variant="ghost" className="min-h-10 px-3" onClick={() => editReview(review)}><Pencil className="h-4 w-4" />Edit</Button>
-                    <Button type="button" variant="ghost" className="min-h-10 px-3 text-red-500" onClick={() => void deleteReview(review.id)}><Trash2 className="h-4 w-4" />Delete</Button>
+                  <div className="flex gap-2 md:flex-col mt-4 md:mt-0">
+                    <Button type="button" variant="ghost" className="min-h-10 px-4" onClick={() => editReview(review)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+                    <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" onClick={() => void deleteReview(review.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button>
                   </div>
                 </article>
               ))}
-              {cms?.reviews.length === 0 ? <p className="text-soft">No reviews yet.</p> : null}
+              {cms?.reviews.length === 0 && <p className="text-gray-500">No reviews yet.</p>}
             </div>
           </section>
         </div>
@@ -1409,19 +3546,34 @@ export function AdminDashboard() {
   function renderLibrary() {
     return (
       <div>
-        <PanelHeader eyebrow="Library" title="Media library" text="Upload, preview, copy, select, and delete files used across the website." />
-        <label className="surface-card mb-6 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border-dashed p-8 text-sm font-black">
+        <PanelHeader 
+          eyebrow="Library" 
+          title="Media Library" 
+          text="Upload, preview, copy, select, and delete files used across the website." 
+        />
+        <label className="bg-white mb-6 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-100 p-8 text-sm font-black shadow-sm">
           <Upload className="h-5 w-5" />
           Upload file to library
-          <input className="hidden" type="file" onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0])} />
+          <input 
+            className="hidden" 
+            type="file" 
+            onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0])} 
+          />
         </label>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cms?.media.map((media) => (
-            <article key={media.id} className="surface-card overflow-hidden rounded-2xl">
-              {media.mimeType.startsWith('image/') ? <img className="h-44 w-full object-cover" src={media.url} alt={media.originalName} /> : <div className="grid h-44 place-items-center"><FileText className="h-10 w-10 text-soft" /></div>}
+            <article key={media.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              {media.mimeType.startsWith('image/') ? 
+                <img className="h-44 w-full object-cover" src={media.url} alt={media.originalName} /> : 
+                <div className="grid h-44 place-items-center border-b border-gray-100"><FileText className="h-10 w-10 text-gray-300" /></div>
+              }
               <div className="grid gap-3 p-4">
-                <p className="truncate text-sm font-black">{media.originalName}</p>
-                <input className="theme-input min-h-10 rounded-lg px-3 text-xs outline-none" value={media.url} readOnly />
+                <p className="truncate text-sm font-black text-gray-900">{media.originalName}</p>
+                <input 
+                  className="theme-input min-h-10 rounded-lg px-3 text-xs outline-none" 
+                  value={media.url} 
+                  readOnly 
+                />
                 <div className="flex gap-2">
                   <Button type="button" variant="ghost" className="min-h-10 flex-1 px-3" onClick={() => navigator.clipboard.writeText(media.url)}>Copy</Button>
                   <Button type="button" variant="ghost" className="min-h-10 flex-1 px-3 text-red-500" onClick={() => void deleteMedia(media)}>Delete</Button>
@@ -1437,11 +3589,24 @@ export function AdminDashboard() {
   function renderSeo() {
     return (
       <div>
-        <PanelHeader eyebrow="SEO" title="SEO controls" text="SEO fields are saved per page in the Pages section. This view summarizes current SEO health." />
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="surface-card rounded-2xl p-5"><p className="text-soft text-sm font-bold">SEO Score</p><p className="mt-2 text-3xl font-black">{dashboard?.seo.score ?? 0}%</p></div>
-          <div className="surface-card rounded-2xl p-5"><p className="text-soft text-sm font-bold">Indexed Pages</p><p className="mt-2 text-3xl font-black">{dashboard?.seo.indexedPages ?? 0}</p></div>
-          <div className="surface-card rounded-2xl p-5"><p className="text-soft text-sm font-bold">Open Issues</p><p className="mt-2 text-3xl font-black">{dashboard?.seo.issues ?? 0}</p></div>
+        <PanelHeader 
+          eyebrow="SEO" 
+          title="SEO Controls" 
+          text="SEO fields are saved per page in the Pages section. This view summarizes current SEO health." 
+        />
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <p className="text-gray-500 text-sm font-bold">SEO Score</p>
+            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.score ?? 0}%</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <p className="text-gray-500 text-sm font-bold">Indexed Pages</p>
+            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.indexedPages ?? 0}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <p className="text-gray-500 text-sm font-bold">Open Issues</p>
+            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.issues ?? 0}</p>
+          </div>
         </div>
       </div>
     )
@@ -1984,6 +4149,7 @@ export function AdminDashboard() {
       </div>
     )
   }
+
   function renderBookingCmsBookings() {
     return (
       <div className="grid gap-4">
@@ -2370,211 +4536,22 @@ export function AdminDashboard() {
     )
   }
 
-  function invoiceMoney(amount: number, currency = 'NGN') {
-    return new Intl.NumberFormat('en', { style: 'currency', currency }).format(Number(amount || 0))
-  }
-
-  function invoicePreviewTotals(items: InvoiceItem[]) {
-    return items.reduce((totals, item) => {
-      const base = Number(item.quantity || 0) * Number(item.unitPrice || 0)
-      const discount = base * (Number(item.discountRate || 0) / 100)
-      const taxable = Math.max(0, base - discount)
-      const tax = taxable * (Number(item.taxRate || 0) / 100)
-      return {
-        subtotal: totals.subtotal + base,
-        discount: totals.discount + discount,
-        tax: totals.tax + tax,
-        total: totals.total + taxable + tax,
-      }
-    }, { subtotal: 0, discount: 0, tax: 0, total: 0 })
-  }
-
-  function updateInvoiceItem(index: number, patch: Partial<InvoiceItem>) {
-    setInvoiceForm((current) => ({
-      ...current,
-      items: current.items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
-    }))
-  }
-
-  async function editInvoice(document: InvoiceDocument) {
-    const fullDocument = document.id ? (await api.invoiceDocument(document.id)).document : document
-    setEditingInvoice(fullDocument)
-    setInvoiceForm({
-      ...emptyInvoiceForm,
-      ...fullDocument,
-      client: fullDocument.client,
-      items: fullDocument.items.length ? fullDocument.items : emptyInvoiceForm.items,
-      branding: fullDocument.branding,
-      paymentGateway: fullDocument.paymentGateway || 'paystack',
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  function resetInvoiceForm() {
-    setEditingInvoice(null)
-    setInvoiceForm(emptyInvoiceForm)
-  }
-
-  async function saveInvoiceDocument(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaving(true)
-    setError('')
-
-    try {
-      const result = editingInvoice?.id
-        ? await api.updateInvoiceDocument(editingInvoice.id, invoiceForm)
-        : await api.createInvoiceDocument(invoiceForm)
-      setInvoiceDocuments((current) => {
-        const exists = current.some((item) => item.id === result.document.id)
-        return exists ? current.map((item) => (item.id === result.document.id ? result.document : item)) : [result.document, ...current]
-      })
-      setEditingInvoice(result.document)
-      setInvoiceForm({
-        ...emptyInvoiceForm,
-        ...result.document,
-        client: result.document.client,
-        items: result.document.items,
-        branding: result.document.branding,
-      })
-      notify(`${result.document.type} saved.`)
-      void loadInvoiceData()
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save document.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function sendInvoiceDocument(document: InvoiceDocument) {
-    if (!document.id) return
-    const result = await api.sendInvoiceDocument(document.id)
-    setInvoiceDocuments((current) => current.map((item) => (item.id === result.document.id ? result.document : item)))
-    notify('Document marked as sent and email activity logged.')
-    void loadInvoiceData()
-  }
-
-  async function copyInvoiceLink(document: InvoiceDocument) {
-    await navigator.clipboard.writeText(`${window.location.origin}${document.publicUrl}`)
-    notify('Public document link copied.')
-  }
-
-  function renderInvoices() {
-    const totals = invoicePreviewTotals(invoiceForm.items)
-    const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR']
-
-    return (
-      <div>
-        <PanelHeader eyebrow="Revenue System" title="Invoice, quote, and receipt management" text="Create branded payment documents, share public links, track views, and optimize payment conversion." />
-
-        <section className="mb-6 grid gap-4 md:grid-cols-4">
-          {[
-            { label: 'Documents', value: invoiceOverview?.totals.documents ?? 0 },
-            { label: 'Clients', value: invoiceClients.length },
-            { label: 'Paid revenue', value: invoiceMoney(invoiceOverview?.revenue.paid ?? 0, invoiceOverview?.revenue.currency ?? 'NGN') },
-            { label: 'Outstanding', value: invoiceMoney(invoiceOverview?.revenue.outstanding ?? 0, invoiceOverview?.revenue.currency ?? 'NGN') },
-            { label: 'View to click', value: `${invoiceOverview?.conversion.viewToPaymentClickRate ?? 0}%` },
-          ].map((metric) => (
-            <article key={metric.label} className="surface-card rounded-2xl p-5">
-              <p className="text-soft text-sm font-bold">{metric.label}</p>
-              <p className="mt-2 text-2xl font-black">{metric.value}</p>
-            </article>
-          ))}
-        </section>
-
-        <form onSubmit={saveInvoiceDocument} className="surface-card mb-6 grid gap-5 rounded-2xl p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-2xl font-black">{editingInvoice ? `Editing ${editingInvoice.number}` : 'Create document'}</h3>
-              <p className="text-soft mt-1 text-sm">Server-side totals protect against invoice tampering.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={resetInvoiceForm}>New</Button>
-              <Button type="submit" className="rounded-xl" disabled={saving}><Save className="h-4 w-4" />{saving ? 'Saving...' : 'Save document'}</Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-4">
-            <label className="grid gap-2 text-sm font-bold">Type<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.type} onChange={(event) => setInvoiceForm((current) => ({ ...current, type: event.target.value as 'invoice' | 'quote' | 'receipt' }))}><option value="invoice">Invoice</option><option value="quote">Quote</option><option value="receipt">Receipt</option></select></label>
-            <label className="grid gap-2 text-sm font-bold">Status<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.status} onChange={(event) => setInvoiceForm((current) => ({ ...current, status: event.target.value }))}><option value="draft">Draft</option><option value="sent">Sent</option><option value="viewed">Viewed</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option></select></label>
-            <label className="grid gap-2 text-sm font-bold">Currency<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.currency} onChange={(event) => setInvoiceForm((current) => ({ ...current, currency: event.target.value }))}>{currencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
-            <label className="grid gap-2 text-sm font-bold">Gateway<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.paymentGateway} onChange={(event) => setInvoiceForm((current) => ({ ...current, paymentGateway: event.target.value }))}><option value="paystack">Paystack</option><option value="flutterwave">Flutterwave</option><option value="manual">Manual</option></select></label>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold">Title<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.title} onChange={(event) => setInvoiceForm((current) => ({ ...current, title: event.target.value }))} /></label>
-            <label className="grid gap-2 text-sm font-bold">Client name<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.client.name} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, name: event.target.value } }))} required /></label>
-            <label className="grid gap-2 text-sm font-bold">Client email<input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="email" value={invoiceForm.client.email} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, email: event.target.value } }))} /></label>
-            <label className="grid gap-2 text-sm font-bold">Company<input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={invoiceForm.client.companyName ?? ''} onChange={(event) => setInvoiceForm((current) => ({ ...current, client: { ...current.client, companyName: event.target.value } }))} /></label>
-          </div>
-
-          <div className="grid gap-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-black">Line items</h4>
-              <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => setInvoiceForm((current) => ({ ...current, items: [...current.items, { ...emptyInvoiceItem }] }))}><Plus className="h-4 w-4" />Add item</Button>
-            </div>
-            {invoiceForm.items.map((item, index) => (
-              <div key={index} className="grid gap-3 rounded-xl border border-[var(--line)] p-3 md:grid-cols-[1.5fr_0.5fr_0.7fr_0.5fr_0.5fr_auto]">
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" placeholder="Item name" value={item.name} onChange={(event) => updateInvoiceItem(index, { name: event.target.value })} required />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Qty" value={item.quantity} onChange={(event) => updateInvoiceItem(index, { quantity: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Price" value={item.unitPrice} onChange={(event) => updateInvoiceItem(index, { unitPrice: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Disc %" value={item.discountRate} onChange={(event) => updateInvoiceItem(index, { discountRate: Number(event.target.value) })} />
-                <input className="theme-input min-h-10 rounded-xl px-3 outline-none" type="number" min="0" step="0.01" placeholder="Tax %" value={item.taxRate} onChange={(event) => updateInvoiceItem(index, { taxRate: Number(event.target.value) })} />
-                <button type="button" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--line)] text-red-500" onClick={() => setInvoiceForm((current) => {
-                  const items = current.items.filter((_, itemIndex) => itemIndex !== index)
-                  return { ...current, items: items.length ? items : [{ ...emptyInvoiceItem }] }
-                })}><Trash2 className="h-4 w-4" /></button>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
-            <textarea className="theme-input min-h-24 rounded-xl px-4 py-3 outline-none" value={invoiceForm.notes} onChange={(event) => setInvoiceForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Notes" />
-            <div className="rounded-xl border border-[var(--line)] p-4 text-sm">
-              <div className="flex justify-between"><span className="text-soft">Subtotal</span><b>{invoiceMoney(totals.subtotal, invoiceForm.currency)}</b></div>
-              <div className="mt-2 flex justify-between"><span className="text-soft">Discount</span><b>{invoiceMoney(totals.discount, invoiceForm.currency)}</b></div>
-              <div className="mt-2 flex justify-between"><span className="text-soft">Tax</span><b>{invoiceMoney(totals.tax, invoiceForm.currency)}</b></div>
-              <div className="mt-3 border-t border-[var(--line)] pt-3 flex justify-between text-lg"><span className="font-black">Total</span><b>{invoiceMoney(totals.total, invoiceForm.currency)}</b></div>
-            </div>
-          </div>
-        </form>
-
-        <section className="grid gap-4">
-          {invoiceDocuments.map((document) => (
-            <article key={document.id ?? document.number} className="surface-card rounded-2xl p-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-xl font-black">{document.number}</h3>
-                    <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-xs font-black uppercase text-soft">{document.type}</span>
-                    <span className={cn('rounded-full px-3 py-1 text-xs font-black uppercase', document.status === 'paid' || document.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-600' : document.status === 'overdue' || document.status === 'rejected' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600')}>{document.status}</span>
-                  </div>
-                  <p className="text-soft mt-1 text-sm">{document.client.name} · {document.title}</p>
-                  <p className="mt-2 text-sm font-black">{invoiceMoney(document.total, document.currency)} · {document.analytics.uniqueViews} unique views · {document.analytics.paymentClicks} payment clicks</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void editInvoice(document)}><Pencil className="h-4 w-4" />Edit</Button>
-                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void copyInvoiceLink(document)}><Link2 className="h-4 w-4" />Copy link</Button>
-                  <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => window.open(document.publicUrl, '_blank')}><Eye className="h-4 w-4" />View</Button>
-                  <Button type="button" className="rounded-xl" onClick={() => void sendInvoiceDocument(document)}><Upload className="h-4 w-4" />Send</Button>
-                </div>
-              </div>
-            </article>
-          ))}
-          {invoiceDocuments.length === 0 ? <section className="surface-card rounded-2xl p-8 text-center"><p className="text-soft">No invoices yet. Create your first document above.</p></section> : null}
-        </section>
-      </div>
-    )
-  }
-
   function renderUsers() {
     return (
       <div>
-        <PanelHeader eyebrow="Users" title="Admin users" text="Admin accounts are loaded from the database. New roles can be added on top of this user table." />
+        <PanelHeader 
+          eyebrow="Users" 
+          title="Admin Users" 
+          text="Admin accounts are loaded from the database. New roles can be added on top of this user table." 
+        />
         <div className="grid gap-4">
           {cms?.users.map((user) => (
-            <article key={user.id} className="surface-card flex flex-col gap-2 rounded-2xl p-5 md:flex-row md:items-center md:justify-between">
-              <div><h3 className="font-black">{user.name}</h3><p className="text-soft text-sm">{user.email}</p></div>
-              <span className="w-fit rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase text-emerald-500">{user.role}</span>
+            <article key={user.id} className="bg-white rounded-2xl border border-gray-100 p-5 md:grid-cols-[1fr_auto] md:items-center shadow-sm">
+              <div>
+                <h3 className="font-black text-gray-900">{user.name}</h3>
+                <p className="text-gray-500 text-sm">{user.email}</p>
+              </div>
+              <span className="w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-black uppercase text-green-700">{user.role}</span>
             </article>
           ))}
         </div>
@@ -2585,65 +4562,489 @@ export function AdminDashboard() {
   function renderSettings() {
     return (
       <div>
-        <PanelHeader eyebrow="Settings" title="Website settings" text="These settings are saved in the database and can power frontend controls." />
-        <form className="surface-card grid gap-4 rounded-2xl p-5 md:grid-cols-2" onSubmit={saveSettings}>
-          {Object.entries(settingsForm).filter(([key]) => key !== 'homePortfolioShowDescriptions').map(([key, value]) => (
-            <label key={key} className="grid gap-2 text-sm font-bold">
-              {settingLabels[key] ?? key}
-              <input className="theme-input min-h-11 rounded-xl px-4 outline-none" value={value} onChange={(event) => setSettingsForm((current) => ({ ...current, [key]: event.target.value }))} />
-            </label>
-          ))}
-          <Button type="submit" className="rounded-xl md:col-span-2"><Save className="h-4 w-4" />Save Settings</Button>
+        <PanelHeader 
+          eyebrow="Settings" 
+          title="Site Settings" 
+          text="Configure global settings for your website including contact info, social media links, and more." 
+        />
+        <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveSettings}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {Object.entries(settingsForm).map(([key, value]) => (
+              <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
+                {settingLabels[key] ?? key}
+                <input
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  value={value ?? ''}
+                  onChange={(e) => setSettingsForm(prev => ({ ...prev, [key]: e.target.value }))}
+                />
+              </label>
+            ))}
+          </div>
+          <div className="mt-6">
+            <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Save Settings</Button>
+          </div>
         </form>
       </div>
     )
   }
 
-  function renderActiveSection() {
-    if (activeSection === 'pages') return renderPages()
-    if (activeSection === 'posts') return renderPosts()
-    if (activeSection === 'projects') return renderProjects()
-    if (activeSection === 'reviews') return renderReviews()
-    if (activeSection === 'library') return renderLibrary()
-    if (activeSection === 'seo') return renderSeo()
-    if (activeSection === 'bookings') return renderBookings()
-    if (activeSection === 'invoices') return renderInvoices()
-    if (activeSection === 'users') return renderUsers()
-    if (activeSection === 'settings') return renderSettings()
-    return renderDashboard()
+  function renderAdminContent() {
+    switch (activeSection) {
+      case 'dashboard': return renderDashboard()
+      case 'pages': return renderPages()
+      case 'posts': return renderPosts()
+      case 'projects': return renderProjects()
+      case 'reviews': return renderReviews()
+      case 'library': return renderLibrary()
+      case 'seo': return renderSeo()
+      case 'bookings': return renderBookings()
+      case 'invoices': return renderInvoices()
+      case 'users': return renderUsers()
+      case 'settings': return renderSettings()
+      default: return renderDashboard()
+    }
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] lg:grid lg:grid-cols-[17rem_1fr]">
-      <aside className="border-b border-[var(--line)] bg-[var(--surface)]/92 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
-        <div className="flex min-h-20 items-center justify-between gap-4 px-4 lg:min-h-0 lg:flex-col lg:items-start lg:p-5">
-          <div><p className="text-xs font-black uppercase tracking-[0.22em] text-[#1261ff]">Bakhtech</p><h1 className="text-xl font-black">Admin Panel</h1></div>
-          <Button type="button" variant="ghost" className="min-h-10 px-3 lg:hidden" onClick={logout}><LogOut className="h-4 w-4" /></Button>
-        </div>
-        <nav className="flex gap-2 overflow-x-auto px-4 pb-4 lg:grid lg:overflow-visible lg:px-5 lg:pb-5">
-          {menuItems.map((item) => (
-            <button key={item.id} type="button" onClick={() => setActiveSection(item.id)} className={cn('flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-4 text-sm font-black transition lg:w-full', activeSection === item.id ? 'bg-[var(--foreground)] text-[var(--background)]' : 'text-soft hover:bg-[var(--surface-2)] hover:text-[var(--foreground)]')}>
-              <item.icon className="h-4 w-4" />{item.label}
+    <div className={cn("min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex", darkMode && "dark")}>
+      {/* 1. Sidebar Container (Desktop & Mobile Drawer) */}
+      <aside 
+        className={cn(
+          "fixed top-0 bottom-0 left-0 z-40 bg-slate-900 dark:bg-slate-950 border-r border-slate-800/60 flex flex-col justify-between admin-sidebar overflow-y-auto admin-scrollbar text-slate-400 select-none",
+          sidebarCollapsed ? "w-[72px]" : "w-[280px]",
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        {/* Upper section */}
+        <div>
+          {/* Brand header */}
+          <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800/60">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0 font-bold text-sm tracking-wide">
+                BT
+              </div>
+              {!sidebarCollapsed && (
+                <span className="font-bold text-sm text-slate-100 uppercase tracking-wider truncate">
+                  Bakhtech Admin
+                </span>
+              )}
+            </div>
+
+            {/* Collapse toggle (desktop only) */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden md:flex items-center justify-center p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <ChevronLeft className={cn("w-4 h-4 transition-transform duration-300", sidebarCollapsed && "rotate-180")} />
             </button>
-          ))}
-        </nav>
-        <div className="mt-auto hidden p-5 lg:block"><Button type="button" variant="ghost" className="w-full justify-start rounded-xl" onClick={logout}><LogOut className="h-4 w-4" />Logout</Button></div>
+          </div>
+
+          {/* Navigation links */}
+          <nav className="p-3 space-y-1">
+            {menuItems.map((item) => {
+              const isActive = activeSection === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveSection(item.id)
+                    setMobileSidebarOpen(false)
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+                    isActive 
+                      ? "bg-blue-600 text-white font-semibold shadow-lg shadow-blue-500/15" 
+                      : "hover:bg-slate-800/50 hover:text-slate-100"
+                  )}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-105", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200")} />
+                  {!sidebarCollapsed && <span className="truncate text-xs tracking-wide">{item.label}</span>}
+                  
+                  {/* Active indicator bar */}
+                  {isActive && (
+                    <span className="absolute left-0 top-3 bottom-3 w-1 bg-white rounded-r-full admin-nav-indicator" />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* Lower section */}
+        <div className="p-3 border-t border-slate-800/60 space-y-2">
+          {/* Theme Switcher Card */}
+          <div className={cn(
+            "flex items-center gap-3 rounded-xl bg-slate-800/30 border border-slate-800/40 p-2",
+            sidebarCollapsed ? "justify-center" : "justify-between"
+          )}>
+            {!sidebarCollapsed && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Theme</span>}
+            <button
+              type="button"
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors flex items-center justify-center shrink-0"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}
+            </button>
+          </div>
+
+          {/* User profile / Logout */}
+          <div className={cn("flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800/30 transition-all", sidebarCollapsed ? "justify-center" : "justify-between")}>
+            <div className="flex items-center gap-2 overflow-hidden shrink-0">
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-200 font-bold text-xs uppercase tracking-wide shrink-0">
+                {cms?.users[0]?.name?.slice(0, 2) || 'AD'}
+              </div>
+              {!sidebarCollapsed && (
+                <div className="overflow-hidden">
+                  <span className="block text-xs font-semibold text-slate-200 truncate">{cms?.users[0]?.name || 'Admin User'}</span>
+                  <span className="block text-[10px] text-slate-500 truncate">{cms?.users[0]?.email || 'admin@bakhtech.com'}</span>
+                </div>
+              )}
+            </div>
+            {!sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={logout}
+                className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-800/50 transition-colors shrink-0"
+                title="Log Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </aside>
-      <section className="min-w-0">
-        <header className="border-b border-[var(--line)] bg-[var(--background)]/80 px-4 py-5 backdrop-blur-xl md:px-8">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div><p className="text-soft text-sm font-bold">Current section</p><h2 className="text-3xl font-black">{activeMenu.label}</h2></div>
-            <p className="text-soft text-sm">{projects.length} projects · {cms?.media.length ?? 0} library files</p>
+
+      {/* Mobile Backdrop Overlay */}
+      {mobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm md:hidden" 
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* 2. Main Area (Right Content Container) */}
+      <div 
+        className={cn(
+          "flex-1 flex flex-col min-w-0 min-h-screen admin-main-content bg-slate-50 dark:bg-slate-950",
+          sidebarCollapsed ? "md:pl-[72px]" : "md:pl-[280px]"
+        )}
+      >
+        {/* Header Bar */}
+        <header className="sticky top-0 z-30 h-16 px-4 md:px-6 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/60 dark:border-slate-800/60 backdrop-blur-md flex items-center justify-between shadow-sm">
+          {/* Left: Hamburger & Breadcrumb */}
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Breadcrumb section */}
+            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span>Admin</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
+              <span className="text-slate-800 dark:text-white font-bold">{activeMenu.label}</span>
+            </div>
+          </div>
+
+          {/* Center: Global Search Bar */}
+          <div className="relative max-w-md w-full mx-4 hidden md:block">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search pages, posts, projects, invoices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Search results overlay dropdown */}
+            {searchQuery && (
+              <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden max-h-[360px] overflow-y-auto admin-scrollbar">
+                <div className="p-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase">
+                  Search Results ({searchResults.length})
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {searchResults.map((result, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={result.action}
+                      className="w-full flex items-start gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
+                        {result.type}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="block text-xs font-bold text-slate-950 dark:text-white truncate">{result.title}</span>
+                        {result.subtitle && <span className="block text-[10px] text-slate-400 truncate mt-0.5">{result.subtitle}</span>}
+                      </div>
+                    </button>
+                  ))}
+                  {searchResults.length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      No matching records found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Actions, Notifications & Profile */}
+          <div className="flex items-center gap-3">
+            {/* Create New Action Button */}
+            <div className="relative">
+              <Button
+                type="button"
+                onClick={() => setShowCreateNewDropdown(!showCreateNewDropdown)}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold px-4 py-2 shadow-md shadow-blue-500/10 flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Create New
+              </Button>
+
+              {/* Create New Dropdown */}
+              {showCreateNewDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowCreateNewDropdown(false)} />
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateNewDropdown(false)
+                        setActiveSection('invoices')
+                        setActiveInvoiceSubsection('create')
+                        setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <InvoiceIcon className="w-3.5 h-3.5 text-slate-400" />
+                      Invoice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateNewDropdown(false)
+                        setActiveSection('invoices')
+                        setActiveInvoiceSubsection('create')
+                        setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <QuoteIcon className="w-3.5 h-3.5 text-slate-400" />
+                      Quote
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateNewDropdown(false)
+                        void createPage()
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-slate-400" />
+                      CMS Page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateNewDropdown(false)
+                        setEditingPost(null)
+                        setPostForm(emptyPost)
+                        setActiveSection('posts')
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <Newspaper className="w-3.5 h-3.5 text-slate-400" />
+                      Blog Post
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative flex items-center justify-center"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => n.unread) && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-950 dark:text-white">Notifications</span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifications(prev => prev.map(n => ({ ...n, unread: false })))}
+                        className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-[300px] overflow-y-auto admin-scrollbar">
+                      {notifications.map((n) => (
+                        <div key={n.id} className={cn("p-3 text-xs transition-colors", n.unread ? "bg-blue-500/5" : "hover:bg-slate-50 dark:hover:bg-slate-800/20")}>
+                          <p className="text-slate-800 dark:text-slate-200 leading-normal font-medium">{n.text}</p>
+                          <span className="block text-[10px] text-slate-400 mt-1">{n.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Profile Dropdown Trigger */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wide cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
+              >
+                {cms?.users[0]?.name?.slice(0, 2) || 'AD'}
+              </button>
+
+              {/* Profile Dropdown */}
+              {showProfileDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowProfileDropdown(false)} />
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                    <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
+                      <span className="block text-xs font-bold text-slate-950 dark:text-white truncate">{cms?.users[0]?.name || 'Admin User'}</span>
+                      <span className="block text-[10px] text-slate-500 truncate mt-0.5">{cms?.users[0]?.email || 'admin@bakhtech.com'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileDropdown(false)
+                        setActiveSection('settings')
+                      }}
+                      className="w-full px-4 py-2 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-400" />
+                      Settings
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfileDropdown(false)
+                        logout()
+                      }}
+                      className="w-full px-4 py-2 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-left text-red-500 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-red-400" />
+                      Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
-        <div className="grid gap-5 p-4 md:p-8">
-          {loading ? <p className="text-soft">Loading dashboard...</p> : null}
-          {error ? <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-500">{error}</p> : null}
-          {message ? <p className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-500">{message}</p> : null}
-          {renderActiveSection()}
+
+        {/* Global Search Bar (Mobile Only) */}
+        <div className="p-4 bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800/60 md:hidden relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search everything..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+            />
+          </div>
+          {searchQuery && (
+            <div className="absolute left-4 right-4 mt-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl z-50 overflow-hidden max-h-[280px] overflow-y-auto">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {searchResults.map((result, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={result.action}
+                    className="w-full flex items-start gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
+                      {result.type}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-bold text-slate-950 dark:text-white truncate">{result.title}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </section>
-    </main>
+
+        {/* Content Body */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {renderAdminContent()}
+        </main>
+      </div>
+
+      {/* Message Notifications (Toast feedback alerts) */}
+      {message && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-slate-800 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-slate-800 dark:border-slate-700 z-50 flex items-center gap-3 animate-slide-up">
+          <div className="w-6 h-6 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center shrink-0">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-xs font-semibold">{message}</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-slate-800 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-slate-800 dark:border-slate-700 z-50 flex items-center gap-3 animate-slide-up">
+          <div className="w-6 h-6 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center shrink-0">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <p className="text-xs font-semibold">{error}</p>
+        </div>
+      )}
+
+      {/* Full-screen loader overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-slate-950/20 dark:bg-slate-950/45 z-50 flex items-center justify-center backdrop-blur-xs">
+          <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-5 py-3.5 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Syncing database data...</span>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
-

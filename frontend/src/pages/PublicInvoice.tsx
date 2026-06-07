@@ -1,6 +1,27 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, CreditCard, Download, Loader2, MousePointerClick, ShieldCheck, XCircle } from 'lucide-react'
+import {
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Download,
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+  XCircle,
+  Moon,
+  Sun,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api, type InvoiceDocument } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -18,11 +39,88 @@ function money(amount: number, currency: string) {
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(Number(amount || 0))
 }
 
+function compactDate(date: string) {
+  if (!date) return 'Not set'
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return date
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(parsed)
+}
+
+function titleCase(value: string) {
+  return value.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function decodeEntities(value: string) {
+  if (typeof window === 'undefined') return value
+  let decoded = value
+  for (let index = 0; index < 3; index += 1) {
+    const textarea = window.document.createElement('textarea')
+    textarea.innerHTML = decoded
+    const next = textarea.value
+    if (next === decoded) break
+    decoded = next
+  }
+  return decoded
+}
+
+function sanitizeRichText(value: string) {
+  if (typeof window === 'undefined') return ''
+  const decoded = decodeEntities(value.trim())
+  if (!decoded) return ''
+
+  const hasHtml = /<\/?[a-z][\s\S]*>/i.test(decoded)
+  if (!hasHtml) {
+    const wrapper = window.document.createElement('div')
+    decoded.split(/\n{2,}/).forEach((paragraph) => {
+      const text = paragraph.trim()
+      if (!text) return
+      const p = window.document.createElement('p')
+      p.textContent = text
+      wrapper.appendChild(p)
+    })
+    return wrapper.innerHTML
+  }
+
+  const parser = new DOMParser()
+  const parsed = parser.parseFromString(decoded, 'text/html')
+  const allowedTags = new Set(['P', 'BR', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'H2', 'H3', 'H4'])
+
+  function cleanNode(node: Node) {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const element = child as HTMLElement
+        if (!allowedTags.has(element.tagName)) {
+          const fragment = window.document.createDocumentFragment()
+          while (element.firstChild) fragment.appendChild(element.firstChild)
+          element.replaceWith(fragment)
+          cleanNode(node)
+          return
+        }
+        Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name))
+      }
+      cleanNode(child)
+    })
+  }
+
+  cleanNode(parsed.body)
+  return parsed.body.innerHTML
+}
+
+function RichTextBlock({ value }: { value: string }) {
+  const html = useMemo(() => sanitizeRichText(value), [value])
+  if (!html) return null
+  return <div className="invoice-portal-richtext" dangerouslySetInnerHTML={{ __html: html }} />
+}
+
 export function PublicInvoice() {
   const { token = '' } = useParams()
   const [document, setDocument] = useState<InvoiceDocument | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
+  const [activeItemIndex, setActiveItemIndex] = useState(0)
+  const [generatedInvoiceUrl, setGeneratedInvoiceUrl] = useState('')
+  const [darkQuoteMode, setDarkQuoteMode] = useState(false)
   const [error, setError] = useState('')
   const sid = useMemo(sessionId, [])
 
@@ -72,6 +170,25 @@ export function PublicInvoice() {
     }
   }
 
+  async function generateInvoice() {
+    setGeneratingInvoice(true)
+    setError('')
+    try {
+      const result = await api.generateInvoiceFromQuote(token)
+      setDocument(result.quote)
+      setGeneratedInvoiceUrl(result.document.publicUrl)
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : 'Unable to generate invoice.')
+    } finally {
+      setGeneratingInvoice(false)
+    }
+  }
+
+  function downloadPdf() {
+    void api.trackInvoiceEvent(token, { eventType: 'pdf.downloaded', sessionId: sid }).catch(() => undefined)
+    window.open(`/api/invoices/${token}/pdf`, '_blank')
+  }
+
   async function handlePaymentClick() {
     await api.trackInvoiceEvent(token, { eventType: 'payment.clicked', sessionId: sid }).catch(() => undefined)
     window.alert(`${document?.paymentGateway || 'Payment'} checkout is configured for this document. Gateway redirect wiring is the next integration step.`)
@@ -79,134 +196,418 @@ export function PublicInvoice() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[var(--background)] text-[var(--foreground)]">
-        <div className="flex items-center gap-3 text-soft"><Loader2 className="h-5 w-5 animate-spin" />Loading document...</div>
+      <main className="grid min-h-screen place-items-center bg-stone-50 text-zinc-950">
+        <div className="flex items-center gap-3 text-zinc-500"><Loader2 className="h-5 w-5 animate-spin" />Loading document...</div>
       </main>
     )
   }
 
   if (!document) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[var(--background)] px-6 text-center text-[var(--foreground)]">
-        <div><h1 className="text-2xl font-black">Document unavailable</h1><p className="text-soft mt-2">{error || 'This link is invalid or expired.'}</p></div>
+      <main className="grid min-h-screen place-items-center bg-stone-50 px-6 text-center text-zinc-950">
+        <div><h1 className="text-2xl font-black">Document unavailable</h1><p className="mt-2 text-zinc-500">{error || 'This link is invalid or expired.'}</p></div>
       </main>
     )
   }
 
   const brand = document.branding
-  const statusClass = document.status === 'paid' || document.status === 'accepted'
-    ? 'bg-emerald-500/10 text-emerald-600'
-    : document.status === 'overdue' || document.status === 'rejected'
-      ? 'bg-red-500/10 text-red-600'
-      : 'bg-amber-500/10 text-amber-600'
+  const isPositiveStatus = document.status === 'paid' || document.status === 'accepted'
+  const isDangerStatus = document.status === 'overdue' || document.status === 'rejected'
+  const statusClass = isPositiveStatus ? 'is-success' : isDangerStatus ? 'is-danger' : 'is-warning'
+  const docName = titleCase(document.type)
+  const docLabel = `${docName} #${document.number}`
+  const showQuoteDecision = document.type === 'quote' && !['accepted', 'rejected'].includes(document.status)
+  const isQuote = document.type === 'quote'
+  const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
+  const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
+  const statusSteps = document.type === 'quote'
+    ? ['Issued', document.analytics.totalViews > 0 ? 'Viewed' : 'Sent', isPositiveStatus ? 'Accepted' : isDangerStatus ? 'Rejected' : 'Decision']
+    : ['Issued', document.analytics.totalViews > 0 ? 'Viewed' : 'Sent', document.balanceDue <= 0 ? 'Paid' : 'Payment']
+  const progressIndex = isPositiveStatus || document.balanceDue <= 0 ? 2 : document.analytics.totalViews > 0 ? 1 : 0
 
-  return (
-    <main className="min-h-screen bg-[var(--background)] px-4 py-8 text-[var(--foreground)] md:py-12" style={{ '--brand': brand.primaryColor, '--brand-2': brand.accentColor } as CSSProperties}>
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_22rem]">
-        <section className="surface-card overflow-hidden rounded-2xl">
-          <div className="border-b border-[var(--line)] bg-[var(--surface-2)] p-6 md:p-8">
-            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-              <div className="flex items-center gap-4">
-                {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} className="h-12 w-auto object-contain" /> : null}
-                <div>
-                  <h1 className="text-2xl font-black">{brand.businessName}</h1>
-                  <p className="text-soft text-sm">{brand.email} · {brand.phone}</p>
-                </div>
-              </div>
-              <div className="text-left md:text-right">
-                <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-black uppercase', statusClass)}>{document.status}</span>
-                <h2 className="mt-3 text-3xl font-black capitalize">{document.type}</h2>
-                <p className="text-soft font-bold">{document.number}</p>
-              </div>
-            </div>
-          </div>
+  if (isQuote) {
+    return (
+      <main className={cn('quote-document-page', darkQuoteMode && 'is-dark')} style={{ '--primary': brand.primaryColor, '--accent': brand.accentColor } as CSSProperties}>
+        <button type="button" className="quote-document-mode" onClick={() => setDarkQuoteMode((value) => !value)}>
+          {darkQuoteMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          {darkQuoteMode ? 'Light mode' : 'Dark mode'}
+        </button>
 
-          <div className="grid gap-8 p-6 md:p-8">
-            <div className="grid gap-5 md:grid-cols-2">
+        <div className="quote-document-sheet">
+          <header className="quote-document-header">
+            <div className="quote-document-brand">
+              {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
               <div>
-                <p className="text-soft text-xs font-black uppercase tracking-[0.18em]">Billed to</p>
-                <h3 className="mt-2 text-xl font-black">{document.client.name}</h3>
-                <p className="text-soft">{document.client.companyName}</p>
-                <p className="text-soft">{document.client.email}</p>
-                <p className="text-soft whitespace-pre-line">{document.client.address}</p>
-              </div>
-              <div className="grid gap-2 text-sm md:justify-end md:text-right">
-                <p><span className="text-soft">Issue date:</span> <b>{document.issueDate || 'Not set'}</b></p>
-                <p><span className="text-soft">Due date:</span> <b>{document.dueDate || 'Not set'}</b></p>
-                <p><span className="text-soft">Currency:</span> <b>{document.currency}</b></p>
+                <h1>{brand.businessName}</h1>
+                <p>Email: {brand.email || 'Not provided'}</p>
+                <p>Phone: {brand.phone || 'Not provided'}</p>
+                <p>{brand.address || 'Address not provided'}</p>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-2xl font-black">{document.title}</h3>
-              <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--line)]">
-                <table className="w-full min-w-[44rem] text-left text-sm">
-                  <thead className="bg-[var(--surface-2)] text-xs uppercase tracking-[0.12em] text-soft">
-                    <tr><th className="px-4 py-3">Item</th><th className="px-4 py-3">Qty</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Tax</th><th className="px-4 py-3 text-right">Total</th></tr>
-                  </thead>
-                  <tbody>
-                    {document.items.map((item) => (
-                      <tr key={item.id ?? item.name} className="border-t border-[var(--line)]">
-                        <td className="px-4 py-4"><b>{item.name}</b><p className="text-soft mt-1">{item.description}</p></td>
-                        <td className="px-4 py-4">{item.quantity}</td>
-                        <td className="px-4 py-4">{money(item.unitPrice, document.currency)}</td>
-                        <td className="px-4 py-4">{item.taxRate}%</td>
-                        <td className="px-4 py-4 text-right font-black">{money(item.lineTotal ?? 0, document.currency)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-[1fr_20rem]">
+            <div className="quote-document-id">
+              <span>Quote</span>
+              <strong>{document.number}</strong>
               <div>
-                {document.notes ? <p className="text-soft leading-7">{document.notes}</p> : null}
-                {document.terms ? <p className="text-soft mt-3 text-sm leading-6">{document.terms}</p> : null}
+                <b>Issued {compactDate(document.issueDate)}</b>
+                <b>Valid {compactDate(document.dueDate)}</b>
               </div>
-              <div className="rounded-xl border border-[var(--line)] p-5">
-                <div className="flex justify-between"><span className="text-soft">Subtotal</span><b>{money(document.subtotal, document.currency)}</b></div>
-                <div className="mt-2 flex justify-between"><span className="text-soft">Discount</span><b>{money(document.discountTotal, document.currency)}</b></div>
-                <div className="mt-2 flex justify-between"><span className="text-soft">Tax</span><b>{money(document.taxTotal, document.currency)}</b></div>
-                <div className="mt-4 flex justify-between border-t border-[var(--line)] pt-4 text-xl"><span className="font-black">Balance due</span><b>{money(document.balanceDue, document.currency)}</b></div>
-              </div>
+              <button type="button" onClick={() => void api.trackInvoiceEvent(token, { eventType: 'document.viewed', sessionId: sid }).catch(() => undefined)}>
+                Viewed
+              </button>
             </div>
-          </div>
-        </section>
+          </header>
 
-        <aside className="grid h-fit gap-4 lg:sticky lg:top-6">
-          <section className="surface-card rounded-2xl p-5">
-            <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-[var(--brand)]" /><h3 className="font-black">Secure document</h3></div>
-            <p className="text-soft mt-2 text-sm leading-6">This tokenized page tracks document views, payment intent, and quote decisions for better follow-up.</p>
-          </section>
-
-          {document.paymentEnabled && document.balanceDue > 0 ? (
-            <Button type="button" className="min-h-12 rounded-xl bg-[var(--brand)] text-white hover:opacity-90" onClick={() => void handlePaymentClick()}>
-              <CreditCard className="h-4 w-4" />Pay with {document.paymentGateway || 'gateway'}
-            </Button>
+          {error ? <div className="quote-document-alert is-error">{error}</div> : null}
+          {invoiceUrl ? (
+            <div className="quote-document-alert is-success">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Invoice ready: {document.generatedInvoice?.number || 'generated invoice'}</span>
+              <button type="button" onClick={() => window.open(invoiceUrl, '_blank')}>Open invoice</button>
+            </div>
           ) : null}
 
-          {document.type === 'quote' && !['accepted', 'rejected'].includes(document.status) ? (
-            <section className="grid gap-2">
-              <Button type="button" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={saving} onClick={() => void decideQuote('accepted')}><CheckCircle2 className="h-4 w-4" />Accept quote</Button>
-              <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)] text-red-500" disabled={saving} onClick={() => void decideQuote('rejected')}><XCircle className="h-4 w-4" />Reject quote</Button>
+          <section className="quote-document-top-grid">
+            <div className="quote-document-card">
+              <span>Client</span>
+              <h2>{document.client.name || 'Client'}</h2>
+              {document.client.companyName ? <p>{document.client.companyName}</p> : null}
+              {document.client.email ? <p>{document.client.email}</p> : null}
+              {document.client.phone ? <p>{document.client.phone}</p> : null}
+            </div>
+            <div className="quote-document-card">
+              <span>Details</span>
+              <p><strong>Quote #</strong> {document.number}</p>
+              <p><strong>Issued</strong> {compactDate(document.issueDate)}</p>
+              <p><strong>Valid Until</strong> {compactDate(document.dueDate)}</p>
+            </div>
+          </section>
+
+          {document.notes ? (
+            <section className="quote-document-section">
+              <h3>Service Overview</h3>
+              <div className="quote-document-panel">
+                <RichTextBlock value={document.notes} />
+              </div>
             </section>
           ) : null}
 
-          <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => window.open(`/api/invoices/${token}/pdf`, '_blank')}>
-            <Download className="h-4 w-4" />Download PDF
-          </Button>
+          {document.terms ? (
+            <section className="quote-document-section">
+              <h3>Scope of Service</h3>
+              <div className="quote-document-panel quote-document-scope">
+                <RichTextBlock value={document.terms} />
+              </div>
+            </section>
+          ) : null}
 
-          <section className="surface-card rounded-2xl p-5">
-            <h3 className="font-black">Engagement</h3>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-xl bg-[var(--surface-2)] p-3"><b>{document.analytics.totalViews}</b><p className="text-soft text-xs">Views</p></div>
-              <div className="rounded-xl bg-[var(--surface-2)] p-3"><b>{document.analytics.uniqueViews}</b><p className="text-soft text-xs">Unique</p></div>
-              <div className="rounded-xl bg-[var(--surface-2)] p-3"><b>{document.analytics.paymentClicks}</b><p className="text-soft text-xs">Clicks</p></div>
+          <section className="quote-document-section">
+            <div className="quote-document-table">
+              <div className="quote-document-table-head">
+                <span>Item</span>
+                <span>Qty</span>
+                <span>Price</span>
+                <span>Discount</span>
+                <span>Total</span>
+              </div>
+              {document.items.map((item, index) => (
+                <button
+                  type="button"
+                  className={cn('quote-document-row', activeItemIndex === index && 'is-active')}
+                  key={item.id ?? `${item.name}-${index}`}
+                  onClick={() => setActiveItemIndex(index)}
+                >
+                  <span><strong>{item.name || `Item ${index + 1}`}</strong>{item.description ? <RichTextBlock value={item.description} /> : null}</span>
+                  <span data-label="Qty">{item.quantity}</span>
+                  <span data-label="Price">{money(item.unitPrice, document.currency)}</span>
+                  <span data-label="Discount">{item.discountRate > 0 ? `${item.discountRate}%` : 'None'}</span>
+                  <span>{money(item.lineTotal ?? 0, document.currency)}</span>
+                </button>
+              ))}
             </div>
-            <p className="text-soft mt-3 flex items-center gap-2 text-xs"><MousePointerClick className="h-3.5 w-3.5" />Payment CTA clicks are tracked.</p>
           </section>
-        </aside>
+
+          <section className="quote-document-total-row">
+            <div className="quote-document-selected">
+              <span>Selected Item</span>
+              <strong>{activeItem?.name || 'Quote item'}</strong>
+              {activeItem ? <p>{activeItem.quantity} x {money(activeItem.unitPrice, document.currency)}</p> : null}
+            </div>
+            <div className="quote-document-totals">
+              <div><span>Subtotal</span><strong>{money(document.subtotal, document.currency)}</strong></div>
+              <div><span>Discount</span><strong>{money(document.discountTotal, document.currency)}</strong></div>
+              <div><span>Tax</span><strong>{money(document.taxTotal, document.currency)}</strong></div>
+              <div className="is-final"><span>Total</span><strong>{money(document.total, document.currency)}</strong></div>
+            </div>
+          </section>
+
+          <footer className="quote-document-footer">
+            <div>
+              <h3>Notes</h3>
+              <p>{document.notes ? 'This quote is based on the service overview and scope listed above.' : 'No additional notes were added.'}</p>
+            </div>
+            <div className="quote-document-actions">
+              {showQuoteDecision ? (
+                <Button type="button" className="quote-document-accept" disabled={saving} onClick={() => void decideQuote('accepted')}>
+                  <CheckCircle2 className="h-4 w-4" />Accept quote
+                </Button>
+              ) : null}
+              <Button type="button" className="quote-document-download" onClick={downloadPdf}>
+                <Download className="h-4 w-4" />Download PDF
+              </Button>
+              {invoiceUrl ? (
+                <Button type="button" className="quote-document-generate" onClick={() => window.open(invoiceUrl, '_blank')}>
+                  <ExternalLink className="h-4 w-4" />Open invoice
+                </Button>
+              ) : (
+                <Button type="button" className="quote-document-generate" disabled={generatingInvoice || document.status === 'rejected'} onClick={() => void generateInvoice()}>
+                  {generatingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate invoice
+                </Button>
+              )}
+            </div>
+          </footer>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className={cn('invoice-portal', isQuote && 'quote-portal')} style={{ '--primary': brand.primaryColor, '--accent': brand.accentColor } as CSSProperties}>
+      <header className="invoice-portal-topbar">
+        <div className="invoice-portal-brand">
+          {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} className="invoice-portal-logo" /> : <Building2 className="h-6 w-6" />}
+          <div>
+            <strong>{brand.businessName}</strong>
+            <span>{docLabel}</span>
+          </div>
+        </div>
+        <span className={cn('invoice-portal-status', statusClass)}>{titleCase(document.status)}</span>
+      </header>
+
+      <div className="invoice-portal-shell">
+        <section className="invoice-portal-hero">
+          <div className="invoice-portal-hero-copy">
+            <span className="invoice-portal-type"><ReceiptText className="h-4 w-4" />{isQuote ? 'Interactive Quote Review' : docName}</span>
+            <h1>{document.title || docLabel}</h1>
+            <p>{document.client.name ? `Prepared for ${document.client.name}` : 'Prepared client document'}</p>
+          </div>
+          <div className="invoice-portal-total">
+            <span>{document.type === 'quote' ? 'Quoted Total' : 'Balance Due'}</span>
+            <strong>{money(document.type === 'quote' ? document.total : document.balanceDue, document.currency)}</strong>
+            <small>{document.currency} total {money(document.total, document.currency)}</small>
+          </div>
+        </section>
+
+        {isQuote ? (
+          <section className="quote-portal-command">
+            <div className="quote-portal-command-copy">
+              <Sparkles className="h-5 w-5" />
+              <div>
+                <strong>Review the scope, approve the quote, then generate the invoice.</strong>
+                <span>{invoiceUrl ? 'An invoice has already been generated from this quote.' : 'The invoice will keep the same client, items, totals, and terms.'}</span>
+              </div>
+            </div>
+            <div className="quote-portal-command-actions">
+              <Button type="button" variant="ghost" className="invoice-portal-secondary" onClick={downloadPdf}>
+                <Download className="h-4 w-4" />Download PDF
+              </Button>
+              {invoiceUrl ? (
+                <Button type="button" className="invoice-portal-primary" onClick={() => window.open(invoiceUrl, '_blank')}>
+                  <ExternalLink className="h-4 w-4" />Open invoice
+                </Button>
+              ) : (
+                <Button type="button" className="invoice-portal-primary" disabled={generatingInvoice || document.status === 'rejected'} onClick={() => void generateInvoice()}>
+                  {generatingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate invoice
+                </Button>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {error ? <div className="quote-portal-alert is-error">{error}</div> : null}
+        {invoiceUrl ? (
+          <div className="quote-portal-alert is-success">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Invoice ready: {document.generatedInvoice?.number || 'generated invoice'}</span>
+            <button type="button" onClick={() => window.open(invoiceUrl, '_blank')}>Open invoice</button>
+          </div>
+        ) : null}
+
+        <section className="invoice-portal-timeline" aria-label="Document status">
+          {statusSteps.map((step, index) => (
+            <div className={cn('invoice-portal-step', index <= progressIndex && 'is-active')} key={step}>
+              <span>{index < progressIndex || isPositiveStatus ? <CheckCircle2 className="h-4 w-4" /> : index === progressIndex ? <Clock className="h-4 w-4" /> : index + 1}</span>
+              <strong>{step}</strong>
+            </div>
+          ))}
+        </section>
+
+        <div className="invoice-portal-grid">
+          <article className="invoice-portal-document">
+            <section className="invoice-portal-panel invoice-portal-meta">
+              <div>
+                <span>Issued</span>
+                <strong><CalendarDays className="h-4 w-4" />{compactDate(document.issueDate)}</strong>
+              </div>
+              <div>
+                <span>{document.type === 'quote' ? 'Valid Until' : 'Due'}</span>
+                <strong><CalendarDays className="h-4 w-4" />{compactDate(document.dueDate)}</strong>
+              </div>
+              <div>
+                <span>Document</span>
+                <strong>{docLabel}</strong>
+              </div>
+            </section>
+
+            <section className="invoice-portal-panel invoice-portal-parties">
+              <div>
+                <span className="invoice-portal-kicker">From</span>
+                <h2>{brand.businessName}</h2>
+                <div className="invoice-portal-contact">
+                  {brand.email ? <p><Mail className="h-4 w-4" />{brand.email}</p> : null}
+                  {brand.phone ? <p><Phone className="h-4 w-4" />{brand.phone}</p> : null}
+                  {brand.address ? <p><MapPin className="h-4 w-4" />{brand.address}</p> : null}
+                </div>
+              </div>
+              <ArrowRight className="invoice-portal-party-arrow" />
+              <div>
+                <span className="invoice-portal-kicker">Bill To</span>
+                <h2>{document.client.name || 'Client'}</h2>
+                <div className="invoice-portal-contact">
+                  {document.client.companyName ? <p><Building2 className="h-4 w-4" />{document.client.companyName}</p> : null}
+                  {document.client.email ? <p><Mail className="h-4 w-4" />{document.client.email}</p> : null}
+                  {document.client.phone ? <p><Phone className="h-4 w-4" />{document.client.phone}</p> : null}
+                  {document.client.address ? <p className="whitespace-pre-line"><MapPin className="h-4 w-4" />{document.client.address}</p> : null}
+                </div>
+              </div>
+            </section>
+
+            {document.notes || document.terms ? (
+              <section className="invoice-portal-panel invoice-portal-copy-grid">
+                {document.notes ? (
+                  <div>
+                    <span className="invoice-portal-kicker">Service Overview</span>
+                    <RichTextBlock value={document.notes} />
+                  </div>
+                ) : null}
+                {document.terms ? (
+                  <div>
+                    <span className="invoice-portal-kicker">Terms</span>
+                    <RichTextBlock value={document.terms} />
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section className="invoice-portal-panel invoice-portal-items">
+              <div className="invoice-portal-section-head">
+                <div>
+                  <span className="invoice-portal-kicker">Line Items</span>
+                  <h2>{document.items.length} item{document.items.length === 1 ? '' : 's'}</h2>
+                </div>
+                <FileCheck2 className="h-5 w-5" />
+              </div>
+              {isQuote && activeItem ? (
+                <div className="quote-item-review">
+                  <div className="quote-item-tabs" role="tablist" aria-label="Quote line items">
+                    {document.items.map((item, index) => (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeItemIndex === index}
+                        className={cn(activeItemIndex === index && 'is-active')}
+                        key={item.id ?? `${item.name}-tab-${index}`}
+                        onClick={() => setActiveItemIndex(index)}
+                      >
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <strong>{item.name || `Item ${index + 1}`}</strong>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="quote-item-focus">
+                    <span className="invoice-portal-kicker">Selected Scope</span>
+                    <h3>{activeItem.name}</h3>
+                    {activeItem.description ? <RichTextBlock value={activeItem.description} /> : <p>No description added for this item.</p>}
+                    <div className="quote-item-focus-total">
+                      <span>Qty {activeItem.quantity} x {money(activeItem.unitPrice, document.currency)}</span>
+                      <strong>{money(activeItem.lineTotal ?? 0, document.currency)}</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="invoice-portal-table">
+                <div className="invoice-portal-table-head">
+                  <span>Item</span><span>Qty</span><span>Rate</span><span>Discount</span><span>Tax</span><span>Total</span>
+                </div>
+                {document.items.map((item, index) => (
+                  <div className="invoice-portal-row" key={item.id ?? `${item.name}-${index}`}>
+                    <div>
+                      <strong>{item.name || `Item ${index + 1}`}</strong>
+                      {item.description ? <RichTextBlock value={item.description} /> : null}
+                    </div>
+                    <span data-label="Qty">{item.quantity}</span>
+                    <span data-label="Rate">{money(item.unitPrice, document.currency)}</span>
+                    <span data-label="Discount">{item.discountRate > 0 ? `${item.discountRate}%` : 'None'}</span>
+                    <span data-label="Tax">{item.taxRate}%</span>
+                    <strong data-label="Total">{money(item.lineTotal ?? 0, document.currency)}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </article>
+
+          <aside className="invoice-portal-sidebar">
+            <section className="invoice-portal-action-card">
+              <span className={cn('invoice-portal-status', statusClass)}>{titleCase(document.status)}</span>
+              <h2>{document.type === 'quote' ? 'Quote Summary' : 'Payment Summary'}</h2>
+              <div className="invoice-portal-total-list">
+                <div><span>Subtotal</span><strong>{money(document.subtotal, document.currency)}</strong></div>
+                <div><span>Discount</span><strong>{money(document.discountTotal, document.currency)}</strong></div>
+                <div><span>Tax</span><strong>{money(document.taxTotal, document.currency)}</strong></div>
+                <div><span>Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div>
+                <div className="is-final"><span>{document.type === 'quote' ? 'Total' : 'Balance'}</span><strong>{money(document.type === 'quote' ? document.total : document.balanceDue, document.currency)}</strong></div>
+              </div>
+              <div className="invoice-portal-actions">
+                {document.paymentEnabled && document.balanceDue > 0 ? (
+                  <Button type="button" className="invoice-portal-primary" onClick={() => void handlePaymentClick()}>
+                    <CreditCard className="h-4 w-4" />Pay {money(document.balanceDue, document.currency)}
+                  </Button>
+                ) : null}
+                {showQuoteDecision ? (
+                  <>
+                    <Button type="button" className="invoice-portal-accept" disabled={saving} onClick={() => void decideQuote('accepted')}>
+                      <CheckCircle2 className="h-4 w-4" />Accept quote
+                    </Button>
+                    <Button type="button" variant="ghost" className="invoice-portal-reject" disabled={saving} onClick={() => void decideQuote('rejected')}>
+                      <XCircle className="h-4 w-4" />Reject quote
+                    </Button>
+                  </>
+                ) : null}
+                {isQuote && invoiceUrl ? (
+                  <Button type="button" className="invoice-portal-primary" onClick={() => window.open(invoiceUrl, '_blank')}>
+                    <ExternalLink className="h-4 w-4" />Open generated invoice
+                  </Button>
+                ) : null}
+                {isQuote && !invoiceUrl ? (
+                  <Button type="button" className="invoice-portal-primary" disabled={generatingInvoice || document.status === 'rejected'} onClick={() => void generateInvoice()}>
+                    {generatingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate invoice
+                  </Button>
+                ) : null}
+                <Button type="button" variant="ghost" className="invoice-portal-secondary" onClick={downloadPdf}>
+                  <Download className="h-4 w-4" />Download PDF
+                </Button>
+              </div>
+            </section>
+
+            <section className="invoice-portal-secure">
+              <ShieldCheck className="h-5 w-5" />
+              <div>
+                <strong>Secure client document</strong>
+                <span>{document.analytics.totalViews} view{document.analytics.totalViews === 1 ? '' : 's'} recorded</span>
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </main>
   )
