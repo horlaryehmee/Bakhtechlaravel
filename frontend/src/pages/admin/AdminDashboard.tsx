@@ -292,6 +292,41 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   },
 }
 
+const invoicePaymentGateways = [
+  { value: 'manual', label: 'Manual/Offline', description: 'Record bank transfer, cash, or custom payment instructions.' },
+  { value: 'paystack', label: 'Paystack', description: 'Good default for NGN card, transfer, and local checkout flows.' },
+  { value: 'flutterwave', label: 'Flutterwave', description: 'Useful for USD and multi-currency payment collection.' },
+]
+
+function parseInvoiceGatewayList(settings: Record<string, string>, currency = '') {
+  const gateways = new Set<string>()
+  String(settings.invoiceEnabledPaymentGateways || '')
+    .split(',')
+    .map((gateway) => gateway.trim())
+    .filter(Boolean)
+    .forEach((gateway) => gateways.add(gateway))
+
+  const globalGateway = String(settings.gateway_active || settings.invoiceDefaultPaymentGateway || '').trim()
+  if (globalGateway && globalGateway !== 'none') gateways.add(globalGateway)
+
+  try {
+    const accounts = JSON.parse(String(settings.bank_currency_accounts || '[]'))
+    if (Array.isArray(accounts)) {
+      accounts.forEach((account) => {
+        const accountCurrency = String(account?.currency || '').toUpperCase()
+        const gateway = String(account?.gateway || '').trim()
+        if (gateway && gateway !== 'none' && (!currency || accountCurrency === currency.toUpperCase())) {
+          gateways.add(gateway)
+        }
+      })
+    }
+  } catch {
+    // WordPress stores this as serialized PHP; Laravel users can paste JSON here.
+  }
+
+  return Array.from(gateways).filter((gateway) => invoicePaymentGateways.some((option) => option.value === gateway))
+}
+
 const reviewProviders: Array<{ value: ReviewInput['provider']; label: string }> = [
   { value: 'google', label: 'Google' },
   { value: 'trustpilot', label: 'Trustpilot' },
@@ -449,12 +484,18 @@ function invoicePreviewTotals(items: InvoiceItem[]) {
   return { subtotal, discount, tax, total: subtotal - discount + tax }
 }
 
+function storedAdminView<T extends string>(key: string, fallback: T, allowed: readonly T[]): T {
+  if (typeof window === 'undefined') return fallback
+  const value = window.localStorage.getItem(key) as T | null
+  return value && allowed.includes(value) ? value : fallback
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
   const token = getAdminToken()
-  const [activeSection, setActiveSection] = useState<AdminSection>('dashboard')
-  const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>('dashboard')
-  const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>('dashboard')
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'invoices', 'users', 'settings']))
+  const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
+  const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [cms, setCms] = useState<CmsData | null>(null)
   const [bookingOverview, setBookingOverview] = useState<BookingCmsOverview | null>(null)
@@ -521,6 +562,18 @@ export function AdminDashboard() {
       localStorage.setItem('theme', 'light')
     }
   }, [darkMode])
+
+  useEffect(() => {
+    localStorage.setItem('bakhtech-admin-section', activeSection)
+  }, [activeSection])
+
+  useEffect(() => {
+    localStorage.setItem('bakhtech-admin-booking-section', activeBookingSection)
+  }, [activeBookingSection])
+
+  useEffect(() => {
+    localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
+  }, [activeInvoiceSubsection])
 
   // Global search implementation
   const searchResults = useMemo(() => {
@@ -1130,6 +1183,7 @@ export function AdminDashboard() {
     event.preventDefault()
     const result = await api.updateSettings(settingsForm)
     setCms((current) => (current ? { ...current, settings: result.settings } : current))
+    setSettingsForm(result.settings)
     notify('Settings saved.')
   }
 
@@ -1147,6 +1201,30 @@ export function AdminDashboard() {
     await api.deleteMedia(media.id)
     setCms((current) => (current ? { ...current, media: current.media.filter((item) => item.id !== media.id) } : current))
     notify('File deleted.')
+  }
+
+  function invoiceFormFromSettings(type: 'invoice' | 'quote' | 'receipt' = 'invoice') {
+    const enabledGateways = parseInvoiceGatewayList(settingsForm, settingsForm.currency || 'NGN')
+    const defaultTaxRate = Number(settingsForm.default_tax_rate || 0)
+
+    return {
+      ...emptyInvoiceForm,
+      type,
+      currency: settingsForm.currency || emptyInvoiceForm.currency,
+      paymentGateway: enabledGateways[0] || settingsForm.gateway_active || emptyInvoiceForm.paymentGateway,
+      paymentEnabled: (settingsForm.invoicePaymentEnabled ?? 'true') !== 'false',
+      notes: settingsForm.invoiceDefaultNotes || emptyInvoiceForm.notes,
+      terms: settingsForm.invoiceDefaultTerms || emptyInvoiceForm.terms,
+      items: [{ ...emptyInvoiceItem, name: 'Professional Service', unitPrice: 0, taxRate: Number.isFinite(defaultTaxRate) ? defaultTaxRate : 0 }],
+      branding: {
+        ...emptyInvoiceForm.branding,
+        businessName: settingsForm.company_name || emptyInvoiceForm.branding.businessName,
+        logoUrl: settingsForm.company_logo || emptyInvoiceForm.branding.logoUrl,
+        email: settingsForm.company_email || emptyInvoiceForm.branding.email,
+        phone: settingsForm.company_phone || emptyInvoiceForm.branding.phone,
+        address: settingsForm.company_address || emptyInvoiceForm.branding.address,
+      },
+    }
   }
 
   function updateInvoiceItem(index: number, patch: Partial<InvoiceItem>) {
@@ -1173,8 +1251,8 @@ export function AdminDashboard() {
 
   function resetInvoiceForm() {
     setEditingInvoice(null)
-    setInvoiceForm(emptyInvoiceForm)
-    setActiveInvoiceSubsection('dashboard')
+    setInvoiceForm(invoiceFormFromSettings(invoiceForm.type === 'quote' ? 'quote' : 'invoice'))
+    setActiveInvoiceSubsection(invoiceForm.type === 'quote' ? 'quotes' : 'invoices')
   }
 
   async function saveInvoiceDocument(event: FormEvent<HTMLFormElement>) {
@@ -1183,9 +1261,14 @@ export function AdminDashboard() {
     setError('')
 
     try {
+      const enabledGatewayValues = parseInvoiceGatewayList(settingsForm, invoiceForm.currency || '')
+      const selectedGateway = enabledGatewayValues.includes(invoiceForm.paymentGateway || '')
+        ? invoiceForm.paymentGateway
+        : enabledGatewayValues[0] || invoiceForm.paymentGateway || ''
+      const payload = { ...invoiceForm, paymentGateway: selectedGateway }
       const result = editingInvoice?.id
-        ? await api.updateInvoiceDocument(editingInvoice.id, invoiceForm)
-        : await api.createInvoiceDocument(invoiceForm)
+        ? await api.updateInvoiceDocument(editingInvoice.id, payload)
+        : await api.createInvoiceDocument(payload)
       setInvoiceDocuments((current) => {
         const exists = current.some((doc) => doc.id === result.document.id)
         return exists ? current.map((doc) => (doc.id === result.document.id ? result.document : doc)) : [result.document, ...current]
@@ -1362,7 +1445,7 @@ export function AdminDashboard() {
               className="bkinv-btn bkinv-btn-primary"
               onClick={() => {
                 setEditingInvoice(null)
-                setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                setInvoiceForm(invoiceFormFromSettings('invoice'))
                 setActiveInvoiceSubsection('create')
               }}
             >
@@ -1375,7 +1458,7 @@ export function AdminDashboard() {
               className="bkinv-btn bkinv-btn-secondary"
               onClick={() => {
                 setEditingInvoice(null)
-                setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                setInvoiceForm(invoiceFormFromSettings('quote'))
                 setActiveInvoiceSubsection('create')
               }}
             >
@@ -1533,7 +1616,7 @@ export function AdminDashboard() {
             className="bkinv-btn bkinv-btn-primary"
             onClick={() => {
               setEditingInvoice(null)
-              setInvoiceForm({ ...emptyInvoiceForm, type })
+              setInvoiceForm(invoiceFormFromSettings(type))
               setActiveInvoiceSubsection('create')
             }}
           >
@@ -1691,6 +1774,14 @@ export function AdminDashboard() {
     const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR']
     const isEdit = !!editingInvoice
     const documentLabel = invoiceForm.type === 'quote' ? 'Quote' : invoiceForm.type === 'receipt' ? 'Receipt' : 'Invoice'
+    const enabledGatewayValues = parseInvoiceGatewayList(settingsForm, invoiceForm.currency || '')
+    const availableGateways = invoicePaymentGateways.filter((gateway) => enabledGatewayValues.includes(gateway.value))
+    const selectedGateway = availableGateways.some((gateway) => gateway.value === invoiceForm.paymentGateway)
+      ? invoiceForm.paymentGateway
+      : availableGateways[0]?.value || invoiceForm.paymentGateway || ''
+    const gatewayChoices = selectedGateway && !availableGateways.some((gateway) => gateway.value === selectedGateway)
+      ? [...availableGateways, invoicePaymentGateways.find((gateway) => gateway.value === selectedGateway)].filter(Boolean)
+      : availableGateways
     const lineTotal = (item: InvoiceItem) => {
       const base = Number(item.quantity || 0) * Number(item.unitPrice || 0)
       const discount = base * (Number(item.discountRate || 0) / 100)
@@ -1702,27 +1793,29 @@ export function AdminDashboard() {
 
     return (
       <div className="bkinv-edit-screen">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="bkinv-edit-hero">
+          <div className="bkinv-edit-hero-copy">
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-md border border-gray-200 hover:border-blue-500 hover:bg-blue-50"
+              className="bkinv-back-button"
               onClick={() => {
                 setEditingInvoice(null)
-                setActiveInvoiceSubsection(invoiceForm.type)
+                setActiveInvoiceSubsection(invoiceForm.type === 'quote' ? 'quotes' : 'invoices')
               }}
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
+              <p className="bkinv-section-kicker">{isEdit ? 'Edit document' : 'Create document'}</p>
               <h3 className="bkinv-page-title">
                 {isEdit ? `Edit ${documentLabel}` : `New ${documentLabel}`}
                 {isEdit && invoiceForm.number ? <span className="bkinv-saved-indicator">{invoiceForm.number}</span> : null}
               </h3>
+              <p className="bkinv-edit-subtitle">Build a polished invoice or quote with client details, line items, payment routing, and public document settings.</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="bkinv-edit-actions">
             <Button
               type="button"
               variant="ghost"
@@ -2006,7 +2099,7 @@ export function AdminDashboard() {
                     onChange={(e) => setInvoiceForm(prev => ({ ...prev, dueDate: e.target.value }))}
                   />
                 </label>
-                <label className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-semibold text-gray-700">
+                <label className="bkinv-payment-toggle">
                   <input
                     type="checkbox"
                     checked={Boolean(invoiceForm.paymentEnabled)}
@@ -2014,19 +2107,28 @@ export function AdminDashboard() {
                   />
                   Enable payment button
                 </label>
-                <label className="bkinv-form-group">
+                <div className="bkinv-form-group">
                   <span>Payment Gateway</span>
-                  <select
-                    className="bkinv-select"
-                    value={invoiceForm.paymentGateway || ''}
-                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, paymentGateway: e.target.value }))}
-                  >
-                    <option value="">None</option>
-                    <option value="manual">Manual/Offline</option>
-                    <option value="paystack">Paystack</option>
-                    <option value="flutterwave">Flutterwave</option>
-                  </select>
-                </label>
+                  <div className="bkinv-gateway-picker">
+                    {gatewayChoices.length ? gatewayChoices.map((gateway) => (
+                      <label key={gateway.value} className={cn('bkinv-gateway-option', selectedGateway === gateway.value && 'is-selected')}>
+                        <input
+                          type="radio"
+                          name="invoice-payment-gateway"
+                          value={gateway.value}
+                          checked={selectedGateway === gateway.value}
+                          onChange={() => setInvoiceForm(prev => ({ ...prev, paymentGateway: gateway.value }))}
+                        />
+                        <span>
+                          <strong>{gateway.label}</strong>
+                          <small>{gateway.description}</small>
+                        </span>
+                      </label>
+                    )) : (
+                      <div className="bkinv-alert bkinv-alert-info">Enable at least one payment gateway in Invoice Settings.</div>
+                    )}
+                  </div>
+                </div>
                 <Button
                   type="button"
                   className="bkinv-btn bkinv-btn-primary bkinv-btn-block"
@@ -2096,7 +2198,7 @@ export function AdminDashboard() {
             <p>{filteredClients.length.toLocaleString()} shown from {invoiceClients.length.toLocaleString()} total contacts</p>
           </div>
           <Button type="button" className="bkinv-btn bkinv-btn-primary" onClick={() => {
-            setInvoiceForm({ ...emptyInvoiceForm })
+            setInvoiceForm(invoiceFormFromSettings())
             setActiveInvoiceSubsection('create')
           }}>
             <Plus className="h-4 w-4" />
@@ -2207,39 +2309,46 @@ export function AdminDashboard() {
         title: 'Business identity',
         description: 'Used on public quotes, invoices, receipts, and generated PDFs.',
         fields: [
-          { key: 'invoiceBusinessName', label: 'Business name', placeholder: 'Bakhtech Solutions' },
-          { key: 'invoiceLogoUrl', label: 'Logo URL', placeholder: '/bakhtech-logo-light.png' },
-          { key: 'invoicePrimaryColor', label: 'Primary color', type: 'color' },
-          { key: 'invoiceAccentColor', label: 'Accent color', type: 'color' },
-        ],
-      },
-      {
-        title: 'Contact details',
-        description: 'Shown on the client-facing document header and PDF.',
-        fields: [
-          { key: 'invoiceContactEmail', label: 'Email', type: 'email', placeholder: 'solutions@bakhtech.com.ng' },
-          { key: 'invoiceContactPhone', label: 'Phone', placeholder: '+2347086372833' },
-          { key: 'invoiceBusinessAddress', label: 'Address', multiline: true, placeholder: 'Bakhtech Solutions, Eti Osa, Lekki, Lagos' },
+          { key: 'company_name', label: 'Company name', placeholder: 'Bakhtech Solutions' },
+          { key: 'company_logo', label: 'Company logo URL', placeholder: '/bakhtech-logo-light.png' },
+          { key: 'company_email', label: 'Company email', type: 'email', placeholder: 'solutions@bakhtech.com.ng' },
+          { key: 'company_phone', label: 'Company phone', placeholder: '+2347086372833' },
+          { key: 'company_address', label: 'Company address', multiline: true, placeholder: 'Bakhtech Solutions, Eti Osa, Lekki, Lagos' },
+          { key: 'company_website', label: 'Company website', placeholder: 'https://bakhtech.com.ng' },
         ],
       },
       {
         title: 'Document defaults',
-        description: 'Defaults applied when new documents are created.',
+        description: 'WordPress plugin numbering, currency, tax, and document action defaults.',
         fields: [
-          { key: 'invoiceDefaultCurrency', label: 'Default currency', options: ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'] },
-          { key: 'invoiceDefaultTaxRate', label: 'Default tax rate %', type: 'number', placeholder: '7.5' },
-          { key: 'invoiceDefaultDueDays', label: 'Invoice due days', type: 'number', placeholder: '14' },
-          { key: 'invoiceQuoteExpiryDays', label: 'Quote valid days', type: 'number', placeholder: '30' },
+          { key: 'currency', label: 'Default currency', options: ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'] },
+          { key: 'currency_symbol', label: 'Currency symbol override', placeholder: '₦' },
+          { key: 'default_tax_rate', label: 'Default tax rate %', type: 'number', placeholder: '7.5' },
+          { key: 'tax_label', label: 'Tax label', placeholder: 'VAT' },
+          { key: 'quote_prefix', label: 'Quote prefix', placeholder: 'QT-' },
+          { key: 'invoice_prefix', label: 'Invoice prefix', placeholder: 'INV-' },
+          { key: 'starting_number', label: 'Starting number', type: 'number', placeholder: '1000' },
+          { key: 'receipt_starting_number', label: 'Receipt starting number', type: 'number', placeholder: '1000' },
+          { key: 'homepage_url', label: 'Homepage URL', placeholder: 'https://bakhtech.com.ng' },
+          { key: 'homepage_label', label: 'Homepage label', placeholder: 'Homepage' },
         ],
       },
       {
         title: 'Payment controls',
-        description: 'Controls public payment buttons and default gateway behavior.',
+        description: 'Matches the WordPress plugin gateway model: active gateway, mode, partial payments, and test/live keys.',
         fields: [
           { key: 'invoicePaymentEnabled', label: 'Payment button', options: ['true', 'false'] },
-          { key: 'invoiceDefaultPaymentGateway', label: 'Default gateway', options: ['manual', 'paystack', 'flutterwave'] },
-          { key: 'invoicePaystackPublicKey', label: 'Paystack public key', placeholder: 'pk_live_...' },
-          { key: 'invoiceFlutterwavePublicKey', label: 'Flutterwave public key', placeholder: 'FLWPUBK...' },
+          { key: 'gateway_active', label: 'Active gateway', options: ['none', 'paystack', 'flutterwave'] },
+          { key: 'gateway_mode', label: 'Gateway mode', options: ['test', 'live'] },
+          { key: 'enable_partial_payments', label: 'Partial online payments', options: ['1', '0'] },
+          { key: 'paystack_public_test', label: 'Paystack test public key', placeholder: 'pk_test_...' },
+          { key: 'paystack_secret_test', label: 'Paystack test secret key', placeholder: 'sk_test_...' },
+          { key: 'paystack_public_live', label: 'Paystack live public key', placeholder: 'pk_live_...' },
+          { key: 'paystack_secret_live', label: 'Paystack live secret key', placeholder: 'sk_live_...' },
+          { key: 'flutter_public_test', label: 'Flutterwave test public key', placeholder: 'FLWPUBK_TEST...' },
+          { key: 'flutter_secret_test', label: 'Flutterwave test secret key', placeholder: 'FLWSECK_TEST...' },
+          { key: 'flutter_public_live', label: 'Flutterwave live public key', placeholder: 'FLWPUBK...' },
+          { key: 'flutter_secret_live', label: 'Flutterwave live secret key', placeholder: 'FLWSECK...' },
         ],
       },
       {
@@ -2253,15 +2362,67 @@ export function AdminDashboard() {
       },
     ]
 
-    const fieldValue = (key: string) => settingsForm[key] ?? ''
+    const fieldValue = (key: string) => {
+      const value = settingsForm[key] ?? ''
+      return typeof value === 'string' ? value : JSON.stringify(value)
+    }
     const setField = (key: string, value: string) => setSettingsForm((current) => ({ ...current, [key]: value }))
+    const enabledPaymentGateways = parseInvoiceGatewayList(settingsForm)
+    const currencyAccountRows = (() => {
+      try {
+        const parsed = JSON.parse(String(settingsForm.bank_currency_accounts || '[]'))
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    })()
+    const setCurrencyAccountRows = (rows: any[]) => setField('bank_currency_accounts', JSON.stringify(rows))
+    const updateCurrencyAccount = (index: number, patch: Record<string, string>) => {
+      setCurrencyAccountRows(currencyAccountRows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)))
+    }
+    const addCurrencyAccount = () => {
+      setCurrencyAccountRows([
+        ...currencyAccountRows,
+        {
+          currency: '',
+          account_name: '',
+          account_number: '',
+          wire_routing: '',
+          ach_routing: '',
+          account_type: '',
+          bank_name: '',
+          bank_address: '',
+          instructions: '',
+          gateway: '',
+        },
+      ])
+    }
+    const removeCurrencyAccount = (index: number) => {
+      setCurrencyAccountRows(currencyAccountRows.filter((_, rowIndex) => rowIndex !== index))
+    }
+    const setEnabledPaymentGateway = (gateway: string, enabled: boolean) => {
+      const next = new Set(enabledPaymentGateways)
+      if (enabled) next.add(gateway)
+      else next.delete(gateway)
+      const values = Array.from(next)
+      setSettingsForm((current) => ({
+        ...current,
+        invoiceEnabledPaymentGateways: values.join(','),
+        invoiceDefaultPaymentGateway: values[0] || '',
+        gateway_active: values[0] || 'none',
+      }))
+    }
 
     const renderField = (field: any) => {
       if (field.options) {
         return (
           <select className="bkinv-select" value={fieldValue(field.key)} onChange={(event) => setField(field.key, event.target.value)}>
             <option value="">Use system default</option>
-            {field.options.map((option: string) => <option key={option} value={option}>{option === 'true' ? 'Enabled' : option === 'false' ? 'Disabled' : option}</option>)}
+            {field.options.map((option: string) => (
+              <option key={option} value={option}>
+                {option === 'true' || option === '1' ? 'Enabled' : option === 'false' || option === '0' ? 'Disabled' : option === 'none' ? 'None' : option}
+              </option>
+            ))}
           </select>
         )
       }
@@ -2301,6 +2462,126 @@ export function AdminDashboard() {
             Save settings
           </Button>
         </div>
+
+        <section className="bkinv-settings-card bkinv-gateway-settings">
+          <div className="bkinv-settings-card-head">
+            <h4>Enabled payment gateways</h4>
+            <p>Select every gateway that should be available on invoice and quote edit screens.</p>
+          </div>
+          <div className="bkinv-gateway-grid">
+            {invoicePaymentGateways.map((gateway) => (
+              <label key={gateway.value} className={cn('bkinv-gateway-card', enabledPaymentGateways.includes(gateway.value) && 'is-selected')}>
+                <input
+                  type="checkbox"
+                  checked={enabledPaymentGateways.includes(gateway.value)}
+                  onChange={(event) => setEnabledPaymentGateway(gateway.value, event.target.checked)}
+                />
+                <span>
+                  <strong>{gateway.label}</strong>
+                  <small>{gateway.description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="bkinv-settings-card bkinv-currency-settings">
+          <div className="bkinv-settings-card-head">
+            <h4>Currency bank accounts</h4>
+            <p>Add bank details and optional gateway overrides per currency, the same way the WordPress plugin handles currency-specific accounts.</p>
+          </div>
+          <div className="bkinv-currency-settings-body">
+            <div className="bkinv-form-row bkinv-row-2">
+              <label className="bkinv-form-group">
+                <span>Default account name</span>
+                <input className="bkinv-input" value={fieldValue('bank_account_name')} onChange={(event) => setField('bank_account_name', event.target.value)} />
+              </label>
+              <label className="bkinv-form-group">
+                <span>Default account number</span>
+                <input className="bkinv-input" value={fieldValue('bank_account_number')} onChange={(event) => setField('bank_account_number', event.target.value)} />
+              </label>
+              <label className="bkinv-form-group">
+                <span>Default bank name</span>
+                <input className="bkinv-input" value={fieldValue('bank_bank_name')} onChange={(event) => setField('bank_bank_name', event.target.value)} />
+              </label>
+              <label className="bkinv-form-group">
+                <span>Default transfer instructions</span>
+                <input className="bkinv-input" value={fieldValue('bank_instructions')} onChange={(event) => setField('bank_instructions', event.target.value)} />
+              </label>
+            </div>
+
+            <div className="bkinv-currency-list">
+              {currencyAccountRows.map((row, index) => (
+                <article key={`${row.currency || 'currency'}-${index}`} className="bkinv-currency-card">
+                  <div className="bkinv-currency-card-head">
+                    <strong>{row.currency || 'New currency account'}</strong>
+                    <button type="button" className="bkinv-btn-icon bkinv-btn-danger" onClick={() => removeCurrencyAccount(index)} title="Remove currency account">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="bkinv-currency-card-grid">
+                    <label className="bkinv-form-group">
+                      <span>Currency</span>
+                      <select className="bkinv-select" value={row.currency || ''} onChange={(event) => updateCurrencyAccount(index, { currency: event.target.value })}>
+                        <option value="">Choose currency</option>
+                        {['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+                      </select>
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Gateway override</span>
+                      <select className="bkinv-select" value={row.gateway || ''} onChange={(event) => updateCurrencyAccount(index, { gateway: event.target.value })}>
+                        <option value="">Use global</option>
+                        <option value="none">No gateway</option>
+                        <option value="paystack">Paystack</option>
+                        <option value="flutterwave">Flutterwave</option>
+                      </select>
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Account name</span>
+                      <input className="bkinv-input" value={row.account_name || ''} onChange={(event) => updateCurrencyAccount(index, { account_name: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Account number</span>
+                      <input className="bkinv-input" value={row.account_number || ''} onChange={(event) => updateCurrencyAccount(index, { account_number: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Bank name</span>
+                      <input className="bkinv-input" value={row.bank_name || ''} onChange={(event) => updateCurrencyAccount(index, { bank_name: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Bank address</span>
+                      <input className="bkinv-input" value={row.bank_address || ''} onChange={(event) => updateCurrencyAccount(index, { bank_address: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Wire routing</span>
+                      <input className="bkinv-input" value={row.wire_routing || ''} onChange={(event) => updateCurrencyAccount(index, { wire_routing: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>ACH routing</span>
+                      <input className="bkinv-input" value={row.ach_routing || ''} onChange={(event) => updateCurrencyAccount(index, { ach_routing: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group">
+                      <span>Account type</span>
+                      <input className="bkinv-input" value={row.account_type || ''} onChange={(event) => updateCurrencyAccount(index, { account_type: event.target.value })} />
+                    </label>
+                    <label className="bkinv-form-group is-wide">
+                      <span>Instructions</span>
+                      <textarea className="bkinv-textarea" value={row.instructions || ''} onChange={(event) => updateCurrencyAccount(index, { instructions: event.target.value })} />
+                    </label>
+                  </div>
+                </article>
+              ))}
+              {currencyAccountRows.length === 0 ? (
+                <div className="bkinv-alert bkinv-alert-info">No currency-specific bank accounts yet. Add one for USD, GBP, or any currency that needs separate bank details or gateway routing.</div>
+              ) : null}
+            </div>
+
+            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={addCurrencyAccount}>
+              <Plus className="h-4 w-4" />
+              Add Currency Account
+            </Button>
+          </div>
+        </section>
 
         <div className="bkinv-settings-grid">
           {settingGroups.map((group) => (
@@ -2764,7 +3045,7 @@ export function AdminDashboard() {
                   onClick={() => {
                     setActiveSection('invoices')
                     setActiveInvoiceSubsection('create')
-                    setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                    setInvoiceForm(invoiceFormFromSettings('invoice'))
                   }}
                   className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/50 hover:bg-blue-500/5 dark:hover:bg-blue-500/5 transition group"
                 >
@@ -2782,7 +3063,7 @@ export function AdminDashboard() {
                   onClick={() => {
                     setActiveSection('invoices')
                     setActiveInvoiceSubsection('create')
-                    setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                    setInvoiceForm(invoiceFormFromSettings('quote'))
                   }}
                   className="flex items-center gap-3 p-3 text-left rounded-xl border border-slate-100 dark:border-slate-800 hover:border-purple-500/50 hover:bg-purple-500/5 dark:hover:bg-purple-500/5 transition group"
                 >
@@ -4833,7 +5114,7 @@ export function AdminDashboard() {
                         setShowCreateNewDropdown(false)
                         setActiveSection('invoices')
                         setActiveInvoiceSubsection('create')
-                        setInvoiceForm({ ...emptyInvoiceForm, type: 'invoice' })
+                        setInvoiceForm(invoiceFormFromSettings('invoice'))
                       }}
                       className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
                     >
@@ -4846,7 +5127,7 @@ export function AdminDashboard() {
                         setShowCreateNewDropdown(false)
                         setActiveSection('invoices')
                         setActiveInvoiceSubsection('create')
-                        setInvoiceForm({ ...emptyInvoiceForm, type: 'quote' })
+                        setInvoiceForm(invoiceFormFromSettings('quote'))
                       }}
                       className="w-full px-4 py-2.5 text-xs font-semibold text-left text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-2"
                     >

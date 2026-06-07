@@ -1028,9 +1028,17 @@ class InvoiceController extends Controller
 
     private function nextDocumentNumber(string $type): string
     {
-        $prefix = ['invoice' => 'INV', 'quote' => 'QUO', 'receipt' => 'RCT'][$type] ?? 'DOC';
-        $count = DB::table('invoice_documents')->where('type', $type)->count() + 1;
-        return $prefix . '-' . now()->format('Y') . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        $settings = $this->siteSettings();
+        $prefix = match ($type) {
+            'invoice' => (string) ($settings['invoice_prefix'] ?? 'INV-'),
+            'quote' => (string) ($settings['quote_prefix'] ?? 'QT-'),
+            'receipt' => 'RCT-',
+            default => 'DOC-',
+        };
+        $start = max(1, (int) ($settings[$type === 'receipt' ? 'receipt_starting_number' : 'starting_number'] ?? 1000));
+        $count = DB::table('invoice_documents')->where('type', $type)->count();
+
+        return rtrim($prefix, '-') . '-' . ($start + $count);
     }
 
     private function documentRow(int $id): ?object
@@ -1175,15 +1183,26 @@ class InvoiceController extends Controller
 
     private function branding(array $branding): array
     {
+        $settings = $this->siteSettings();
+
         return array_merge([
-            'businessName' => 'Bakhtech Solutions',
-            'logoUrl' => '/bakhtech-logo-light.png',
+            'businessName' => $settings['company_name'] ?? 'Bakhtech Solutions',
+            'logoUrl' => $settings['company_logo'] ?? '/bakhtech-logo-light.png',
             'primaryColor' => '#ef4444',
             'accentColor' => '#12c8a0',
-            'email' => 'solutions@bakhtech.com.ng',
-            'phone' => '+234 708 637 2833',
-            'address' => '',
+            'email' => $settings['company_email'] ?? 'solutions@bakhtech.com.ng',
+            'phone' => $settings['company_phone'] ?? '+234 708 637 2833',
+            'address' => $settings['company_address'] ?? '',
         ], $branding);
+    }
+
+    private function siteSettings(): array
+    {
+        if (!Schema::hasTable('settings')) {
+            return [];
+        }
+
+        return DB::table('settings')->pluck('value', 'key')->all();
     }
 
     private function gatewayCheckoutUrl(object $document, string $reference): string

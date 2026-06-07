@@ -1,24 +1,13 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  ArrowRight,
   Building2,
-  CalendarDays,
   CheckCircle2,
-  Clock,
   CreditCard,
   Download,
   ExternalLink,
-  FileCheck2,
   FileText,
   Loader2,
-  Mail,
-  MapPin,
-  Phone,
-  ReceiptText,
-  ShieldCheck,
-  Sparkles,
-  XCircle,
   Moon,
   Sun,
 } from 'lucide-react'
@@ -121,6 +110,8 @@ export function PublicInvoice() {
   const [activeItemIndex, setActiveItemIndex] = useState(0)
   const [generatedInvoiceUrl, setGeneratedInvoiceUrl] = useState('')
   const [darkQuoteMode, setDarkQuoteMode] = useState(false)
+  const [darkInvoiceMode, setDarkInvoiceMode] = useState(false)
+  const [selectedPaymentPercent, setSelectedPaymentPercent] = useState(100)
   const [error, setError] = useState('')
   const sid = useMemo(sessionId, [])
 
@@ -215,15 +206,13 @@ export function PublicInvoice() {
   const isDangerStatus = document.status === 'overdue' || document.status === 'rejected'
   const statusClass = isPositiveStatus ? 'is-success' : isDangerStatus ? 'is-danger' : 'is-warning'
   const docName = titleCase(document.type)
-  const docLabel = `${docName} #${document.number}`
   const showQuoteDecision = document.type === 'quote' && !['accepted', 'rejected'].includes(document.status)
   const isQuote = document.type === 'quote'
   const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
   const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
-  const statusSteps = document.type === 'quote'
-    ? ['Issued', document.analytics.totalViews > 0 ? 'Viewed' : 'Sent', isPositiveStatus ? 'Accepted' : isDangerStatus ? 'Rejected' : 'Decision']
-    : ['Issued', document.analytics.totalViews > 0 ? 'Viewed' : 'Sent', document.balanceDue <= 0 ? 'Paid' : 'Payment']
-  const progressIndex = isPositiveStatus || document.balanceDue <= 0 ? 2 : document.analytics.totalViews > 0 ? 1 : 0
+  const payableAmount = Math.max(0, document.balanceDue || document.total)
+  const selectedPaymentAmount = payableAmount * (selectedPaymentPercent / 100)
+  const paymentPresets = [50, 75, 100]
 
   if (isQuote) {
     return (
@@ -372,243 +361,137 @@ export function PublicInvoice() {
   }
 
   return (
-    <main className={cn('invoice-portal', isQuote && 'quote-portal')} style={{ '--primary': brand.primaryColor, '--accent': brand.accentColor } as CSSProperties}>
-      <header className="invoice-portal-topbar">
-        <div className="invoice-portal-brand">
-          {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} className="invoice-portal-logo" /> : <Building2 className="h-6 w-6" />}
-          <div>
-            <strong>{brand.businessName}</strong>
-            <span>{docLabel}</span>
-          </div>
-        </div>
-        <span className={cn('invoice-portal-status', statusClass)}>{titleCase(document.status)}</span>
-      </header>
+    <main className={cn('invoice-sheet-page', darkInvoiceMode && 'is-dark')} style={{ '--primary': brand.primaryColor, '--accent': brand.accentColor } as CSSProperties}>
+      <button type="button" className="invoice-sheet-mode" onClick={() => setDarkInvoiceMode((value) => !value)}>
+        {darkInvoiceMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+        {darkInvoiceMode ? 'Light mode' : 'Dark mode'}
+      </button>
 
-      <div className="invoice-portal-shell">
-        <section className="invoice-portal-hero">
-          <div className="invoice-portal-hero-copy">
-            <span className="invoice-portal-type"><ReceiptText className="h-4 w-4" />{isQuote ? 'Interactive Quote Review' : docName}</span>
-            <h1>{document.title || docLabel}</h1>
-            <p>{document.client.name ? `Prepared for ${document.client.name}` : 'Prepared client document'}</p>
+      <article className="invoice-sheet">
+        <header className="invoice-sheet-header">
+          <div className="invoice-sheet-brand">
+            {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+            <div className="invoice-sheet-contact">
+              <strong>{brand.businessName}</strong>
+              <span>Email: {brand.email || 'Not provided'}</span>
+              <span>Phone: {brand.phone || 'Not provided'}</span>
+              <span>{brand.address || 'Address not provided'}</span>
+            </div>
           </div>
-          <div className="invoice-portal-total">
-            <span>{document.type === 'quote' ? 'Quoted Total' : 'Balance Due'}</span>
-            <strong>{money(document.type === 'quote' ? document.total : document.balanceDue, document.currency)}</strong>
-            <small>{document.currency} total {money(document.total, document.currency)}</small>
+
+          <div className="invoice-sheet-id">
+            <span>{docName}</span>
+            <h1>{document.number}</h1>
+            <div className="invoice-sheet-date-pills">
+              <b>Issued {compactDate(document.issueDate)}</b>
+              <b>Due {compactDate(document.dueDate)}</b>
+            </div>
+            <span className={cn('invoice-sheet-status', statusClass)}>{titleCase(document.status)}</span>
+          </div>
+        </header>
+
+        {error ? <div className="invoice-sheet-alert">{error}</div> : null}
+
+        <section className="invoice-sheet-info-grid">
+          <div className="invoice-sheet-card">
+            <span>Bill To</span>
+            <strong>{document.client.name || 'Client'}</strong>
+            {document.client.companyName ? <p>{document.client.companyName}</p> : null}
+            {document.client.email ? <p>{document.client.email}</p> : null}
+            {document.client.phone ? <p>{document.client.phone}</p> : null}
+            {document.client.address ? <p className="whitespace-pre-line">{document.client.address}</p> : null}
+          </div>
+          <div className="invoice-sheet-card">
+            <span>Details</span>
+            <p><strong>{docName} #</strong> {document.number}</p>
+            <p><strong>Issued</strong> {compactDate(document.issueDate)}</p>
+            <p><strong>Due</strong> {compactDate(document.dueDate)}</p>
           </div>
         </section>
 
-        {isQuote ? (
-          <section className="quote-portal-command">
-            <div className="quote-portal-command-copy">
-              <Sparkles className="h-5 w-5" />
-              <div>
-                <strong>Review the scope, approve the quote, then generate the invoice.</strong>
-                <span>{invoiceUrl ? 'An invoice has already been generated from this quote.' : 'The invoice will keep the same client, items, totals, and terms.'}</span>
-              </div>
-            </div>
-            <div className="quote-portal-command-actions">
-              <Button type="button" variant="ghost" className="invoice-portal-secondary" onClick={downloadPdf}>
-                <Download className="h-4 w-4" />Download PDF
-              </Button>
-              {invoiceUrl ? (
-                <Button type="button" className="invoice-portal-primary" onClick={() => window.open(invoiceUrl, '_blank')}>
-                  <ExternalLink className="h-4 w-4" />Open invoice
-                </Button>
-              ) : (
-                <Button type="button" className="invoice-portal-primary" disabled={generatingInvoice || document.status === 'rejected'} onClick={() => void generateInvoice()}>
-                  {generatingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate invoice
-                </Button>
-              )}
-            </div>
-          </section>
-        ) : null}
-
-        {error ? <div className="quote-portal-alert is-error">{error}</div> : null}
-        {invoiceUrl ? (
-          <div className="quote-portal-alert is-success">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>Invoice ready: {document.generatedInvoice?.number || 'generated invoice'}</span>
-            <button type="button" onClick={() => window.open(invoiceUrl, '_blank')}>Open invoice</button>
+        <section className="invoice-sheet-items">
+          <div className="invoice-sheet-table-head">
+            <span>Item</span>
+            <span>Qty</span>
+            <span>Price</span>
+            <span>Total</span>
           </div>
-        ) : null}
-
-        <section className="invoice-portal-timeline" aria-label="Document status">
-          {statusSteps.map((step, index) => (
-            <div className={cn('invoice-portal-step', index <= progressIndex && 'is-active')} key={step}>
-              <span>{index < progressIndex || isPositiveStatus ? <CheckCircle2 className="h-4 w-4" /> : index === progressIndex ? <Clock className="h-4 w-4" /> : index + 1}</span>
-              <strong>{step}</strong>
+          {document.items.map((item, index) => (
+            <div className="invoice-sheet-row" key={item.id ?? `${item.name}-${index}`}>
+              <div>
+                <strong>{item.name || `Item ${index + 1}`}</strong>
+                {item.description ? <RichTextBlock value={item.description} /> : null}
+              </div>
+              <span data-label="Qty">{item.quantity}</span>
+              <span data-label="@">{money(item.unitPrice, document.currency)}</span>
+              <strong data-label="Total">{money(item.lineTotal ?? 0, document.currency)}</strong>
             </div>
           ))}
         </section>
 
-        <div className="invoice-portal-grid">
-          <article className="invoice-portal-document">
-            <section className="invoice-portal-panel invoice-portal-meta">
-              <div>
-                <span>Issued</span>
-                <strong><CalendarDays className="h-4 w-4" />{compactDate(document.issueDate)}</strong>
-              </div>
-              <div>
-                <span>{document.type === 'quote' ? 'Valid Until' : 'Due'}</span>
-                <strong><CalendarDays className="h-4 w-4" />{compactDate(document.dueDate)}</strong>
-              </div>
-              <div>
-                <span>Document</span>
-                <strong>{docLabel}</strong>
-              </div>
-            </section>
+        <section className="invoice-sheet-summary">
+          <div className="invoice-sheet-total-box">
+            <div><span>Subtotal</span><strong>{money(document.subtotal, document.currency)}</strong></div>
+            {document.discountTotal > 0 ? <div><span>Discount</span><strong>-{money(document.discountTotal, document.currency)}</strong></div> : null}
+            <div><span>Tax</span><strong>{money(document.taxTotal, document.currency)}</strong></div>
+            {document.amountPaid > 0 ? <div><span>Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div> : null}
+            <div className="is-final"><span>Total</span><strong>{money(document.total, document.currency)}</strong></div>
+          </div>
+        </section>
 
-            <section className="invoice-portal-panel invoice-portal-parties">
-              <div>
-                <span className="invoice-portal-kicker">From</span>
-                <h2>{brand.businessName}</h2>
-                <div className="invoice-portal-contact">
-                  {brand.email ? <p><Mail className="h-4 w-4" />{brand.email}</p> : null}
-                  {brand.phone ? <p><Phone className="h-4 w-4" />{brand.phone}</p> : null}
-                  {brand.address ? <p><MapPin className="h-4 w-4" />{brand.address}</p> : null}
-                </div>
-              </div>
-              <ArrowRight className="invoice-portal-party-arrow" />
-              <div>
-                <span className="invoice-portal-kicker">Bill To</span>
-                <h2>{document.client.name || 'Client'}</h2>
-                <div className="invoice-portal-contact">
-                  {document.client.companyName ? <p><Building2 className="h-4 w-4" />{document.client.companyName}</p> : null}
-                  {document.client.email ? <p><Mail className="h-4 w-4" />{document.client.email}</p> : null}
-                  {document.client.phone ? <p><Phone className="h-4 w-4" />{document.client.phone}</p> : null}
-                  {document.client.address ? <p className="whitespace-pre-line"><MapPin className="h-4 w-4" />{document.client.address}</p> : null}
-                </div>
-              </div>
-            </section>
-
-            {document.notes || document.terms ? (
-              <section className="invoice-portal-panel invoice-portal-copy-grid">
-                {document.notes ? (
-                  <div>
-                    <span className="invoice-portal-kicker">Service Overview</span>
-                    <RichTextBlock value={document.notes} />
-                  </div>
-                ) : null}
-                {document.terms ? (
-                  <div>
-                    <span className="invoice-portal-kicker">Terms</span>
-                    <RichTextBlock value={document.terms} />
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
-            <section className="invoice-portal-panel invoice-portal-items">
-              <div className="invoice-portal-section-head">
-                <div>
-                  <span className="invoice-portal-kicker">Line Items</span>
-                  <h2>{document.items.length} item{document.items.length === 1 ? '' : 's'}</h2>
-                </div>
-                <FileCheck2 className="h-5 w-5" />
-              </div>
-              {isQuote && activeItem ? (
-                <div className="quote-item-review">
-                  <div className="quote-item-tabs" role="tablist" aria-label="Quote line items">
-                    {document.items.map((item, index) => (
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeItemIndex === index}
-                        className={cn(activeItemIndex === index && 'is-active')}
-                        key={item.id ?? `${item.name}-tab-${index}`}
-                        onClick={() => setActiveItemIndex(index)}
-                      >
-                        <span>{String(index + 1).padStart(2, '0')}</span>
-                        <strong>{item.name || `Item ${index + 1}`}</strong>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="quote-item-focus">
-                    <span className="invoice-portal-kicker">Selected Scope</span>
-                    <h3>{activeItem.name}</h3>
-                    {activeItem.description ? <RichTextBlock value={activeItem.description} /> : <p>No description added for this item.</p>}
-                    <div className="quote-item-focus-total">
-                      <span>Qty {activeItem.quantity} x {money(activeItem.unitPrice, document.currency)}</span>
-                      <strong>{money(activeItem.lineTotal ?? 0, document.currency)}</strong>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              <div className="invoice-portal-table">
-                <div className="invoice-portal-table-head">
-                  <span>Item</span><span>Qty</span><span>Rate</span><span>Discount</span><span>Tax</span><span>Total</span>
-                </div>
-                {document.items.map((item, index) => (
-                  <div className="invoice-portal-row" key={item.id ?? `${item.name}-${index}`}>
-                    <div>
-                      <strong>{item.name || `Item ${index + 1}`}</strong>
-                      {item.description ? <RichTextBlock value={item.description} /> : null}
-                    </div>
-                    <span data-label="Qty">{item.quantity}</span>
-                    <span data-label="Rate">{money(item.unitPrice, document.currency)}</span>
-                    <span data-label="Discount">{item.discountRate > 0 ? `${item.discountRate}%` : 'None'}</span>
-                    <span data-label="Tax">{item.taxRate}%</span>
-                    <strong data-label="Total">{money(item.lineTotal ?? 0, document.currency)}</strong>
-                  </div>
+        <section className="invoice-sheet-payment">
+          <h2>Payment Options</h2>
+          <div className="invoice-sheet-payment-card">
+            <div className="invoice-sheet-bank">
+              <strong>Bank Transfer</strong>
+              <span>{brand.businessName}</span>
+              <span>Provided after checkout confirmation</span>
+            </div>
+            <div className="invoice-sheet-bank">
+              <strong>Online Payment</strong>
+              <span>{titleCase(document.paymentGateway || 'paystack')}</span>
+            </div>
+            <div className="invoice-sheet-pay-row">
+              <span>Pay</span>
+              <div className="invoice-sheet-presets">
+                {paymentPresets.map((percent) => (
+                  <button
+                    type="button"
+                    className={cn(selectedPaymentPercent === percent && 'is-active')}
+                    key={percent}
+                    onClick={() => setSelectedPaymentPercent(percent)}
+                  >
+                    {percent}%
+                  </button>
                 ))}
               </div>
-            </section>
-          </article>
+              <small>Selected: {money(selectedPaymentAmount, document.currency)}</small>
+            </div>
+            {document.paymentEnabled && payableAmount > 0 ? (
+              <Button type="button" className="invoice-sheet-pay-button" onClick={() => void handlePaymentClick()}>
+                <CreditCard className="h-4 w-4" />Pay with {titleCase(document.paymentGateway || 'paystack')} ({money(selectedPaymentAmount, document.currency)})
+              </Button>
+            ) : (
+              <div className="invoice-sheet-paid">Payment is not required for this invoice.</div>
+            )}
+          </div>
+        </section>
 
-          <aside className="invoice-portal-sidebar">
-            <section className="invoice-portal-action-card">
-              <span className={cn('invoice-portal-status', statusClass)}>{titleCase(document.status)}</span>
-              <h2>{document.type === 'quote' ? 'Quote Summary' : 'Payment Summary'}</h2>
-              <div className="invoice-portal-total-list">
-                <div><span>Subtotal</span><strong>{money(document.subtotal, document.currency)}</strong></div>
-                <div><span>Discount</span><strong>{money(document.discountTotal, document.currency)}</strong></div>
-                <div><span>Tax</span><strong>{money(document.taxTotal, document.currency)}</strong></div>
-                <div><span>Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div>
-                <div className="is-final"><span>{document.type === 'quote' ? 'Total' : 'Balance'}</span><strong>{money(document.type === 'quote' ? document.total : document.balanceDue, document.currency)}</strong></div>
-              </div>
-              <div className="invoice-portal-actions">
-                {document.paymentEnabled && document.balanceDue > 0 ? (
-                  <Button type="button" className="invoice-portal-primary" onClick={() => void handlePaymentClick()}>
-                    <CreditCard className="h-4 w-4" />Pay {money(document.balanceDue, document.currency)}
-                  </Button>
-                ) : null}
-                {showQuoteDecision ? (
-                  <>
-                    <Button type="button" className="invoice-portal-accept" disabled={saving} onClick={() => void decideQuote('accepted')}>
-                      <CheckCircle2 className="h-4 w-4" />Accept quote
-                    </Button>
-                    <Button type="button" variant="ghost" className="invoice-portal-reject" disabled={saving} onClick={() => void decideQuote('rejected')}>
-                      <XCircle className="h-4 w-4" />Reject quote
-                    </Button>
-                  </>
-                ) : null}
-                {isQuote && invoiceUrl ? (
-                  <Button type="button" className="invoice-portal-primary" onClick={() => window.open(invoiceUrl, '_blank')}>
-                    <ExternalLink className="h-4 w-4" />Open generated invoice
-                  </Button>
-                ) : null}
-                {isQuote && !invoiceUrl ? (
-                  <Button type="button" className="invoice-portal-primary" disabled={generatingInvoice || document.status === 'rejected'} onClick={() => void generateInvoice()}>
-                    {generatingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Generate invoice
-                  </Button>
-                ) : null}
-                <Button type="button" variant="ghost" className="invoice-portal-secondary" onClick={downloadPdf}>
-                  <Download className="h-4 w-4" />Download PDF
-                </Button>
-              </div>
-            </section>
+        <section className="invoice-sheet-notes">
+          <h2>Notes</h2>
+          {document.notes ? <RichTextBlock value={document.notes} /> : <p>Generated via Service Selector.</p>}
+          {document.terms ? <RichTextBlock value={document.terms} /> : null}
+        </section>
 
-            <section className="invoice-portal-secure">
-              <ShieldCheck className="h-5 w-5" />
-              <div>
-                <strong>Secure client document</strong>
-                <span>{document.analytics.totalViews} view{document.analytics.totalViews === 1 ? '' : 's'} recorded</span>
-              </div>
-            </section>
-          </aside>
-        </div>
-      </div>
+        <footer className="invoice-sheet-actions">
+          <Button type="button" className="invoice-sheet-download" onClick={downloadPdf}>
+            <Download className="h-4 w-4" />Download PDF
+          </Button>
+          <Button type="button" variant="ghost" className="invoice-sheet-home" onClick={() => { window.location.href = '/' }}>
+            <ExternalLink className="h-4 w-4" />Homepage
+          </Button>
+        </footer>
+      </article>
     </main>
   )
 }
