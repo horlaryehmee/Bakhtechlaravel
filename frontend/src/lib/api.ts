@@ -533,6 +533,31 @@ function apiUrl(path: string) {
   return `${apiBaseUrl}${path}`
 }
 
+async function parseJsonResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const contentType = response.headers.get('content-type') || ''
+
+  if (!contentType.toLowerCase().includes('application/json')) {
+    const body = await response.text().catch(() => '')
+    const isHtml = body.trimStart().startsWith('<')
+    const message = isHtml
+      ? 'The API returned an HTML page instead of JSON. Check that /api routes are forwarded to Laravel on the live server.'
+      : fallbackMessage
+
+    throw new ApiError(message, response.status)
+  }
+
+  return response.json() as Promise<T>
+}
+
+async function parseErrorMessage(response: Response, fallbackMessage: string) {
+  try {
+    const body = await parseJsonResponse<{ message?: string }>(response, fallbackMessage)
+    return body.message || fallbackMessage
+  } catch (error) {
+    return error instanceof ApiError ? error.message : fallbackMessage
+  }
+}
+
 export function getAdminToken() {
   return localStorage.getItem(tokenKey)
 }
@@ -557,15 +582,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({ message: 'Request failed.' }))
-    throw new ApiError(body.message || 'Request failed.', response.status)
+    throw new ApiError(await parseErrorMessage(response, 'Request failed.'), response.status)
   }
 
   if (response.status === 204) {
     return undefined as T
   }
 
-  return response.json() as Promise<T>
+  return parseJsonResponse<T>(response, 'Request failed.')
 }
 
 export const api = {
@@ -759,10 +783,9 @@ export const api = {
       body: formData,
     }).then(async (response) => {
       if (!response.ok) {
-        const body = await response.json().catch(() => ({ message: 'Upload failed.' }))
-        throw new ApiError(body.message || 'Upload failed.', response.status)
+        throw new ApiError(await parseErrorMessage(response, 'Upload failed.'), response.status)
       }
-      return response.json() as Promise<{ media: MediaItem }>
+      return parseJsonResponse<{ media: MediaItem }>(response, 'Upload failed.')
     })
   },
   deleteMedia(id: number) {
@@ -936,8 +959,7 @@ export const api = {
     })
 
     if (!response.ok) {
-      const body = await response.json().catch(() => ({ message: 'Export failed.' }))
-      throw new ApiError(body.message || 'Export failed.', response.status)
+      throw new ApiError(await parseErrorMessage(response, 'Export failed.'), response.status)
     }
 
     return response.blob()
