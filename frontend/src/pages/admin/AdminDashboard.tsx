@@ -675,6 +675,11 @@ export function AdminDashboard() {
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
   const [projects, setProjects] = useState<Project[]>(initialAdminCache?.projects ?? [])
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [projectSearch, setProjectSearch] = useState('')
+  const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | Project['status']>('all')
+  const [projectCategoryFilter, setProjectCategoryFilter] = useState('all')
+  const [projectPage, setProjectPage] = useState(1)
+  const [projectPerPage, setProjectPerPage] = useState(10)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [projectForm, setProjectForm] = useState<ProjectInput>(emptyProject)
@@ -736,6 +741,10 @@ export function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
   }, [activeInvoiceSubsection])
+
+  useEffect(() => {
+    setProjectPage(1)
+  }, [projectSearch, projectStatusFilter, projectCategoryFilter, projectPerPage])
 
   // Global search implementation
   const searchResults = useMemo(() => {
@@ -4458,6 +4467,23 @@ export function AdminDashboard() {
   }
 
   function renderProjects() {
+    const projectCategories = Array.from(new Set(projects.map((project) => project.category).filter(Boolean))).sort()
+    const filteredProjects = projects.filter((project) => {
+      const query = projectSearch.trim().toLowerCase()
+      const matchesSearch = !query
+        || project.title.toLowerCase().includes(query)
+        || project.category.toLowerCase().includes(query)
+        || project.summary.toLowerCase().includes(query)
+        || project.websiteUrl.toLowerCase().includes(query)
+      const matchesStatus = projectStatusFilter === 'all' || project.status === projectStatusFilter
+      const matchesCategory = projectCategoryFilter === 'all' || project.category === projectCategoryFilter
+      return matchesSearch && matchesStatus && matchesCategory
+    })
+    const totalProjectPages = Math.max(1, Math.ceil(filteredProjects.length / projectPerPage))
+    const activeProjectPage = Math.min(projectPage, totalProjectPages)
+    const projectStart = (activeProjectPage - 1) * projectPerPage
+    const paginatedProjects = filteredProjects.slice(projectStart, projectStart + projectPerPage)
+
     return (
       <div>
         <PanelHeader 
@@ -4611,9 +4637,38 @@ export function AdminDashboard() {
           </section>
           <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
             <h3 className="mb-6 text-2xl font-black text-gray-900">Manage Portfolio</h3>
+            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_160px_180px_120px]">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  className="theme-input min-h-11 w-full rounded-xl border border-gray-200 pl-10 pr-4 outline-none focus:border-blue-500"
+                  placeholder="Search title, category, summary, or link"
+                  value={projectSearch}
+                  onChange={(event) => setProjectSearch(event.target.value)}
+                />
+              </label>
+              <select className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={projectStatusFilter} onChange={(event) => setProjectStatusFilter(event.target.value as 'all' | Project['status'])}>
+                <option value="all">All status</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+              </select>
+              <select className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={projectCategoryFilter} onChange={(event) => setProjectCategoryFilter(event.target.value)}>
+                <option value="all">All categories</option>
+                {projectCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+              <select className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={projectPerPage} onChange={(event) => setProjectPerPage(Number(event.target.value))}>
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+              <p className="text-sm font-bold text-gray-600">{filteredProjects.length} of {projects.length} projects</p>
+              <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={resetProjectForm}><Plus className="h-4 w-4" />New Project</Button>
+            </div>
             <div className="grid gap-4">
-              {projects.map((project) => (
-                <article key={project.id} className="bg-gray-50 rounded-xl p-4 md:grid-cols-[8rem_1fr_auto] md:items-center">
+              {paginatedProjects.map((project) => (
+                <article key={project.id} className="grid gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[8rem_1fr_auto] md:items-center">
                   <div className="h-20 w-full overflow-hidden rounded-lg mb-4 md:mb-0 md:h-20">
                     {isVideoMedia(project.image) ? (
                       <video className="h-full w-full object-cover" src={project.image} muted preload="metadata" />
@@ -4634,6 +4689,23 @@ export function AdminDashboard() {
                   </div>
                 </article>
               ))}
+              {!paginatedProjects.length ? (
+                <div className="rounded-xl bg-gray-50 p-8 text-center text-sm font-semibold text-gray-500">No projects match the current filters.</div>
+              ) : null}
+            </div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-500">
+                Showing {filteredProjects.length ? projectStart + 1 : 0}-{Math.min(projectStart + projectPerPage, filteredProjects.length)} of {filteredProjects.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-3" disabled={activeProjectPage <= 1} onClick={() => setProjectPage((page) => Math.max(1, page - 1))}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="min-w-24 text-center text-sm font-black text-gray-700">Page {activeProjectPage} / {totalProjectPages}</span>
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-3" disabled={activeProjectPage >= totalProjectPages} onClick={() => setProjectPage((page) => Math.min(totalProjectPages, page + 1))}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </section>
         </div>
