@@ -121,6 +121,74 @@ class InvoiceImportTest extends TestCase
             ->assertRedirect('/api/invoices/wordpress-client-token/pdf');
     }
 
+    public function test_it_exports_invoice_data_in_importable_json_table_shape(): void
+    {
+        $clientId = DB::table('invoice_clients')->insertGetId([
+            'name' => 'Export Client',
+            'email' => 'export@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $documentId = DB::table('invoice_documents')->insertGetId([
+            'client_id' => $clientId,
+            'type' => 'invoice',
+            'number' => 'INV-EXPORT-001',
+            'title' => 'Exportable Invoice',
+            'public_token' => 'export-token',
+            'status' => 'sent',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 100000,
+            'discount_total' => 0,
+            'tax_total' => 7500,
+            'total' => 107500,
+            'amount_paid' => 25000,
+            'balance_due' => 82500,
+            'issue_date' => now()->toDateString(),
+            'payment_enabled' => true,
+            'payment_gateway' => 'paystack',
+            'branding_json' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('invoice_document_items')->insert([
+            'document_id' => $documentId,
+            'name' => 'Exported service',
+            'quantity' => 1,
+            'unit_price' => 100000,
+            'discount_rate' => 0,
+            'tax_rate' => 7.5,
+            'line_total' => 107500,
+            'sort_order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('invoice_payments')->insert([
+            'document_id' => $documentId,
+            'gateway' => 'manual',
+            'reference' => 'EXPORT-PAY-001',
+            'amount' => 25000,
+            'currency' => 'NGN',
+            'status' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = app(InvoiceController::class)->exportToJSON();
+        $payload = $response->getData(true);
+        $exportedDocument = collect($payload['tables']['bk_quotes'])->firstWhere('quote_number', 'INV-EXPORT-001');
+        $exportedItem = collect($payload['tables']['bk_line_items'])->firstWhere('quote_id', $documentId);
+        $exportedPayment = collect($payload['tables']['bk_payments'])->firstWhere('quote_id', $documentId);
+
+        $this->assertSame('bakhtech-laravel', $payload['source']);
+        $this->assertSame('INV-EXPORT-001', $exportedDocument['quote_number']);
+        $this->assertSame('Exported service', $exportedItem['name']);
+        $this->assertSame('EXPORT-PAY-001', $exportedPayment['reference']);
+    }
+
     public function test_public_quote_can_generate_invoice_and_download_pdf(): void
     {
         $clientId = DB::table('invoice_clients')->insertGetId([

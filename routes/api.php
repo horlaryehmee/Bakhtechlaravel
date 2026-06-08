@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BakhtechApiController;
 use App\Http\Controllers\Api\BookingCmsController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PricingController;
 use App\Http\Middleware\RequireAdminToken;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,8 @@ Route::post('/admin/login', [BakhtechApiController::class, 'login']);
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
+Route::get('/pricing', [PricingController::class, 'publicIndex']);
+Route::post('/pricing/checkout', [PricingController::class, 'createDocumentFromPlan'])->middleware('throttle:20,1');
 Route::get('/booking/event-types', [BakhtechApiController::class, 'bookingEventTypes']);
 Route::get('/booking/calendars', [BakhtechApiController::class, 'bookingCalendars']);
 Route::get('/booking/calendars/{slug}', [BakhtechApiController::class, 'bookingCalendar']);
@@ -56,6 +59,19 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::put('/admin/projects/{id}', [BakhtechApiController::class, 'updateProject']);
     Route::delete('/admin/projects/{id}', [BakhtechApiController::class, 'deleteProject']);
 
+    Route::prefix('/admin/pricing')->middleware('throttle:60,1')->group(function () {
+        Route::get('/', [PricingController::class, 'adminIndex']);
+        Route::post('/categories', [PricingController::class, 'storeCategory'])->middleware('admin.role:manager');
+        Route::put('/categories/{id}', [PricingController::class, 'updateCategory'])->middleware('admin.role:manager');
+        Route::delete('/categories/{id}', [PricingController::class, 'destroyCategory'])->middleware('admin.role:admin');
+        Route::post('/features', [PricingController::class, 'storeFeature'])->middleware('admin.role:manager');
+        Route::put('/features/{id}', [PricingController::class, 'updateFeature'])->middleware('admin.role:manager');
+        Route::delete('/features/{id}', [PricingController::class, 'destroyFeature'])->middleware('admin.role:admin');
+        Route::post('/plans', [PricingController::class, 'storePlan'])->middleware('admin.role:manager');
+        Route::put('/plans/{id}', [PricingController::class, 'updatePlan'])->middleware('admin.role:manager');
+        Route::delete('/plans/{id}', [PricingController::class, 'destroyPlan'])->middleware('admin.role:admin');
+    });
+
     Route::prefix('/admin/invoices')->middleware('throttle:60,1')->group(function () {
         Route::get('/overview', [InvoiceController::class, 'overview']);
         Route::get('/clients', [InvoiceController::class, 'clients']);
@@ -68,6 +84,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
         Route::put('/documents/{id}', [InvoiceController::class, 'updateDocument']);
         Route::post('/documents/{id}/send', [InvoiceController::class, 'sendDocument']);
         Route::post('/documents/{id}/payments/initialize', [InvoiceController::class, 'initializePayment']);
+        Route::get('/export/json', [InvoiceController::class, 'exportToJSON']);
         Route::post('/import/json', [InvoiceController::class, 'importFromJSON']);
     });
 

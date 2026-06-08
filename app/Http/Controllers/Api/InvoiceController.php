@@ -542,8 +542,11 @@ class InvoiceController extends Controller
                     'updated_at' => $this->dateTimeOrNull($docData['updated_at'] ?? $docData['updatedAt'] ?? null) ?: now(),
                 ];
 
+                $serviceOverview = $this->cleanRichText($docData['service_overview'] ?? $docData['serviceOverview'] ?? '');
+                [$serviceOverview, $payload['notes']] = $this->normalizeServiceSelectorText($serviceOverview, $payload['notes']);
+
                 if (Schema::hasColumn('invoice_documents', 'service_overview')) {
-                    $payload['service_overview'] = $this->cleanRichText($docData['service_overview'] ?? $docData['serviceOverview'] ?? '');
+                    $payload['service_overview'] = $serviceOverview;
                 }
 
                 if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
@@ -592,6 +595,198 @@ class InvoiceController extends Controller
             'imported' => $result['documents'],
             'summary' => $result,
             'message' => "Import completed successfully. {$result['documents']} documents imported.",
+        ];
+    }
+
+    public function exportToJSON()
+    {
+        $documents = DB::table('invoice_documents')
+            ->leftJoin('invoice_clients', 'invoice_clients.id', '=', 'invoice_documents.client_id')
+            ->select(
+                'invoice_documents.*',
+                'invoice_clients.name as client_name',
+                'invoice_clients.email as client_email',
+                'invoice_clients.phone as client_phone',
+                'invoice_clients.company_name as client_company',
+                'invoice_clients.address as client_address'
+            )
+            ->orderBy('invoice_documents.id')
+            ->get();
+
+        $documentIds = $documents->pluck('id')->all();
+        $export = [
+            'source' => 'bakhtech-laravel',
+            'version' => 1,
+            'exported_at' => now()->toIso8601String(),
+            'tables' => [
+                'bk_quotes' => $documents->map(fn ($document) => $this->exportDocumentRow($document))->all(),
+                'bk_line_items' => DB::table('invoice_document_items')
+                    ->whereIn('document_id', $documentIds)
+                    ->orderBy('document_id')
+                    ->orderBy('sort_order')
+                    ->get()
+                    ->map(fn ($item) => $this->exportItemRow($item))
+                    ->all(),
+                'bk_payments' => DB::table('invoice_payments')
+                    ->whereIn('document_id', $documentIds)
+                    ->orderBy('document_id')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(fn ($payment) => $this->exportPaymentRow($payment))
+                    ->all(),
+                'bk_audit_logs' => DB::table('invoice_events')
+                    ->whereIn('document_id', $documentIds)
+                    ->orderBy('document_id')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(fn ($event) => $this->exportEventRow($event))
+                    ->all(),
+                'bk_email_logs' => DB::table('invoice_email_logs')
+                    ->whereIn('document_id', $documentIds)
+                    ->orderBy('document_id')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(fn ($log) => $this->exportEmailLogRow($log))
+                    ->all(),
+            ],
+        ];
+
+        $filename = 'bakhtech-invoice-export-' . now()->format('Y-m-d-His') . '.json';
+
+        return response()->json($export, 200, [
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    private function exportDocumentRow(object $document): array
+    {
+        $row = [
+            'id' => $document->id,
+            'client_id' => $document->client_id,
+            'quote_number' => $document->number,
+            'number' => $document->number,
+            'type' => $document->type,
+            'title' => $document->title,
+            'client_name' => $document->client_name,
+            'client_email' => $document->client_email,
+            'client_phone' => $document->client_phone,
+            'client_company' => $document->client_company,
+            'client_address' => $document->client_address,
+            'issue_date' => $document->issue_date,
+            'due_date' => $document->due_date,
+            'valid_until' => $document->due_date,
+            'status' => $document->status,
+            'subtotal' => (float) $document->subtotal,
+            'discount_total' => (float) $document->discount_total,
+            'tax_total' => (float) $document->tax_total,
+            'total_amount' => (float) $document->total,
+            'total' => (float) $document->total,
+            'amount_paid' => (float) $document->amount_paid,
+            'balance_due' => (float) $document->balance_due,
+            'currency' => $document->currency,
+            'exchange_rate' => (float) $document->exchange_rate,
+            'public_token' => $document->public_token,
+            'payment_gateway' => $document->payment_gateway,
+            'paymentEnabled' => (bool) $document->payment_enabled,
+            'notes' => $document->notes,
+            'terms' => $document->terms,
+            'sent_at' => $document->sent_at,
+            'viewed_at' => $document->viewed_at,
+            'paid_at' => $document->paid_at,
+            'created_at' => $document->created_at,
+            'updated_at' => $document->updated_at,
+        ];
+
+        if (Schema::hasColumn('invoice_documents', 'legacy_client_token')) {
+            $row['client_token'] = $document->legacy_client_token;
+        }
+
+        if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+            $row['service_overview'] = $document->service_overview;
+        }
+
+        if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+            $row['scope_of_service'] = $document->scope_of_service;
+        }
+
+        return $row;
+    }
+
+    private function exportItemRow(object $item): array
+    {
+        return [
+            'id' => $item->id,
+            'quote_id' => $item->document_id,
+            'document_id' => $item->document_id,
+            'name' => $item->name,
+            'description' => $item->description,
+            'quantity' => (float) $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'unitPrice' => (float) $item->unit_price,
+            'discount_type' => (float) $item->discount_rate > 0 ? 'percent' : 'fixed',
+            'discount_value' => (float) $item->discount_rate,
+            'tax_rate' => (float) $item->tax_rate,
+            'line_total' => (float) $item->line_total,
+            'sort_order' => (int) $item->sort_order,
+            'created_at' => $item->created_at,
+            'updated_at' => $item->updated_at,
+        ];
+    }
+
+    private function exportPaymentRow(object $payment): array
+    {
+        return [
+            'id' => $payment->id,
+            'quote_id' => $payment->document_id,
+            'document_id' => $payment->document_id,
+            'gateway' => $payment->gateway,
+            'reference' => $payment->reference,
+            'amount' => (float) $payment->amount,
+            'currency' => $payment->currency,
+            'status' => $payment->status,
+            'authorization_url' => $payment->authorization_url,
+            'txn_payload' => $payment->gateway_response_json,
+            'paid_at' => $payment->paid_at,
+            'created_at' => $payment->created_at,
+            'updated_at' => $payment->updated_at,
+        ];
+    }
+
+    private function exportEventRow(object $event): array
+    {
+        $metadata = json_decode(($event->metadata_json ?? '') ?: '{}', true) ?: [];
+
+        return [
+            'id' => $event->id,
+            'quote_id' => $event->document_id,
+            'document_id' => $event->document_id,
+            'action' => $event->event_type,
+            'description' => $metadata['description'] ?? $event->event_type,
+            'old_value' => $metadata['oldValue'] ?? null,
+            'new_value' => $metadata['newValue'] ?? null,
+            'user_id' => $event->actor_id,
+            'ip_address' => $event->ip_address,
+            'user_agent' => $event->user_agent,
+            'created_at' => $event->created_at,
+            'updated_at' => $event->updated_at,
+        ];
+    }
+
+    private function exportEmailLogRow(object $log): array
+    {
+        return [
+            'id' => $log->id,
+            'quote_id' => $log->document_id,
+            'document_id' => $log->document_id,
+            'recipient_email' => $log->recipient_email,
+            'subject' => $log->subject,
+            'template_name' => $log->template_key,
+            'status' => $log->status,
+            'sent_at' => $log->sent_at,
+            'opened_at' => $log->opened_at,
+            'clicked_at' => $log->clicked_at,
+            'created_at' => $log->created_at,
+            'updated_at' => $log->updated_at,
         ];
     }
 
@@ -883,73 +1078,198 @@ class InvoiceController extends Controller
     {
         $brand = $document['branding'];
         $client = $document['client'];
+        $account = $document['paymentAccount'] ?? [];
         $currency = $this->currencySymbol($document['currency']);
         $formatMoney = fn ($amount) => e($currency . $this->formatEmailAmount((float) $amount));
         $items = '';
+        $logoSrc = $this->pdfLogoSrc();
+        $logo = $logoSrc
+            ? '<img class="logo" src="' . e($logoSrc) . '" alt="' . e($brand['businessName']) . '">'
+            : '';
 
         foreach ($document['items'] as $item) {
             $items .= '<tr>'
                 . '<td><strong>' . e($item['name']) . '</strong>' . ($item['description'] ? '<div class="muted rich">' . $item['description'] . '</div>' : '') . '</td>'
                 . '<td class="right">' . e((string) $item['quantity']) . '</td>'
                 . '<td class="right">' . $formatMoney($item['unitPrice']) . '</td>'
-                . '<td class="right">' . ((float) $item['discountRate'] > 0 ? e((string) $item['discountRate']) . '%' : 'None') . '</td>'
-                . '<td class="right">' . e((string) $item['taxRate']) . '%</td>'
                 . '<td class="right"><strong>' . $formatMoney($item['lineTotal'] ?? 0) . '</strong></td>'
                 . '</tr>';
         }
 
-        $serviceOverview = $document['serviceOverview'] ? '<section><h3>Service Overview</h3><div class="rich">' . $document['serviceOverview'] . '</div></section>' : '';
-        $scopeOfService = $document['scopeOfService'] ? '<section><h3>Scope of Service</h3><div class="rich">' . $document['scopeOfService'] . '</div></section>' : '';
-        $notes = $document['notes'] ? '<section><h3>Notes</h3><div class="rich">' . $document['notes'] . '</div></section>' : '';
-        $terms = $document['terms'] ? '<section><h3>Terms</h3><div class="rich">' . $document['terms'] . '</div></section>' : '';
+        $accountRows = '';
+        $accountMap = [
+            'Account Name' => $account['accountName'] ?? '',
+            'Account Number' => $account['accountNumber'] ?? '',
+            'Bank' => $account['bankName'] ?? '',
+            'Account Type' => $account['accountType'] ?? '',
+            'Wire Routing' => $account['wireRouting'] ?? '',
+            'ACH Routing' => $account['achRouting'] ?? '',
+            'Instructions' => $account['instructions'] ?? '',
+        ];
+
+        foreach ($accountMap as $label => $value) {
+            if (trim((string) $value) === '') {
+                continue;
+            }
+            $accountRows .= '<div><span>' . e($label) . '</span><strong>' . nl2br(e((string) $value)) . '</strong></div>';
+        }
+
+        if ($accountRows === '') {
+            $accountRows = '<p class="muted">Manual/offline payment is available. Contact ' . e($brand['businessName']) . ' for bank transfer confirmation.</p>';
+        }
+
+        [$serviceOverview, $documentNotes] = $this->normalizeServiceSelectorText((string) $document['serviceOverview'], (string) $document['notes']);
+        $quoteService = $document['type'] === 'quote' && $serviceOverview
+            ? '<section><h3>Service Overview</h3><div class="rich">' . $serviceOverview . '</div></section>'
+            : '';
+        $quoteScope = $document['type'] === 'quote' && $document['scopeOfService']
+            ? '<section><h3>Scope of Service</h3><div class="rich">' . $document['scopeOfService'] . '</div></section>'
+            : '';
+        $notes = $documentNotes ? '<section><h3>Notes</h3><div class="rich">' . $documentNotes . '</div></section>' : '';
+        $termsValue = trim(strip_tags((string) $document['terms'])) === 'Pricing is locked for this document. Future pricing changes will not affect this quote or invoice.'
+            ? ''
+            : $document['terms'];
+        $terms = $termsValue ? '<section><h3>Terms</h3><div class="rich">' . $termsValue . '</div></section>' : '';
 
         return '<!doctype html><html><head><meta charset="utf-8"><style>
-            @page { margin: 32px; }
-            body { font-family: DejaVu Sans, Arial, sans-serif; color: #18181b; font-size: 12px; line-height: 1.55; }
+            @page { margin: 28px; }
+            * { box-sizing: border-box; }
+            body { font-family: DejaVu Sans, Arial, sans-serif; color: #0f172a; font-size: 12px; line-height: 1.55; background: #f8fafc; }
             h1,h2,h3,p { margin: 0; }
-            .top { border-bottom: 2px solid #18181b; padding-bottom: 18px; margin-bottom: 22px; }
-            .brand { color: ' . e($brand['primaryColor']) . '; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-            .title { font-size: 30px; line-height: 1.1; margin-top: 7px; }
-            .status { display: inline-block; margin-top: 8px; padding: 4px 9px; border-radius: 20px; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-            .grid { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .grid td { width: 50%; vertical-align: top; padding-right: 18px; }
-            .box { border: 1px solid #e7e5e4; padding: 14px; border-radius: 6px; }
-            .label { color: #71717a; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
-            .muted { color: #52525b; }
+            .sheet { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; }
+            .accent { height: 8px; background: ' . e($brand['primaryColor']) . '; }
+            .top { padding: 28px 30px 24px; border-bottom: 1px solid #e2e8f0; }
+            .top-table { width: 100%; border-collapse: collapse; }
+            .top-table td { vertical-align: top; }
+            .logo { width: 150px; max-height: 70px; object-fit: contain; }
+            .brand-name { margin-top: 10px; font-size: 16px; font-weight: 900; letter-spacing: .03em; }
+            .brand-meta { margin-top: 6px; color: #64748b; font-size: 10.5px; line-height: 1.7; }
+            .title-box { text-align: right; }
+            .title-box span { color: ' . e($brand['primaryColor']) . '; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .18em; }
+            .title { color: #020617; font-size: 34px; line-height: 1; margin-top: 8px; text-transform: uppercase; }
+            .number { margin-top: 8px; color: #475569; font-weight: 800; }
+            .status { display: inline-block; margin-top: 12px; padding: 6px 11px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+            .content { padding: 24px 30px 28px; }
+            .grid { width: 100%; border-collapse: separate; border-spacing: 0 0; margin-bottom: 22px; }
+            .grid td { width: 50%; vertical-align: top; }
+            .grid td:first-child { padding-right: 10px; }
+            .grid td:last-child { padding-left: 10px; }
+            .box { border: 1px solid #e2e8f0; padding: 16px; border-radius: 14px; background: #f8fafc; min-height: 118px; }
+            .label { color: #64748b; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px; }
+            .muted { color: #64748b; }
             table.items { width: 100%; border-collapse: collapse; margin-top: 16px; }
-            .items th { background: #f5f5f4; color: #52525b; font-size: 10px; text-transform: uppercase; text-align: left; padding: 9px; }
-            .items td { border-bottom: 1px solid #e7e5e4; padding: 10px 9px; vertical-align: top; }
+            .items th { background: #0f172a; color: #fff; font-size: 9.5px; text-transform: uppercase; text-align: left; padding: 11px 10px; letter-spacing: .08em; }
+            .items th:first-child { border-radius: 10px 0 0 10px; }
+            .items th:last-child { border-radius: 0 10px 10px 0; }
+            .items td { border-bottom: 1px solid #e2e8f0; padding: 13px 10px; vertical-align: top; }
             .right { text-align: right; }
-            section { margin-top: 20px; }
-            section h3 { color: ' . e($brand['primaryColor']) . '; font-size: 11px; text-transform: uppercase; margin-bottom: 7px; }
+            section { margin-top: 22px; }
+            section h3 { color: #0f172a; font-size: 12px; text-transform: uppercase; margin-bottom: 9px; letter-spacing: .12em; }
             .rich ul, .rich ol { margin: 6px 0 8px 18px; padding: 0; }
-            .totals { width: 260px; margin-left: auto; margin-top: 20px; border-collapse: collapse; }
-            .totals td { padding: 7px 0; border-bottom: 1px solid #e7e5e4; }
-            .totals .final td { border-bottom: 0; font-size: 16px; font-weight: 700; color: ' . e($brand['primaryColor']) . '; }
+            .below { width: 100%; border-collapse: collapse; margin-top: 22px; }
+            .below td { vertical-align: top; }
+            .payment { width: 56%; padding-right: 18px; }
+            .payment-card { border: 1px solid #dbeafe; background: #eff6ff; border-radius: 14px; padding: 15px; }
+            .payment-card div { margin-top: 7px; }
+            .payment-card span { display: block; color: #64748b; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+            .payment-card strong { display: block; color: #0f172a; font-size: 11px; margin-top: 1px; }
+            .totals { width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; }
+            .totals td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; }
+            .totals .final td { border-bottom: 0; background: #0f172a; color: #fff; font-size: 16px; font-weight: 900; }
+            .footer { padding: 14px 30px 20px; color: #64748b; font-size: 10px; border-top: 1px solid #e2e8f0; }
         </style></head><body>
+            <div class="sheet">
+            <div class="accent"></div>
             <div class="top">
-                <div class="brand">' . e($brand['businessName']) . '</div>
-                <h1 class="title">' . e(ucfirst($document['type'])) . ' #' . e($document['number']) . '</h1>
-                <span class="status">' . e($document['status']) . '</span>
+                <table class="top-table"><tr>
+                    <td>
+                        ' . $logo . '
+                        <div class="brand-name">' . e($brand['businessName']) . '</div>
+                        <div class="brand-meta">' . e($brand['email']) . '<br>' . e($brand['phone']) . '<br>' . nl2br(e($brand['address'])) . '</div>
+                    </td>
+                    <td class="title-box">
+                        <span>' . e($document['type']) . '</span>
+                        <h1 class="title">' . e($document['type'] === 'quote' ? 'Quote' : ($document['type'] === 'receipt' ? 'Receipt' : 'Invoice')) . '</h1>
+                        <div class="number">#' . e($document['number']) . '</div>
+                        <span class="status">' . e($document['status']) . '</span>
+                    </td>
+                </tr></table>
             </div>
+            <div class="content">
             <table class="grid"><tr>
-                <td><div class="box"><div class="label">From</div><strong>' . e($brand['businessName']) . '</strong><br><span class="muted">' . e($brand['email']) . '<br>' . e($brand['phone']) . '<br>' . nl2br(e($brand['address'])) . '</span></div></td>
-                <td><div class="box"><div class="label">Prepared For</div><strong>' . e($client['name']) . '</strong><br><span class="muted">' . e($client['companyName']) . '<br>' . e($client['email']) . '<br>' . nl2br(e($client['address'])) . '</span></div></td>
+                <td><div class="box"><div class="label">Prepared For</div><strong>' . e($client['name']) . '</strong><br><span class="muted">' . e($client['companyName']) . '<br>' . e($client['email']) . '<br>' . e($client['phone']) . '<br>' . nl2br(e($client['address'])) . '</span></div></td>
+                <td><div class="box"><div class="label">Document Details</div><strong>' . e(ucfirst($document['type'])) . ' #' . e($document['number']) . '</strong><br><span class="muted">Issued: ' . e((string) $document['issueDate']) . '<br>Due: ' . e((string) $document['dueDate']) . '<br>Currency: ' . e((string) $document['currency']) . '</span></div></td>
             </tr></table>
-            ' . $serviceOverview . $scopeOfService . $notes . $terms . '
-            <section><h3>Line Items</h3><table class="items"><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Discount</th><th class="right">Tax</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
-            <table class="totals">
-                <tr><td>Subtotal</td><td class="right">' . $formatMoney($document['subtotal']) . '</td></tr>
-                <tr><td>Discount</td><td class="right">' . $formatMoney($document['discountTotal']) . '</td></tr>
-                <tr><td>Tax</td><td class="right">' . $formatMoney($document['taxTotal']) . '</td></tr>
-                <tr class="final"><td>' . ($document['type'] === 'quote' ? 'Total' : 'Balance') . '</td><td class="right">' . $formatMoney($document['type'] === 'quote' ? $document['total'] : $document['balanceDue']) . '</td></tr>
-            </table>
+            ' . $quoteService . $quoteScope . '
+            <section><h3>Line Items</h3><table class="items"><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
+            <table class="below"><tr>
+                <td class="payment"><div class="payment-card"><h3>Payment Details</h3>' . $accountRows . '</div></td>
+                <td><table class="totals">
+                    <tr><td>Subtotal</td><td class="right">' . $formatMoney($document['subtotal']) . '</td></tr>
+                    <tr><td>Discount</td><td class="right">' . $formatMoney($document['discountTotal']) . '</td></tr>
+                    <tr><td>Tax</td><td class="right">' . $formatMoney($document['taxTotal']) . '</td></tr>
+                    ' . ((float) $document['amountPaid'] > 0 ? '<tr><td>Paid</td><td class="right">' . $formatMoney($document['amountPaid']) . '</td></tr>' : '') . '
+                    <tr class="final"><td>' . ($document['type'] === 'quote' ? 'Total' : 'Balance Due') . '</td><td class="right">' . $formatMoney($document['type'] === 'quote' ? $document['total'] : $document['balanceDue']) . '</td></tr>
+                </table></td>
+            </tr></table>
+            ' . $notes . $terms . '
+            </div>
+            <div class="footer">Generated by ' . e($brand['businessName']) . '. Thank you for choosing us.</div>
+            </div>
         </body></html>';
     }
 
     private function money(mixed $value): float
     {
         return round((float) preg_replace('/[^\d.\-]/', '', (string) $value), 2);
+    }
+
+    private function normalizedDocumentText(object $row): array
+    {
+        [$serviceOverview, $notes] = $this->normalizeServiceSelectorText(
+            $this->cleanRichText(($row->service_overview ?? '') ?: ''),
+            $this->cleanRichText($row->notes ?: '')
+        );
+
+        return [
+            'serviceOverview' => $serviceOverview,
+            'notes' => $notes,
+        ];
+    }
+
+    private function normalizeServiceSelectorText(string $serviceOverview, string $notes): array
+    {
+        if (!$this->isServiceSelectorSummary($serviceOverview)) {
+            return [$serviceOverview, $notes];
+        }
+
+        if (!str_contains(strip_tags($notes), strip_tags($serviceOverview))) {
+            $notes = trim($serviceOverview . ($notes !== '' ? "\n\n" . $notes : ''));
+        }
+
+        return ['', $notes];
+    }
+
+    private function isServiceSelectorSummary(string $value): bool
+    {
+        $plain = trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8'))) ?: '');
+
+        return str_starts_with($plain, 'Generated via Service Selector.');
+    }
+
+    private function pdfLogoSrc(): string
+    {
+        $path = public_path('bakhtech-logo-light.jpg');
+        if (!is_file($path)) {
+            return '';
+        }
+
+        $data = file_get_contents($path);
+        if ($data === false) {
+            return '';
+        }
+
+        return 'data:image/jpeg;base64,' . base64_encode($data);
     }
 
     private function dateOrNull(mixed $value): ?string
@@ -1083,7 +1403,11 @@ class InvoiceController extends Controller
             ];
 
             if (Schema::hasColumn('invoice_documents', 'service_overview')) {
-                $payload['service_overview'] = $this->cleanRichText($data['serviceOverview'] ?? '');
+                [$serviceOverview, $payload['notes']] = $this->normalizeServiceSelectorText(
+                    $this->cleanRichText($data['serviceOverview'] ?? ''),
+                    $payload['notes']
+                );
+                $payload['service_overview'] = $serviceOverview;
             }
 
             if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
@@ -1236,6 +1560,7 @@ class InvoiceController extends Controller
             : [];
         $views = DB::table('invoice_events')->where('document_id', $row->id)->where('event_type', 'document.viewed');
         $paymentClicks = DB::table('invoice_events')->where('document_id', $row->id)->where('event_type', 'payment.clicked')->count();
+        $documentText = $this->normalizedDocumentText($row);
 
         return [
             'id' => $public ? null : $row->id,
@@ -1257,11 +1582,19 @@ class InvoiceController extends Controller
             'dueDate' => (string) ($row->due_date ?? ''),
             'paymentGateway' => $row->payment_gateway ?? '',
             'paymentEnabled' => (bool) $row->payment_enabled,
-            'serviceOverview' => $this->cleanRichText(($row->service_overview ?? '') ?: ''),
+            'serviceOverview' => $documentText['serviceOverview'],
             'scopeOfService' => $this->cleanRichText(($row->scope_of_service ?? '') ?: ''),
-            'notes' => $this->cleanRichText($row->notes ?: ''),
+            'notes' => $documentText['notes'],
             'terms' => $this->cleanRichText($row->terms ?: ''),
             'branding' => $this->branding(json_decode($row->branding_json ?: '{}', true) ?: []),
+            'paymentAccount' => $this->paymentAccount((string) $row->currency),
+            'pricing' => [
+                'categoryId' => isset($row->pricing_category_id) ? $row->pricing_category_id : null,
+                'planId' => isset($row->pricing_plan_id) ? $row->pricing_plan_id : null,
+                'versionId' => isset($row->pricing_version_id) ? $row->pricing_version_id : null,
+                'snapshot' => json_decode(($row->pricing_snapshot_json ?? '') ?: '{}', true) ?: null,
+                'selectedFeatures' => json_decode(($row->selected_features_snapshot_json ?? '') ?: '[]', true) ?: [],
+            ],
             'client' => [
                 'id' => $row->client_id,
                 'name' => $row->client_name ?: '',
@@ -1600,6 +1933,39 @@ HTML;
             'phone' => $settings['company_phone'] ?? '+234 708 637 2833',
             'address' => $settings['company_address'] ?? '',
         ], $branding);
+    }
+
+    private function paymentAccount(string $currency): array
+    {
+        $settings = $this->siteSettings();
+        $currency = strtoupper($currency);
+        $account = [];
+
+        $currencyAccounts = json_decode((string) ($settings['bank_currency_accounts'] ?? '[]'), true);
+        if (is_array($currencyAccounts)) {
+            foreach ($currencyAccounts as $candidate) {
+                if (!is_array($candidate)) {
+                    continue;
+                }
+
+                if (strtoupper((string) ($candidate['currency'] ?? '')) === $currency) {
+                    $account = $candidate;
+                    break;
+                }
+            }
+        }
+
+        return [
+            'currency' => $account['currency'] ?? $currency,
+            'accountName' => $account['account_name'] ?? $settings['bank_account_name'] ?? '',
+            'accountNumber' => $account['account_number'] ?? $settings['bank_account_number'] ?? '',
+            'bankName' => $account['bank_name'] ?? $settings['bank_bank_name'] ?? '',
+            'bankAddress' => $account['bank_address'] ?? '',
+            'wireRouting' => $account['wire_routing'] ?? '',
+            'achRouting' => $account['ach_routing'] ?? '',
+            'accountType' => $account['account_type'] ?? '',
+            'instructions' => $account['instructions'] ?? $settings['bank_instructions'] ?? '',
+        ];
     }
 
     private function siteSettings(): array

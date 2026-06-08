@@ -101,6 +101,12 @@ function RichTextBlock({ value }: { value: string }) {
   return <div className="invoice-portal-richtext" dangerouslySetInnerHTML={{ __html: html }} />
 }
 
+const pricingLockNotice = 'Pricing is locked for this document. Future pricing changes will not affect this quote or invoice.'
+
+function visibleRichText(value: string) {
+  return value.trim() === pricingLockNotice ? '' : value
+}
+
 export function PublicInvoice() {
   const { token = '' } = useParams()
   const [document, setDocument] = useState<InvoiceDocument | null>(null)
@@ -199,6 +205,8 @@ export function PublicInvoice() {
   const payableAmount = Math.max(0, document.balanceDue || document.total)
   const selectedPaymentAmount = payableAmount * (selectedPaymentPercent / 100)
   const paymentPresets = [50, 75, 100]
+  const onlinePaymentGateway = document.paymentGateway && document.paymentGateway !== 'manual' ? document.paymentGateway : ''
+  const paymentAccount = document.paymentAccount
   const renderInvoiceExpandableSection = (key: string, title: string, value: string) => {
     if (!value) return null
     const isExpanded = Boolean(expandedInvoiceSections[key])
@@ -304,11 +312,11 @@ export function PublicInvoice() {
             </section>
           ) : null}
 
-          {document.terms ? (
+          {visibleRichText(document.terms) ? (
             <section className="quote-document-section">
               <h3>Terms</h3>
               <div className="quote-document-panel">
-                <RichTextBlock value={document.terms} />
+                <RichTextBlock value={visibleRichText(document.terms)} />
               </div>
             </section>
           ) : null}
@@ -462,13 +470,21 @@ export function PublicInvoice() {
           <div className="invoice-sheet-payment-card">
             <div className="invoice-sheet-bank">
               <strong>Bank Transfer</strong>
-              <span>{brand.businessName}</span>
-              <span>Provided after checkout confirmation</span>
+              {paymentAccount?.accountName ? <span>Account Name: {paymentAccount.accountName}</span> : <span>{brand.businessName}</span>}
+              {paymentAccount?.accountNumber ? <span>Account Number: {paymentAccount.accountNumber}</span> : null}
+              {paymentAccount?.bankName ? <span>Bank: {paymentAccount.bankName}</span> : null}
+              {paymentAccount?.accountType ? <span>Account Type: {paymentAccount.accountType}</span> : null}
+              {paymentAccount?.wireRouting ? <span>Wire Routing: {paymentAccount.wireRouting}</span> : null}
+              {paymentAccount?.achRouting ? <span>ACH Routing: {paymentAccount.achRouting}</span> : null}
+              {paymentAccount?.instructions ? <span>{paymentAccount.instructions}</span> : null}
+              {!paymentAccount?.accountNumber && !paymentAccount?.bankName && !paymentAccount?.instructions ? <span>Manual/offline payment is available. Contact us for confirmation.</span> : null}
             </div>
-            <div className="invoice-sheet-bank">
-              <strong>Online Payment</strong>
-              <span>{titleCase(document.paymentGateway || 'paystack')}</span>
-            </div>
+            {onlinePaymentGateway ? (
+              <div className="invoice-sheet-bank">
+                <strong>Online Payment</strong>
+                <span>{titleCase(onlinePaymentGateway)}</span>
+              </div>
+            ) : null}
             <div className="invoice-sheet-pay-row">
               <span>Pay</span>
               <div className="invoice-sheet-presets">
@@ -485,12 +501,12 @@ export function PublicInvoice() {
               </div>
               <small>Selected: {money(selectedPaymentAmount, document.currency)}</small>
             </div>
-            {document.paymentEnabled && payableAmount > 0 ? (
+            {document.paymentEnabled && onlinePaymentGateway && payableAmount > 0 ? (
               <Button type="button" className="invoice-sheet-pay-button" onClick={() => void handlePaymentClick()}>
-                <CreditCard className="h-4 w-4" />Pay with {titleCase(document.paymentGateway || 'paystack')} ({money(selectedPaymentAmount, document.currency)})
+                <CreditCard className="h-4 w-4" />Pay with {titleCase(onlinePaymentGateway)} ({money(selectedPaymentAmount, document.currency)})
               </Button>
             ) : (
-              <div className="invoice-sheet-paid">Payment is not required for this invoice.</div>
+              <div className="invoice-sheet-paid">{payableAmount > 0 ? 'Use manual/offline payment for this invoice.' : 'Payment is not required for this invoice.'}</div>
             )}
           </div>
         </section>
@@ -505,10 +521,10 @@ export function PublicInvoice() {
           </section>
         ) : null}
 
-        {document.terms ? (
+        {visibleRichText(document.terms) ? (
           <section className="invoice-sheet-notes">
             <h2>Terms</h2>
-            <RichTextBlock value={document.terms} />
+            <RichTextBlock value={visibleRichText(document.terms)} />
           </section>
         ) : null}
 
@@ -516,8 +532,8 @@ export function PublicInvoice() {
           <Button type="button" className="invoice-sheet-download" onClick={downloadPdf}>
             <Download className="h-4 w-4" />Download PDF
           </Button>
-          <Button type="button" variant="ghost" className="invoice-sheet-home" onClick={() => { window.location.href = '/' }}>
-            <ExternalLink className="h-4 w-4" />Homepage
+          <Button type="button" variant="ghost" className="invoice-sheet-home" onClick={() => { window.location.href = '/booking' }}>
+            <ExternalLink className="h-4 w-4" />Schedule a Call
           </Button>
         </footer>
       </article>

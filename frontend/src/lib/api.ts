@@ -323,6 +323,24 @@ export type InvoiceDocument = {
     phone: string
     address: string
   }
+  paymentAccount?: {
+    currency: string
+    accountName: string
+    accountNumber: string
+    bankName: string
+    bankAddress: string
+    wireRouting: string
+    achRouting: string
+    accountType: string
+    instructions: string
+  }
+  pricing?: {
+    categoryId: number | null
+    planId: number | null
+    versionId: number | null
+    snapshot: Record<string, unknown> | null
+    selectedFeatures: PricingPlanFeature[]
+  }
   client: InvoiceClient
   items: InvoiceItem[]
   analytics: {
@@ -339,6 +357,57 @@ export type InvoiceDocument = {
   } | null
   createdAt: string
   updatedAt: string
+}
+
+export type PricingPlanFeature = {
+  id?: number
+  featureId?: number | null
+  title: string
+  description: string
+  groupName: string
+  isIncluded: boolean
+  sortOrder: number
+}
+
+export type PricingPlan = {
+  id: number
+  pricingCategoryId: number
+  name: string
+  slug: string
+  description: string
+  billingType: 'one_time' | 'monthly'
+  monthlyEnabled: boolean
+  prices: Record<string, number>
+  promoPrices: Record<string, number>
+  discountPercentage: number
+  displayPrice: { currency: string; baseAmount: number | null; amount: number | null; promoApplied: boolean }
+  isActive: boolean
+  isPopular: boolean
+  sortOrder: number
+  version: number
+  features: PricingPlanFeature[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type PricingCategory = {
+  id: number
+  name: string
+  slug: string
+  description: string
+  icon: string
+  serviceType: 'new_website' | 'existing_website'
+  isActive: boolean
+  sortOrder: number
+  plans: PricingPlan[]
+}
+
+export type PricingFeature = {
+  id: number
+  title: string
+  description: string
+  groupName: string
+  isActive: boolean
 }
 
 export type InvoiceOverview = {
@@ -708,6 +777,63 @@ export const api = {
   publicReviews() {
     return request<{ reviews: Review[] }>('/api/reviews')
   },
+  publicPricing(currency = 'NGN') {
+    return request<{ categories: PricingCategory[]; currencies: string[] }>(`/api/pricing?currency=${encodeURIComponent(currency)}`)
+  },
+  checkoutPricingPlan(payload: { planId: number; currency: string; documentType?: 'quote' | 'invoice'; client?: Partial<InvoiceClient>; message?: string }) {
+    return request<{ document: { id: number; number: string; type: string; status: string; currency: string; total: number; publicUrl: string } }>('/api/pricing/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  adminPricing() {
+    return request<{ categories: PricingCategory[]; features: PricingFeature[] }>('/api/admin/pricing')
+  },
+  createPricingCategory(category: Partial<PricingCategory>) {
+    return request<{ category: PricingCategory }>('/api/admin/pricing/categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    })
+  },
+  updatePricingCategory(id: number, category: Partial<PricingCategory>) {
+    return request<{ category: PricingCategory }>(`/api/admin/pricing/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(category),
+    })
+  },
+  deletePricingCategory(id: number) {
+    return request<void>(`/api/admin/pricing/categories/${id}`, { method: 'DELETE' })
+  },
+  createPricingFeature(feature: Partial<PricingFeature>) {
+    return request<{ feature: PricingFeature }>('/api/admin/pricing/features', {
+      method: 'POST',
+      body: JSON.stringify(feature),
+    })
+  },
+  updatePricingFeature(id: number, feature: Partial<PricingFeature>) {
+    return request<{ feature: PricingFeature }>(`/api/admin/pricing/features/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(feature),
+    })
+  },
+  deletePricingFeature(id: number) {
+    return request<void>(`/api/admin/pricing/features/${id}`, { method: 'DELETE' })
+  },
+  createPricingPlan(plan: Partial<PricingPlan>) {
+    return request<{ plan: PricingPlan }>('/api/admin/pricing/plans', {
+      method: 'POST',
+      body: JSON.stringify(plan),
+    })
+  },
+  updatePricingPlan(id: number, plan: Partial<PricingPlan>) {
+    return request<{ plan: PricingPlan }>(`/api/admin/pricing/plans/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(plan),
+    })
+  },
+  deletePricingPlan(id: number) {
+    return request<void>(`/api/admin/pricing/plans/${id}`, { method: 'DELETE' })
+  },
   createProject(project: ProjectInput) {
     return request<{ project: Project }>('/api/admin/projects', {
       method: 'POST',
@@ -800,5 +926,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data)
     })
+  },
+  async exportInvoicesJSON() {
+    const token = getAdminToken()
+    const response = await fetch(apiUrl('/api/admin/invoices/export/json'), {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ message: 'Export failed.' }))
+      throw new ApiError(body.message || 'Export failed.', response.status)
+    }
+
+    return response.blob()
   },
 }

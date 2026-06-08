@@ -10,6 +10,7 @@ const Booking = lazy(() => import('@/pages/Booking').then((module) => ({ default
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const Home2 = lazy(() => import('@/pages/Home2').then((module) => ({ default: module.Home2 })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
+const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
 
 function App() {
@@ -48,7 +49,11 @@ function App() {
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="admin/dashboard" element={<AdminDashboard />} />
+          <Route path="admin/pricing-preview" element={<Pricing />} />
+          <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />
           <Route path="invoice/:token" element={<PublicInvoice />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="pricing/:categorySlug" element={<Pricing />} />
           <Route element={<SiteLayout />}>
             <Route index element={<Home2 />} />
             <Route path="about" element={<About />} />

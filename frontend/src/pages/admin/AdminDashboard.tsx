@@ -29,6 +29,7 @@ import {
   Settings,
   Trash2,
   Upload,
+  Download,
   Users,
   Wallet,
   X,
@@ -65,6 +66,9 @@ import {
   type InvoiceListMeta,
   type InvoiceOverview,
   type MediaItem,
+  type PricingCategory,
+  type PricingFeature,
+  type PricingPlan,
   type Project,
   type ProjectInput,
   type Review,
@@ -72,7 +76,7 @@ import {
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'invoices' | 'users' | 'settings'
+type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
@@ -302,8 +306,39 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   },
 }
 
+const emptyPricingCategoryForm: Partial<PricingCategory> = {
+  name: '',
+  slug: '',
+  description: '',
+  icon: 'layout-template',
+  isActive: true,
+  sortOrder: 0,
+}
+
+const emptyPricingFeatureForm: Partial<PricingFeature> = {
+  title: '',
+  description: '',
+  groupName: 'Design',
+  isActive: true,
+}
+
+const emptyPricingPlanForm: Partial<PricingPlan> = {
+  pricingCategoryId: 0,
+  name: '',
+  slug: '',
+  description: '',
+  billingType: 'one_time',
+  monthlyEnabled: false,
+  prices: { NGN: 0, USD: 0, GBP: 0 },
+  promoPrices: {},
+  discountPercentage: 0,
+  isActive: true,
+  isPopular: false,
+  sortOrder: 0,
+  features: [],
+}
+
 const invoicePaymentGateways = [
-  { value: 'manual', label: 'Manual/Offline', description: 'Record bank transfer, cash, or custom payment instructions.' },
   { value: 'paystack', label: 'Paystack', description: 'Good default for NGN card, transfer, and local checkout flows.' },
   { value: 'flutterwave', label: 'Flutterwave', description: 'Useful for USD and multi-currency payment collection.' },
 ]
@@ -317,7 +352,7 @@ function parseInvoiceGatewayList(settings: Record<string, string>, currency = ''
     .forEach((gateway) => gateways.add(gateway))
 
   const globalGateway = String(settings.gateway_active || settings.invoiceDefaultPaymentGateway || '').trim()
-  if (globalGateway && globalGateway !== 'none') gateways.add(globalGateway)
+  if (globalGateway && globalGateway !== 'none' && globalGateway !== 'manual') gateways.add(globalGateway)
 
   try {
     const accounts = JSON.parse(String(settings.bank_currency_accounts || '[]'))
@@ -325,7 +360,7 @@ function parseInvoiceGatewayList(settings: Record<string, string>, currency = ''
       accounts.forEach((account) => {
         const accountCurrency = String(account?.currency || '').toUpperCase()
         const gateway = String(account?.gateway || '').trim()
-        if (gateway && gateway !== 'none' && (!currency || accountCurrency === currency.toUpperCase())) {
+        if (gateway && gateway !== 'none' && gateway !== 'manual' && (!currency || accountCurrency === currency.toUpperCase())) {
           gateways.add(gateway)
         }
       })
@@ -356,6 +391,7 @@ const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDas
   { id: 'library', label: 'Library', icon: Images },
   { id: 'seo', label: 'SEO', icon: SearchCheck },
   { id: 'bookings', label: 'Bookings', icon: CalendarDays },
+  { id: 'pricing', label: 'Pricing', icon: CreditCard },
   { id: 'invoices', label: 'Invoices', icon: Wallet },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -524,7 +560,7 @@ export function AdminDashboard() {
   const navigate = useNavigate()
   const token = getAdminToken()
   const initialAdminCache = useMemo(() => readAdminDataCache(), [])
-  const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'invoices', 'users', 'settings']))
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'invoices', 'users', 'settings']))
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData | null>(initialAdminCache?.dashboard ?? null)
@@ -542,6 +578,14 @@ export function AdminDashboard() {
   const [invoiceDocumentsMeta, setInvoiceDocumentsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceDocumentsMeta ?? defaultInvoiceListMeta)
   const [invoiceClientsMeta, setInvoiceClientsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceClientsMeta ?? defaultInvoiceListMeta)
   const [invoiceEmailLogsMeta, setInvoiceEmailLogsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceEmailLogsMeta ?? defaultInvoiceListMeta)
+  const [pricingCategories, setPricingCategories] = useState<PricingCategory[]>([])
+  const [pricingFeatures, setPricingFeatures] = useState<PricingFeature[]>([])
+  const [pricingCategoryForm, setPricingCategoryForm] = useState(emptyPricingCategoryForm)
+  const [pricingFeatureForm, setPricingFeatureForm] = useState(emptyPricingFeatureForm)
+  const [pricingPlanForm, setPricingPlanForm] = useState(emptyPricingPlanForm)
+  const [editingPricingCategory, setEditingPricingCategory] = useState<PricingCategory | null>(null)
+  const [editingPricingFeature, setEditingPricingFeature] = useState<PricingFeature | null>(null)
+  const [editingPricingPlan, setEditingPricingPlan] = useState<PricingPlan | null>(null)
   const [invoiceListPage, setInvoiceListPage] = useState(1)
   const [invoiceClientsPage, setInvoiceClientsPage] = useState(1)
   const [invoiceEmailLogsPage, setInvoiceEmailLogsPage] = useState(1)
@@ -751,6 +795,11 @@ export function AdminDashboard() {
   }, [token, activeSection, activeInvoiceSubsection, invoiceListPage, invoiceClientsPage, invoiceEmailLogsPage, invoiceStatusFilter, invoiceEmailStatusFilter, invoiceEmailTypeFilter])
 
   useEffect(() => {
+    if (!token || activeSection !== 'pricing') return
+    void loadPricingData()
+  }, [token, activeSection])
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const googleStatus = params.get('booking_google')
     if (!googleStatus) return
@@ -862,6 +911,112 @@ export function AdminDashboard() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load invoices.')
     }
+  }
+
+  async function loadPricingData() {
+    try {
+      const result = await api.adminPricing()
+      setPricingCategories(result.categories)
+      setPricingFeatures(result.features)
+      setPricingPlanForm((current) => ({
+        ...current,
+        pricingCategoryId: current.pricingCategoryId || result.categories[0]?.id || 0,
+      }))
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load pricing.')
+    }
+  }
+
+  async function savePricingCategory(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      const payload = pricingCategoryForm
+      editingPricingCategory
+        ? await api.updatePricingCategory(editingPricingCategory.id, payload)
+        : await api.createPricingCategory(payload)
+      notify(editingPricingCategory ? 'Pricing category updated.' : 'Pricing category created.')
+      setEditingPricingCategory(null)
+      setPricingCategoryForm(emptyPricingCategoryForm)
+      await loadPricingData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing category.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function savePricingFeature(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      editingPricingFeature
+        ? await api.updatePricingFeature(editingPricingFeature.id, pricingFeatureForm)
+        : await api.createPricingFeature(pricingFeatureForm)
+      notify(editingPricingFeature ? 'Pricing feature updated.' : 'Pricing feature created.')
+      setEditingPricingFeature(null)
+      setPricingFeatureForm(emptyPricingFeatureForm)
+      await loadPricingData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing feature.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function savePricingPlan(event: FormEvent) {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      const payload = {
+        ...pricingPlanForm,
+        pricingCategoryId: Number(pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0),
+        prices: {
+          NGN: Number(pricingPlanForm.prices?.NGN || 0),
+          USD: Number(pricingPlanForm.prices?.USD || 0),
+          GBP: Number(pricingPlanForm.prices?.GBP || 0),
+        },
+        promoPrices: {
+          NGN: pricingPlanForm.promoPrices?.NGN ? Number(pricingPlanForm.promoPrices.NGN) : undefined,
+          USD: pricingPlanForm.promoPrices?.USD ? Number(pricingPlanForm.promoPrices.USD) : undefined,
+          GBP: pricingPlanForm.promoPrices?.GBP ? Number(pricingPlanForm.promoPrices.GBP) : undefined,
+        },
+        discountPercentage: Number(pricingPlanForm.discountPercentage || 0),
+        features: pricingPlanForm.features || [],
+      }
+      editingPricingPlan
+        ? await api.updatePricingPlan(editingPricingPlan.id, payload)
+        : await api.createPricingPlan(payload)
+      notify(editingPricingPlan ? 'Pricing plan updated and versioned.' : 'Pricing plan created.')
+      setEditingPricingPlan(null)
+      setPricingPlanForm({ ...emptyPricingPlanForm, pricingCategoryId: pricingCategories[0]?.id || 0 })
+      await loadPricingData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing plan.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deletePricingCategory(id: number) {
+    if (!window.confirm('Delete this pricing category and its plans?')) return
+    await api.deletePricingCategory(id)
+    notify('Pricing category deleted.')
+    await loadPricingData()
+  }
+
+  async function deletePricingFeature(id: number) {
+    if (!window.confirm('Delete this reusable feature? Plan snapshots remain locked on existing invoices.')) return
+    await api.deletePricingFeature(id)
+    notify('Pricing feature deleted.')
+    await loadPricingData()
+  }
+
+  async function deletePricingPlan(id: number) {
+    if (!window.confirm('Delete this pricing plan? Existing invoices keep their snapshots.')) return
+    await api.deletePricingPlan(id)
+    notify('Pricing plan deleted.')
+    await loadPricingData()
   }
 
   async function loadBookingCmsData() {
@@ -1313,7 +1468,7 @@ export function AdminDashboard() {
       ...emptyInvoiceForm,
       type,
       currency: settingsForm.currency || emptyInvoiceForm.currency,
-      paymentGateway: enabledGateways[0] || settingsForm.gateway_active || emptyInvoiceForm.paymentGateway,
+      paymentGateway: enabledGateways[0] || emptyInvoiceForm.paymentGateway,
       paymentEnabled: (settingsForm.invoicePaymentEnabled ?? 'true') !== 'false',
       serviceOverview: emptyInvoiceForm.serviceOverview,
       scopeOfService: emptyInvoiceForm.scopeOfService,
@@ -1348,7 +1503,7 @@ export function AdminDashboard() {
       client: fullDocument.client,
       items: fullDocument.items.length ? fullDocument.items : emptyInvoiceForm.items,
       branding: fullDocument.branding,
-      paymentGateway: fullDocument.paymentGateway || 'paystack',
+      paymentGateway: fullDocument.paymentGateway && fullDocument.paymentGateway !== 'manual' ? fullDocument.paymentGateway : 'paystack',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -1368,7 +1523,7 @@ export function AdminDashboard() {
       const enabledGatewayValues = parseInvoiceGatewayList(settingsForm, invoiceForm.currency || '')
       const selectedGateway = enabledGatewayValues.includes(invoiceForm.paymentGateway || '')
         ? invoiceForm.paymentGateway
-        : enabledGatewayValues[0] || invoiceForm.paymentGateway || ''
+        : enabledGatewayValues[0] || 'paystack'
       const payload = { ...invoiceForm, paymentGateway: selectedGateway }
       const result = editingInvoice?.id
         ? await api.updateInvoiceDocument(editingInvoice.id, payload)
@@ -1485,6 +1640,27 @@ export function AdminDashboard() {
     }
   }
 
+  async function handleExportToJSON() {
+    setSaving(true)
+    setError('')
+    try {
+      const blob = await api.exportInvoicesJSON()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `bakhtech-invoice-export-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setMessage('Export downloaded successfully')
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : 'Export failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleImportFromWordPress(prefix?: string) {
     setSaving(true)
     setError('')
@@ -1507,7 +1683,7 @@ export function AdminDashboard() {
       { id: 'receipts', label: 'Receipts', icon: CreditCard },
       { id: 'emails', label: 'Emails', icon: Mail },
       { id: 'contacts', label: 'Contacts', icon: Users },
-      { id: 'import', label: 'Import', icon: Upload },
+      { id: 'import', label: 'Import / Export', icon: Upload },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
     return (
@@ -2071,15 +2247,6 @@ export function AdminDashboard() {
                         >
                           <Link2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="bkinv-action-btn"
-                          onClick={() => void sendInvoiceDocument(doc)}
-                          title="Mark sent/log email"
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -2138,9 +2305,10 @@ export function AdminDashboard() {
     const availableGateways = invoicePaymentGateways.filter((gateway) => enabledGatewayValues.includes(gateway.value))
     const selectedGateway = availableGateways.some((gateway) => gateway.value === invoiceForm.paymentGateway)
       ? invoiceForm.paymentGateway
-      : availableGateways[0]?.value || invoiceForm.paymentGateway || ''
-    const gatewayChoices = selectedGateway && !availableGateways.some((gateway) => gateway.value === selectedGateway)
-      ? [...availableGateways, invoicePaymentGateways.find((gateway) => gateway.value === selectedGateway)].filter(Boolean)
+      : availableGateways[0]?.value || 'paystack'
+    const selectedGatewayOption = invoicePaymentGateways.find((gateway) => gateway.value === selectedGateway)
+    const gatewayChoices = selectedGatewayOption && !availableGateways.some((gateway) => gateway.value === selectedGateway)
+      ? [...availableGateways, selectedGatewayOption]
       : availableGateways
     const lineTotal = (item: InvoiceItem) => {
       const base = Number(item.quantity || 0) * Number(item.unitPrice || 0)
@@ -2591,7 +2759,8 @@ export function AdminDashboard() {
                   Enable payment button
                 </label>
                 <div className="bkinv-form-group">
-                  <span>Payment Gateway</span>
+                  <span>Online Payment Gateway</span>
+                  <small className="text-xs font-semibold text-gray-500">Manual/offline payment is always available on the public document.</small>
                   <div className="bkinv-gateway-picker">
                     {gatewayChoices.length ? gatewayChoices.map((gateway) => (
                       <label key={gateway.value} className={cn('bkinv-gateway-option', selectedGateway === gateway.value && 'is-selected')}>
@@ -2622,15 +2791,26 @@ export function AdminDashboard() {
                   {saving ? 'Saving...' : isEdit ? 'Update Document' : `Create ${documentLabel}`}
                 </Button>
                 {isEdit && editingInvoice?.publicUrl ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="bkinv-btn bkinv-btn-secondary bkinv-btn-block"
-                    onClick={() => window.open(editingInvoice.publicUrl, '_blank')}
-                  >
-                    <Eye className="h-4 w-4" />
-                    View Public Link
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="bkinv-btn bkinv-btn-secondary bkinv-btn-block"
+                      onClick={() => void sendInvoiceDocument(editingInvoice)}
+                    >
+                      <Send className="h-4 w-4" />
+                      Send Email Notification
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="bkinv-btn bkinv-btn-secondary bkinv-btn-block"
+                      onClick={() => window.open(editingInvoice.publicUrl, '_blank')}
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Public Link
+                    </Button>
+                  </>
                 ) : null}
               </div>
             </div>
@@ -3115,8 +3295,8 @@ export function AdminDashboard() {
 
         <section className="bkinv-settings-card bkinv-gateway-settings">
           <div className="bkinv-settings-card-head">
-            <h4>Enabled payment gateways</h4>
-            <p>Select every gateway that should be available on invoice and quote edit screens.</p>
+            <h4>Enabled online payment gateways</h4>
+            <p>Manual/offline payment is always active on public invoices. Select only the online checkout gateways available on invoice and quote edit screens.</p>
           </div>
           <div className="bkinv-gateway-grid">
             {invoicePaymentGateways.map((gateway) => (
@@ -3259,10 +3439,10 @@ export function AdminDashboard() {
     return (
       <div>
         <div className="mb-6">
-          <h3 className="text-2xl font-black text-gray-900">Import Data</h3>
+          <h3 className="text-2xl font-black text-gray-900">Import / Export Data</h3>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-6 lg:grid-cols-2">
           <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
             <h4 className="text-lg font-black mb-3 text-gray-900">Import from JSON File</h4>
             <p className="text-gray-500 mb-6">Export your data from WordPress and import it here. Supports JSON format.</p>
@@ -3286,6 +3466,14 @@ export function AdminDashboard() {
                 />
               </div>
             </label>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+            <h4 className="text-lg font-black mb-3 text-gray-900">Export to JSON File</h4>
+            <p className="text-gray-500 mb-6">Download invoices, quotes, receipts, line items, payments, activity logs, and email logs in the same JSON structure this importer accepts.</p>
+            <Button type="button" className="bkinv-btn bkinv-btn-primary" onClick={() => void handleExportToJSON()} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {saving ? 'Preparing export...' : 'Download JSON Export'}
+            </Button>
           </div>
         </div>
       </div>
@@ -5523,6 +5711,273 @@ export function AdminDashboard() {
     )
   }
 
+  function editPricingCategory(category: PricingCategory) {
+    setEditingPricingCategory(category)
+    setPricingCategoryForm({ ...category })
+  }
+
+  function editPricingFeature(feature: PricingFeature) {
+    setEditingPricingFeature(feature)
+    setPricingFeatureForm({ ...feature })
+  }
+
+  function editPricingPlan(plan: PricingPlan) {
+    setEditingPricingPlan(plan)
+    setPricingPlanForm({
+      ...plan,
+      prices: { NGN: plan.prices?.NGN || 0, USD: plan.prices?.USD || 0, GBP: plan.prices?.GBP || 0 },
+      promoPrices: { NGN: plan.promoPrices?.NGN || '', USD: plan.promoPrices?.USD || '', GBP: plan.promoPrices?.GBP || '' },
+      features: plan.features || [],
+    })
+  }
+
+  function updatePricingPlanFeature(index: number, field: string, value: unknown) {
+    setPricingPlanForm((current) => ({
+      ...current,
+      features: (current.features || []).map((feature, featureIndex) => featureIndex === index ? { ...feature, [field]: value } : feature),
+    }))
+  }
+
+  function addPricingPlanFeature(feature?: PricingFeature) {
+    setPricingPlanForm((current) => ({
+      ...current,
+      features: [
+        ...(current.features || []),
+        {
+          featureId: feature?.id ?? null,
+          title: feature?.title || '',
+          description: feature?.description || '',
+          groupName: feature?.groupName || 'Design',
+          isIncluded: true,
+          sortOrder: (current.features || []).length + 1,
+        },
+      ],
+    }))
+  }
+
+  function renderPricing() {
+    const allPlans = pricingCategories.flatMap((category) => category.plans.map((plan) => ({ ...plan, categoryName: category.name })))
+
+    return (
+      <div className="space-y-6">
+        <PanelHeader
+          eyebrow="Pricing System"
+          title="Dynamic pricing and invoice mapping"
+          text="Manage service categories, tiered plans, reusable features, discounts, promo pricing, and the pricing data that is locked onto generated invoices."
+        />
+
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={() => void loadPricingData()}>
+            Refresh Pricing
+          </Button>
+          <a href="/admin/pricing-preview" target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700">
+            Open Custom Pricing Frontend
+          </a>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <form onSubmit={savePricingCategory} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-black text-slate-950">{editingPricingCategory ? 'Edit Category' : 'New Category'}</h3>
+              {editingPricingCategory && (
+                <button type="button" className="text-xs font-black text-slate-500" onClick={() => { setEditingPricingCategory(null); setPricingCategoryForm(emptyPricingCategoryForm) }}>Cancel</button>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                Name
+                <input required value={pricingCategoryForm.name || ''} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, name: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+              </label>
+              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                Slug
+                <input value={pricingCategoryForm.slug || ''} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, slug: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+              </label>
+              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                Icon
+                <input value={pricingCategoryForm.icon || ''} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, icon: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+              </label>
+              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                Sort Order
+                <input type="number" value={pricingCategoryForm.sortOrder || 0} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, sortOrder: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+              </label>
+            </div>
+            <label className="mt-3 grid gap-1 text-xs font-black uppercase text-slate-500">
+              Description
+              <textarea value={pricingCategoryForm.description || ''} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, description: event.target.value })} className="min-h-24 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold normal-case text-slate-900" />
+            </label>
+            <label className="mt-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+              <input type="checkbox" checked={Boolean(pricingCategoryForm.isActive)} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, isActive: event.target.checked })} />
+              Active
+            </label>
+            <Button disabled={saving} className="mt-4 rounded-xl bg-blue-600 text-white">
+              <Save className="h-4 w-4" />
+              Save Category
+            </Button>
+          </form>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-lg font-black text-slate-950">Categories</h3>
+            <div className="grid gap-3">
+              {pricingCategories.map((category) => (
+                <div key={category.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div>
+                    <p className="font-black text-slate-950">{category.name}</p>
+                    <p className="text-xs font-bold text-slate-500">{category.slug} - {category.plans.length} plans - {category.isActive ? 'Active' : 'Inactive'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingCategory(category)}><Pencil className="h-4 w-4" /></button>
+                    <button type="button" className="rounded-lg border border-red-100 bg-red-50 p-2 text-red-600" onClick={() => void deletePricingCategory(category.id)}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={savePricingPlan} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-black text-slate-950">{editingPricingPlan ? 'Edit Plan' : 'New Plan'}</h3>
+            {editingPricingPlan && (
+              <button type="button" className="text-xs font-black text-slate-500" onClick={() => { setEditingPricingPlan(null); setPricingPlanForm({ ...emptyPricingPlanForm, pricingCategoryId: pricingCategories[0]?.id || 0 }) }}>Cancel</button>
+            )}
+          </div>
+          <div className="grid gap-3 lg:grid-cols-4 md:grid-cols-2">
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              Category
+              <select value={pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, pricingCategoryId: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
+                {pricingCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              Plan Name
+              <input required value={pricingPlanForm.name || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, name: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+            </label>
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              Slug
+              <input value={pricingPlanForm.slug || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, slug: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+            </label>
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              Billing
+              <select value={pricingPlanForm.billingType || 'one_time'} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, billingType: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
+                <option value="one_time">One-time</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+            {['NGN', 'USD', 'GBP'].map((code) => (
+              <label key={code} className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                {code} Price
+                <input type="number" value={pricingPlanForm.prices?.[code] || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, prices: { ...(pricingPlanForm.prices || {}), [code]: Number(event.target.value) } })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+              </label>
+            ))}
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              Discount %
+              <input type="number" value={pricingPlanForm.discountPercentage || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, discountPercentage: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+            </label>
+          </div>
+          <label className="mt-3 grid gap-1 text-xs font-black uppercase text-slate-500">
+            Description
+            <textarea value={pricingPlanForm.description || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, description: event.target.value })} className="min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold normal-case text-slate-900" />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-5">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.isActive)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, isActive: event.target.checked })} />Active</label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.isPopular)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, isPopular: event.target.checked })} />Most Popular</label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.monthlyEnabled)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, monthlyEnabled: event.target.checked })} />Show monthly toggle</label>
+          </div>
+
+          <div className="mt-5 rounded-xl border border-slate-200 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h4 className="font-black text-slate-950">Plan Features</h4>
+              <div className="flex flex-wrap gap-2">
+                <select className="min-h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold" onChange={(event) => {
+                  const feature = pricingFeatures.find((item) => item.id === Number(event.target.value))
+                  if (feature) addPricingPlanFeature(feature)
+                  event.currentTarget.value = ''
+                }}>
+                  <option value="">Add reusable feature</option>
+                  {pricingFeatures.map((feature) => <option key={feature.id} value={feature.id}>{feature.groupName ? `${feature.groupName}: ` : ''}{feature.title}</option>)}
+                </select>
+                <Button type="button" variant="ghost" className="rounded-xl border border-slate-200" onClick={() => addPricingPlanFeature()}>
+                  <Plus className="h-4 w-4" />
+                  Blank Feature
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {(pricingPlanForm.features || []).map((feature, index) => (
+                <div key={index} className="grid gap-2 rounded-xl bg-slate-50 p-3 md:grid-cols-[1fr_140px_110px_44px]">
+                  <input value={feature.title} placeholder="Feature title" onChange={(event) => updatePricingPlanFeature(index, 'title', event.target.value)} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold" />
+                  <input value={feature.groupName} placeholder="Group" onChange={(event) => updatePricingPlanFeature(index, 'groupName', event.target.value)} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold" />
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(feature.isIncluded)} onChange={(event) => updatePricingPlanFeature(index, 'isIncluded', event.target.checked)} />Included</label>
+                  <button type="button" className="grid h-10 w-10 place-items-center rounded-lg border border-red-100 bg-red-50 text-red-600" onClick={() => setPricingPlanForm((current) => ({ ...current, features: (current.features || []).filter((_, itemIndex) => itemIndex !== index) }))}><Trash2 className="h-4 w-4" /></button>
+                  <textarea value={feature.description || ''} placeholder="Description" onChange={(event) => updatePricingPlanFeature(index, 'description', event.target.value)} className="min-h-16 rounded-lg border border-slate-200 px-3 py-2 text-sm md:col-span-4" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Button disabled={saving} className="mt-4 rounded-xl bg-blue-600 text-white">
+            <Save className="h-4 w-4" />
+            Save Plan
+          </Button>
+        </form>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-lg font-black text-slate-950">Plans</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
+                  <tr><th className="p-3">Plan</th><th className="p-3">Category</th><th className="p-3">NGN</th><th className="p-3">Version</th><th className="p-3">Status</th><th className="p-3"></th></tr>
+                </thead>
+                <tbody>
+                  {allPlans.map((plan) => (
+                    <tr key={plan.id} className="border-t border-slate-100">
+                      <td className="p-3 font-black text-slate-950">{plan.name}</td>
+                      <td className="p-3 text-slate-600">{plan.categoryName}</td>
+                      <td className="p-3 font-bold text-slate-800">NGN {Number(plan.prices?.NGN || 0).toLocaleString()}</td>
+                      <td className="p-3 text-slate-600">v{plan.version}</td>
+                      <td className="p-3"><span className={cn('rounded-full px-2 py-1 text-xs font-black', plan.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>{plan.isActive ? 'Active' : 'Inactive'}</span></td>
+                      <td className="p-3">
+                        <div className="flex justify-end gap-2">
+                          <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingPlan(plan)}><Pencil className="h-4 w-4" /></button>
+                          <button type="button" className="rounded-lg border border-red-100 bg-red-50 p-2 text-red-600" onClick={() => void deletePricingPlan(plan.id)}><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-lg font-black text-slate-950">{editingPricingFeature ? 'Edit Feature' : 'Reusable Features'}</h3>
+            <form onSubmit={savePricingFeature} className="grid gap-3">
+              <input required placeholder="Feature title" value={pricingFeatureForm.title || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, title: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold" />
+              <input placeholder="Group, e.g. SEO" value={pricingFeatureForm.groupName || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, groupName: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold" />
+              <textarea placeholder="Description" value={pricingFeatureForm.description || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, description: event.target.value })} className="min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingFeatureForm.isActive)} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, isActive: event.target.checked })} />Active</label>
+              <Button disabled={saving} className="rounded-xl bg-blue-600 text-white"><Save className="h-4 w-4" />Save Feature</Button>
+            </form>
+            <div className="mt-5 grid max-h-[420px] gap-2 overflow-y-auto">
+              {pricingFeatures.map((feature) => (
+                <div key={feature.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
+                  <div>
+                    <p className="font-black text-slate-950">{feature.title}</p>
+                    <p className="text-xs font-bold text-slate-500">{feature.groupName || 'General'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingFeature(feature)}><Pencil className="h-4 w-4" /></button>
+                    <button type="button" className="rounded-lg border border-red-100 bg-red-50 p-2 text-red-600" onClick={() => void deletePricingFeature(feature.id)}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   function renderAdminContent() {
     switch (activeSection) {
       case 'dashboard': return renderDashboard()
@@ -5533,6 +5988,7 @@ export function AdminDashboard() {
       case 'library': return renderLibrary()
       case 'seo': return renderSeo()
       case 'bookings': return renderBookings()
+      case 'pricing': return renderPricing()
       case 'invoices': return renderInvoices()
       case 'users': return renderUsers()
       case 'settings': return renderSettings()
