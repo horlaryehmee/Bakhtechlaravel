@@ -310,6 +310,7 @@ export type InvoiceDocument = {
   dueDate: string
   paymentGateway: string
   paymentEnabled: boolean
+  partialPaymentEnabled: boolean
   serviceOverview: string
   scopeOfService: string
   notes: string
@@ -610,6 +611,12 @@ export const api = {
   },
   cms() {
     return request<CmsData>('/api/admin/cms')
+  },
+  updateAdminUserPassword(id: number, password: string, passwordConfirmation: string) {
+    return request<{ user: AdminUser }>(`/api/admin/users/${id}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password, password_confirmation: passwordConfirmation }),
+    })
   },
   createPage(page: Partial<CmsPage>) {
     return request<{ page: CmsPage }>('/api/admin/pages', {

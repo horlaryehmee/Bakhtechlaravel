@@ -40,6 +40,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::put('/admin/users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
     Route::post('/admin/pages', [BakhtechApiController::class, 'createPage']);
     Route::put('/admin/pages/{id}', [BakhtechApiController::class, 'updatePage']);
     Route::delete('/admin/pages/{id}', [BakhtechApiController::class, 'deletePage']);

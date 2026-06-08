@@ -203,8 +203,10 @@ export function PublicInvoice() {
   const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
   const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
   const payableAmount = Math.max(0, document.balanceDue || document.total)
-  const selectedPaymentAmount = payableAmount * (selectedPaymentPercent / 100)
-  const paymentPresets = [50, 75, 100]
+  const partialPaymentEnabled = document.partialPaymentEnabled !== false
+  const effectivePaymentPercent = partialPaymentEnabled ? selectedPaymentPercent : 100
+  const selectedPaymentAmount = payableAmount * (effectivePaymentPercent / 100)
+  const paymentPresets = partialPaymentEnabled ? [50, 75, 100] : [100]
   const onlinePaymentGateway = document.paymentGateway && document.paymentGateway !== 'manual' ? document.paymentGateway : ''
   const paymentAccount = document.paymentAccount
   const renderInvoiceExpandableSection = (key: string, title: string, value: string) => {
@@ -485,22 +487,29 @@ export function PublicInvoice() {
                 <span>{titleCase(onlinePaymentGateway)}</span>
               </div>
             ) : null}
-            <div className="invoice-sheet-pay-row">
-              <span>Pay</span>
-              <div className="invoice-sheet-presets">
-                {paymentPresets.map((percent) => (
-                  <button
-                    type="button"
-                    className={cn(selectedPaymentPercent === percent && 'is-active')}
-                    key={percent}
-                    onClick={() => setSelectedPaymentPercent(percent)}
-                  >
-                    {percent}%
-                  </button>
-                ))}
+            {partialPaymentEnabled ? (
+              <div className="invoice-sheet-pay-row">
+                <span>Pay</span>
+                <div className="invoice-sheet-presets">
+                  {paymentPresets.map((percent) => (
+                    <button
+                      type="button"
+                      className={cn(selectedPaymentPercent === percent && 'is-active')}
+                      key={percent}
+                      onClick={() => setSelectedPaymentPercent(percent)}
+                    >
+                      {percent}%
+                    </button>
+                  ))}
+                </div>
+                <small>Selected: {money(selectedPaymentAmount, document.currency)}</small>
               </div>
-              <small>Selected: {money(selectedPaymentAmount, document.currency)}</small>
-            </div>
+            ) : (
+              <div className="invoice-sheet-pay-row">
+                <span>Pay</span>
+                <small>Full balance: {money(selectedPaymentAmount, document.currency)}</small>
+              </div>
+            )}
             {document.paymentEnabled && onlinePaymentGateway && payableAmount > 0 ? (
               <Button type="button" className="invoice-sheet-pay-button" onClick={() => void handlePaymentClick()}>
                 <CreditCard className="h-4 w-4" />Pay with {titleCase(onlinePaymentGateway)} ({money(selectedPaymentAmount, document.currency)})

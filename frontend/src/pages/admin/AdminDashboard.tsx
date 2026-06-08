@@ -27,6 +27,7 @@ import {
   Save,
   SearchCheck,
   Settings,
+  RotateCcw,
   Trash2,
   Upload,
   Download,
@@ -80,6 +81,7 @@ type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | '
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
+type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'advanced'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
   key: string
@@ -272,6 +274,7 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   dueDate: string
   paymentGateway: string
   paymentEnabled: boolean
+  partialPaymentEnabled: boolean
   serviceOverview: string
   scopeOfService: string
   notes: string
@@ -289,6 +292,7 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   dueDate: '',
   paymentGateway: 'paystack',
   paymentEnabled: true,
+  partialPaymentEnabled: true,
   serviceOverview: '',
   scopeOfService: '',
   notes: '',
@@ -494,6 +498,55 @@ const settingLabels: Record<string, string> = {
   trustpilotReviewUrl: 'Trustpilot review link',
   twitterUrl: 'X / Twitter link',
   youtubeUrl: 'YouTube link',
+  navigation_items: 'Header menu',
+  theme_light_primary: 'Light primary',
+  theme_light_secondary: 'Light secondary',
+  theme_light_active: 'Light active color',
+  theme_dark_primary: 'Dark primary',
+  theme_dark_secondary: 'Dark secondary',
+  theme_dark_active: 'Dark active color',
+}
+
+const defaultThemeColors: Record<string, string> = {
+  theme_light_primary: '#1261ff',
+  theme_light_secondary: '#12c8a0',
+  theme_light_active: '#ef4444',
+  theme_dark_primary: '#8bb8ff',
+  theme_dark_secondary: '#67e8cf',
+  theme_dark_active: '#ef4444',
+}
+
+const defaultHeaderMenu = [
+  { label: 'Home', href: '/', visible: true, children: [] },
+  { label: 'About', href: '/about', visible: true, children: [] },
+  { label: 'Portfolio', href: '/portfolio', visible: true, children: [] },
+  { label: 'Booking', href: '/booking', visible: true, children: [] },
+  { label: 'Contact', href: '/contact', visible: true, children: [] },
+]
+
+function parseHeaderMenu(value?: string) {
+  try {
+    const parsed = JSON.parse(value || '[]')
+    if (Array.isArray(parsed) && parsed.length) {
+      return parsed.map((item) => ({
+        label: String(item?.label || ''),
+        href: String(item?.href || ''),
+        visible: item?.visible !== false,
+        children: Array.isArray(item?.children)
+          ? item.children.map((child: any) => ({
+              label: String(child?.label || ''),
+              href: String(child?.href || ''),
+              visible: child?.visible !== false,
+              children: [],
+            }))
+          : [],
+      }))
+    }
+  } catch {
+    // Keep the editor usable even if old settings contain invalid JSON.
+  }
+
+  return defaultHeaderMenu
 }
 
 function bookingHostLink(calendar?: BookingCalendar | null) {
@@ -513,6 +566,21 @@ function invoiceMoney(amount: number, currency: string) {
   }
   const symbol = currencySymbols[currency] || currency
   return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function pricingRate(settings: Record<string, string>, currency: 'USD' | 'GBP') {
+  const fallback = currency === 'USD' ? 0.00067 : 0.00053
+  const value = Number(settings[`pricing_rate_${currency.toLowerCase()}`])
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+function calculatedPricingPrices(baseNgn: number, settings: Record<string, string>) {
+  const ngn = Number(baseNgn || 0)
+  return {
+    NGN: ngn,
+    USD: Math.round(ngn * pricingRate(settings, 'USD') * 100) / 100,
+    GBP: Math.round(ngn * pricingRate(settings, 'GBP') * 100) / 100,
+  }
 }
 
 function invoicePreviewTotals(items: InvoiceItem[]) {
@@ -583,6 +651,7 @@ export function AdminDashboard() {
   const [pricingCategoryForm, setPricingCategoryForm] = useState(emptyPricingCategoryForm)
   const [pricingFeatureForm, setPricingFeatureForm] = useState(emptyPricingFeatureForm)
   const [pricingPlanForm, setPricingPlanForm] = useState(emptyPricingPlanForm)
+  const [pricingFeatureDraft, setPricingFeatureDraft] = useState({ title: '', description: '', groupName: 'General' })
   const [editingPricingCategory, setEditingPricingCategory] = useState<PricingCategory | null>(null)
   const [editingPricingFeature, setEditingPricingFeature] = useState<PricingFeature | null>(null)
   const [editingPricingPlan, setEditingPricingPlan] = useState<PricingPlan | null>(null)
@@ -618,6 +687,8 @@ export function AdminDashboard() {
   const [questionModal, setQuestionModal] = useState<QuestionModalState | null>(null)
   const [availabilityForm, setAvailabilityForm] = useState(emptyAvailabilityRule)
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>(initialAdminCache?.cms?.settings ?? {})
+  const [siteSettingsSection, setSiteSettingsSection] = useState<SiteSettingsSection>('menu')
+  const [passwordForms, setPasswordForms] = useState<Record<number, { password: string; confirmation: string }>>({})
   const [loading, setLoading] = useState(!initialAdminCache)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -745,6 +816,7 @@ export function AdminDashboard() {
               dueDate: doc.dueDate,
               paymentGateway: doc.paymentGateway,
               paymentEnabled: doc.paymentEnabled,
+              partialPaymentEnabled: doc.partialPaymentEnabled ?? true,
               serviceOverview: doc.serviceOverview || '',
               scopeOfService: doc.scopeOfService || '',
               notes: doc.notes || '',
@@ -968,18 +1040,15 @@ export function AdminDashboard() {
     event.preventDefault()
     setSaving(true)
     try {
+      const prices = calculatedPricingPrices(Number(pricingPlanForm.prices?.NGN || 0), settingsForm)
       const payload = {
         ...pricingPlanForm,
         pricingCategoryId: Number(pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0),
-        prices: {
-          NGN: Number(pricingPlanForm.prices?.NGN || 0),
-          USD: Number(pricingPlanForm.prices?.USD || 0),
-          GBP: Number(pricingPlanForm.prices?.GBP || 0),
-        },
+        prices,
         promoPrices: {
           NGN: pricingPlanForm.promoPrices?.NGN ? Number(pricingPlanForm.promoPrices.NGN) : undefined,
-          USD: pricingPlanForm.promoPrices?.USD ? Number(pricingPlanForm.promoPrices.USD) : undefined,
-          GBP: pricingPlanForm.promoPrices?.GBP ? Number(pricingPlanForm.promoPrices.GBP) : undefined,
+          USD: pricingPlanForm.promoPrices?.NGN ? Math.round(Number(pricingPlanForm.promoPrices.NGN) * pricingRate(settingsForm, 'USD') * 100) / 100 : undefined,
+          GBP: pricingPlanForm.promoPrices?.NGN ? Math.round(Number(pricingPlanForm.promoPrices.NGN) * pricingRate(settingsForm, 'GBP') * 100) / 100 : undefined,
         },
         discountPercentage: Number(pricingPlanForm.discountPercentage || 0),
         features: pricingPlanForm.features || [],
@@ -993,6 +1062,26 @@ export function AdminDashboard() {
       await loadPricingData()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing plan.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function savePricingRates() {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.updateSettings({
+        ...settingsForm,
+        pricing_rate_usd: String(pricingRate(settingsForm, 'USD')),
+        pricing_rate_gbp: String(pricingRate(settingsForm, 'GBP')),
+      })
+      setCms((current) => (current ? { ...current, settings: result.settings } : current))
+      setSettingsForm(result.settings)
+      notify('Pricing exchange rates saved.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing rates.')
     } finally {
       setSaving(false)
     }
@@ -1444,6 +1533,31 @@ export function AdminDashboard() {
     notify('Settings saved.')
   }
 
+  async function updateAdminUserPassword(userId: number) {
+    const form = passwordForms[userId] ?? { password: '', confirmation: '' }
+    if (!form.password || !form.confirmation) {
+      setError('Enter and confirm the new password.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.updateAdminUserPassword(userId, form.password, form.confirmation)
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.map((user) => user.id === userId ? result.user : user),
+      } : current)
+      setPasswordForms((current) => ({ ...current, [userId]: { password: '', confirmation: '' } }))
+      notify('Password updated.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to update password.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function updateProjectDisplaySetting(value: string) {
     const nextSettings = { ...settingsForm, homePortfolioShowDescriptions: value }
     setSettingsForm(nextSettings)
@@ -1470,6 +1584,7 @@ export function AdminDashboard() {
       currency: settingsForm.currency || emptyInvoiceForm.currency,
       paymentGateway: enabledGateways[0] || emptyInvoiceForm.paymentGateway,
       paymentEnabled: (settingsForm.invoicePaymentEnabled ?? 'true') !== 'false',
+      partialPaymentEnabled: (settingsForm.enable_partial_payments ?? '1') !== '0',
       serviceOverview: emptyInvoiceForm.serviceOverview,
       scopeOfService: emptyInvoiceForm.scopeOfService,
       notes: settingsForm.invoiceDefaultNotes || emptyInvoiceForm.notes,
@@ -1504,6 +1619,7 @@ export function AdminDashboard() {
       items: fullDocument.items.length ? fullDocument.items : emptyInvoiceForm.items,
       branding: fullDocument.branding,
       paymentGateway: fullDocument.paymentGateway && fullDocument.paymentGateway !== 'manual' ? fullDocument.paymentGateway : 'paystack',
+      partialPaymentEnabled: fullDocument.partialPaymentEnabled ?? true,
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -2731,6 +2847,14 @@ export function AdminDashboard() {
                   />
                   Enable payment button
                 </label>
+                <label className="bkinv-payment-toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(invoiceForm.partialPaymentEnabled)}
+                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, partialPaymentEnabled: e.target.checked }))}
+                  />
+                  Allow partial payment on this document
+                </label>
                 <div className="bkinv-form-group">
                   <span>Online Payment Gateway</span>
                   <small className="text-xs font-semibold text-gray-500">Manual/offline payment is always available on the public document.</small>
@@ -3813,6 +3937,7 @@ export function AdminDashboard() {
                                     dueDate: doc.dueDate,
                                     paymentGateway: doc.paymentGateway,
                                     paymentEnabled: doc.paymentEnabled,
+                                    partialPaymentEnabled: doc.partialPaymentEnabled ?? true,
                                     serviceOverview: doc.serviceOverview || '',
                                     scopeOfService: doc.scopeOfService || '',
                                     notes: doc.notes || '',
@@ -5641,21 +5766,223 @@ export function AdminDashboard() {
           text="Admin accounts are loaded from the database. New roles can be added on top of this user table." 
         />
         <div className="grid gap-4">
-          {cms?.users.map((user) => (
-            <article key={user.id} className="bg-white rounded-2xl border border-gray-100 p-5 md:grid-cols-[1fr_auto] md:items-center shadow-sm">
-              <div>
+          {cms?.users.map((user) => {
+            const form = passwordForms[user.id] ?? { password: '', confirmation: '' }
+            return (
+            <article key={user.id} className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm xl:grid-cols-[1fr_1.5fr_auto] xl:items-end">
+              <div className="self-center">
                 <h3 className="font-black text-gray-900">{user.name}</h3>
                 <p className="text-gray-500 text-sm">{user.email}</p>
+                <span className="mt-3 inline-flex w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-black uppercase text-green-700">{user.role}</span>
               </div>
-              <span className="w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-black uppercase text-green-700">{user.role}</span>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  New password
+                  <input
+                    type="password"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={form.password}
+                    minLength={8}
+                    autoComplete="new-password"
+                    onChange={(event) => setPasswordForms((current) => ({
+                      ...current,
+                      [user.id]: { ...(current[user.id] ?? { password: '', confirmation: '' }), password: event.target.value },
+                    }))}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Confirm password
+                  <input
+                    type="password"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={form.confirmation}
+                    minLength={8}
+                    autoComplete="new-password"
+                    onChange={(event) => setPasswordForms((current) => ({
+                      ...current,
+                      [user.id]: { ...(current[user.id] ?? { password: '', confirmation: '' }), confirmation: event.target.value },
+                    }))}
+                  />
+                </label>
+              </div>
+              <Button
+                type="button"
+                className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700"
+                disabled={saving || form.password.length < 8 || form.password !== form.confirmation}
+                onClick={() => void updateAdminUserPassword(user.id)}
+              >
+                Update Password
+              </Button>
             </article>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
   }
 
   function renderSettings() {
+    const headerMenu = parseHeaderMenu(settingsForm.navigation_items)
+    const setHeaderMenu = (items: Array<{ label: string; href: string; visible: boolean; children?: Array<{ label: string; href: string; visible: boolean; children?: any[] }> }>) => {
+      setSettingsForm((current) => ({ ...current, navigation_items: JSON.stringify(items) }))
+    }
+    const updateHeaderMenuItem = (index: number, patch: Partial<{ label: string; href: string; visible: boolean }>) => {
+      setHeaderMenu(headerMenu.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
+    }
+    const updateHeaderSubmenuItem = (index: number, childIndex: number, patch: Partial<{ label: string; href: string; visible: boolean }>) => {
+      setHeaderMenu(headerMenu.map((item, itemIndex) => {
+        if (itemIndex !== index) return item
+        return {
+          ...item,
+          children: (item.children || []).map((child, currentChildIndex) => currentChildIndex === childIndex ? { ...child, ...patch } : child),
+        }
+      }))
+    }
+    const moveHeaderMenuItem = (index: number, direction: -1 | 1) => {
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= headerMenu.length) return
+      const next = [...headerMenu]
+      const [item] = next.splice(index, 1)
+      next.splice(nextIndex, 0, item)
+      setHeaderMenu(next)
+    }
+    const moveHeaderSubmenuItem = (index: number, childIndex: number, direction: -1 | 1) => {
+      const children = [...(headerMenu[index]?.children || [])]
+      const nextIndex = childIndex + direction
+      if (nextIndex < 0 || nextIndex >= children.length) return
+      const [child] = children.splice(childIndex, 1)
+      children.splice(nextIndex, 0, child)
+      setHeaderMenu(headerMenu.map((item, itemIndex) => itemIndex === index ? { ...item, children } : item))
+    }
+    const addHeaderMenuItem = () => setHeaderMenu([...headerMenu, { label: 'New link', href: '/', visible: true, children: [] }])
+    const removeHeaderMenuItem = (index: number) => setHeaderMenu(headerMenu.filter((_, itemIndex) => itemIndex !== index))
+    const addHeaderSubmenuItem = (index: number) => {
+      setHeaderMenu(headerMenu.map((item, itemIndex) => itemIndex === index
+        ? { ...item, children: [...(item.children || []), { label: 'Submenu link', href: '/', visible: true, children: [] }] }
+        : item
+      ))
+    }
+    const removeHeaderSubmenuItem = (index: number, childIndex: number) => {
+      setHeaderMenu(headerMenu.map((item, itemIndex) => itemIndex === index
+        ? { ...item, children: (item.children || []).filter((_, currentChildIndex) => currentChildIndex !== childIndex) }
+        : item
+      ))
+    }
+    const settingSections = [
+      { id: 'menu', label: 'Header Menu', icon: Menu },
+      { id: 'theme', label: 'Theme Colors', icon: Sun },
+      { id: 'site', label: 'Site Info', icon: Settings },
+      { id: 'social', label: 'Social Links', icon: Link2 },
+      { id: 'advanced', label: 'Advanced', icon: Gauge },
+    ] as const
+    const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions']
+    const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl', 'googleReviewUrl', 'trustpilotReviewUrl']
+    const visibleKeySet = new Set(['navigation_items', ...themeKeys, ...siteKeys, ...socialKeys])
+    const belongsOutsideSiteSettings = (key: string) => (
+      key.startsWith('invoice')
+      || key.startsWith('quote_')
+      || key.startsWith('receipt_')
+      || key.startsWith('company_')
+      || key.startsWith('gateway_')
+      || key.startsWith('paystack_')
+      || key.startsWith('flutter_')
+      || key.startsWith('bank_')
+      || key.startsWith('pricing_rate_')
+      || ['currency', 'currency_symbol', 'default_tax_rate', 'tax_label', 'starting_number', 'homepage_url', 'homepage_label', 'enable_partial_payments', 'bookingIntro'].includes(key)
+    )
+    const keysForSection = siteSettingsSection === 'site'
+      ? siteKeys
+      : siteSettingsSection === 'social'
+        ? socialKeys
+        : siteSettingsSection === 'theme'
+          ? themeKeys
+          : Object.keys(settingsForm).filter((key) => !visibleKeySet.has(key) && !belongsOutsideSiteSettings(key))
+    const setThemeColor = (key: string, value: string) => setSettingsForm((current) => ({ ...current, [key]: value }))
+    const resetThemeColors = () => setSettingsForm((current) => ({ ...current, ...defaultThemeColors }))
+    const renderThemeColorSettings = () => {
+      const groups = [
+        {
+          title: 'Light mode',
+          fields: [
+            { key: 'theme_light_primary', label: 'Primary', fallback: defaultThemeColors.theme_light_primary },
+            { key: 'theme_light_secondary', label: 'Secondary', fallback: defaultThemeColors.theme_light_secondary },
+            { key: 'theme_light_active', label: 'Active', fallback: defaultThemeColors.theme_light_active },
+          ],
+        },
+        {
+          title: 'Dark mode',
+          fields: [
+            { key: 'theme_dark_primary', label: 'Primary', fallback: defaultThemeColors.theme_dark_primary },
+            { key: 'theme_dark_secondary', label: 'Secondary', fallback: defaultThemeColors.theme_dark_secondary },
+            { key: 'theme_dark_active', label: 'Active', fallback: defaultThemeColors.theme_dark_active },
+          ],
+        },
+      ]
+
+      return (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4 lg:col-span-2">
+            <p className="text-sm font-semibold text-gray-600">Reset restores the original light and dark theme colors. Use Save settings after resetting.</p>
+            <button
+              type="button"
+              onClick={resetThemeColors}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-700 transition hover:bg-gray-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset defaults
+            </button>
+          </div>
+          {groups.map((group) => (
+            <section key={group.title} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <h3 className="text-lg font-black text-gray-900">{group.title}</h3>
+              <div className="mt-4 grid gap-4">
+                {group.fields.map((field) => {
+                  const value = settingsForm[field.key] || field.fallback
+                  return (
+                    <label key={field.key} className="grid gap-2 text-sm font-bold text-gray-700">
+                      {field.label}
+                      <div className="flex min-h-11 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                        <input
+                          className="h-11 w-14 cursor-pointer border-0 bg-transparent p-1"
+                          type="color"
+                          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : field.fallback}
+                          onChange={(event) => setThemeColor(field.key, event.target.value)}
+                        />
+                        <input
+                          className="min-w-0 flex-1 px-3 font-mono text-sm outline-none"
+                          value={value}
+                          placeholder={field.fallback}
+                          onChange={(event) => setThemeColor(field.key, event.target.value)}
+                        />
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 lg:col-span-2">
+            <p className="text-sm font-semibold text-gray-600">Active color is used for selected states, emphasis, buttons, highlights, and brand accents. Primary and secondary feed the site-wide CSS theme tokens for both light and dark mode.</p>
+          </div>
+        </div>
+      )
+    }
+    const renderSettingsFields = (keys: string[]) => (
+      <div className="grid gap-4 lg:grid-cols-2">
+        {keys.filter((key) => key in settingsForm).map((key) => (
+          <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
+            {settingLabels[key] ?? key}
+            <input
+              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+              value={settingsForm[key] ?? ''}
+              onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
+            />
+          </label>
+        ))}
+      </div>
+    )
+
     return (
       <div>
         <PanelHeader 
@@ -5663,20 +5990,110 @@ export function AdminDashboard() {
           title="Site Settings" 
           text="Configure global settings for your website including contact info, social media links, and more." 
         />
-        <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveSettings}>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {Object.entries(settingsForm).map(([key, value]) => (
-              <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
-                {settingLabels[key] ?? key}
-                <input
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
-                  value={value ?? ''}
-                  onChange={(e) => setSettingsForm(prev => ({ ...prev, [key]: e.target.value }))}
-                />
-              </label>
-            ))}
+        <form className="grid gap-6" onSubmit={saveSettings}>
+          <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-5">
+            {settingSections.map((section) => {
+              const Icon = section.icon
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setSiteSettingsSection(section.id)}
+                  className={cn('flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-sm font-black transition', siteSettingsSection === section.id ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')}
+                >
+                  <Icon className="h-4 w-4" />
+                  {section.label}
+                </button>
+              )
+            })}
           </div>
-          <div className="mt-6">
+
+          {siteSettingsSection === 'menu' ? (
+            <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Header menu</p>
+                  <h3 className="mt-1 text-xl font-black text-gray-900">Navigation links and submenus</h3>
+                </div>
+                <Button type="button" variant="ghost" className="min-h-10 gap-2 rounded-xl border border-gray-200" onClick={addHeaderMenuItem}>
+                  <Plus className="h-4 w-4" />
+                  Add link
+                </Button>
+              </div>
+
+              <div className="grid gap-3">
+                {headerMenu.map((item, index) => (
+                  <article key={`${item.label}-${index}`} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+                      <label className="grid gap-2 text-sm font-bold text-gray-700">
+                        Label
+                        <input className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" value={item.label} onChange={(event) => updateHeaderMenuItem(index, { label: event.target.value })} />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-gray-700">
+                        URL
+                        <input className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" value={item.href} placeholder="/about" onChange={(event) => updateHeaderMenuItem(index, { href: event.target.value })} />
+                      </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-700">
+                          <input type="checkbox" checked={item.visible} onChange={(event) => updateHeaderMenuItem(index, { visible: event.target.checked })} />
+                          Visible
+                        </label>
+                        <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" onClick={() => moveHeaderMenuItem(index, -1)} disabled={index === 0} title="Move up"><ChevronLeft className="h-4 w-4 rotate-90" /></Button>
+                        <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" onClick={() => moveHeaderMenuItem(index, 1)} disabled={index === headerMenu.length - 1} title="Move down"><ChevronRight className="h-4 w-4 rotate-90" /></Button>
+                        <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-red-100 p-0 text-red-600" onClick={() => removeHeaderMenuItem(index)} title="Remove link"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <strong className="text-sm text-gray-800">Submenu</strong>
+                        <Button type="button" variant="ghost" className="min-h-9 gap-2 rounded-xl border border-gray-200 px-3 text-xs" onClick={() => addHeaderSubmenuItem(index)}>
+                          <Plus className="h-3.5 w-3.5" />
+                          Add submenu
+                        </Button>
+                      </div>
+                      <div className="grid gap-2">
+                        {(item.children || []).map((child, childIndex) => (
+                          <div key={`${child.label}-${childIndex}`} className="grid gap-2 rounded-lg bg-gray-50 p-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+                            <label className="grid gap-1 text-xs font-bold text-gray-600">
+                              Label
+                              <input className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={child.label} onChange={(event) => updateHeaderSubmenuItem(index, childIndex, { label: event.target.value })} />
+                            </label>
+                            <label className="grid gap-1 text-xs font-bold text-gray-600">
+                              URL
+                              <input className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={child.href} onChange={(event) => updateHeaderSubmenuItem(index, childIndex, { href: event.target.value })} />
+                            </label>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-700">
+                                <input type="checkbox" checked={child.visible} onChange={(event) => updateHeaderSubmenuItem(index, childIndex, { visible: event.target.checked })} />
+                                Visible
+                              </label>
+                              <Button type="button" variant="ghost" className="h-9 w-9 rounded-xl border border-gray-200 p-0" onClick={() => moveHeaderSubmenuItem(index, childIndex, -1)} disabled={childIndex === 0} title="Move up"><ChevronLeft className="h-3.5 w-3.5 rotate-90" /></Button>
+                              <Button type="button" variant="ghost" className="h-9 w-9 rounded-xl border border-gray-200 p-0" onClick={() => moveHeaderSubmenuItem(index, childIndex, 1)} disabled={childIndex === (item.children || []).length - 1} title="Move down"><ChevronRight className="h-3.5 w-3.5 rotate-90" /></Button>
+                              <Button type="button" variant="ghost" className="h-9 w-9 rounded-xl border border-red-100 p-0 text-red-600" onClick={() => removeHeaderSubmenuItem(index, childIndex)} title="Remove submenu"><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </div>
+                        ))}
+                        {(item.children || []).length === 0 ? <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-500">No submenu links.</p> : null}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : siteSettingsSection === 'theme' ? (
+            <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              {renderThemeColorSettings()}
+            </section>
+          ) : (
+            <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              {keysForSection.length ? renderSettingsFields(keysForSection) : (
+                <p className="rounded-xl bg-gray-50 p-4 text-sm font-semibold text-gray-500">No settings in this section yet.</p>
+              )}
+            </section>
+          )}
+
+          <div>
             <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Save Settings</Button>
           </div>
         </form>
@@ -5728,15 +6145,141 @@ export function AdminDashboard() {
     }))
   }
 
+  function addPricingFeatureToCurrentPlan() {
+    const title = pricingFeatureDraft.title.trim()
+    if (!title) {
+      setError('Enter a feature title before adding it to the plan.')
+      return
+    }
+
+    setPricingPlanForm((current) => ({
+      ...current,
+      features: [
+        ...(current.features || []),
+        {
+          featureId: null,
+          title,
+          description: pricingFeatureDraft.description.trim(),
+          groupName: pricingFeatureDraft.groupName.trim() || 'General',
+          isIncluded: true,
+          sortOrder: (current.features || []).length + 1,
+        },
+      ],
+    }))
+    setPricingFeatureDraft({ title: '', description: '', groupName: pricingFeatureDraft.groupName || 'General' })
+    setError('')
+  }
+
+  function pricingFeatureLines(plan: PricingPlan) {
+    return (plan.features || []).filter((feature) => feature.isIncluded !== false).map((feature) => feature.title).join('\n')
+  }
+
+  function pricingFeaturesFromLines(value: string): PricingPlanFeature[] {
+    return value.split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((title, index) => ({
+        featureId: null,
+        title,
+        description: '',
+        groupName: 'General',
+        isIncluded: true,
+        sortOrder: index + 1,
+      }))
+  }
+
+  function updatePricingPackage(categoryId: number, planId: number, patch: Partial<PricingPlan>) {
+    setPricingCategories((current) => current.map((category) => {
+      if (category.id !== categoryId) return category
+      return {
+        ...category,
+        plans: category.plans.map((plan) => plan.id === planId ? { ...plan, ...patch } : plan),
+      }
+    }))
+  }
+
+  function addPricingPackage(categoryId: number) {
+    const tempId = -Date.now()
+    const nextPlan: PricingPlan = {
+      id: tempId,
+      pricingCategoryId: categoryId,
+      name: 'New Package',
+      slug: `package-${Math.abs(tempId)}`,
+      description: '',
+      billingType: 'one_time',
+      monthlyEnabled: false,
+      prices: { NGN: 0, USD: 0, GBP: 0 },
+      promoPrices: {},
+      discountPercentage: 0,
+      displayPrice: { currency: 'NGN', baseAmount: 0, amount: 0, promoApplied: false },
+      isActive: true,
+      isPopular: false,
+      sortOrder: 0,
+      version: 1,
+      features: [],
+    }
+
+    setPricingCategories((current) => current.map((category) => category.id === categoryId
+      ? { ...category, plans: [...category.plans, nextPlan] }
+      : category
+    ))
+  }
+
+  async function savePricingPackage(categoryId: number, plan: PricingPlan) {
+    setSaving(true)
+    setError('')
+
+    try {
+      const prices = calculatedPricingPrices(Number(plan.prices?.NGN || 0), settingsForm)
+      const payload = {
+        ...plan,
+        pricingCategoryId: categoryId,
+        prices,
+        promoPrices: {},
+        discountPercentage: Number(plan.discountPercentage || 0),
+        features: plan.features || [],
+      }
+
+      plan.id > 0
+        ? await api.updatePricingPlan(plan.id, payload)
+        : await api.createPricingPlan(payload)
+      notify('Package saved.')
+      await loadPricingData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save package.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveActivePricingCategory(category: PricingCategory) {
+    setSaving(true)
+    setError('')
+
+    try {
+      await api.updatePricingCategory(category.id, category)
+      notify('Service saved.')
+      await loadPricingData()
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save service.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function renderPricing() {
-    const allPlans = pricingCategories.flatMap((category) => category.plans.map((plan) => ({ ...plan, categoryName: category.name })))
+    const calculatedPlanPrices = calculatedPricingPrices(Number(pricingPlanForm.prices?.NGN || 0), settingsForm)
+    const activePricingCategory = pricingCategories.find((category) => category.id === Number(pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0)) ?? pricingCategories[0]
+    const pricingShareLink = activePricingCategory
+      ? `${typeof window === 'undefined' ? '' : window.location.origin}/pricing?service=${activePricingCategory.slug}`
+      : ''
 
     return (
       <div className="space-y-6">
         <PanelHeader
           eyebrow="Pricing System"
-          title="Dynamic pricing and invoice mapping"
-          text="Manage service categories, tiered plans, reusable features, discounts, promo pricing, and the pricing data that is locked onto generated invoices."
+          title="Pricing plans and currency rates"
+          text="Manage service categories, plan prices, reusable features, and the pricing data that is locked onto generated invoices."
         />
 
         <div className="flex flex-wrap gap-3">
@@ -5747,6 +6290,51 @@ export function AdminDashboard() {
             Open Custom Pricing Frontend
           </a>
         </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-black text-slate-950">Currency Rates</h3>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Enter rates as 1 NGN equals the currency amount. Plan USD and GBP prices are calculated from the NGN base price.</p>
+            </div>
+            <Button type="button" disabled={saving} className="rounded-xl bg-blue-600 text-white" onClick={() => void savePricingRates()}>
+              <Save className="h-4 w-4" />
+              Save Rates
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              USD rate
+              <input
+                type="number"
+                min="0"
+                step="0.00001"
+                value={settingsForm.pricing_rate_usd ?? '0.00067'}
+                onChange={(event) => setSettingsForm((current) => ({ ...current, pricing_rate_usd: event.target.value }))}
+                className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+              GBP rate
+              <input
+                type="number"
+                min="0"
+                step="0.00001"
+                value={settingsForm.pricing_rate_gbp ?? '0.00053'}
+                onChange={(event) => setSettingsForm((current) => ({ ...current, pricing_rate_gbp: event.target.value }))}
+                className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900"
+              />
+            </label>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs font-black uppercase text-slate-500">Example</p>
+              <p className="mt-1 text-sm font-bold text-slate-800">NGN 1,000,000 = USD {calculatedPricingPrices(1000000, settingsForm).USD.toLocaleString()} / GBP {calculatedPricingPrices(1000000, settingsForm).GBP.toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-blue-50 p-3">
+              <p className="text-xs font-black uppercase text-blue-600">Current plan preview</p>
+              <p className="mt-1 text-sm font-bold text-slate-800">USD {calculatedPlanPrices.USD.toLocaleString()} / GBP {calculatedPlanPrices.GBP.toLocaleString()}</p>
+            </div>
+          </div>
+        </section>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <form onSubmit={savePricingCategory} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -5807,146 +6395,104 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        <form onSubmit={savePricingPlan} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-black text-slate-950">{editingPricingPlan ? 'Edit Plan' : 'New Plan'}</h3>
-            {editingPricingPlan && (
-              <button type="button" className="text-xs font-black text-slate-500" onClick={() => { setEditingPricingPlan(null); setPricingPlanForm({ ...emptyPricingPlanForm, pricingCategoryId: pricingCategories[0]?.id || 0 }) }}>Cancel</button>
-            )}
-          </div>
-          <div className="grid gap-3 lg:grid-cols-4 md:grid-cols-2">
-            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-              Category
-              <select value={pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, pricingCategoryId: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
-                {pricingCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-              Plan Name
-              <input required value={pricingPlanForm.name || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, name: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
-            </label>
-            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-              Slug
-              <input value={pricingPlanForm.slug || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, slug: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
-            </label>
-            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-              Billing
-              <select value={pricingPlanForm.billingType || 'one_time'} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, billingType: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
-                <option value="one_time">One-time</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </label>
-            {['NGN', 'USD', 'GBP'].map((code) => (
-              <label key={code} className="grid gap-1 text-xs font-black uppercase text-slate-500">
-                {code} Price
-                <input type="number" value={pricingPlanForm.prices?.[code] || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, prices: { ...(pricingPlanForm.prices || {}), [code]: Number(event.target.value) } })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
-              </label>
-            ))}
-            <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-              Discount %
-              <input type="number" value={pricingPlanForm.discountPercentage || 0} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, discountPercentage: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
-            </label>
-          </div>
-          <label className="mt-3 grid gap-1 text-xs font-black uppercase text-slate-500">
-            Description
-            <textarea value={pricingPlanForm.description || ''} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, description: event.target.value })} className="min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold normal-case text-slate-900" />
-          </label>
-          <div className="mt-3 flex flex-wrap gap-5">
-            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.isActive)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, isActive: event.target.checked })} />Active</label>
-            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.isPopular)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, isPopular: event.target.checked })} />Most Popular</label>
-            <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingPlanForm.monthlyEnabled)} onChange={(event) => setPricingPlanForm({ ...pricingPlanForm, monthlyEnabled: event.target.checked })} />Show monthly toggle</label>
-          </div>
-
-          <div className="mt-5 rounded-xl border border-slate-200 p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h4 className="font-black text-slate-950">Plan Features</h4>
-              <div className="flex flex-wrap gap-2">
-                <select className="min-h-10 rounded-xl border border-slate-200 px-3 text-sm font-bold" onChange={(event) => {
-                  const feature = pricingFeatures.find((item) => item.id === Number(event.target.value))
-                  if (feature) addPricingPlanFeature(feature)
-                  event.currentTarget.value = ''
-                }}>
-                  <option value="">Add reusable feature</option>
-                  {pricingFeatures.map((feature) => <option key={feature.id} value={feature.id}>{feature.groupName ? `${feature.groupName}: ` : ''}{feature.title}</option>)}
+        {activePricingCategory ? (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 border-b border-slate-200 pb-5">
+              <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                Active service
+                <select
+                  value={activePricingCategory.id}
+                  onChange={(event) => setPricingPlanForm((current) => ({ ...current, pricingCategoryId: Number(event.target.value) }))}
+                  className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold normal-case text-slate-900"
+                >
+                  {pricingCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
-                <Button type="button" variant="ghost" className="rounded-xl border border-slate-200" onClick={() => addPricingPlanFeature()}>
+              </label>
+              <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                Description
+                <textarea
+                  value={activePricingCategory.description || ''}
+                  onChange={(event) => setPricingCategories((current) => current.map((category) => category.id === activePricingCategory.id ? { ...category, description: event.target.value } : category))}
+                  className="min-h-24 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold normal-case text-slate-900"
+                />
+              </label>
+              <div className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                <span>Share link</span>
+                <div className="flex gap-2">
+                  <input readOnly value={pricingShareLink} className="min-h-10 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold normal-case text-slate-900" />
+                  <Button type="button" variant="ghost" className="rounded-xl border border-blue-200 px-4 text-blue-700" onClick={() => void navigator.clipboard.writeText(pricingShareLink)}>Copy</Button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" className="rounded-xl bg-blue-600 text-white" disabled={saving} onClick={() => void saveActivePricingCategory(activePricingCategory)}>
+                  <Save className="h-4 w-4" />
+                  Save Service
+                </Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-slate-200" onClick={() => addPricingPackage(activePricingCategory.id)}>
                   <Plus className="h-4 w-4" />
-                  Blank Feature
+                  Add Package
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3">
-              {(pricingPlanForm.features || []).map((feature, index) => (
-                <div key={index} className="grid gap-2 rounded-xl bg-slate-50 p-3 md:grid-cols-[1fr_140px_110px_44px]">
-                  <input value={feature.title} placeholder="Feature title" onChange={(event) => updatePricingPlanFeature(index, 'title', event.target.value)} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold" />
-                  <input value={feature.groupName} placeholder="Group" onChange={(event) => updatePricingPlanFeature(index, 'groupName', event.target.value)} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-bold" />
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(feature.isIncluded)} onChange={(event) => updatePricingPlanFeature(index, 'isIncluded', event.target.checked)} />Included</label>
-                  <button type="button" className="grid h-10 w-10 place-items-center rounded-lg border border-red-100 bg-red-50 text-red-600" onClick={() => setPricingPlanForm((current) => ({ ...current, features: (current.features || []).filter((_, itemIndex) => itemIndex !== index) }))}><Trash2 className="h-4 w-4" /></button>
-                  <textarea value={feature.description || ''} placeholder="Description" onChange={(event) => updatePricingPlanFeature(index, 'description', event.target.value)} className="min-h-16 rounded-lg border border-slate-200 px-3 py-2 text-sm md:col-span-4" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <Button disabled={saving} className="mt-4 rounded-xl bg-blue-600 text-white">
-            <Save className="h-4 w-4" />
-            Save Plan
-          </Button>
-        </form>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-lg font-black text-slate-950">Plans</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-black uppercase text-slate-500">
-                  <tr><th className="p-3">Plan</th><th className="p-3">Category</th><th className="p-3">NGN</th><th className="p-3">Version</th><th className="p-3">Status</th><th className="p-3"></th></tr>
-                </thead>
-                <tbody>
-                  {allPlans.map((plan) => (
-                    <tr key={plan.id} className="border-t border-slate-100">
-                      <td className="p-3 font-black text-slate-950">{plan.name}</td>
-                      <td className="p-3 text-slate-600">{plan.categoryName}</td>
-                      <td className="p-3 font-bold text-slate-800">NGN {Number(plan.prices?.NGN || 0).toLocaleString()}</td>
-                      <td className="p-3 text-slate-600">v{plan.version}</td>
-                      <td className="p-3"><span className={cn('rounded-full px-2 py-1 text-xs font-black', plan.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>{plan.isActive ? 'Active' : 'Inactive'}</span></td>
-                      <td className="p-3">
-                        <div className="flex justify-end gap-2">
-                          <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingPlan(plan)}><Pencil className="h-4 w-4" /></button>
-                          <button type="button" className="rounded-lg border border-red-100 bg-red-50 p-2 text-red-600" onClick={() => void deletePricingPlan(plan.id)}><Trash2 className="h-4 w-4" /></button>
+            <div className="mt-6">
+              <h3 className="text-lg font-black text-slate-950">Packages</h3>
+              <div className="mt-5 grid gap-5 xl:grid-cols-3 md:grid-cols-2">
+                {activePricingCategory.plans.map((plan) => {
+                  const calculated = calculatedPricingPrices(Number(plan.prices?.NGN || 0), settingsForm)
+                  return (
+                    <article key={plan.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <input
+                          value={plan.name}
+                          onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { name: event.target.value })}
+                          className="min-w-0 flex-1 rounded-lg border border-transparent px-2 py-1 text-base font-black text-blue-700 outline-none focus:border-blue-200"
+                        />
+                        <button type="button" className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => plan.id > 0 ? void deletePricingPlan(plan.id) : setPricingCategories((current) => current.map((category) => category.id === activePricingCategory.id ? { ...category, plans: category.plans.filter((item) => item.id !== plan.id) } : category))}>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                            Package ID
+                            <input value={plan.slug || ''} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { slug: event.target.value })} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                          </label>
+                          <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                            Price (NGN)
+                            <input type="number" min="0" value={plan.prices?.NGN || 0} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { prices: calculatedPricingPrices(Number(event.target.value), settingsForm) })} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                          </label>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                          Package Name
+                          <input value={plan.name || ''} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { name: event.target.value })} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                        </label>
+                        <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                          Features (one per line)
+                          <textarea value={pricingFeatureLines(plan)} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { features: pricingFeaturesFromLines(event.target.value) })} className="min-h-32 rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs leading-5 text-slate-900" />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3 text-xs font-bold text-slate-500">
+                          <span>USD {calculated.USD.toLocaleString()}</span>
+                          <span>GBP {calculated.GBP.toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <label className="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
+                            <input type="checkbox" checked={Boolean(plan.isActive)} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { isActive: event.target.checked })} />
+                            Active
+                          </label>
+                          <Button type="button" disabled={saving || !plan.name || !plan.slug} className="rounded-xl bg-blue-600 text-white" onClick={() => void savePricingPackage(activePricingCategory.id, plan)}>
+                            <Save className="h-4 w-4" />
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-lg font-black text-slate-950">{editingPricingFeature ? 'Edit Feature' : 'Reusable Features'}</h3>
-            <form onSubmit={savePricingFeature} className="grid gap-3">
-              <input required placeholder="Feature title" value={pricingFeatureForm.title || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, title: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold" />
-              <input placeholder="Group, e.g. SEO" value={pricingFeatureForm.groupName || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, groupName: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold" />
-              <textarea placeholder="Description" value={pricingFeatureForm.description || ''} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, description: event.target.value })} className="min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm" />
-              <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={Boolean(pricingFeatureForm.isActive)} onChange={(event) => setPricingFeatureForm({ ...pricingFeatureForm, isActive: event.target.checked })} />Active</label>
-              <Button disabled={saving} className="rounded-xl bg-blue-600 text-white"><Save className="h-4 w-4" />Save Feature</Button>
-            </form>
-            <div className="mt-5 grid max-h-[420px] gap-2 overflow-y-auto">
-              {pricingFeatures.map((feature) => (
-                <div key={feature.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
-                  <div>
-                    <p className="font-black text-slate-950">{feature.title}</p>
-                    <p className="text-xs font-bold text-slate-500">{feature.groupName || 'General'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingFeature(feature)}><Pencil className="h-4 w-4" /></button>
-                    <button type="button" className="rounded-lg border border-red-100 bg-red-50 p-2 text-red-600" onClick={() => void deletePricingFeature(feature.id)}><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          </section>
+        ) : null}
       </div>
     )
   }

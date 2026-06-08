@@ -107,6 +107,25 @@ class BakhtechApiController extends Controller
         ];
     }
 
+    public function updateAdminUserPassword(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        DB::table('admins')->where('id', $id)->update([
+            'password_hash' => Hash::make($data['password']),
+            'updated_at' => now(),
+        ]);
+
+        return ['user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first())];
+    }
+
     public function createPage(Request $request)
     {
         $existing = (object) [
@@ -611,6 +630,19 @@ class BakhtechApiController extends Controller
             'phone' => '+234 708 637 2833',
             'activeHome' => 'home',
             'homePortfolioShowDescriptions' => 'true',
+            'theme_light_primary' => '#1261ff',
+            'theme_light_secondary' => '#12c8a0',
+            'theme_light_active' => '#ef4444',
+            'theme_dark_primary' => '#8bb8ff',
+            'theme_dark_secondary' => '#67e8cf',
+            'theme_dark_active' => '#ef4444',
+            'navigation_items' => json_encode([
+                ['label' => 'Home', 'href' => '/', 'visible' => true],
+                ['label' => 'About', 'href' => '/about', 'visible' => true],
+                ['label' => 'Portfolio', 'href' => '/portfolio', 'visible' => true, 'children' => []],
+                ['label' => 'Booking', 'href' => '/booking', 'visible' => true],
+                ['label' => 'Contact', 'href' => '/contact', 'visible' => true],
+            ]),
             'googleReviewUrl' => '',
             'trustpilotReviewUrl' => '',
             'facebookUrl' => '',
@@ -635,6 +667,8 @@ class BakhtechApiController extends Controller
             'receipt_starting_number' => '1000',
             'currency' => 'NGN',
             'currency_symbol' => '',
+            'pricing_rate_usd' => '0.00067',
+            'pricing_rate_gbp' => '0.00053',
             'default_tax_rate' => '7.5',
             'tax_label' => 'VAT',
             'homepage_url' => '/',

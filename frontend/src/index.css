@@ -26,6 +26,8 @@
   --secondary: #f1f5f9;
   --secondary-foreground: #0b1220;
   --border: #dbe4ef;
+  --active: #ef4444;
+  --accent: #12c8a0;
   --brand: #ef4444;
   --brand-2: #12c8a0;
   --surface: #ffffff;
@@ -61,6 +63,8 @@
   --secondary: #0f1115;
   --secondary-foreground: #f5f8ff;
   --border: rgba(226, 232, 240, 0.14);
+  --active: #ef4444;
+  --accent: #67e8cf;
   --brand: #ef4444;
   --brand-2: #67e8cf;
   --surface: #080a0d;
@@ -149,6 +153,78 @@ a {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--foreground);
+}
+
+[class*="text-[#ef4444]"],
+.text-blue-600,
+[class*="hover:text-blue-600"]:hover {
+  color: var(--active) !important;
+}
+
+[class~="bg-[#ef4444]"],
+.bg-blue-600,
+[class*="hover:bg-blue-700"]:hover {
+  background-color: var(--active) !important;
+}
+
+[class*="hover:bg-[#dc2626]"]:hover {
+  background-color: color-mix(in srgb, var(--active) 86%, black) !important;
+}
+
+[class*="bg-[#ef4444]/8"] {
+  background-color: color-mix(in srgb, var(--active) 8%, transparent) !important;
+}
+
+[class*="bg-[#ef4444]/10"] {
+  background-color: color-mix(in srgb, var(--active) 10%, transparent) !important;
+}
+
+[class*="bg-[#ef4444]/20"],
+[class*="hover:bg-[#ef4444]/20"]:hover {
+  background-color: color-mix(in srgb, var(--active) 20%, transparent) !important;
+}
+
+[class*="border-[#ef4444]"]:not([class*="border-[#ef4444]/"]),
+.border-blue-600,
+[class*="hover:border-blue-500"]:hover {
+  border-color: var(--active) !important;
+}
+
+[class*="border-[#ef4444]/24"] {
+  border-color: color-mix(in srgb, var(--active) 24%, transparent) !important;
+}
+
+[class*="ring-blue"],
+[class*="focus:ring-[#1261ff]"]:focus,
+[class*="focus:ring-[#12c8a0]"]:focus {
+  --tw-ring-color: var(--active) !important;
+}
+
+[class*="text-[#1261ff]"],
+.text-primary {
+  color: var(--primary) !important;
+}
+
+[class*="bg-[#1261ff]"],
+.bg-primary {
+  background-color: var(--primary) !important;
+}
+
+[class*="border-[#1261ff]"],
+.border-primary {
+  border-color: var(--primary) !important;
+}
+
+[class*="text-[#12c8a0]"] {
+  color: var(--accent) !important;
+}
+
+[class*="bg-[#12c8a0]"] {
+  background-color: var(--accent) !important;
+}
+
+[class*="border-[#12c8a0]"] {
+  border-color: var(--accent) !important;
 }
 
 /* Bakhtech InvoicePay compatible edit/public styles */

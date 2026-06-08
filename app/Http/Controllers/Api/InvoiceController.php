@@ -397,6 +397,10 @@ class InvoiceController extends Controller
                 'updated_at' => now(),
             ];
 
+            if (Schema::hasColumn('invoice_documents', 'partial_payment_enabled')) {
+                $payload['partial_payment_enabled'] = (bool) ($quote->partial_payment_enabled ?? true);
+            }
+
             if (Schema::hasColumn('invoice_documents', 'service_overview')) {
                 $payload['service_overview'] = $quote->service_overview ?? null;
             }
@@ -614,6 +618,12 @@ class InvoiceController extends Controller
                     'updated_at' => $this->dateTimeOrNull($docData['updated_at'] ?? $docData['updatedAt'] ?? null) ?: now(),
                 ];
 
+                if (Schema::hasColumn('invoice_documents', 'partial_payment_enabled')) {
+                    $payload['partial_payment_enabled'] = array_key_exists('partialPaymentEnabled', $docData)
+                        ? (bool) $docData['partialPaymentEnabled']
+                        : (bool) ($docData['partial_payment_enabled'] ?? true);
+                }
+
                 $serviceOverview = $this->cleanRichText($docData['service_overview'] ?? $docData['serviceOverview'] ?? '');
                 [$serviceOverview, $payload['notes']] = $this->normalizeServiceSelectorText($serviceOverview, $payload['notes']);
 
@@ -760,6 +770,7 @@ class InvoiceController extends Controller
             'public_token' => $document->public_token,
             'payment_gateway' => $document->payment_gateway,
             'paymentEnabled' => (bool) $document->payment_enabled,
+            'partialPaymentEnabled' => Schema::hasColumn('invoice_documents', 'partial_payment_enabled') ? (bool) ($document->partial_payment_enabled ?? true) : true,
             'notes' => $document->notes,
             'terms' => $document->terms,
             'sent_at' => $document->sent_at,
@@ -1213,14 +1224,13 @@ class InvoiceController extends Controller
             .top { padding: 28px 30px 24px; border-bottom: 1px solid #e2e8f0; }
             .top-table { width: 100%; border-collapse: collapse; }
             .top-table td { vertical-align: top; }
-            .logo { width: 150px; max-height: 70px; object-fit: contain; }
+            .logo { width: 150px; max-height: 70px; object-fit: contain; background: #ffffff; }
             .brand-name { margin-top: 10px; font-size: 16px; font-weight: 900; letter-spacing: .03em; }
             .brand-meta { margin-top: 6px; color: #64748b; font-size: 10.5px; line-height: 1.7; }
             .title-box { text-align: right; }
             .title-box span { color: ' . e($brand['primaryColor']) . '; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .18em; }
             .title { color: #020617; font-size: 34px; line-height: 1; margin-top: 8px; text-transform: uppercase; }
             .number { margin-top: 8px; color: #475569; font-weight: 800; }
-            .status { display: inline-block; margin-top: 12px; padding: 6px 11px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 900; text-transform: uppercase; }
             .content { padding: 24px 30px 28px; }
             .grid { width: 100%; border-collapse: separate; border-spacing: 0 0; margin-bottom: 22px; }
             .grid td { width: 50%; vertical-align: top; }
@@ -1229,11 +1239,16 @@ class InvoiceController extends Controller
             .box { border: 1px solid #e2e8f0; padding: 16px; border-radius: 14px; background: #f8fafc; min-height: 118px; }
             .label { color: #64748b; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px; }
             .muted { color: #64748b; }
-            table.items { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            table.items { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 16px; }
             .items th { background: #0f172a; color: #fff; font-size: 9.5px; text-transform: uppercase; text-align: left; padding: 11px 10px; letter-spacing: .08em; }
             .items th:first-child { border-radius: 10px 0 0 10px; }
             .items th:last-child { border-radius: 0 10px 10px 0; }
             .items td { border-bottom: 1px solid #e2e8f0; padding: 13px 10px; vertical-align: top; }
+            .items .col-item { width: 48%; }
+            .items .col-qty { width: 13%; }
+            .items .col-rate { width: 19%; }
+            .items .col-total { width: 20%; }
+            .items th.right, .items td.right { text-align: right; white-space: nowrap; }
             .right { text-align: right; }
             section { margin-top: 22px; }
             section h3 { color: #0f172a; font-size: 12px; text-transform: uppercase; margin-bottom: 9px; letter-spacing: .12em; }
@@ -1263,7 +1278,6 @@ class InvoiceController extends Controller
                         <span>' . e($document['type']) . '</span>
                         <h1 class="title">' . e($document['type'] === 'quote' ? 'Quote' : ($document['type'] === 'receipt' ? 'Receipt' : 'Invoice')) . '</h1>
                         <div class="number">#' . e($document['number']) . '</div>
-                        <span class="status">' . e($document['status']) . '</span>
                     </td>
                 </tr></table>
             </div>
@@ -1273,7 +1287,7 @@ class InvoiceController extends Controller
                 <td><div class="box"><div class="label">Document Details</div><strong>' . e(ucfirst($document['type'])) . ' #' . e($document['number']) . '</strong><br><span class="muted">Issued: ' . e((string) $document['issueDate']) . '<br>Due: ' . e((string) $document['dueDate']) . '<br>Currency: ' . e((string) $document['currency']) . '</span></div></td>
             </tr></table>
             ' . $quoteService . $quoteScope . '
-            <section><h3>Line Items</h3><table class="items"><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
+            <section><h3>Line Items</h3><table class="items"><colgroup><col class="col-item"><col class="col-qty"><col class="col-rate"><col class="col-total"></colgroup><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
             <table class="below"><tr>
                 <td class="payment"><div class="payment-card"><h3>Payment Details</h3>' . $accountRows . '</div></td>
                 <td><table class="totals">
@@ -1331,9 +1345,30 @@ class InvoiceController extends Controller
 
     private function pdfLogoSrc(): string
     {
-        $path = public_path('bakhtech-logo-light.jpg');
+        $path = public_path('bakhtech-pdf-logo.jpg');
+        if (!is_file($path)) {
+            $path = public_path('bakhtech-pdf-logo.png');
+        }
         if (!is_file($path)) {
             return '';
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if ($extension === 'png') {
+            if (function_exists('imagecreatefrompng')) {
+                $flattened = $this->flattenPngForPdf($path);
+                if ($flattened !== '') {
+                    return 'data:image/jpeg;base64,' . base64_encode($flattened);
+                }
+            }
+
+            $jpegFallback = $this->jpegLogoFallback($path);
+            if ($jpegFallback !== '') {
+                $path = $jpegFallback;
+                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            } else {
+                return '';
+            }
         }
 
         $data = file_get_contents($path);
@@ -1341,7 +1376,60 @@ class InvoiceController extends Controller
             return '';
         }
 
-        return 'data:image/jpeg;base64,' . base64_encode($data);
+        $mime = match ($extension) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+
+        return 'data:' . $mime . ';base64,' . base64_encode($data);
+    }
+
+    private function jpegLogoFallback(string $path): string
+    {
+        $candidates = [
+            preg_replace('/\.png$/i', '.jpg', $path) ?: '',
+            preg_replace('/\.png$/i', '.jpeg', $path) ?: '',
+            public_path('bakhtech-pdf-logo.jpg'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate !== '' && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    private function flattenPngForPdf(string $path): string
+    {
+        $source = @imagecreatefrompng($path);
+        if (!$source) {
+            return '';
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $canvas = imagecreatetruecolor($width, $height);
+        if (!$canvas) {
+            imagedestroy($source);
+            return '';
+        }
+
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefilledrectangle($canvas, 0, 0, $width, $height, $white);
+        imagealphablending($canvas, true);
+        imagecopy($canvas, $source, 0, 0, 0, 0, $width, $height);
+
+        ob_start();
+        imagejpeg($canvas, null, 92);
+        $data = (string) ob_get_clean();
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        return $data;
     }
 
     private function dateOrNull(mixed $value): ?string
@@ -1420,6 +1508,7 @@ class InvoiceController extends Controller
             'dueDate' => ['nullable', 'date'],
             'paymentGateway' => ['nullable', Rule::in(['paystack', 'flutterwave', 'manual'])],
             'paymentEnabled' => ['nullable', 'boolean'],
+            'partialPaymentEnabled' => ['nullable', 'boolean'],
             'serviceOverview' => ['nullable', 'string'],
             'scopeOfService' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
@@ -1473,6 +1562,10 @@ class InvoiceController extends Controller
                 'terms' => $this->cleanRichText($data['terms'] ?? ''),
                 'updated_at' => now(),
             ];
+
+            if (Schema::hasColumn('invoice_documents', 'partial_payment_enabled')) {
+                $payload['partial_payment_enabled'] = (bool) ($data['partialPaymentEnabled'] ?? true);
+            }
 
             if (Schema::hasColumn('invoice_documents', 'service_overview')) {
                 [$serviceOverview, $payload['notes']] = $this->normalizeServiceSelectorText(
@@ -1654,6 +1747,7 @@ class InvoiceController extends Controller
             'dueDate' => (string) ($row->due_date ?? ''),
             'paymentGateway' => $row->payment_gateway ?? '',
             'paymentEnabled' => (bool) $row->payment_enabled,
+            'partialPaymentEnabled' => Schema::hasColumn('invoice_documents', 'partial_payment_enabled') ? (bool) ($row->partial_payment_enabled ?? true) : true,
             'serviceOverview' => $documentText['serviceOverview'],
             'scopeOfService' => $this->cleanRichText(($row->scope_of_service ?? '') ?: ''),
             'notes' => $documentText['notes'],
