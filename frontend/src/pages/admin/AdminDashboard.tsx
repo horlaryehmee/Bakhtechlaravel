@@ -18,6 +18,7 @@ import {
   Link2,
   Loader2,
   LogOut,
+  Mail,
   MapPin,
   MessageSquareText,
   Newspaper,
@@ -59,7 +60,9 @@ import {
   type DashboardData,
   type InvoiceClient,
   type InvoiceDocument,
+  type InvoiceEmailLog,
   type InvoiceItem,
+  type InvoiceListMeta,
   type InvoiceOverview,
   type MediaItem,
   type Project,
@@ -71,7 +74,7 @@ import { cn } from '@/lib/utils'
 
 type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
-type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'contacts' | 'settings' | 'import' | 'create'
+type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
@@ -86,6 +89,8 @@ type BookingQuestion = {
   options?: string[]
 }
 type QuestionModalState = { mode: 'add' | 'edit'; index: number | null; question: BookingQuestion }
+
+const defaultInvoiceListMeta: InvoiceListMeta = { page: 1, perPage: 25, total: 0, lastPage: 1 }
 
 const locationTabs: Array<{ id: LocationTab; label: string; type: string; placeholder: string; help: string }> = [
   { id: 'google-meet', label: 'Google Meet', type: 'google_meet', placeholder: 'Google Meet links are generated automatically after Google is connected', help: 'Enable this to let clients choose Google Meet. The system creates the link from your connected Google Calendar.' },
@@ -263,6 +268,8 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   dueDate: string
   paymentGateway: string
   paymentEnabled: boolean
+  serviceOverview: string
+  scopeOfService: string
   notes: string
   terms: string
   client: InvoiceClient
@@ -278,6 +285,8 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   dueDate: '',
   paymentGateway: 'paystack',
   paymentEnabled: true,
+  serviceOverview: '',
+  scopeOfService: '',
   notes: '',
   terms: '',
   client: { name: '', email: '', phone: '', companyName: '', address: '' },
@@ -491,22 +500,53 @@ function storedAdminView<T extends string>(key: string, fallback: T, allowed: re
   return value && allowed.includes(value) ? value : fallback
 }
 
+const adminDataCacheKey = 'bakhtech-admin-data-cache-v1'
+
+function readAdminDataCache() {
+  if (typeof window === 'undefined') return null
+  try {
+    return JSON.parse(window.localStorage.getItem(adminDataCacheKey) || 'null')
+  } catch {
+    return null
+  }
+}
+
+function writeAdminDataCache(payload: Record<string, unknown>) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(adminDataCacheKey, JSON.stringify({ ...payload, cachedAt: new Date().toISOString() }))
+  } catch {
+    // Ignore storage quota/private-mode failures; live API data still works.
+  }
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
   const token = getAdminToken()
+  const initialAdminCache = useMemo(() => readAdminDataCache(), [])
   const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'invoices', 'users', 'settings']))
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
-  const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'contacts', 'settings', 'import', 'create']))
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
-  const [cms, setCms] = useState<CmsData | null>(null)
+  const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
+  const [dashboard, setDashboard] = useState<DashboardData | null>(initialAdminCache?.dashboard ?? null)
+  const [cms, setCms] = useState<CmsData | null>(initialAdminCache?.cms ?? null)
   const [bookingOverview, setBookingOverview] = useState<BookingCmsOverview | null>(null)
   const [bookingCalendars, setBookingCalendars] = useState<BookingCalendar[]>([])
   const [bookingCmsBookings, setBookingCmsBookings] = useState<BookingCmsBooking[]>([])
   const [bookingAvailabilityRules, setBookingAvailabilityRules] = useState<BookingAvailabilityRule[]>([])
   const [bookingCmsSettings, setBookingCmsSettings] = useState<Record<string, string>>({})
-  const [invoiceOverview, setInvoiceOverview] = useState<InvoiceOverview | null>(null)
-  const [invoiceDocuments, setInvoiceDocuments] = useState<InvoiceDocument[]>([])
-  const [invoiceClients, setInvoiceClients] = useState<InvoiceClient[]>([])
+  const [invoiceOverview, setInvoiceOverview] = useState<InvoiceOverview | null>(initialAdminCache?.invoiceOverview ?? null)
+  const [invoiceDocuments, setInvoiceDocuments] = useState<InvoiceDocument[]>(initialAdminCache?.invoiceDocuments ?? [])
+  const [invoiceClients, setInvoiceClients] = useState<InvoiceClient[]>(initialAdminCache?.invoiceClients ?? [])
+  const [invoiceEmailLogs, setInvoiceEmailLogs] = useState<InvoiceEmailLog[]>(initialAdminCache?.invoiceEmailLogs ?? [])
+  const [selectedEmailLog, setSelectedEmailLog] = useState<InvoiceEmailLog | null>(null)
+  const [invoiceDocumentsMeta, setInvoiceDocumentsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceDocumentsMeta ?? defaultInvoiceListMeta)
+  const [invoiceClientsMeta, setInvoiceClientsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceClientsMeta ?? defaultInvoiceListMeta)
+  const [invoiceEmailLogsMeta, setInvoiceEmailLogsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceEmailLogsMeta ?? defaultInvoiceListMeta)
+  const [invoiceListPage, setInvoiceListPage] = useState(1)
+  const [invoiceClientsPage, setInvoiceClientsPage] = useState(1)
+  const [invoiceEmailLogsPage, setInvoiceEmailLogsPage] = useState(1)
+  const [invoiceEmailStatusFilter, setInvoiceEmailStatusFilter] = useState('')
+  const [invoiceEmailTypeFilter, setInvoiceEmailTypeFilter] = useState('')
   const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm)
   const [editingInvoice, setEditingInvoice] = useState<InvoiceDocument | null>(null)
   const [invoiceSearch, setInvoiceSearch] = useState('')
@@ -519,8 +559,8 @@ export function AdminDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
-  const [editingPageId, setEditingPageId] = useState<number | null>(null)
-  const [projects, setProjects] = useState<Project[]>([])
+  const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
+  const [projects, setProjects] = useState<Project[]>(initialAdminCache?.projects ?? [])
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
@@ -533,8 +573,8 @@ export function AdminDashboard() {
   const [activeLocationTab, setActiveLocationTab] = useState<LocationTab>('google-meet')
   const [questionModal, setQuestionModal] = useState<QuestionModalState | null>(null)
   const [availabilityForm, setAvailabilityForm] = useState(emptyAvailabilityRule)
-  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
+  const [settingsForm, setSettingsForm] = useState<Record<string, string>>(initialAdminCache?.cms?.settings ?? {})
+  const [loading, setLoading] = useState(!initialAdminCache)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -661,8 +701,10 @@ export function AdminDashboard() {
               dueDate: doc.dueDate,
               paymentGateway: doc.paymentGateway,
               paymentEnabled: doc.paymentEnabled,
-              notes: doc.notes,
-              terms: doc.terms,
+              serviceOverview: doc.serviceOverview || '',
+              scopeOfService: doc.scopeOfService || '',
+              notes: doc.notes || '',
+              terms: doc.terms || '',
               client: { ...doc.client },
               items: doc.items.map(item => ({ ...item })),
               branding: { ...doc.branding },
@@ -681,7 +723,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!token) return
-    void loadAdminData()
+    void loadAdminData(!initialAdminCache)
   }, [token])
 
   useEffect(() => {
@@ -691,8 +733,22 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!token || activeSection !== 'invoices') return
-    void loadInvoiceData()
-  }, [token, activeSection])
+    const documentType = ['invoices', 'quotes', 'receipts'].includes(activeInvoiceSubsection)
+      ? activeInvoiceSubsection.slice(0, -1)
+      : ''
+    void loadInvoiceData({
+      documentPage: invoiceListPage,
+      documentType,
+      documentStatus: invoiceStatusFilter,
+      documentSearch: invoiceSearch,
+      clientsPage: invoiceClientsPage,
+      clientsSearch: invoiceSearch,
+      emailPage: invoiceEmailLogsPage,
+      emailStatus: invoiceEmailStatusFilter,
+      emailType: invoiceEmailTypeFilter,
+      emailSearch: invoiceSearch,
+    })
+  }, [token, activeSection, activeInvoiceSubsection, invoiceListPage, invoiceClientsPage, invoiceEmailLogsPage, invoiceStatusFilter, invoiceEmailStatusFilter, invoiceEmailTypeFilter])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -713,8 +769,8 @@ export function AdminDashboard() {
     return <Navigate to="/admin/login" replace />
   }
 
-  async function loadAdminData() {
-    setLoading(true)
+  async function loadAdminData(showLoader = true) {
+    if (showLoader) setLoading(true)
     setError('')
 
     try {
@@ -724,14 +780,16 @@ export function AdminDashboard() {
         cmsResult,
         invoiceOverviewResult,
         invoiceDocumentsResult,
-        invoiceClientsResult
+        invoiceClientsResult,
+        invoiceEmailLogsResult
       ] = await Promise.all([
         api.dashboard(),
         api.adminProjects(),
         api.cms(),
         api.invoiceOverview().catch(() => null),
         api.invoiceDocuments().catch(() => null),
-        api.invoiceClients().catch(() => null)
+        api.invoiceClients().catch(() => null),
+        api.invoiceEmailLogs().catch(() => null)
       ])
       setDashboard(dashboardResult)
       setProjects(projectResult.projects)
@@ -740,7 +798,23 @@ export function AdminDashboard() {
       setSettingsForm(cmsResult.settings)
       if (invoiceOverviewResult) setInvoiceOverview(invoiceOverviewResult)
       if (invoiceDocumentsResult) setInvoiceDocuments(invoiceDocumentsResult.documents)
+      if (invoiceDocumentsResult?.meta) setInvoiceDocumentsMeta(invoiceDocumentsResult.meta)
       if (invoiceClientsResult) setInvoiceClients(invoiceClientsResult.clients)
+      if (invoiceClientsResult?.meta) setInvoiceClientsMeta(invoiceClientsResult.meta)
+      if (invoiceEmailLogsResult) setInvoiceEmailLogs(invoiceEmailLogsResult.logs)
+      if (invoiceEmailLogsResult?.meta) setInvoiceEmailLogsMeta(invoiceEmailLogsResult.meta)
+      writeAdminDataCache({
+        dashboard: dashboardResult,
+        projects: projectResult.projects,
+        cms: cmsResult,
+        invoiceOverview: invoiceOverviewResult,
+        invoiceDocuments: invoiceDocumentsResult?.documents ?? [],
+        invoiceDocumentsMeta: invoiceDocumentsResult?.meta ?? defaultInvoiceListMeta,
+        invoiceClients: invoiceClientsResult?.clients ?? [],
+        invoiceClientsMeta: invoiceClientsResult?.meta ?? defaultInvoiceListMeta,
+        invoiceEmailLogs: invoiceEmailLogsResult?.logs ?? [],
+        invoiceEmailLogsMeta: invoiceEmailLogsResult?.meta ?? defaultInvoiceListMeta,
+      })
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 401) {
         clearAdminToken()
@@ -754,16 +828,37 @@ export function AdminDashboard() {
     }
   }
 
-  async function loadInvoiceData() {
+  async function loadInvoiceData(options: { documentPage?: number; documentType?: string; documentStatus?: string; documentSearch?: string; clientsPage?: number; clientsSearch?: string; emailPage?: number; emailStatus?: string; emailType?: string; emailSearch?: string } = {}) {
     try {
-      const [overviewResult, documentsResult, clientsResult] = await Promise.all([
+      const [overviewResult, documentsResult, clientsResult, emailLogsResult] = await Promise.all([
         api.invoiceOverview(),
-        api.invoiceDocuments(),
-        api.invoiceClients(),
+        api.invoiceDocuments({
+          page: options.documentPage ?? invoiceListPage,
+          perPage: invoiceDocumentsMeta.perPage,
+          type: options.documentType ?? '',
+          status: options.documentStatus ?? invoiceStatusFilter,
+          search: options.documentSearch ?? invoiceSearch,
+        }),
+        api.invoiceClients({
+          page: options.clientsPage ?? invoiceClientsPage,
+          perPage: invoiceClientsMeta.perPage,
+          search: options.clientsSearch ?? invoiceSearch,
+        }),
+        api.invoiceEmailLogs({
+          page: options.emailPage ?? invoiceEmailLogsPage,
+          perPage: invoiceEmailLogsMeta.perPage,
+          status: options.emailStatus ?? invoiceEmailStatusFilter,
+          type: options.emailType ?? invoiceEmailTypeFilter,
+          search: options.emailSearch ?? invoiceSearch,
+        }),
       ])
       setInvoiceOverview(overviewResult)
       setInvoiceDocuments(documentsResult.documents)
+      setInvoiceDocumentsMeta(documentsResult.meta)
       setInvoiceClients(clientsResult.clients)
+      setInvoiceClientsMeta(clientsResult.meta)
+      setInvoiceEmailLogs(emailLogsResult.logs)
+      setInvoiceEmailLogsMeta(emailLogsResult.meta)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load invoices.')
     }
@@ -1220,6 +1315,8 @@ export function AdminDashboard() {
       currency: settingsForm.currency || emptyInvoiceForm.currency,
       paymentGateway: enabledGateways[0] || settingsForm.gateway_active || emptyInvoiceForm.paymentGateway,
       paymentEnabled: (settingsForm.invoicePaymentEnabled ?? 'true') !== 'false',
+      serviceOverview: emptyInvoiceForm.serviceOverview,
+      scopeOfService: emptyInvoiceForm.scopeOfService,
       notes: settingsForm.invoiceDefaultNotes || emptyInvoiceForm.notes,
       terms: settingsForm.invoiceDefaultTerms || emptyInvoiceForm.terms,
       items: [{ ...emptyInvoiceItem, name: 'Professional Service', unitPrice: 0, taxRate: Number.isFinite(defaultTaxRate) ? defaultTaxRate : 0 }],
@@ -1281,6 +1378,7 @@ export function AdminDashboard() {
         return exists ? current.map((doc) => (doc.id === result.document.id ? result.document : doc)) : [result.document, ...current]
       })
       resetInvoiceForm()
+      void loadInvoiceData()
       notify(editingInvoice ? 'Document updated.' : 'Document created.')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save document.')
@@ -1291,6 +1389,7 @@ export function AdminDashboard() {
 
   async function sendInvoiceDocument(document: InvoiceDocument) {
     await api.sendInvoiceDocument(document.id)
+    void loadInvoiceData()
     notify('Document sent.')
   }
 
@@ -1405,6 +1504,8 @@ export function AdminDashboard() {
       { id: 'dashboard', label: 'Dashboard', icon: Gauge },
       { id: 'invoices', label: 'Invoices', icon: InvoiceIcon },
       { id: 'quotes', label: 'Quotes', icon: QuoteIcon },
+      { id: 'receipts', label: 'Receipts', icon: CreditCard },
+      { id: 'emails', label: 'Emails', icon: Mail },
       { id: 'contacts', label: 'Contacts', icon: Users },
       { id: 'import', label: 'Import', icon: Upload },
       { id: 'settings', label: 'Settings', icon: Settings },
@@ -1420,6 +1521,9 @@ export function AdminDashboard() {
               type="button"
               onClick={() => {
                 setActiveInvoiceSubsection(subsection.id)
+                if (['invoices', 'quotes', 'receipts'].includes(subsection.id)) setInvoiceListPage(1)
+                if (subsection.id === 'emails') setInvoiceEmailLogsPage(1)
+                if (subsection.id === 'contacts') setInvoiceClientsPage(1)
                 setEditingInvoice(null)
               }}
               className={cn(
@@ -1435,6 +1539,194 @@ export function AdminDashboard() {
             )
           })}
         </nav>
+      </div>
+    )
+  }
+
+  function renderPagination(meta: InvoiceListMeta, onPage: (page: number) => void) {
+    const from = meta.total === 0 ? 0 : ((meta.page - 1) * meta.perPage) + 1
+    const to = Math.min(meta.total, meta.page * meta.perPage)
+
+    return (
+      <div className="bkinv-pagination">
+        <span>{from}-{to} of {meta.total}</span>
+        <div>
+          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={meta.page <= 1} onClick={() => onPage(Math.max(1, meta.page - 1))}>
+            <ChevronLeft className="h-4 w-4" /> Previous
+          </Button>
+          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={meta.page >= meta.lastPage} onClick={() => onPage(Math.min(meta.lastPage, meta.page + 1))}>
+            Next <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  async function previewInvoiceEmail(log: InvoiceEmailLog) {
+    setSelectedEmailLog(log)
+    try {
+      const result = await api.invoiceEmailLog(log.id)
+      setSelectedEmailLog(result.log)
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Unable to load email preview.')
+    }
+  }
+
+  function renderInvoiceEmails() {
+    const sentCount = invoiceEmailLogs.filter((log) => log.status === 'sent').length
+    const openedCount = invoiceEmailLogs.filter((log) => log.openedAt).length
+    const failedCount = invoiceEmailLogs.filter((log) => log.status === 'failed').length
+    const formatDateTime = (value: string) => value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : ''
+
+    return (
+      <div className="bkinv-email-workspace">
+        <section className="bkinv-email-hero">
+          <div>
+            <p className="bkinv-section-kicker">Client communications</p>
+            <h3>Email Notifications</h3>
+            <p>Track every quote, invoice, and receipt email from delivery through first open, with a saved preview of the exact message sent.</p>
+          </div>
+          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void loadInvoiceData()}>
+            <SearchCheck className="h-4 w-4" /> Refresh logs
+          </Button>
+        </section>
+
+        <div className="bkinv-email-metrics">
+          {[
+            { label: 'Sent emails', value: sentCount, detail: `${invoiceEmailLogs.length} total notifications` },
+            { label: 'Opened', value: openedCount, detail: 'First open recorded from the tracking pixel' },
+            { label: 'Failed', value: failedCount, detail: 'SMTP or provider issues to resolve' },
+          ].map((card) => (
+            <div key={card.label} className="bkinv-email-metric">
+              <p className="bkinv-section-kicker">{card.label}</p>
+              <h3>{card.value}</h3>
+              <span>{card.detail}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="bkinv-email-grid">
+          <section className="bkinv-email-list-panel">
+            <div className="bkinv-email-panel-head">
+              <div>
+                <p className="bkinv-section-kicker">Activity stream</p>
+                <h3>Notifications sent to clients</h3>
+              </div>
+              <span>{invoiceEmailLogsMeta.total} records</span>
+            </div>
+            <div className="bkinv-list-tools">
+              <label className="bkinv-search-field">
+                <Search className="h-4 w-4" />
+                <input
+                  type="search"
+                  value={invoiceSearch}
+                  onChange={(event) => setInvoiceSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      setInvoiceEmailLogsPage(1)
+                      void loadInvoiceData({ emailPage: 1, emailSearch: invoiceSearch })
+                    }
+                  }}
+                  placeholder="Search recipient, subject, document..."
+                />
+              </label>
+              <select className="bkinv-select max-w-[170px]" value={invoiceEmailStatusFilter} onChange={(event) => { setInvoiceEmailLogsPage(1); setInvoiceEmailStatusFilter(event.target.value) }}>
+                <option value="">All statuses</option>
+                <option value="sent">Sent</option>
+                <option value="failed">Failed</option>
+                <option value="queued">Queued</option>
+                <option value="logged">Logged</option>
+              </select>
+              <select className="bkinv-select max-w-[170px]" value={invoiceEmailTypeFilter} onChange={(event) => { setInvoiceEmailLogsPage(1); setInvoiceEmailTypeFilter(event.target.value) }}>
+                <option value="">All types</option>
+                <option value="invoice">Invoices</option>
+                <option value="quote">Quotes</option>
+                <option value="receipt">Receipts</option>
+              </select>
+              <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceEmailLogsPage(1); void loadInvoiceData({ emailPage: 1, emailSearch: invoiceSearch }) }}>
+                <SearchCheck className="h-4 w-4" /> Apply
+              </Button>
+              <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceEmailLogsPage(1); setInvoiceSearch(''); setInvoiceEmailStatusFilter(''); setInvoiceEmailTypeFilter('') }}>
+                <X className="h-4 w-4" /> Reset
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="bkinv-btn bkinv-btn-secondary"
+                onClick={async () => {
+                  if (!confirm('Clear email logs for the current filters? This cannot be undone.')) return
+                  const result = await api.clearInvoiceEmailLogs({ status: invoiceEmailStatusFilter || undefined, type: invoiceEmailTypeFilter || undefined })
+                  notify(`${result.deleted} email logs cleared.`)
+                  setSelectedEmailLog(null)
+                  setInvoiceEmailLogsPage(1)
+                  void loadInvoiceData({ emailPage: 1 })
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Clear logs
+              </Button>
+            </div>
+
+            <div className="bkinv-email-log-list">
+              {invoiceEmailLogs.map((log) => (
+                <button
+                  key={log.id}
+                  type="button"
+                  className={cn('bkinv-email-log-row', selectedEmailLog?.id === log.id && 'is-selected')}
+                  onClick={() => void previewInvoiceEmail(log)}
+                >
+                  <span className="bkinv-email-avatar">{(log.clientName || log.recipientEmail || '?').slice(0, 1).toUpperCase()}</span>
+                  <span className="bkinv-email-main">
+                    <strong>{log.clientName || log.recipientEmail}</strong>
+                    <span>{log.recipientEmail}</span>
+                    <em>{log.subject}</em>
+                  </span>
+                  <span className="bkinv-email-doc">
+                    <strong>{log.documentNumber}</strong>
+                    <span>{log.documentType}</span>
+                  </span>
+                  <span className="bkinv-email-times">
+                    <span>{formatDateTime(log.sentAt) || 'Not sent'}</span>
+                    <span>{formatDateTime(log.openedAt) || 'Waiting'}</span>
+                  </span>
+                  <span className={cn('bkinv-email-status', `is-${log.status}`)}>{log.status}</span>
+                  <span className="bkinv-email-preview" title="Preview email"><Eye className="h-4 w-4" /></span>
+                </button>
+              ))}
+              {!invoiceEmailLogs.length ? (
+                <div className="bkinv-email-empty">No email notifications have been logged yet.</div>
+              ) : null}
+            </div>
+            {renderPagination(invoiceEmailLogsMeta, setInvoiceEmailLogsPage)}
+          </section>
+
+          <aside className="bkinv-email-preview-panel">
+            <div className="bkinv-email-panel-head">
+              <div>
+                <p className="bkinv-section-kicker">Preview</p>
+                <h3>{selectedEmailLog ? selectedEmailLog.documentNumber : 'Select an email'}</h3>
+              </div>
+            </div>
+            {selectedEmailLog ? (
+              <div className="bkinv-email-preview-stack">
+                <div className="bkinv-email-preview-meta">
+                  <strong>{selectedEmailLog.subject}</strong>
+                  <span>To: {selectedEmailLog.recipientEmail}</span>
+                  <span>Sent: {formatDateTime(selectedEmailLog.sentAt) || 'Not sent'} · Opened: {formatDateTime(selectedEmailLog.openedAt) || 'Waiting'}</span>
+                  {selectedEmailLog.errorMessage ? <em>{selectedEmailLog.errorMessage}</em> : null}
+                </div>
+                <iframe
+                  title="Email preview"
+                  className="bkinv-email-iframe"
+                  srcDoc={selectedEmailLog.bodyHtml || '<p style="font-family:sans-serif;padding:24px">Preview body is not available for this older log.</p>'}
+                />
+              </div>
+            ) : (
+              <div className="bkinv-email-preview-empty">
+                Choose an email log to preview the rendered notification.
+              </div>
+            )}
+          </aside>
+        </div>
       </div>
     )
   }
@@ -1655,30 +1947,18 @@ export function AdminDashboard() {
     )
   }
 
-  function renderInvoiceListView(type: 'invoice' | 'quote') {
+  function renderInvoiceListView(type: 'invoice' | 'quote' | 'receipt') {
     const statuses = ['', 'draft', 'sent', 'viewed', 'accepted', 'rejected', 'paid', 'partial', 'overdue', 'cancelled']
-    const normalizedSearch = invoiceSearch.trim().toLowerCase()
-    const filteredDocuments = invoiceDocuments.filter(doc => {
-      if (doc.type !== type) return false
-      if (invoiceStatusFilter && doc.status !== invoiceStatusFilter) return false
-      if (!normalizedSearch) return true
-      return [
-        doc.number,
-        doc.client.name,
-        doc.client.email,
-        doc.client.companyName,
-        doc.status,
-      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
-    })
-    const TypeLabel = type === 'invoice' ? 'Invoice' : 'Quote'
-    const IconComponent = type === 'invoice' ? InvoiceIcon : QuoteIcon
+    const filteredDocuments = invoiceDocuments.filter(doc => doc.type === type)
+    const TypeLabel = type === 'invoice' ? 'Invoice' : type === 'quote' ? 'Quote' : 'Receipt'
+    const IconComponent = type === 'invoice' ? InvoiceIcon : type === 'quote' ? QuoteIcon : CreditCard
 
     return (
       <div className="bkinv-list-shell">
         <div className="bkinv-list-header">
           <div>
             <h3>{TypeLabel}s</h3>
-            <p>{filteredDocuments.length} shown from {invoiceDocuments.filter((doc) => doc.type === type).length} {TypeLabel.toLowerCase()}s</p>
+            <p>{invoiceDocumentsMeta.total} {TypeLabel.toLowerCase()}s found</p>
           </div>
           <Button
             type="button"
@@ -1701,16 +1981,25 @@ export function AdminDashboard() {
               type="search"
               value={invoiceSearch}
               onChange={(event) => setInvoiceSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  setInvoiceListPage(1)
+                  void loadInvoiceData({ documentPage: 1, documentType: type, documentSearch: invoiceSearch })
+                }
+              }}
               placeholder="Search number, client, email..."
             />
           </label>
-          <select value={invoiceStatusFilter} onChange={(event) => setInvoiceStatusFilter(event.target.value)} className="bkinv-select max-w-[180px]">
+          <select value={invoiceStatusFilter} onChange={(event) => { setInvoiceListPage(1); setInvoiceStatusFilter(event.target.value) }} className="bkinv-select max-w-[180px]">
             <option value="">All statuses</option>
             {statuses.filter(Boolean).map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}
           </select>
+          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceListPage(1); void loadInvoiceData({ documentPage: 1, documentType: type, documentSearch: invoiceSearch }) }}>
+            <SearchCheck className="h-4 w-4" /> Apply
+          </Button>
           {(invoiceSearch || invoiceStatusFilter) ? (
-            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceSearch(''); setInvoiceStatusFilter('') }}>
-              Reset
+            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceListPage(1); setInvoiceSearch(''); setInvoiceStatusFilter('') }}>
+              <X className="h-4 w-4" /> Reset
             </Button>
           ) : null}
         </div>
@@ -1809,6 +2098,7 @@ export function AdminDashboard() {
               </tbody>
             </table>
           </div>
+          {renderPagination(invoiceDocumentsMeta, setInvoiceListPage)}
         </div>
 
         <div className="bkinv-mobile-docs">
@@ -1833,6 +2123,7 @@ export function AdminDashboard() {
               </div>
             </article>
           ))}
+          {renderPagination(invoiceDocumentsMeta, setInvoiceListPage)}
         </div>
       </div>
     )
@@ -1979,17 +2270,42 @@ export function AdminDashboard() {
                 <div className="bkinv-form-group">
                   <span>Service Overview</span>
                   <RichTextEditor
-                    value={invoiceForm.notes}
-                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, notes: value }))}
-                    placeholder="Describe the services you're providing..."
+                    value={invoiceForm.serviceOverview}
+                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, serviceOverview: value }))}
+                    placeholder="Give the client a short overview of the service."
                   />
                 </div>
                 <div className="bkinv-form-group">
                   <span>Scope of Service</span>
                   <RichTextEditor
+                    value={invoiceForm.scopeOfService}
+                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, scopeOfService: value }))}
+                    placeholder="List what is included in this document."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bkinv-card">
+              <div className="bkinv-card-header">
+                <FileText className="h-5 w-5" />
+                <h2>Notes & Terms</h2>
+              </div>
+              <div className="bkinv-card-body grid gap-5">
+                <div className="bkinv-form-group">
+                  <span>Notes</span>
+                  <RichTextEditor
+                    value={invoiceForm.notes}
+                    onChange={(value) => setInvoiceForm(prev => ({ ...prev, notes: value }))}
+                    placeholder="Add optional notes for this document."
+                  />
+                </div>
+                <div className="bkinv-form-group">
+                  <span>Terms</span>
+                  <RichTextEditor
                     value={invoiceForm.terms}
                     onChange={(value) => setInvoiceForm(prev => ({ ...prev, terms: value }))}
-                    placeholder="Detail what's included and what's not..."
+                    placeholder="Add payment terms or document terms."
                   />
                 </div>
               </div>
@@ -2501,12 +2817,7 @@ export function AdminDashboard() {
   }
 
   function renderInvoiceContacts() {
-    const normalizedSearch = invoiceSearch.trim().toLowerCase()
-    const filteredClients = invoiceClients.filter((client) => {
-      if (!normalizedSearch) return true
-      return [client.name, client.email, client.phone, client.companyName, client.address]
-        .some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
-    })
+    const filteredClients = invoiceClients
     const documentsByClient = invoiceDocuments.reduce<Record<string, { count: number; total: number; latest: string }>>((acc, doc) => {
       const key = String(doc.client.id ?? doc.client.email ?? doc.client.name ?? '')
       if (!key) return acc
@@ -2523,7 +2834,7 @@ export function AdminDashboard() {
         <div className="bkinv-list-header">
           <div>
             <h3>Contacts</h3>
-            <p>{filteredClients.length.toLocaleString()} shown from {invoiceClients.length.toLocaleString()} total contacts</p>
+            <p>{invoiceClientsMeta.total.toLocaleString()} contacts found</p>
           </div>
           <Button type="button" className="bkinv-btn bkinv-btn-primary" onClick={() => {
             setInvoiceForm(invoiceFormFromSettings())
@@ -2541,12 +2852,21 @@ export function AdminDashboard() {
               type="search"
               value={invoiceSearch}
               onChange={(event) => setInvoiceSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  setInvoiceClientsPage(1)
+                  void loadInvoiceData({ clientsPage: 1, clientsSearch: invoiceSearch })
+                }
+              }}
               placeholder="Search contacts by name, company, email, phone..."
             />
           </label>
+          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceClientsPage(1); void loadInvoiceData({ clientsPage: 1, clientsSearch: invoiceSearch }) }}>
+            <SearchCheck className="h-4 w-4" /> Apply
+          </Button>
           {invoiceSearch ? (
-            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => setInvoiceSearch('')}>
-              Reset
+            <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => { setInvoiceClientsPage(1); setInvoiceSearch('') }}>
+              <X className="h-4 w-4" /> Reset
             </Button>
           ) : null}
         </div>
@@ -2603,6 +2923,7 @@ export function AdminDashboard() {
               </tbody>
             </table>
           </div>
+          {renderPagination(invoiceClientsMeta, setInvoiceClientsPage)}
         </div>
 
         <div className="bkinv-mobile-docs">
@@ -2626,6 +2947,7 @@ export function AdminDashboard() {
               </article>
             )
           })}
+          {renderPagination(invoiceClientsMeta, setInvoiceClientsPage)}
         </div>
       </div>
     )
@@ -2684,7 +3006,7 @@ export function AdminDashboard() {
         description: 'Standard text used in quotes, invoices, public pages, and PDF output.',
         fields: [
           { key: 'invoiceDefaultNotes', label: 'Default notes', multiline: true },
-          { key: 'invoiceDefaultTerms', label: 'Default terms/scope', multiline: true },
+          { key: 'invoiceDefaultTerms', label: 'Default terms', multiline: true },
           { key: 'invoicePdfFooter', label: 'PDF footer note', multiline: true },
         ],
       },
@@ -2983,6 +3305,8 @@ export function AdminDashboard() {
         {activeInvoiceSubsection === 'dashboard' && renderInvoiceDashboard()}
         {activeInvoiceSubsection === 'invoices' && renderInvoiceListView('invoice')}
         {activeInvoiceSubsection === 'quotes' && renderInvoiceListView('quote')}
+        {activeInvoiceSubsection === 'receipts' && renderInvoiceListView('receipt')}
+        {activeInvoiceSubsection === 'emails' && renderInvoiceEmails()}
         {(activeInvoiceSubsection === 'create' || editingInvoice) && renderInvoiceCreateOrEdit()}
         {activeInvoiceSubsection === 'contacts' && renderInvoiceContacts()}
         {activeInvoiceSubsection === 'settings' && renderInvoiceSettings()}
@@ -3328,8 +3652,10 @@ export function AdminDashboard() {
                                     dueDate: doc.dueDate,
                                     paymentGateway: doc.paymentGateway,
                                     paymentEnabled: doc.paymentEnabled,
-                                    notes: doc.notes,
-                                    terms: doc.terms,
+                                    serviceOverview: doc.serviceOverview || '',
+                                    scopeOfService: doc.scopeOfService || '',
+                                    notes: doc.notes || '',
+                                    terms: doc.terms || '',
                                     client: { ...doc.client },
                                     items: doc.items.map(item => ({ ...item })),
                                     branding: { ...doc.branding },

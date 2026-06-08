@@ -105,13 +105,13 @@ export function PublicInvoice() {
   const { token = '' } = useParams()
   const [document, setDocument] = useState<InvoiceDocument | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [generatingInvoice, setGeneratingInvoice] = useState(false)
   const [activeItemIndex, setActiveItemIndex] = useState(0)
   const [generatedInvoiceUrl, setGeneratedInvoiceUrl] = useState('')
   const [darkQuoteMode, setDarkQuoteMode] = useState(false)
   const [darkInvoiceMode, setDarkInvoiceMode] = useState(false)
   const [selectedPaymentPercent, setSelectedPaymentPercent] = useState(100)
+  const [expandedInvoiceSections, setExpandedInvoiceSections] = useState<Record<string, boolean>>({})
   const [error, setError] = useState('')
   const sid = useMemo(sessionId, [])
 
@@ -147,19 +147,6 @@ export function PublicInvoice() {
     }, 30000)
     return () => window.clearInterval(interval)
   }, [document, sid, token])
-
-  async function decideQuote(decision: 'accepted' | 'rejected') {
-    setSaving(true)
-    setError('')
-    try {
-      const result = await api.decideQuote(token, decision)
-      setDocument(result.document)
-    } catch (decisionError) {
-      setError(decisionError instanceof Error ? decisionError.message : 'Unable to update quote.')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   async function generateInvoice() {
     setGeneratingInvoice(true)
@@ -206,13 +193,31 @@ export function PublicInvoice() {
   const isDangerStatus = document.status === 'overdue' || document.status === 'rejected'
   const statusClass = isPositiveStatus ? 'is-success' : isDangerStatus ? 'is-danger' : 'is-warning'
   const docName = titleCase(document.type)
-  const showQuoteDecision = document.type === 'quote' && !['accepted', 'rejected'].includes(document.status)
   const isQuote = document.type === 'quote'
   const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
   const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
   const payableAmount = Math.max(0, document.balanceDue || document.total)
   const selectedPaymentAmount = payableAmount * (selectedPaymentPercent / 100)
   const paymentPresets = [50, 75, 100]
+  const renderInvoiceExpandableSection = (key: string, title: string, value: string) => {
+    if (!value) return null
+    const isExpanded = Boolean(expandedInvoiceSections[key])
+
+    return (
+      <section className={cn('invoice-sheet-notes invoice-sheet-expandable', isExpanded && 'is-open')}>
+        <button
+          type="button"
+          className="invoice-sheet-expand-toggle"
+          onClick={() => setExpandedInvoiceSections((current) => ({ ...current, [key]: !current[key] }))}
+          aria-expanded={isExpanded}
+        >
+          <span>{title}</span>
+          <b>{isExpanded ? 'Hide details' : 'View details'}</b>
+        </button>
+        {isExpanded ? <RichTextBlock value={value} /> : null}
+      </section>
+    )
+  }
 
   if (isQuote) {
     return (
@@ -272,9 +277,27 @@ export function PublicInvoice() {
             </div>
           </section>
 
-          {document.notes ? (
+          {document.serviceOverview ? (
             <section className="quote-document-section">
               <h3>Service Overview</h3>
+              <div className="quote-document-panel">
+                <RichTextBlock value={document.serviceOverview} />
+              </div>
+            </section>
+          ) : null}
+
+          {document.scopeOfService ? (
+            <section className="quote-document-section">
+              <h3>Scope of Service</h3>
+              <div className="quote-document-panel quote-document-scope">
+                <RichTextBlock value={document.scopeOfService} />
+              </div>
+            </section>
+          ) : null}
+
+          {document.notes ? (
+            <section className="quote-document-section">
+              <h3>Notes</h3>
               <div className="quote-document-panel">
                 <RichTextBlock value={document.notes} />
               </div>
@@ -283,8 +306,8 @@ export function PublicInvoice() {
 
           {document.terms ? (
             <section className="quote-document-section">
-              <h3>Scope of Service</h3>
-              <div className="quote-document-panel quote-document-scope">
+              <h3>Terms</h3>
+              <div className="quote-document-panel">
                 <RichTextBlock value={document.terms} />
               </div>
             </section>
@@ -332,15 +355,10 @@ export function PublicInvoice() {
 
           <footer className="quote-document-footer">
             <div>
-              <h3>Notes</h3>
-              <p>{document.notes ? 'This quote is based on the service overview and scope listed above.' : 'No additional notes were added.'}</p>
+              <h3>Ready to proceed?</h3>
+              <p>Generate an invoice when you are ready to accept this quote and continue.</p>
             </div>
             <div className="quote-document-actions">
-              {showQuoteDecision ? (
-                <Button type="button" className="quote-document-accept" disabled={saving} onClick={() => void decideQuote('accepted')}>
-                  <CheckCircle2 className="h-4 w-4" />Accept quote
-                </Button>
-              ) : null}
               <Button type="button" className="quote-document-download" onClick={downloadPdf}>
                 <Download className="h-4 w-4" />Download PDF
               </Button>
@@ -477,11 +495,22 @@ export function PublicInvoice() {
           </div>
         </section>
 
-        <section className="invoice-sheet-notes">
-          <h2>Notes</h2>
-          {document.notes ? <RichTextBlock value={document.notes} /> : <p>Generated via Service Selector.</p>}
-          {document.terms ? <RichTextBlock value={document.terms} /> : null}
-        </section>
+        {renderInvoiceExpandableSection('serviceOverview', 'Service Overview', document.serviceOverview)}
+        {renderInvoiceExpandableSection('scopeOfService', 'Scope of Service', document.scopeOfService)}
+
+        {document.notes ? (
+          <section className="invoice-sheet-notes">
+            <h2>Notes</h2>
+            <RichTextBlock value={document.notes} />
+          </section>
+        ) : null}
+
+        {document.terms ? (
+          <section className="invoice-sheet-notes">
+            <h2>Terms</h2>
+            <RichTextBlock value={document.terms} />
+          </section>
+        ) : null}
 
         <footer className="invoice-sheet-actions">
           <Button type="button" className="invoice-sheet-download" onClick={downloadPdf}>

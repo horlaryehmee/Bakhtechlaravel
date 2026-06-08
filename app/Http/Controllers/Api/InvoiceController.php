@@ -7,6 +7,7 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -49,16 +50,36 @@ class InvoiceController extends Controller
         ];
     }
 
-    public function clients()
+    public function clients(Request $request)
     {
+        $perPage = $this->perPage($request);
+        $page = max(1, (int) $request->input('page', 1));
+        $query = DB::table('invoice_clients')
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('company_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            });
+        $total = (clone $query)->count();
+        $rows = $query
+            ->orderBy('name')
+            ->forPage($page, $perPage)
+            ->get();
+
         return [
-            'clients' => DB::table('invoice_clients')->orderBy('name')->get()->map(fn ($row) => $this->clientShape($row)),
+            'clients' => $rows->map(fn ($row) => $this->clientShape($row)),
+            'meta' => $this->paginationMeta($page, $perPage, $total),
         ];
     }
 
     public function documents(Request $request)
     {
-        $rows = DB::table('invoice_documents')
+        $perPage = $this->perPage($request);
+        $page = max(1, (int) $request->input('page', 1));
+        $query = DB::table('invoice_documents')
             ->leftJoin('invoice_clients', 'invoice_clients.id', '=', 'invoice_documents.client_id')
             ->select('invoice_documents.*', 'invoice_clients.name as client_name', 'invoice_clients.email as client_email', 'invoice_clients.company_name as client_company_name')
             ->when($request->input('type'), fn ($query, $type) => $query->where('invoice_documents.type', $type))
@@ -70,12 +91,17 @@ class InvoiceController extends Controller
                         ->orWhere('invoice_clients.name', 'like', "%{$search}%")
                         ->orWhere('invoice_clients.email', 'like', "%{$search}%");
                 });
-            })
+            });
+        $total = (clone $query)->count();
+        $rows = $query
             ->orderByDesc('invoice_documents.created_at')
-            ->limit(100)
+            ->forPage($page, $perPage)
             ->get();
 
-        return ['documents' => $rows->map(fn ($row) => $this->documentShape($row, false))];
+        return [
+            'documents' => $rows->map(fn ($row) => $this->documentShape($row, false)),
+            'meta' => $this->paginationMeta($page, $perPage, $total),
+        ];
     }
 
     public function document(int $id)
@@ -91,8 +117,11 @@ class InvoiceController extends Controller
     public function createDocument(Request $request)
     {
         $data = $this->validatedDocument($request);
+        $document = $this->saveDocument($data, null, $request);
 
-        return response()->json(['document' => $this->saveDocument($data, null, $request)], 201);
+        $this->sendInvoiceNotification((int) $document['id'], $request, $document['type'] . '_created');
+
+        return response()->json(['document' => $this->documentShape($this->documentRow((int) $document['id']), true)], 201);
     }
 
     public function updateDocument(Request $request, int $id)
@@ -119,24 +148,129 @@ class InvoiceController extends Controller
             'updated_at' => now(),
         ]);
 
-        if ($document->client_email) {
-            DB::table('invoice_email_logs')->insert([
-                'document_id' => $id,
-                'recipient_email' => $document->client_email,
-                'subject' => ucfirst($document->type) . ' ' . $document->number . ' from Bakhtech Solutions',
-                'template_key' => $document->type . '_sent',
-                'status' => 'logged',
-                'open_token' => (string) Str::uuid(),
-                'click_token' => (string) Str::uuid(),
-                'sent_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        $this->sendInvoiceNotification($id, $request, $document->type . '_sent');
 
         $this->trackEvent($id, 'document.sent', $request, ['recipient' => $document->client_email]);
 
         return ['document' => $this->documentShape($this->documentRow($id), true)];
+    }
+
+    public function emailLogs(Request $request)
+    {
+        $perPage = $this->perPage($request);
+        $page = max(1, (int) $request->input('page', 1));
+        $query = DB::table('invoice_email_logs')
+            ->leftJoin('invoice_documents', 'invoice_documents.id', '=', 'invoice_email_logs.document_id')
+            ->leftJoin('invoice_clients', 'invoice_clients.id', '=', 'invoice_documents.client_id')
+            ->select(
+                'invoice_email_logs.*',
+                'invoice_documents.number as document_number',
+                'invoice_documents.type as document_type',
+                'invoice_documents.status as document_status',
+                'invoice_clients.name as client_name'
+            )
+            ->when($request->input('status'), fn ($query, $status) => $query->where('invoice_email_logs.status', $status))
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('invoice_email_logs.recipient_email', 'like', "%{$search}%")
+                        ->orWhere('invoice_email_logs.subject', 'like', "%{$search}%")
+                        ->orWhere('invoice_documents.number', 'like', "%{$search}%")
+                        ->orWhere('invoice_clients.name', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->input('type'), fn ($query, $type) => $query->where('invoice_documents.type', $type));
+        $total = (clone $query)->count();
+        $rows = $query
+            ->orderByDesc('invoice_email_logs.created_at')
+            ->forPage($page, $perPage)
+            ->get();
+
+        return [
+            'logs' => $rows->map(fn ($row) => $this->emailLogShape($row, false)),
+            'meta' => $this->paginationMeta($page, $perPage, $total),
+        ];
+    }
+
+    public function clearEmailLogs(Request $request)
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:30'],
+            'type' => ['nullable', Rule::in(['invoice', 'quote', 'receipt'])],
+            'olderThanDays' => ['nullable', 'integer', 'min:1', 'max:3650'],
+        ]);
+
+        $query = DB::table('invoice_email_logs')
+            ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($data['olderThanDays'] ?? null, fn ($query, $days) => $query->where('created_at', '<', now()->subDays((int) $days)));
+
+        if (!empty($data['type'])) {
+            $ids = DB::table('invoice_email_logs')
+                ->join('invoice_documents', 'invoice_documents.id', '=', 'invoice_email_logs.document_id')
+                ->where('invoice_documents.type', $data['type'])
+                ->pluck('invoice_email_logs.id');
+            $query->whereIn('id', $ids);
+        }
+
+        $deleted = $query->delete();
+
+        return ['deleted' => $deleted];
+    }
+
+    public function emailLog(int $id)
+    {
+        $row = DB::table('invoice_email_logs')
+            ->leftJoin('invoice_documents', 'invoice_documents.id', '=', 'invoice_email_logs.document_id')
+            ->leftJoin('invoice_clients', 'invoice_clients.id', '=', 'invoice_documents.client_id')
+            ->select(
+                'invoice_email_logs.*',
+                'invoice_documents.number as document_number',
+                'invoice_documents.type as document_type',
+                'invoice_documents.status as document_status',
+                'invoice_clients.name as client_name'
+            )
+            ->where('invoice_email_logs.id', $id)
+            ->first();
+
+        if (!$row) {
+            return response()->json(['message' => 'Email log not found.'], 404);
+        }
+
+        if (Schema::hasColumn('invoice_email_logs', 'body_html') && $row->document_id) {
+            $document = $this->documentRow((int) $row->document_id);
+            if ($document) {
+                $bodyHtml = $this->invoiceEmailHtml($document, (string) $row->template_key, (string) $row->open_token);
+                DB::table('invoice_email_logs')->where('id', $id)->update([
+                    'body_html' => $bodyHtml,
+                    'updated_at' => now(),
+                ]);
+                $row->body_html = $bodyHtml;
+            }
+        }
+
+        return ['log' => $this->emailLogShape($row, true)];
+    }
+
+    public function trackEmailOpen(Request $request, string $token)
+    {
+        $log = DB::table('invoice_email_logs')->where('open_token', $token)->first();
+        if ($log && !$log->opened_at) {
+            DB::table('invoice_email_logs')->where('id', $log->id)->update([
+                'opened_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->trackEvent((int) $log->document_id, 'email.opened', $request, [
+                'emailLogId' => $log->id,
+                'recipient' => $log->recipient_email,
+            ], null, 'recipient');
+        }
+
+        $pixel = base64_decode('R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==');
+
+        return response($pixel, 200, [
+            'Content-Type' => 'image/gif',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
     }
 
     public function publicDocument(Request $request, string $token)
@@ -263,6 +397,14 @@ class InvoiceController extends Controller
                 'updated_at' => now(),
             ];
 
+            if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+                $payload['service_overview'] = $quote->service_overview ?? null;
+            }
+
+            if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+                $payload['scope_of_service'] = $quote->scope_of_service ?? null;
+            }
+
             if (Schema::hasColumn('invoice_documents', 'source_quote_id')) {
                 $payload['source_quote_id'] = $quote->id;
             }
@@ -291,6 +433,8 @@ class InvoiceController extends Controller
 
             return $invoiceId;
         });
+
+        $this->sendInvoiceNotification($invoiceId, $request, 'invoice_created_from_quote');
 
         return response()->json([
             'document' => $this->documentShape($this->documentRow($invoiceId), true, true),
@@ -393,10 +537,18 @@ class InvoiceController extends Controller
                     'payment_gateway' => $docData['payment_gateway'] ?? $docData['paymentGateway'] ?? null,
                     'payment_enabled' => !empty($docData['payment_link_url']) || !empty($docData['paymentEnabled']),
                     'branding_json' => json_encode($this->branding([])),
-                    'notes' => $this->cleanRichText($docData['notes'] ?? $docData['service_overview'] ?? ''),
-                    'terms' => $this->cleanRichText($docData['terms'] ?? $docData['scope_of_service'] ?? ''),
+                    'notes' => $this->cleanRichText($docData['notes'] ?? ''),
+                    'terms' => $this->cleanRichText($docData['terms'] ?? ''),
                     'updated_at' => $this->dateTimeOrNull($docData['updated_at'] ?? $docData['updatedAt'] ?? null) ?: now(),
                 ];
+
+                if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+                    $payload['service_overview'] = $this->cleanRichText($docData['service_overview'] ?? $docData['serviceOverview'] ?? '');
+                }
+
+                if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+                    $payload['scope_of_service'] = $this->cleanRichText($docData['scope_of_service'] ?? $docData['scopeOfService'] ?? '');
+                }
 
                 if (Schema::hasColumn('invoice_documents', 'legacy_client_token')) {
                     $payload['legacy_client_token'] = $docData['client_token'] ?? $docData['clientToken'] ?? null;
@@ -731,8 +883,8 @@ class InvoiceController extends Controller
     {
         $brand = $document['branding'];
         $client = $document['client'];
-        $currency = $document['currency'];
-        $formatMoney = fn ($amount) => e($currency . ' ' . number_format((float) $amount, 2));
+        $currency = $this->currencySymbol($document['currency']);
+        $formatMoney = fn ($amount) => e($currency . $this->formatEmailAmount((float) $amount));
         $items = '';
 
         foreach ($document['items'] as $item) {
@@ -746,7 +898,9 @@ class InvoiceController extends Controller
                 . '</tr>';
         }
 
-        $notes = $document['notes'] ? '<section><h3>Service Overview</h3><div class="rich">' . $document['notes'] . '</div></section>' : '';
+        $serviceOverview = $document['serviceOverview'] ? '<section><h3>Service Overview</h3><div class="rich">' . $document['serviceOverview'] . '</div></section>' : '';
+        $scopeOfService = $document['scopeOfService'] ? '<section><h3>Scope of Service</h3><div class="rich">' . $document['scopeOfService'] . '</div></section>' : '';
+        $notes = $document['notes'] ? '<section><h3>Notes</h3><div class="rich">' . $document['notes'] . '</div></section>' : '';
         $terms = $document['terms'] ? '<section><h3>Terms</h3><div class="rich">' . $document['terms'] . '</div></section>' : '';
 
         return '<!doctype html><html><head><meta charset="utf-8"><style>
@@ -782,7 +936,7 @@ class InvoiceController extends Controller
                 <td><div class="box"><div class="label">From</div><strong>' . e($brand['businessName']) . '</strong><br><span class="muted">' . e($brand['email']) . '<br>' . e($brand['phone']) . '<br>' . nl2br(e($brand['address'])) . '</span></div></td>
                 <td><div class="box"><div class="label">Prepared For</div><strong>' . e($client['name']) . '</strong><br><span class="muted">' . e($client['companyName']) . '<br>' . e($client['email']) . '<br>' . nl2br(e($client['address'])) . '</span></div></td>
             </tr></table>
-            ' . $notes . $terms . '
+            ' . $serviceOverview . $scopeOfService . $notes . $terms . '
             <section><h3>Line Items</h3><table class="items"><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Discount</th><th class="right">Tax</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
             <table class="totals">
                 <tr><td>Subtotal</td><td class="right">' . $formatMoney($document['subtotal']) . '</td></tr>
@@ -874,6 +1028,8 @@ class InvoiceController extends Controller
             'dueDate' => ['nullable', 'date'],
             'paymentGateway' => ['nullable', Rule::in(['paystack', 'flutterwave', 'manual'])],
             'paymentEnabled' => ['nullable', 'boolean'],
+            'serviceOverview' => ['nullable', 'string'],
+            'scopeOfService' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'terms' => ['nullable', 'string'],
             'branding' => ['nullable', 'array'],
@@ -925,6 +1081,14 @@ class InvoiceController extends Controller
                 'terms' => $this->cleanRichText($data['terms'] ?? ''),
                 'updated_at' => now(),
             ];
+
+            if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+                $payload['service_overview'] = $this->cleanRichText($data['serviceOverview'] ?? '');
+            }
+
+            if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+                $payload['scope_of_service'] = $this->cleanRichText($data['scopeOfService'] ?? '');
+            }
 
             if ($id) {
                 DB::table('invoice_documents')->where('id', $id)->update($payload);
@@ -1093,6 +1257,8 @@ class InvoiceController extends Controller
             'dueDate' => (string) ($row->due_date ?? ''),
             'paymentGateway' => $row->payment_gateway ?? '',
             'paymentEnabled' => (bool) $row->payment_enabled,
+            'serviceOverview' => $this->cleanRichText(($row->service_overview ?? '') ?: ''),
+            'scopeOfService' => $this->cleanRichText(($row->scope_of_service ?? '') ?: ''),
             'notes' => $this->cleanRichText($row->notes ?: ''),
             'terms' => $this->cleanRichText($row->terms ?: ''),
             'branding' => $this->branding(json_decode($row->branding_json ?: '{}', true) ?: []),
@@ -1179,6 +1345,246 @@ class InvoiceController extends Controller
             'metadata' => json_decode($row->metadata_json ?: '{}', true),
             'createdAt' => (string) $row->created_at,
         ];
+    }
+
+    private function perPage(Request $request): int
+    {
+        return min(100, max(10, (int) $request->input('perPage', 25)));
+    }
+
+    private function paginationMeta(int $page, int $perPage, int $total): array
+    {
+        return [
+            'page' => $page,
+            'perPage' => $perPage,
+            'total' => $total,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
+    private function emailLogShape(object $row, bool $includeBody): array
+    {
+        return [
+            'id' => $row->id,
+            'documentId' => $row->document_id,
+            'documentNumber' => $row->document_number ?? '',
+            'documentType' => $row->document_type ?? '',
+            'documentStatus' => $row->document_status ?? '',
+            'clientName' => $row->client_name ?? '',
+            'recipientEmail' => $row->recipient_email,
+            'subject' => $row->subject,
+            'templateKey' => $row->template_key,
+            'status' => $row->status,
+            'bodyHtml' => $includeBody ? (string) ($row->body_html ?? '') : '',
+            'sentAt' => (string) ($row->sent_at ?? ''),
+            'openedAt' => (string) ($row->opened_at ?? ''),
+            'clickedAt' => (string) ($row->clicked_at ?? ''),
+            'errorMessage' => (string) ($row->error_message ?? ''),
+            'createdAt' => (string) $row->created_at,
+            'updatedAt' => (string) $row->updated_at,
+        ];
+    }
+
+    private function sendInvoiceNotification(int $documentId, Request $request, string $templateKey): void
+    {
+        if (!Schema::hasTable('invoice_email_logs')) {
+            return;
+        }
+
+        $document = $this->documentRow($documentId);
+        if (!$document || !$document->client_email) {
+            return;
+        }
+
+        $openToken = (string) Str::uuid();
+        $clickToken = (string) Str::uuid();
+        $subject = $this->invoiceEmailSubject($document, $templateKey);
+        $bodyHtml = $this->invoiceEmailHtml($document, $templateKey, $openToken);
+        $payload = [
+            'document_id' => $documentId,
+            'recipient_email' => $document->client_email,
+            'subject' => $subject,
+            'template_key' => $templateKey,
+            'status' => 'queued',
+            'open_token' => $openToken,
+            'click_token' => $clickToken,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        if (Schema::hasColumn('invoice_email_logs', 'body_html')) {
+            $payload['body_html'] = $bodyHtml;
+        }
+
+        $logId = (int) DB::table('invoice_email_logs')->insertGetId($payload);
+
+        try {
+            Mail::html($bodyHtml, function ($message) use ($document, $subject) {
+                $message->to($document->client_email, $document->client_name ?: null)
+                    ->subject($subject);
+            });
+
+            DB::table('invoice_email_logs')->where('id', $logId)->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->trackEvent($documentId, 'email.sent', $request, [
+                'emailLogId' => $logId,
+                'recipient' => $document->client_email,
+                'templateKey' => $templateKey,
+            ], null, 'system');
+        } catch (\Throwable $exception) {
+            $update = [
+                'status' => 'failed',
+                'updated_at' => now(),
+            ];
+
+            if (Schema::hasColumn('invoice_email_logs', 'error_message')) {
+                $update['error_message'] = $exception->getMessage();
+            }
+
+            DB::table('invoice_email_logs')->where('id', $logId)->update($update);
+        }
+    }
+
+    private function invoiceEmailSubject(object $document, string $templateKey): string
+    {
+        $label = ucfirst((string) $document->type);
+
+        return match ($templateKey) {
+            'invoice_created_from_quote' => 'Your invoice is ready: ' . $document->number,
+            default => $label . ' ' . $document->number . ' from Bakhtech Solutions',
+        };
+    }
+
+    private function invoiceEmailHtml(object $document, string $templateKey, string $openToken): string
+    {
+        $branding = $this->branding(json_decode($document->branding_json ?: '{}', true) ?: []);
+        $label = ucfirst((string) $document->type);
+        $clientName = htmlspecialchars((string) ($document->client_name ?: 'there'), ENT_QUOTES, 'UTF-8');
+        $businessName = htmlspecialchars((string) $branding['businessName'], ENT_QUOTES, 'UTF-8');
+        $logoUrl = htmlspecialchars($this->absoluteUrl((string) ($branding['logoUrl'] ?: '/bakhtech-logo-light.png')), ENT_QUOTES, 'UTF-8');
+        $number = htmlspecialchars((string) $document->number, ENT_QUOTES, 'UTF-8');
+        $currencySymbol = htmlspecialchars($this->currencySymbol((string) $document->currency), ENT_QUOTES, 'UTF-8');
+        $total = $this->formatEmailAmount((float) $document->total);
+        $balance = $this->formatEmailAmount((float) $document->balance_due);
+        $publicUrl = htmlspecialchars($this->absoluteUrl('/invoice/' . $document->public_token), ENT_QUOTES, 'UTF-8');
+        $pdfUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/' . $document->public_token . '/pdf'), ENT_QUOTES, 'UTF-8');
+        $openUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/email/open/' . $openToken), ENT_QUOTES, 'UTF-8');
+        $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
+        $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
+        $headline = match (true) {
+            $templateKey === 'invoice_created_from_quote' => 'Invoice ready',
+            $document->type === 'quote' => 'Quote ready',
+            $document->type === 'receipt' => 'Receipt issued',
+            default => 'Invoice ready',
+        };
+        $message = match (true) {
+            $templateKey === 'invoice_created_from_quote' => 'Your approved quote has been converted into an invoice. Please review the invoice details below.',
+            $document->type === 'quote' => 'Your quote is available for review. Please confirm the details when you are ready to proceed.',
+            $document->type === 'receipt' => 'Your receipt has been issued. You can view the payment record or download a copy below.',
+            default => 'Your invoice is available for review. Please check the details below and proceed with payment when convenient.',
+        };
+        $primaryAction = match ($document->type) {
+            'quote' => 'Review quote',
+            'receipt' => 'View receipt',
+            default => 'Open invoice',
+        };
+        $priceLabel = match ($document->type) {
+            'quote' => 'Quoted amount',
+            'receipt' => 'Amount recorded',
+            default => 'Amount due',
+        };
+        $priceValue = $document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}";
+        $documentTitle = "{$label} {$number}";
+
+        return <<<HTML
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{$label} {$number}</title>
+</head>
+<body style="margin:0;background:#f4f7fb;font-family:Manrope,Inter,Segoe UI,Arial,sans-serif;color:#0f172a;">
+  <div style="display:none;max-height:0;overflow:hidden;">{$headline}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:32px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:22px;overflow:hidden;border:1px solid #dbe4f0;box-shadow:0 18px 46px rgba(15,23,42,.12);">
+          <tr>
+            <td style="padding:28px 30px 0;">
+              <img src="{$logoUrl}" width="142" alt="{$businessName}" style="display:block;max-width:142px;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px;">
+              <p style="margin:0 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#ef4444;font-weight:900;">{$documentTitle}</p>
+              <h1 style="margin:0 0 22px;font-size:26px;line-height:1.16;color:#0f172a;font-weight:900;">{$headline}</h1>
+              <p style="margin:0 0 10px;font-size:16px;line-height:1.7;color:#0f172a;">Hello {$clientName},</p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#475569;">{$message}</p>
+              <div style="margin:0 0 24px;padding:18px;border:1px solid #e2e8f0;border-radius:18px;background:#f8fafc;">
+                <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;font-weight:900;">{$priceLabel}</div>
+                <div style="font-size:30px;font-weight:900;margin-top:6px;color:#0f172a;">{$priceValue}</div>
+              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 26px;border-collapse:collapse;border-top:1px solid #e2e8f0;">
+                <tr><td style="padding:12px 0;color:#64748b;border-bottom:1px solid #e2e8f0;">Issue date</td><td align="right" style="padding:12px 0;border-bottom:1px solid #e2e8f0;font-weight:900;color:#0f172a;">{$issueDate}</td></tr>
+                <tr><td style="padding:12px 0;color:#64748b;border-bottom:1px solid #e2e8f0;">Due date</td><td align="right" style="padding:12px 0;border-bottom:1px solid #e2e8f0;font-weight:900;color:#0f172a;">{$dueDate}</td></tr>
+              </table>
+              <table role="presentation" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td><a href="{$publicUrl}" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;font-weight:900;border-radius:14px;padding:15px 22px;">{$primaryAction}</a></td>
+                  <td width="10"></td>
+                  <td><a href="{$pdfUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:900;border-radius:14px;padding:15px 22px;">Download PDF</a></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 30px;background:#f8fafc;color:#64748b;font-size:12px;line-height:1.65;">
+              Sent by {$businessName}. If the buttons do not work, open this secure link: <a href="{$publicUrl}" style="color:#ef4444;font-weight:800;">{$publicUrl}</a>
+              <img src="{$openUrl}" width="1" height="1" alt="" style="display:block;border:0;outline:0;width:1px;height:1px;">
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
+    }
+
+    private function absoluteUrl(string $path): string
+    {
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return rtrim((string) config('app.url'), '/') . '/' . ltrim($path, '/');
+    }
+
+    private function currencySymbol(string $currency): string
+    {
+        return match (strtoupper($currency)) {
+            'NGN' => '₦',
+            'USD' => '$',
+            'GBP' => '£',
+            'EUR' => '€',
+            'JPY', 'CNY' => '¥',
+            'GHS' => '₵',
+            'ZAR' => 'R',
+            default => strtoupper($currency) . ' ',
+        };
+    }
+
+    private function formatEmailAmount(float $amount): string
+    {
+        return fmod($amount, 1.0) === 0.0
+            ? number_format($amount, 0)
+            : rtrim(rtrim(number_format($amount, 2), '0'), '.');
     }
 
     private function branding(array $branding): array

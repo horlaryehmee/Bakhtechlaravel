@@ -103,8 +103,10 @@ class InvoiceImportTest extends TestCase
         );
 
         $this->assertSame('WP-QT-001', $publicResponse['document']['number']);
-        $this->assertSame('This package includes one page.', $publicResponse['document']['notes']);
-        $this->assertSame('1. Page Design & Layout <ul><li>Design a responsive page</li><li>Structure service sections</li></ul>', $publicResponse['document']['terms']);
+        $this->assertSame('This package includes one page.', $publicResponse['document']['serviceOverview']);
+        $this->assertSame('1. Page Design & Layout <ul><li>Design a responsive page</li><li>Structure service sections</li></ul>', $publicResponse['document']['scopeOfService']);
+        $this->assertSame('', $publicResponse['document']['notes']);
+        $this->assertSame('', $publicResponse['document']['terms']);
     }
 
     public function test_old_wordpress_frontend_invoice_links_redirect_to_new_invoice_route(): void

@@ -310,6 +310,8 @@ export type InvoiceDocument = {
   dueDate: string
   paymentGateway: string
   paymentEnabled: boolean
+  serviceOverview: string
+  scopeOfService: string
   notes: string
   terms: string
   branding: {
@@ -344,6 +346,33 @@ export type InvoiceOverview = {
   revenue: { paid: number; outstanding: number; currency: string }
   conversion: { uniqueViews: number; paymentClicks: number; viewToPaymentClickRate: number }
   recentEvents: Array<{ id: number; documentId: number; documentNumber: string; documentType: string; eventType: string; deviceType: string; metadata: Record<string, unknown>; createdAt: string }>
+}
+
+export type InvoiceListMeta = {
+  page: number
+  perPage: number
+  total: number
+  lastPage: number
+}
+
+export type InvoiceEmailLog = {
+  id: number
+  documentId: number
+  documentNumber: string
+  documentType: string
+  documentStatus: string
+  clientName: string
+  recipientEmail: string
+  subject: string
+  templateKey: string
+  status: string
+  bodyHtml: string
+  sentAt: string
+  openedAt: string
+  clickedAt: string
+  errorMessage: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type BookingAvailabilityRule = {
@@ -704,11 +733,26 @@ export const api = {
   invoiceOverview() {
     return request<InvoiceOverview>('/api/admin/invoices/overview')
   },
-  invoiceClients() {
-    return request<{ clients: InvoiceClient[] }>('/api/admin/invoices/clients')
+  invoiceClients(params: Record<string, string | number> = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    return request<{ clients: InvoiceClient[]; meta: InvoiceListMeta }>(`/api/admin/invoices/clients${query ? `?${query}` : ''}`)
   },
-  invoiceDocuments() {
-    return request<{ documents: InvoiceDocument[] }>('/api/admin/invoices/documents')
+  invoiceDocuments(params: Record<string, string | number> = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    return request<{ documents: InvoiceDocument[]; meta: InvoiceListMeta }>(`/api/admin/invoices/documents${query ? `?${query}` : ''}`)
+  },
+  invoiceEmailLogs(params: Record<string, string | number> = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    return request<{ logs: InvoiceEmailLog[]; meta: InvoiceListMeta }>(`/api/admin/invoices/email-logs${query ? `?${query}` : ''}`)
+  },
+  invoiceEmailLog(id: number) {
+    return request<{ log: InvoiceEmailLog }>(`/api/admin/invoices/email-logs/${id}`)
+  },
+  clearInvoiceEmailLogs(filters: { status?: string; type?: string; olderThanDays?: number } = {}) {
+    return request<{ deleted: number }>('/api/admin/invoices/email-logs', {
+      method: 'DELETE',
+      body: JSON.stringify(filters),
+    })
   },
   invoiceDocument(id: number) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}`)

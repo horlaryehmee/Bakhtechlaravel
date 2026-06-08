@@ -21,6 +21,7 @@ Route::post('/booking/payments/paystack/initialize', [BookingCmsController::clas
 Route::post('/booking/payments/paystack/verify', [BookingCmsController::class, 'verifyPaystackPayment'])->middleware('throttle:30,1');
 Route::get('/booking/google/callback', [BookingCmsController::class, 'googleCallback'])->middleware('throttle:20,1');
 Route::post('/visits', [BakhtechApiController::class, 'trackVisit']);
+Route::get('/invoices/email/open/{token}', [InvoiceController::class, 'trackEmailOpen'])->middleware('throttle:240,1');
 Route::get('/invoices/{token}', [InvoiceController::class, 'publicDocument'])->middleware('throttle:120,1');
 Route::post('/invoices/{token}/events', [InvoiceController::class, 'trackPublicEvent'])->middleware('throttle:120,1');
 Route::post('/invoices/{token}/quote-decision', [InvoiceController::class, 'decideQuote'])->middleware('throttle:20,1');
@@ -59,6 +60,9 @@ Route::middleware(RequireAdminToken::class)->group(function () {
         Route::get('/overview', [InvoiceController::class, 'overview']);
         Route::get('/clients', [InvoiceController::class, 'clients']);
         Route::get('/documents', [InvoiceController::class, 'documents']);
+        Route::get('/email-logs', [InvoiceController::class, 'emailLogs']);
+        Route::get('/email-logs/{id}', [InvoiceController::class, 'emailLog']);
+        Route::delete('/email-logs', [InvoiceController::class, 'clearEmailLogs'])->middleware('admin.role:admin');
         Route::post('/documents', [InvoiceController::class, 'createDocument']);
         Route::get('/documents/{id}', [InvoiceController::class, 'document']);
         Route::put('/documents/{id}', [InvoiceController::class, 'updateDocument']);
