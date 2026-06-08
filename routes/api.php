@@ -83,6 +83,8 @@ Route::middleware(RequireAdminToken::class)->group(function () {
         Route::get('/documents/{id}', [InvoiceController::class, 'document']);
         Route::put('/documents/{id}', [InvoiceController::class, 'updateDocument']);
         Route::post('/documents/{id}/send', [InvoiceController::class, 'sendDocument']);
+        Route::post('/documents/{id}/payments', [InvoiceController::class, 'recordPayment']);
+        Route::post('/documents/{id}/send-receipt', [InvoiceController::class, 'sendReceipt']);
         Route::post('/documents/{id}/payments/initialize', [InvoiceController::class, 'initializePayment']);
         Route::get('/export/json', [InvoiceController::class, 'exportToJSON']);
         Route::post('/import/json', [InvoiceController::class, 'importFromJSON']);

@@ -921,6 +921,15 @@ export const api = {
   sendInvoiceDocument(id: number) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send`, { method: 'POST' })
   },
+  recordInvoicePayment(id: number, payment: { amount: number; method: string; date: string; notes?: string }) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/payments`, {
+      method: 'POST',
+      body: JSON.stringify(payment),
+    })
+  },
+  sendInvoiceReceipt(id: number) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send-receipt`, { method: 'POST' })
+  },
   publicInvoiceDocument(token: string) {
     return request<{ document: InvoiceDocument }>(`/api/invoices/${token}`)
   },

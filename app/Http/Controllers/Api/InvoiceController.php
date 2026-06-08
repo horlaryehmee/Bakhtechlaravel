@@ -480,6 +480,78 @@ class InvoiceController extends Controller
         ];
     }
 
+    public function recordPayment(Request $request, int $id)
+    {
+        $document = $this->documentRow($id);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', 'string', 'max:30'],
+            'date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $amount = min($this->money($validated['amount']), (float) $document->balance_due);
+        $paidAt = $this->dateTimeOrNull($validated['date'] ?? null) ?: now();
+        $newAmountPaid = min((float) $document->total, (float) $document->amount_paid + $amount);
+        $newBalanceDue = max(0, (float) $document->total - $newAmountPaid);
+        $status = $newBalanceDue <= 0 ? 'paid' : 'partial';
+
+        DB::transaction(function () use ($document, $validated, $amount, $paidAt, $newAmountPaid, $newBalanceDue, $status) {
+            DB::table('invoice_payments')->insert([
+                'document_id' => $document->id,
+                'gateway' => Str::limit((string) $validated['method'], 30, ''),
+                'reference' => 'MANUAL-' . Str::upper(Str::random(14)),
+                'amount' => $amount,
+                'currency' => $document->currency,
+                'status' => 'paid',
+                'gateway_response_json' => json_encode([
+                    'method' => $validated['method'],
+                    'notes' => $validated['notes'] ?? '',
+                    'source' => 'admin',
+                ]),
+                'paid_at' => $paidAt,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('invoice_documents')->where('id', $document->id)->update([
+                'amount_paid' => $newAmountPaid,
+                'balance_due' => $newBalanceDue,
+                'status' => $status,
+                'paid_at' => $status === 'paid' ? $paidAt : null,
+                'updated_at' => now(),
+            ]);
+        });
+
+        $this->trackEvent((int) $document->id, 'payment.recorded', $request, [
+            'amount' => $amount,
+            'method' => $validated['method'],
+            'status' => $status,
+        ], null, 'system');
+
+        return response()->json([
+            'document' => $this->documentShape($this->documentRow((int) $document->id), true),
+        ]);
+    }
+
+    public function sendReceipt(Request $request, int $id)
+    {
+        $document = $this->documentRow($id);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        $this->sendInvoiceNotification($id, $request, 'receipt_sent');
+
+        return response()->json([
+            'document' => $this->documentShape($this->documentRow($id), true),
+        ]);
+    }
+
     public function webhook(Request $request, string $gateway)
     {
         DB::table('invoice_events')->insert([

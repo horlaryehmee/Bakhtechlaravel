@@ -1557,27 +1557,17 @@ export function AdminDashboard() {
     setSaving(true)
     setError('')
     try {
-      // Call payment recording API endpoint
-      const response = await api.post(`/invoices/${invoiceId}/payments`, {
+      const response = await api.recordInvoicePayment(Number(invoiceId), {
         amount: amountPaid,
         method: paymentMethod,
         date: paymentDate,
         notes: notes,
-        timestamp: new Date().toISOString()
       })
       
-      // Update invoice status to paid if fully paid
-      if (editingInvoice) {
-        const updatedInvoice = {
-          ...editingInvoice,
-          status: amountPaid >= editingInvoice.total ? 'paid' : 'partial',
-          updatedAt: new Date().toISOString()
-        }
-        setEditingInvoice(updatedInvoice)
-      }
+      setEditingInvoice(response.document)
 
       // Generate and send receipt automatically
-      await generateReceiptAndNotify(invoiceId, amountPaid, paymentMethod, paymentDate)
+      await generateReceiptAndNotify(invoiceId)
       
       notify('Payment recorded successfully. Receipt generated and sent.')
     } catch (error) {
@@ -1587,26 +1577,9 @@ export function AdminDashboard() {
     }
   }
 
-  async function generateReceiptAndNotify(invoiceId: string, amountPaid: number, paymentMethod: string, paymentDate: string) {
+  async function generateReceiptAndNotify(invoiceId: string) {
     try {
-      // Generate receipt
-      const receiptData = {
-        invoiceId,
-        amountPaid,
-        paymentMethod,
-        paymentDate,
-        generatedAt: new Date().toISOString(),
-        businessName: settingsForm.company_name || 'Your Business',
-        businessEmail: settingsForm.company_email || '',
-        businessPhone: settingsForm.company_phone || '',
-      }
-
-      // Send receipt via email and SMS if applicable
-      await api.post(`/invoices/${invoiceId}/send-receipt`, {
-        ...receiptData,
-        sendEmail: true,
-        recipient: editingInvoice?.client.email
-      })
+      await api.sendInvoiceReceipt(Number(invoiceId))
 
       notify('Receipt sent to client via email.')
     } catch (error) {
