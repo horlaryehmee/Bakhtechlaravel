@@ -42,10 +42,14 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::post('/admin/users/{id}', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
     Route::put('/admin/users/{id}', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
+    Route::post('/admin/users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
     Route::put('/admin/users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
     Route::post('/admin/users/{id}/two-factor/setup', [BakhtechApiController::class, 'setupAdminUserTwoFactor'])->middleware('admin.role:admin');
+    Route::post('/admin/users/{id}/two-factor', [BakhtechApiController::class, 'enableAdminUserTwoFactor'])->middleware('admin.role:admin');
     Route::put('/admin/users/{id}/two-factor', [BakhtechApiController::class, 'enableAdminUserTwoFactor'])->middleware('admin.role:admin');
+    Route::post('/admin/users/{id}/two-factor/disable', [BakhtechApiController::class, 'disableAdminUserTwoFactor'])->middleware('admin.role:admin');
     Route::delete('/admin/users/{id}/two-factor', [BakhtechApiController::class, 'disableAdminUserTwoFactor'])->middleware('admin.role:admin');
     Route::post('/admin/pages', [BakhtechApiController::class, 'createPage']);
     Route::put('/admin/pages/{id}', [BakhtechApiController::class, 'updatePage']);

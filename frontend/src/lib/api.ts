@@ -646,13 +646,13 @@ export const api = {
   },
   updateAdminUserPassword(id: number, password: string, passwordConfirmation: string) {
     return request<{ user: AdminUser }>(`/api/admin/users/${id}/password`, {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify({ password, password_confirmation: passwordConfirmation }),
     })
   },
   updateAdminUser(id: number, user: { name: string; email: string }) {
     return request<{ user: AdminUser }>(`/api/admin/users/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify(user),
     })
   },
@@ -663,13 +663,13 @@ export const api = {
   },
   enableAdminUserTwoFactor(id: number, code: string) {
     return request<{ user: AdminUser }>(`/api/admin/users/${id}/two-factor`, {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify({ code }),
     })
   },
   disableAdminUserTwoFactor(id: number) {
-    return request<{ user: AdminUser }>(`/api/admin/users/${id}/two-factor`, {
-      method: 'DELETE',
+    return request<{ user: AdminUser }>(`/api/admin/users/${id}/two-factor/disable`, {
+      method: 'POST',
     })
   },
   createPage(page: Partial<CmsPage>) {
