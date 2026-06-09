@@ -158,9 +158,9 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
       <div className="mt-6 flex flex-1 flex-col">
         <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#d6dde5]">{project.category}</span>
         <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">{project.title}</h3>
-        {showDescription ? <p className="mt-3 flex-1 text-sm leading-6 text-white/72">{project.summary}</p> : null}
+        {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-white/72">{project.summary}</p> : null}
 
-        <div className={cn('flex flex-wrap items-center gap-2', showDescription ? 'mt-5' : 'mt-4')}>
+        <div className={cn('flex flex-wrap items-center gap-2', showDescription && project.summary ? 'mt-5' : 'mt-4')}>
           {projectUrl ? (
             <a href={projectUrl} target="_blank" rel="noreferrer" className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
               View live project

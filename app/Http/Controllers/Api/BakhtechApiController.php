@@ -8,8 +8,10 @@ use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -30,10 +32,84 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Invalid email or password.'], 401);
         }
 
+        if (($admin->two_factor_enabled ?? false) && !$this->validTotpCode($admin, (string) $request->input('twoFactorCode', ''))) {
+            return response()->json([
+                'message' => 'Enter a valid two-factor authentication code.',
+                'requiresTwoFactor' => true,
+            ], 422);
+        }
+
         return [
             'token' => AdminToken::make($admin),
             'admin' => $this->adminShape($admin),
         ];
+    }
+
+    public function requestAdminPasswordReset(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:190'],
+        ]);
+        $email = strtolower(trim($data['email']));
+        $admin = DB::table('admins')->where('email', $email)->first();
+
+        DB::table('admin_password_resets')->where('created_at', '<', now()->subDay())->delete();
+
+        if ($admin) {
+            $token = Str::random(72);
+            $resetUrl = rtrim(config('app.url'), '/') . '/admin/reset-password?email=' . rawurlencode($email) . '&token=' . rawurlencode($token);
+
+            DB::table('admin_password_resets')->where('email', $email)->delete();
+            DB::table('admin_password_resets')->insert([
+                'email' => $email,
+                'token_hash' => hash('sha256', $token),
+                'expires_at' => now()->addHour(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Mail::raw(
+                "A password reset was requested for your Bakhtech admin account.\n\nReset your password here:\n{$resetUrl}\n\nThis link expires in 60 minutes. If you did not request this, ignore this email.",
+                function ($message) use ($email) {
+                    $message->to($email)->subject('Reset your Bakhtech admin password');
+                }
+            );
+        }
+
+        return ['message' => 'If that admin email exists, a password reset link has been sent.'];
+    }
+
+    public function resetAdminPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:190'],
+            'token' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+        $email = strtolower(trim($data['email']));
+        $tokenHash = hash('sha256', (string) $data['token']);
+        $reset = DB::table('admin_password_resets')
+            ->where('email', $email)
+            ->where('token_hash', $tokenHash)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$reset) {
+            return response()->json(['message' => 'This password reset link is invalid or expired.'], 422);
+        }
+
+        $updated = DB::table('admins')->where('email', $email)->update([
+            'password_hash' => Hash::make($data['password']),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('admin_password_resets')->where('email', $email)->delete();
+
+        if (!$updated) {
+            return response()->json(['message' => 'This password reset link is invalid or expired.'], 422);
+        }
+
+        return ['message' => 'Password reset successfully. You can now sign in.'];
     }
 
     public function me(Request $request)
@@ -120,6 +196,93 @@ class BakhtechApiController extends Controller
 
         DB::table('admins')->where('id', $id)->update([
             'password_hash' => Hash::make($data['password']),
+            'updated_at' => now(),
+        ]);
+
+        return ['user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first())];
+    }
+
+    public function updateAdminUser(Request $request, int $id)
+    {
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190'],
+        ]);
+
+        $email = strtolower(trim($data['email']));
+        $duplicate = DB::table('admins')->where('email', $email)->where('id', '!=', $id)->exists();
+        if ($duplicate) {
+            return response()->json(['message' => 'That email is already used by another admin user.'], 422);
+        }
+
+        DB::table('admins')->where('id', $id)->update([
+            'name' => trim($data['name']),
+            'email' => $email,
+            'updated_at' => now(),
+        ]);
+
+        return ['user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first())];
+    }
+
+    public function setupAdminUserTwoFactor(int $id)
+    {
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        $secret = $this->generateTotpSecret();
+        DB::table('admins')->where('id', $id)->update([
+            'two_factor_secret' => Crypt::encryptString($secret),
+            'two_factor_enabled' => false,
+            'updated_at' => now(),
+        ]);
+
+        return [
+            'secret' => $secret,
+            'otpauthUri' => $this->totpUri($admin->email, $secret),
+            'user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first()),
+        ];
+    }
+
+    public function enableAdminUserTwoFactor(Request $request, int $id)
+    {
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        if (!$admin->two_factor_secret) {
+            return response()->json(['message' => 'Start two-factor setup before enabling it.'], 422);
+        }
+
+        if (!$this->validTotpCode($admin, (string) $request->input('code', ''))) {
+            return response()->json(['message' => 'Enter a valid two-factor authentication code.'], 422);
+        }
+
+        DB::table('admins')->where('id', $id)->update([
+            'two_factor_enabled' => true,
+            'updated_at' => now(),
+        ]);
+
+        return ['user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first())];
+    }
+
+    public function disableAdminUserTwoFactor(int $id)
+    {
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        DB::table('admins')->where('id', $id)->update([
+            'two_factor_secret' => null,
+            'two_factor_enabled' => false,
             'updated_at' => now(),
         ]);
 
@@ -479,8 +642,8 @@ class BakhtechApiController extends Controller
     public function createProject(Request $request)
     {
         $payload = $this->projectPayload($request);
-        if ($payload['title'] === '' || $payload['category'] === '' || $payload['summary'] === '') {
-            return response()->json(['message' => 'Title, category, and summary are required.'], 400);
+        if ($payload['title'] === '' || $payload['category'] === '') {
+            return response()->json(['message' => 'Title and category are required.'], 400);
         }
 
         $payload['slug'] = $this->uniqueSlug('projects', $payload['slug'] ?: $payload['title']);
@@ -964,12 +1127,93 @@ class BakhtechApiController extends Controller
 
     private function adminShape(object $row): array
     {
-        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin'];
+        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin', 'twoFactorEnabled' => (bool) ($row->two_factor_enabled ?? false)];
     }
 
     private function adminUserShape(object $row): array
     {
-        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin', 'createdAt' => (string) $row->created_at];
+        return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin', 'twoFactorEnabled' => (bool) ($row->two_factor_enabled ?? false), 'createdAt' => (string) $row->created_at];
+    }
+
+    private function generateTotpSecret(): string
+    {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $secret = '';
+        for ($i = 0; $i < 32; $i++) {
+            $secret .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $secret;
+    }
+
+    private function validTotpCode(object $admin, string $code): bool
+    {
+        $code = preg_replace('/\D+/', '', $code);
+        if (strlen($code) !== 6 || empty($admin->two_factor_secret)) {
+            return false;
+        }
+
+        try {
+            $secret = Crypt::decryptString($admin->two_factor_secret);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $counter = intdiv(time(), 30);
+        for ($window = -1; $window <= 1; $window++) {
+            if (hash_equals($this->totpCode($secret, $counter + $window), $code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function totpCode(string $secret, int $counter): string
+    {
+        $key = $this->base32Decode($secret);
+        $binaryCounter = pack('N*', 0) . pack('N*', $counter);
+        $hash = hash_hmac('sha1', $binaryCounter, $key, true);
+        $offset = ord(substr($hash, -1)) & 0x0f;
+        $value = ((ord($hash[$offset]) & 0x7f) << 24)
+            | ((ord($hash[$offset + 1]) & 0xff) << 16)
+            | ((ord($hash[$offset + 2]) & 0xff) << 8)
+            | (ord($hash[$offset + 3]) & 0xff);
+
+        return str_pad((string) ($value % 1000000), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function base32Decode(string $secret): string
+    {
+        $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $secret = strtoupper(preg_replace('/[^A-Z2-7]/', '', $secret));
+        $bits = '';
+        $decoded = '';
+
+        foreach (str_split($secret) as $char) {
+            $value = strpos($alphabet, $char);
+            if ($value === false) {
+                continue;
+            }
+            $bits .= str_pad(decbin($value), 5, '0', STR_PAD_LEFT);
+        }
+
+        foreach (str_split($bits, 8) as $byte) {
+            if (strlen($byte) === 8) {
+                $decoded .= chr(bindec($byte));
+            }
+        }
+
+        return $decoded;
+    }
+
+    private function totpUri(string $email, string $secret): string
+    {
+        $issuer = 'Bakhtech Admin';
+        return 'otpauth://totp/' . rawurlencode($issuer . ':' . $email)
+            . '?secret=' . rawurlencode($secret)
+            . '&issuer=' . rawurlencode($issuer)
+            . '&algorithm=SHA1&digits=6&period=30';
     }
 
     private function projectShape(object $row): array
@@ -979,7 +1223,7 @@ class BakhtechApiController extends Controller
             'title' => $row->title,
             'slug' => $row->slug,
             'category' => $row->category,
-            'summary' => $row->summary,
+            'summary' => $row->summary ?: '',
             'description' => $row->description ?: '',
             'image' => $row->image ?: '',
             'coverImage' => $row->cover_image ?: '',

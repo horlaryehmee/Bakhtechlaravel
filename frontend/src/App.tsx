@@ -4,7 +4,9 @@ import { SiteLayout } from '@/components/layout/SiteLayout'
 
 const VisitTracker = lazy(() => import('@/components/analytics/VisitTracker').then((module) => ({ default: module.VisitTracker })))
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
+const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
 const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin').then((module) => ({ default: module.AdminLogin })))
+const AdminResetPassword = lazy(() => import('@/pages/admin/AdminResetPassword').then((module) => ({ default: module.AdminResetPassword })))
 const About = lazy(() => import('@/pages/About').then((module) => ({ default: module.About })))
 const Booking = lazy(() => import('@/pages/Booking').then((module) => ({ default: module.Booking })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
@@ -48,6 +50,8 @@ function App() {
         <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="admin/login" element={<AdminLogin />} />
+          <Route path="admin/forgot-password" element={<AdminForgotPassword />} />
+          <Route path="admin/reset-password" element={<AdminResetPassword />} />
           <Route path="admin/dashboard" element={<AdminDashboard />} />
           <Route path="admin/pricing-preview" element={<Pricing />} />
           <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />

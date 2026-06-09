@@ -489,7 +489,7 @@ const settingLabels: Record<string, string> = {
   contactEmail: 'Contact email',
   facebookUrl: 'Facebook link',
   googleReviewUrl: 'Google review link',
-  homePortfolioShowDescriptions: 'Show homepage portfolio descriptions',
+  homePortfolioShowDescriptions: 'Show public project summaries',
   instagramUrl: 'Instagram link',
   linkedinUrl: 'LinkedIn link',
   phone: 'Phone',
@@ -693,7 +693,9 @@ export function AdminDashboard() {
   const [availabilityForm, setAvailabilityForm] = useState(emptyAvailabilityRule)
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>(initialAdminCache?.cms?.settings ?? {})
   const [siteSettingsSection, setSiteSettingsSection] = useState<SiteSettingsSection>('menu')
+  const [profileForms, setProfileForms] = useState<Record<number, { name: string; email: string }>>({})
   const [passwordForms, setPasswordForms] = useState<Record<number, { password: string; confirmation: string }>>({})
+  const [twoFactorForms, setTwoFactorForms] = useState<Record<number, { secret: string; otpauthUri: string; code: string }>>({})
   const [loading, setLoading] = useState(!initialAdminCache)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -1562,6 +1564,97 @@ export function AdminDashboard() {
       notify('Password updated.')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to update password.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function updateAdminUserProfile(userId: number) {
+    const user = cms?.users.find((item) => item.id === userId)
+    const form = profileForms[userId] ?? { name: user?.name ?? '', email: user?.email ?? '' }
+    if (!form.name.trim() || !form.email.trim()) {
+      setError('Enter a name and email address.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.updateAdminUser(userId, { name: form.name.trim(), email: form.email.trim() })
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.map((item) => item.id === userId ? result.user : item),
+      } : current)
+      setProfileForms((current) => ({ ...current, [userId]: { name: result.user.name, email: result.user.email } }))
+      notify('User profile updated.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to update user profile.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function startAdminUserTwoFactorSetup(userId: number) {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.setupAdminUserTwoFactor(userId)
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.map((item) => item.id === userId ? result.user : item),
+      } : current)
+      setTwoFactorForms((current) => ({ ...current, [userId]: { secret: result.secret, otpauthUri: result.otpauthUri, code: '' } }))
+      notify('Two-factor setup started.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to start two-factor setup.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function enableAdminUserTwoFactor(userId: number) {
+    const form = twoFactorForms[userId] ?? { secret: '', otpauthUri: '', code: '' }
+    if (form.code.length !== 6) {
+      setError('Enter the 6-digit authenticator code.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.enableAdminUserTwoFactor(userId, form.code)
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.map((item) => item.id === userId ? result.user : item),
+      } : current)
+      setTwoFactorForms((current) => ({ ...current, [userId]: { secret: '', otpauthUri: '', code: '' } }))
+      notify('Two-factor authentication enabled.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to enable two-factor authentication.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function disableAdminUserTwoFactor(userId: number) {
+    if (!window.confirm('Disable two-factor authentication for this user?')) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.disableAdminUserTwoFactor(userId)
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.map((item) => item.id === userId ? result.user : item),
+      } : current)
+      setTwoFactorForms((current) => ({ ...current, [userId]: { secret: '', otpauthUri: '', code: '' } }))
+      notify('Two-factor authentication disabled.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to disable two-factor authentication.')
     } finally {
       setSaving(false)
     }
@@ -4494,8 +4587,8 @@ export function AdminDashboard() {
         <section className="bg-white mb-6 rounded-2xl border border-gray-100 p-6 shadow-sm">
           <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h3 className="text-xl font-black text-gray-900">Homepage Project Descriptions</h3>
-              <p className="text-gray-500 mt-2 text-sm leading-relaxed">Enable or disable project summaries on the homepage portfolio cards.</p>
+              <h3 className="text-xl font-black text-gray-900">Project Summaries</h3>
+              <p className="text-gray-500 mt-2 text-sm leading-relaxed">Enable or disable project summaries on public project cards.</p>
             </div>
             <select
               className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
@@ -4540,14 +4633,13 @@ export function AdminDashboard() {
               </div>
               <textarea 
                 className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
-                placeholder="Short summary" 
+                placeholder="Short summary (optional)" 
                 value={projectForm.summary} 
                 onChange={(e) => updateProjectField('summary', e.target.value)} 
-                required 
               />
               <textarea 
                 className="theme-input min-h-28 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
-                placeholder="Full description" 
+                placeholder="Full description (optional)" 
                 value={projectForm.description} 
                 onChange={(e) => updateProjectField('description', e.target.value)} 
               />
@@ -4681,7 +4773,7 @@ export function AdminDashboard() {
                   <div>
                     <h4 className="text-lg font-black text-gray-900">{project.title}</h4>
                     <p className="text-gray-500 mt-1 text-sm">{project.category} · {project.status}</p>
-                    <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p>
+                    {project.summary ? <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p> : null}
                   </div>
                   <div className="flex gap-2 md:flex-col md:mt-4">
                     <Button type="button" variant="ghost" className="min-h-10 px-4" onClick={() => editProject(project)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
@@ -5839,15 +5931,57 @@ export function AdminDashboard() {
         />
         <div className="grid gap-4">
           {cms?.users.map((user) => {
+            const profileForm = profileForms[user.id] ?? { name: user.name, email: user.email }
             const form = passwordForms[user.id] ?? { password: '', confirmation: '' }
+            const twoFactorForm = twoFactorForms[user.id] ?? { secret: '', otpauthUri: '', code: '' }
             return (
-            <article key={user.id} className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm xl:grid-cols-[1fr_1.5fr_auto] xl:items-end">
-              <div className="self-center">
-                <h3 className="font-black text-gray-900">{user.name}</h3>
-                <p className="text-gray-500 text-sm">{user.email}</p>
-                <span className="mt-3 inline-flex w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-black uppercase text-green-700">{user.role}</span>
+            <article key={user.id} className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-black text-gray-900">{user.name}</h3>
+                  <p className="text-gray-500 text-sm">{user.email}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-black uppercase text-green-700">{user.role}</span>
+                  <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black uppercase ${user.twoFactorEnabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                    2FA {user.twoFactorEnabled ? 'enabled' : 'off'}
+                  </span>
+                </div>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Name / username
+                  <input
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={profileForm.name}
+                    onChange={(event) => setProfileForms((current) => ({
+                      ...current,
+                      [user.id]: { ...(current[user.id] ?? { name: user.name, email: user.email }), name: event.target.value },
+                    }))}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Email
+                  <input
+                    type="email"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={profileForm.email}
+                    onChange={(event) => setProfileForms((current) => ({
+                      ...current,
+                      [user.id]: { ...(current[user.id] ?? { name: user.name, email: user.email }), email: event.target.value },
+                    }))}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700"
+                  disabled={saving}
+                  onClick={() => void updateAdminUserProfile(user.id)}
+                >
+                  Save Profile
+                </Button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
                 <label className="grid gap-2 text-sm font-bold text-gray-700">
                   New password
                   <input
@@ -5876,15 +6010,59 @@ export function AdminDashboard() {
                     }))}
                   />
                 </label>
+                <Button
+                  type="button"
+                  className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700"
+                  disabled={saving || form.password.length < 8 || form.password !== form.confirmation}
+                  onClick={() => void updateAdminUserPassword(user.id)}
+                >
+                  Update Password
+                </Button>
               </div>
-              <Button
-                type="button"
-                className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700"
-                disabled={saving || form.password.length < 8 || form.password !== form.confirmation}
-                onClick={() => void updateAdminUserPassword(user.id)}
-              >
-                Update Password
-              </Button>
+              <div className="grid gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-black text-gray-900">Two-factor authentication</h4>
+                    <p className="text-sm font-semibold text-gray-500">Optional login protection using a 6-digit authenticator app code.</p>
+                  </div>
+                  {user.twoFactorEnabled ? (
+                    <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" disabled={saving} onClick={() => void disableAdminUserTwoFactor(user.id)}>
+                      Disable 2FA
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" className="min-h-10 px-4" disabled={saving} onClick={() => void startAdminUserTwoFactorSetup(user.id)}>
+                      Start 2FA Setup
+                    </Button>
+                  )}
+                </div>
+                {twoFactorForm.secret && !user.twoFactorEnabled ? (
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                    <div className="grid gap-2">
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-500">Manual setup key</p>
+                      <code className="break-all rounded-lg bg-white px-3 py-2 text-sm font-black text-gray-800">{twoFactorForm.secret}</code>
+                      <p className="break-all text-xs font-semibold text-gray-500">{twoFactorForm.otpauthUri}</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <label className="grid gap-2 text-sm font-bold text-gray-700">
+                        Authenticator code
+                        <input
+                          className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={twoFactorForm.code}
+                          onChange={(event) => setTwoFactorForms((current) => ({
+                            ...current,
+                            [user.id]: { ...(current[user.id] ?? twoFactorForm), code: event.target.value.replace(/\D/g, '').slice(0, 6) },
+                          }))}
+                        />
+                      </label>
+                      <Button type="button" className="min-h-11 rounded-xl bg-blue-600 px-5 font-black text-white hover:bg-blue-700" disabled={saving || twoFactorForm.code.length !== 6} onClick={() => void enableAdminUserTwoFactor(user.id)}>
+                        Enable 2FA
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </article>
             )
           })}

@@ -8,8 +8,10 @@ use App\Http\Middleware\RequireAdminToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [BakhtechApiController::class, 'health']);
-Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:10,1');
-Route::post('/admin/login', [BakhtechApiController::class, 'login']);
+Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
+Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
@@ -40,7 +42,11 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::put('/admin/users/{id}', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
     Route::put('/admin/users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
+    Route::post('/admin/users/{id}/two-factor/setup', [BakhtechApiController::class, 'setupAdminUserTwoFactor'])->middleware('admin.role:admin');
+    Route::put('/admin/users/{id}/two-factor', [BakhtechApiController::class, 'enableAdminUserTwoFactor'])->middleware('admin.role:admin');
+    Route::delete('/admin/users/{id}/two-factor', [BakhtechApiController::class, 'disableAdminUserTwoFactor'])->middleware('admin.role:admin');
     Route::post('/admin/pages', [BakhtechApiController::class, 'createPage']);
     Route::put('/admin/pages/{id}', [BakhtechApiController::class, 'updatePage']);
     Route::delete('/admin/pages/{id}', [BakhtechApiController::class, 'deletePage']);

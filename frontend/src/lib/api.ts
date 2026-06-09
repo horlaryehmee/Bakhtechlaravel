@@ -503,6 +503,7 @@ export type AdminUser = {
   email: string
   name: string
   role: string
+  twoFactorEnabled: boolean
   createdAt: string
 }
 
@@ -522,11 +523,13 @@ const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
 export class ApiError extends Error {
   status: number
+  requiresTwoFactor: boolean
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, requiresTwoFactor = false) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.requiresTwoFactor = requiresTwoFactor
   }
 }
 
@@ -550,24 +553,35 @@ async function parseJsonResponse<T>(response: Response, fallbackMessage: string)
   return response.json() as Promise<T>
 }
 
-async function parseErrorMessage(response: Response, fallbackMessage: string) {
+async function parseErrorPayload(response: Response, fallbackMessage: string) {
   try {
-    const body = await parseJsonResponse<{ message?: string }>(response, fallbackMessage)
-    return body.message || fallbackMessage
+    const body = await parseJsonResponse<{ message?: string; requiresTwoFactor?: boolean }>(response, fallbackMessage)
+    return {
+      message: body.message || fallbackMessage,
+      requiresTwoFactor: Boolean(body.requiresTwoFactor),
+    }
   } catch (error) {
-    return error instanceof ApiError ? error.message : fallbackMessage
+    return {
+      message: error instanceof ApiError ? error.message : fallbackMessage,
+      requiresTwoFactor: false,
+    }
   }
 }
 
 export function getAdminToken() {
-  return localStorage.getItem(tokenKey)
+  const token = sessionStorage.getItem(tokenKey)
+  localStorage.removeItem(tokenKey)
+
+  return token
 }
 
 export function setAdminToken(token: string) {
-  localStorage.setItem(tokenKey, token)
+  localStorage.removeItem(tokenKey)
+  sessionStorage.setItem(tokenKey, token)
 }
 
 export function clearAdminToken() {
+  sessionStorage.removeItem(tokenKey)
   localStorage.removeItem(tokenKey)
 }
 
@@ -583,7 +597,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
 
   if (!response.ok) {
-    throw new ApiError(await parseErrorMessage(response, 'Request failed.'), response.status)
+    const errorPayload = await parseErrorPayload(response, 'Request failed.')
+    throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
   }
 
   if (response.status === 204) {
@@ -594,14 +609,31 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login(email: string, password: string) {
-    return request<{ token: string; admin: { id: number; email: string; name: string } }>('/api/admin/login', {
+  login(email: string, password: string, twoFactorCode = '') {
+    return request<{ token: string; admin: { id: number; email: string; name: string; twoFactorEnabled: boolean } }>('/api/admin/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, twoFactorCode }),
+    })
+  },
+  requestAdminPasswordReset(email: string) {
+    return request<{ message: string }>('/api/admin/password/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  },
+  resetAdminPassword(payload: { email: string; token: string; password: string; passwordConfirmation: string }) {
+    return request<{ message: string }>('/api/admin/password/reset', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: payload.email,
+        token: payload.token,
+        password: payload.password,
+        password_confirmation: payload.passwordConfirmation,
+      }),
     })
   },
   me() {
-    return request<{ admin: { id: number; email: string; name: string } }>('/api/admin/me')
+    return request<{ admin: { id: number; email: string; name: string; twoFactorEnabled: boolean } }>('/api/admin/me')
   },
   dashboard() {
     return request<DashboardData>('/api/admin/dashboard')
@@ -616,6 +648,28 @@ export const api = {
     return request<{ user: AdminUser }>(`/api/admin/users/${id}/password`, {
       method: 'PUT',
       body: JSON.stringify({ password, password_confirmation: passwordConfirmation }),
+    })
+  },
+  updateAdminUser(id: number, user: { name: string; email: string }) {
+    return request<{ user: AdminUser }>(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(user),
+    })
+  },
+  setupAdminUserTwoFactor(id: number) {
+    return request<{ secret: string; otpauthUri: string; user: AdminUser }>(`/api/admin/users/${id}/two-factor/setup`, {
+      method: 'POST',
+    })
+  },
+  enableAdminUserTwoFactor(id: number, code: string) {
+    return request<{ user: AdminUser }>(`/api/admin/users/${id}/two-factor`, {
+      method: 'PUT',
+      body: JSON.stringify({ code }),
+    })
+  },
+  disableAdminUserTwoFactor(id: number) {
+    return request<{ user: AdminUser }>(`/api/admin/users/${id}/two-factor`, {
+      method: 'DELETE',
     })
   },
   createPage(page: Partial<CmsPage>) {
@@ -790,7 +844,8 @@ export const api = {
       body: formData,
     }).then(async (response) => {
       if (!response.ok) {
-        throw new ApiError(await parseErrorMessage(response, 'Upload failed.'), response.status)
+        const errorPayload = await parseErrorPayload(response, 'Upload failed.')
+        throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
       }
       return parseJsonResponse<{ media: MediaItem }>(response, 'Upload failed.')
     })
@@ -975,7 +1030,8 @@ export const api = {
     })
 
     if (!response.ok) {
-      throw new ApiError(await parseErrorMessage(response, 'Export failed.'), response.status)
+      const errorPayload = await parseErrorPayload(response, 'Export failed.')
+      throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
     }
 
     return response.blob()

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('title');
             $table->string('slug')->unique();
             $table->string('category');
-            $table->text('summary');
+            $table->text('summary')->nullable();
             $table->longText('description')->nullable();
             $table->string('image')->nullable();
             $table->string('cover_image')->nullable();
@@ -107,4 +107,3 @@ return new class extends Migration
         Schema::dropIfExists('admins');
     }
 };
-

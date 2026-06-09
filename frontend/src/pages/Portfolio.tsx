@@ -112,7 +112,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
   return <img src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
 }
 
-function ProjectCard({ project, onPlayMedia }: { project: Project; onPlayMedia: (media: VideoMedia) => void }) {
+function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: VideoMedia) => void }) {
   const projectUrl = cleanProjectUrl(project.websiteUrl)
   const videoUrl = getProjectVideoUrl(project)
   const videoMedia: VideoMedia | null = getYoutubeEmbedUrl(videoUrl)
@@ -131,9 +131,9 @@ function ProjectCard({ project, onPlayMedia }: { project: Project; onPlayMedia: 
       <div className="mt-6 flex flex-1 flex-col">
         <span className="mb-4 w-fit rounded-full bg-[#ef4444]/10 px-3.5 py-1 text-xs font-medium text-[#ef4444]">{project.category}</span>
         <h3 className="text-lg font-semibold leading-tight text-[var(--foreground)] sm:text-xl">{project.title}</h3>
-        <p className="mt-3 flex-1 text-sm leading-6 text-[var(--foreground)]/70">{project.summary}</p>
+        {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-[var(--foreground)]/70">{project.summary}</p> : null}
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className={showDescription && project.summary ? 'mt-5 flex flex-wrap items-center gap-2' : 'mt-4 flex flex-wrap items-center gap-2'}>
           {projectUrl ? (
             <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[#ef4444]/10 px-3 text-[0.7rem] font-medium text-[#ef4444] transition hover:bg-[#ef4444]/20 sm:text-xs">
               View live project
@@ -179,15 +179,22 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
 export function Portfolio() {
   const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
   const [items, setItems] = useState<Project[]>(() => portfolio.map(fromFallback))
+  const [showProjectSummaries, setShowProjectSummaries] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
     async function loadProjects() {
       try {
-        const result = await api.publicProjects()
-        if (!cancelled && result.projects.length) {
-          setItems(result.projects.map(fromProject))
+        const [projectResult, settingsResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings()])
+        if (cancelled) return
+
+        if (projectResult.status === 'fulfilled' && projectResult.value.projects.length) {
+          setItems(projectResult.value.projects.map(fromProject))
+        }
+
+        if (settingsResult.status === 'fulfilled') {
+          setShowProjectSummaries(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
         }
       } catch {
         if (!cancelled) setItems(portfolio.map(fromFallback))
@@ -217,7 +224,7 @@ export function Portfolio() {
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {items.length ? (
-              items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} onPlayMedia={setActiveVideo} />)
+              items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} showDescription={showProjectSummaries} onPlayMedia={setActiveVideo} />)
             ) : (
               <div className="surface-card mx-auto max-w-xl rounded-3xl p-8 text-center text-[var(--foreground)]/70">Published projects will appear here.</div>
             )}

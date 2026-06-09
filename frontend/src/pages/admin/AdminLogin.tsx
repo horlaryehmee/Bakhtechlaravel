@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,8 +7,10 @@ import { ApiError, api, clearAdminToken, getAdminToken, setAdminToken } from '@/
 
 export function AdminLogin() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@bakhtech.com.ng')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
@@ -39,10 +42,14 @@ export function AdminLogin() {
     setLoading(true)
 
     try {
-      const result = await api.login(email, password)
+      const result = await api.login(email, password, twoFactorCode)
       setAdminToken(result.token)
       navigate('/admin/dashboard')
     } catch (loginError) {
+      if (loginError instanceof ApiError && loginError.requiresTwoFactor) {
+        setRequiresTwoFactor(true)
+        setTwoFactorCode('')
+      }
       setError(loginError instanceof Error ? loginError.message : 'Unable to sign in.')
     } finally {
       setLoading(false)
@@ -77,7 +84,12 @@ export function AdminLogin() {
               className="theme-input min-h-12 rounded-xl px-4 outline-none"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              onChange={(event) => {
+                setEmail(event.target.value)
+                setRequiresTwoFactor(false)
+                setTwoFactorCode('')
+              }}
               required
             />
           </label>
@@ -88,17 +100,41 @@ export function AdminLogin() {
               className="theme-input min-h-12 rounded-xl px-4 outline-none"
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Default: ChangeMe123!"
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setRequiresTwoFactor(false)
+                setTwoFactorCode('')
+              }}
+              autoComplete="current-password"
               required
             />
           </label>
+
+          {requiresTwoFactor ? (
+            <label className="grid gap-2 text-sm font-bold">
+              Authenticator code
+              <input
+                className="theme-input min-h-12 rounded-xl px-4 outline-none"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={twoFactorCode}
+                autoComplete="one-time-code"
+                onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+              />
+            </label>
+          ) : null}
 
           {error ? <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-500">{error}</p> : null}
 
           <Button className="mt-2 w-full rounded-xl" type="submit" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
+          <Link className="text-center text-sm font-bold text-[#1261ff] hover:underline" to="/admin/forgot-password">
+            Forgot password?
+          </Link>
         </form>
       </section>
     </main>

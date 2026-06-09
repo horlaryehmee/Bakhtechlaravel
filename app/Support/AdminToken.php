@@ -37,7 +37,7 @@ class AdminToken
         }
 
         return DB::table('admins')
-            ->select('id', 'email', 'name', 'role', 'created_at')
+            ->select('id', 'email', 'name', 'role', 'two_factor_enabled', 'created_at')
             ->where('id', $adminId)
             ->first();
     }
