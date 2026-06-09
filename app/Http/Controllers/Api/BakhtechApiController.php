@@ -229,6 +229,26 @@ class BakhtechApiController extends Controller
         return ['user' => $this->adminUserShape(DB::table('admins')->where('id', $id)->first())];
     }
 
+    public function deleteAdminUser(Request $request, int $id)
+    {
+        $admin = DB::table('admins')->where('id', $id)->first();
+        if (!$admin) {
+            return response()->json(['message' => 'Admin user not found.'], 404);
+        }
+
+        if ((int) $request->attributes->get('admin')?->id === $id) {
+            return response()->json(['message' => 'You cannot delete the admin account you are currently using.'], 422);
+        }
+
+        if (DB::table('admins')->count() <= 1) {
+            return response()->json(['message' => 'You cannot delete the last admin user.'], 422);
+        }
+
+        DB::table('admins')->where('id', $id)->delete();
+
+        return response()->noContent();
+    }
+
     public function setupAdminUserTwoFactor(int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();

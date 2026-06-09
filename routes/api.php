@@ -42,6 +42,9 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::post('/admin/profile-users/{id}/save', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
+    Route::post('/admin/profile-users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
+    Route::post('/admin/profile-users/{id}/delete', [BakhtechApiController::class, 'deleteAdminUser'])->middleware('admin.role:admin');
     Route::post('/admin/users/{id}', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
     Route::put('/admin/users/{id}', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
     Route::post('/admin/users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');

@@ -645,15 +645,20 @@ export const api = {
     return request<CmsData>('/api/admin/cms')
   },
   updateAdminUserPassword(id: number, password: string, passwordConfirmation: string) {
-    return request<{ user: AdminUser }>(`/api/admin/users/${id}/password`, {
+    return request<{ user: AdminUser }>(`/api/admin/profile-users/${id}/password`, {
       method: 'POST',
       body: JSON.stringify({ password, password_confirmation: passwordConfirmation }),
     })
   },
   updateAdminUser(id: number, user: { name: string; email: string }) {
-    return request<{ user: AdminUser }>(`/api/admin/users/${id}`, {
+    return request<{ user: AdminUser }>(`/api/admin/profile-users/${id}/save`, {
       method: 'POST',
       body: JSON.stringify(user),
+    })
+  },
+  deleteAdminUser(id: number) {
+    return request<void>(`/api/admin/profile-users/${id}/delete`, {
+      method: 'POST',
     })
   },
   setupAdminUserTwoFactor(id: number) {

@@ -1660,6 +1660,27 @@ export function AdminDashboard() {
     }
   }
 
+  async function deleteAdminUser(userId: number) {
+    const user = cms?.users.find((item) => item.id === userId)
+    if (!user || !window.confirm(`Delete admin user ${user.email}?`)) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      await api.deleteAdminUser(userId)
+      setCms((current) => current ? {
+        ...current,
+        users: current.users.filter((item) => item.id !== userId),
+      } : current)
+      notify('Admin user deleted.')
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete admin user.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function updateProjectDisplaySetting(value: string) {
     const nextSettings = { ...settingsForm, homePortfolioShowDescriptions: value }
     setSettingsForm(nextSettings)
@@ -5946,6 +5967,11 @@ export function AdminDashboard() {
                   <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-black uppercase ${user.twoFactorEnabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                     2FA {user.twoFactorEnabled ? 'enabled' : 'off'}
                   </span>
+                  {cms.users.length > 1 ? (
+                    <Button type="button" variant="ghost" className="min-h-8 px-3 text-xs text-red-500" disabled={saving} onClick={() => void deleteAdminUser(user.id)}>
+                      Delete
+                    </Button>
+                  ) : null}
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
