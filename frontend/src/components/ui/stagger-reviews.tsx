@@ -216,15 +216,13 @@ function ReviewCard({ cardSize, expanded, handleMove, onToggleExpanded, position
           <img
             src={review.authorImage}
             alt={review.authorName}
-            className="h-11 w-11 bg-[#eef1f6] object-cover object-top sm:h-12 sm:w-12"
-            style={{ boxShadow: isCenter ? '3px 3px 0px rgba(255,255,255,0.16)' : '3px 3px 0px #f8f8fb' }}
+            className="h-11 w-11 rounded-full object-cover object-center sm:h-12 sm:w-12"
             loading="lazy"
             decoding="async"
           />
         ) : (
           <span
-            className={cn('grid h-11 w-11 place-items-center text-sm font-black sm:h-12 sm:w-12 sm:text-base', isCenter ? 'bg-white text-[#111827]' : 'bg-[#eef1f6] text-[#111827]')}
-            style={{ boxShadow: isCenter ? '3px 3px 0px rgba(255,255,255,0.16)' : '3px 3px 0px #f8f8fb' }}
+            className={cn('grid h-11 w-11 place-items-center rounded-full text-sm font-black sm:h-12 sm:w-12 sm:text-base', isCenter ? 'bg-white text-[#111827]' : 'bg-[#eef1f6] text-[#111827]')}
           >
             {initials(review.authorName)}
           </span>

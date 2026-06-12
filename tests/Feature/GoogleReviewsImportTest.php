@@ -125,4 +125,32 @@ class GoogleReviewsImportTest extends TestCase
         $this->assertDatabaseHas('reviews', ['external_id' => 'review-1']);
         $this->assertDatabaseMissing('settings', ['key' => 'google_trustindex_access_token']);
     }
+
+    public function test_import_collects_reviews_from_all_nested_pages(): void
+    {
+        $result = app(GoogleBusinessReviewsService::class)->importPayload([
+            'id' => 'google-place-123',
+            'reviews' => [
+                'count' => 3,
+                'pages' => [
+                    [
+                        'items' => [
+                            ['id' => 'review-1', 'reviewer' => ['name' => 'One'], 'text' => 'First', 'rating' => 5],
+                            ['id' => 'review-2', 'reviewer' => ['name' => 'Two'], 'text' => 'Second', 'rating' => 4],
+                        ],
+                    ],
+                    [
+                        'items' => [
+                            ['id' => 'review-3', 'reviewer' => ['name' => 'Three'], 'text' => 'Third', 'rating' => 5],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(3, $result['imported']);
+        $this->assertSame(3, DB::table('reviews')->where('provider', 'google')->count());
+        $this->assertSame(3, app(GoogleBusinessReviewsService::class)->connection()['googleReviewCount']);
+    }
 }

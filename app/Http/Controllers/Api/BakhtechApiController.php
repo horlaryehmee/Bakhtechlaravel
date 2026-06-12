@@ -228,7 +228,36 @@ class BakhtechApiController extends Controller
             return ['reviews' => []];
         }
 
-        return ['reviews' => $this->reviewQuery(false)->limit(6)->get()->map(fn ($row) => $this->reviewShape($row))];
+        $settings = $this->settings();
+        $minWords = max(0, (int) ($settings['reviewFrontendMinWords'] ?? 0));
+        $maxWords = max(0, (int) ($settings['reviewFrontendMaxWords'] ?? 0));
+        $minCharacters = max(0, (int) ($settings['reviewFrontendMinCharacters'] ?? 0));
+        $maxCharacters = max(0, (int) ($settings['reviewFrontendMaxCharacters'] ?? 0));
+        $minRating = min(5, max(1, (int) ($settings['reviewFrontendMinRating'] ?? 1)));
+        $provider = trim((string) ($settings['reviewFrontendProvider'] ?? 'all'));
+        $featuredOnly = filter_var($settings['reviewFrontendFeaturedOnly'] ?? false, FILTER_VALIDATE_BOOL);
+        $limit = min(50, max(1, (int) ($settings['reviewFrontendLimit'] ?? 6)));
+
+        $reviews = $this->reviewQuery(false)
+            ->get()
+            ->filter(function ($row) use ($minWords, $maxWords, $minCharacters, $maxCharacters, $minRating, $provider, $featuredOnly) {
+                $content = trim(strip_tags((string) $row->content));
+                $wordCount = str_word_count($content);
+                $characterCount = mb_strlen($content);
+
+                return (int) $row->rating >= $minRating
+                    && ($provider === '' || $provider === 'all' || $row->provider === $provider)
+                    && (!$featuredOnly || (bool) $row->is_featured)
+                    && $wordCount >= $minWords
+                    && ($maxWords === 0 || $wordCount <= $maxWords)
+                    && $characterCount >= $minCharacters
+                    && ($maxCharacters === 0 || $characterCount <= $maxCharacters);
+            })
+            ->take($limit)
+            ->map(fn ($row) => $this->reviewShape($row))
+            ->values();
+
+        return ['reviews' => $reviews];
     }
 
     public function cms()

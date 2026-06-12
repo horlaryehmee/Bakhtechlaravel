@@ -511,6 +511,9 @@ export type GoogleReviewConnection = {
   connectionEndpoint: string
   lastSyncedAt: string
   lastError: string
+  importedReviewCount: number
+  googleReviewCount: number
+  connectorLimit: string
 }
 
 export type AdminUser = {

@@ -45,6 +45,9 @@ class GoogleBusinessReviewsService
             'connectionEndpoint' => url('/api/admin/reviews/google/connection'),
             'lastSyncedAt' => $this->setting('google_business_reviews_last_synced_at'),
             'lastError' => $this->setting('google_business_reviews_last_error'),
+            'importedReviewCount' => (int) DB::table('reviews')->where('provider', 'google')->count(),
+            'googleReviewCount' => (int) $this->setting('google_trustindex_review_count', '0'),
+            'connectorLimit' => 'Trustindex free connections may return only 10 reviews. All reviews require a Trustindex plan/API or Google Business Profile API access.',
         ];
     }
 
@@ -55,6 +58,7 @@ class GoogleBusinessReviewsService
             'google_trustindex_access_token',
             'google_trustindex_business_name',
             'google_trustindex_business_address',
+            'google_trustindex_review_count',
             'google_business_reviews_last_synced_at',
             'google_business_reviews_last_error',
         ])->delete();
@@ -172,22 +176,45 @@ class GoogleBusinessReviewsService
 
     private function reviewItems(array $payload): array
     {
-        $reviews = $payload['reviews'] ?? [];
-        if (!is_array($reviews)) {
-            return [];
-        }
+        return collect($this->findReviewLists($payload))
+            ->flatten(1)
+            ->filter(fn ($review) => is_array($review))
+            ->unique(fn ($review) => (string) ($review['id'] ?? $review['reviewId'] ?? md5(json_encode($review))))
+            ->values()
+            ->all();
+    }
 
-        if (array_is_list($reviews)) {
-            return $reviews;
-        }
+    private function findReviewLists(array $payload): array
+    {
+        $lists = [];
 
-        foreach (['items', 'data', 'reviews'] as $key) {
-            if (isset($reviews[$key]) && is_array($reviews[$key]) && array_is_list($reviews[$key])) {
-                return $reviews[$key];
+        foreach ($payload as $key => $value) {
+            if (!is_array($value)) {
+                continue;
             }
+
+            if ($key === 'reviews' && array_is_list($value)) {
+                $lists[] = $value;
+                continue;
+            }
+
+            if (in_array($key, ['items', 'data'], true) && array_is_list($value) && $this->looksLikeReviewList($value)) {
+                $lists[] = $value;
+                continue;
+            }
+
+            $lists = [...$lists, ...$this->findReviewLists($value)];
         }
 
-        return [];
+        return $lists;
+    }
+
+    private function looksLikeReviewList(array $items): bool
+    {
+        $first = $items[0] ?? null;
+
+        return is_array($first)
+            && (isset($first['reviewer']) || isset($first['rating']) || isset($first['text']) || isset($first['comment']));
     }
 
     private function storeBusiness(array $payload): void
@@ -209,6 +236,10 @@ class GoogleBusinessReviewsService
 
         $this->setSetting('google_trustindex_business_name', trim((string) $name));
         $this->setSetting('google_trustindex_business_address', trim((string) ($payload['address'] ?? '')));
+        $reviewCount = data_get($payload, 'reviews.count', $payload['rating_number'] ?? $payload['review_count'] ?? null);
+        if (is_numeric($reviewCount)) {
+            $this->setSetting('google_trustindex_review_count', (string) (int) $reviewCount);
+        }
     }
 
     private function reviewSourceId(array $payload): int

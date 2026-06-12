@@ -1297,7 +1297,18 @@ export function AdminDashboard() {
   }
 
   async function saveReviewIntegrationSettings() {
-    const keys = ['googleReviewUrl', 'trustpilotReviewUrl']
+    const keys = [
+      'googleReviewUrl',
+      'trustpilotReviewUrl',
+      'reviewFrontendMinWords',
+      'reviewFrontendMaxWords',
+      'reviewFrontendMinCharacters',
+      'reviewFrontendMaxCharacters',
+      'reviewFrontendMinRating',
+      'reviewFrontendProvider',
+      'reviewFrontendFeaturedOnly',
+      'reviewFrontendLimit',
+    ]
     const nextSettings = { ...settingsForm }
     keys.forEach((key) => {
       nextSettings[key] = settingsForm[key] ?? ''
@@ -4963,6 +4974,12 @@ export function AdminDashboard() {
               {googleReviewSettings?.lastSyncedAt ? (
                 <p className="mt-1 text-xs font-semibold text-gray-500">Last import: {googleReviewSettings.lastSyncedAt}</p>
               ) : null}
+              {googleReviewSettings?.connected ? (
+                <p className="mt-1 text-xs font-semibold text-gray-500">
+                  Imported {googleReviewSettings.importedReviewCount} review(s)
+                  {googleReviewSettings.googleReviewCount > 0 ? ` of ${googleReviewSettings.googleReviewCount} reported by Google` : ''}.
+                </p>
+              ) : null}
               {googleReviewSettings?.lastError ? (
                 <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600">{googleReviewSettings.lastError}</p>
               ) : null}
@@ -5023,8 +5040,96 @@ export function AdminDashboard() {
                   onChange={(event) => setSettingsForm((current) => ({ ...current, trustpilotReviewUrl: event.target.value }))}
                 />
               </label>
+              <div className="mt-2 border-t border-gray-200 pt-5">
+                <h3 className="text-xl font-black text-gray-900">Frontend Review Filters</h3>
+                <p className="mt-1 text-sm text-gray-500">Only reviews matching these rules will appear on the public website. All imported reviews remain in Review Management.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Minimum words
+                  <input
+                    type="number"
+                    min="0"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendMinWords ?? '0'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendMinWords: event.target.value }))}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Maximum words
+                  <input
+                    type="number"
+                    min="0"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendMaxWords ?? '0'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendMaxWords: event.target.value }))}
+                  />
+                  <span className="text-xs font-medium text-gray-500">Use 0 for no maximum.</span>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Minimum characters
+                  <input
+                    type="number"
+                    min="0"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendMinCharacters ?? '0'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendMinCharacters: event.target.value }))}
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Maximum characters
+                  <input
+                    type="number"
+                    min="0"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendMaxCharacters ?? '0'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendMaxCharacters: event.target.value }))}
+                  />
+                  <span className="text-xs font-medium text-gray-500">Use 0 for no maximum.</span>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Minimum rating
+                  <select
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendMinRating ?? '1'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendMinRating: event.target.value }))}
+                  >
+                    {[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating}+ stars</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Platform
+                  <select
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendProvider ?? 'all'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendProvider: event.target.value }))}
+                  >
+                    <option value="all">All platforms</option>
+                    {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Reviews displayed
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm.reviewFrontendLimit ?? '6'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendLimit: event.target.value }))}
+                  />
+                </label>
+                <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-gray-200 px-4 text-sm font-bold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={(settingsForm.reviewFrontendFeaturedOnly ?? 'false') === 'true'}
+                    onChange={(event) => setSettingsForm((current) => ({ ...current, reviewFrontendFeaturedOnly: String(event.target.checked) }))}
+                  />
+                  Featured reviews only
+                </label>
+              </div>
               <Button type="button" className="w-fit rounded-xl bg-blue-600 px-4 text-white" onClick={() => void saveReviewIntegrationSettings()} disabled={saving}>
-                Save Review Settings
+                Save Links & Filters
               </Button>
             </div>
             <div className="grid content-start gap-3">
@@ -5035,6 +5140,8 @@ export function AdminDashboard() {
                 ['Business', googleReviewSettings?.businessName || 'Not selected'],
                 ['Google Place ID', googleReviewSettings?.pageId || 'Not available'],
                 ['Access token', googleReviewSettings?.hasAccessToken ? googleReviewSettings.maskedAccessToken : 'Not received'],
+                ['Imported reviews', String(googleReviewSettings?.importedReviewCount ?? 0)],
+                ['Google review total', googleReviewSettings?.googleReviewCount ? String(googleReviewSettings.googleReviewCount) : 'Not reported'],
                 ['Last import', googleReviewSettings?.lastSyncedAt || 'Never'],
                 ['Connection endpoint', googleReviewSettings?.connectionEndpoint || `${window.location.origin}/api/admin/reviews/google/connection`],
                 ['Webhook URL', googleReviewSettings?.webhookUrl || `${window.location.origin}/api/reviews/google/trustindex-webhook`],
@@ -5046,6 +5153,9 @@ export function AdminDashboard() {
               ))}
               <p className="rounded-xl bg-blue-500/10 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-700">
                 After every cPanel update, run <code>php artisan optimize:clear</code> and <code>php artisan optimize</code> so Laravel loads new API routes.
+              </p>
+              <p className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-semibold leading-relaxed text-amber-700">
+                {googleReviewSettings?.connectorLimit || 'Trustindex free connections may return only 10 reviews. All reviews require a Trustindex plan/API or Google Business Profile API access.'}
               </p>
             </div>
           </section>
@@ -6373,7 +6483,20 @@ export function AdminDashboard() {
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
     const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
-    const reviewKeys = ['googleReviewUrl', 'trustpilotReviewUrl', 'google_business_client_id', 'google_business_client_secret']
+    const reviewKeys = [
+      'googleReviewUrl',
+      'trustpilotReviewUrl',
+      'google_business_client_id',
+      'google_business_client_secret',
+      'reviewFrontendMinWords',
+      'reviewFrontendMaxWords',
+      'reviewFrontendMinCharacters',
+      'reviewFrontendMaxCharacters',
+      'reviewFrontendMinRating',
+      'reviewFrontendProvider',
+      'reviewFrontendFeaturedOnly',
+      'reviewFrontendLimit',
+    ]
     const visibleKeySet = new Set(['navigation_items', ...themeKeys, ...siteKeys, ...socialKeys, ...reviewKeys])
     const belongsOutsideSiteSettings = (key: string) => (
       key.startsWith('invoice')
