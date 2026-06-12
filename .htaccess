@@ -12,7 +12,7 @@
     RewriteRule ^portfolio-marquee/(.*)$ public/portfolio-marquee/$1 [L]
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
-    RewriteRule ^(bakhtech-logo-dark\.png|bakhtech-logo-light\.png|bg1\.jpg|favicon\.svg|icons\.svg|robots\.txt)$ public/$1 [L]
+    RewriteRule ^(bakhtech-logo-dark\.png|bakhtech-logo-light\.png|bg1\.jpg|favicon\.png|favicon\.svg|icons\.svg|robots\.txt)$ public/$1 [L]
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
