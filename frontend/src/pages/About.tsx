@@ -23,7 +23,7 @@ import {
   Smartphone,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useTheme } from '@/components/theme/ThemeProvider'
+import { useTheme } from '@/components/theme/theme-context'
 
 const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
 const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))

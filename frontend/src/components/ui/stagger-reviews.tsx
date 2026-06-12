@@ -255,16 +255,12 @@ function ReviewCard({ cardSize, expanded, handleMove, onToggleExpanded, position
   )
 }
 
-export function StaggerReviews({ reviews }: { reviews: Review[] }) {
+function StaggerReviewsDeck({ reviews }: { reviews: Review[] }) {
   const [cardSize, setCardSize] = useState(320)
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null)
-  const [reviewList, setReviewList] = useState<StaggerReview[]>([])
+  const [reviewList, setReviewList] = useState<StaggerReview[]>(() => reviews.map((review, index) => ({ ...review, tempId: index })))
   const dragState = useRef<{ startX: number | null; consumedClick: boolean }>({ startX: null, consumedClick: false })
   const centerIndex = useMemo(() => Math.floor(reviewList.length / 2), [reviewList.length])
-
-  useEffect(() => {
-    setReviewList(reviews.map((review, index) => ({ ...review, tempId: index })))
-  }, [reviews])
 
   useEffect(() => {
     const updateSize = () => {
@@ -368,4 +364,9 @@ export function StaggerReviews({ reviews }: { reviews: Review[] }) {
       </div>
     </div>
   )
+}
+
+export function StaggerReviews({ reviews }: { reviews: Review[] }) {
+  const reviewKey = reviews.map((review) => `${review.id}:${review.updatedAt || review.reviewedAt}`).join('|')
+  return <StaggerReviewsDeck key={reviewKey} reviews={reviews} />
 }

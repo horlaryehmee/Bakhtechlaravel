@@ -10,6 +10,7 @@ const AdminResetPassword = lazy(() => import('@/pages/admin/AdminResetPassword')
 const About = lazy(() => import('@/pages/About').then((module) => ({ default: module.About })))
 const Booking = lazy(() => import('@/pages/Booking').then((module) => ({ default: module.Booking })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
+const CmsPage = lazy(() => import('@/pages/CmsPage').then((module) => ({ default: module.CmsPage })))
 const Home2 = lazy(() => import('@/pages/Home2').then((module) => ({ default: module.Home2 })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
@@ -65,6 +66,7 @@ function App() {
             <Route path="booking" element={<Booking />} />
             <Route path="book/:slug" element={<Booking />} />
             <Route path="contact" element={<Contact />} />
+            <Route path=":pageSlug" element={<CmsPage />} />
           </Route>
         </Routes>
       </Suspense>

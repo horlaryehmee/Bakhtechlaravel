@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
@@ -40,7 +39,6 @@ import {
   Moon,
   Menu,
   TrendingUp,
-  TrendingDown,
   UserPlus,
   Send,
 } from 'lucide-react'
@@ -68,10 +66,11 @@ import {
   type InvoiceOverview,
   type MediaItem,
   type PricingCategory,
-  type PricingFeature,
+  type PricingPlanFeature,
   type PricingPlan,
   type Project,
   type ProjectInput,
+  type GoogleReviewLocation,
   type Review,
   type ReviewInput,
 } from '@/lib/api'
@@ -95,6 +94,9 @@ type BookingQuestion = {
   options?: string[]
 }
 type QuestionModalState = { mode: 'add' | 'edit'; index: number | null; question: BookingQuestion }
+type HeaderMenuItem = { label: string; href: string; visible: boolean; children: HeaderMenuItem[] }
+type CurrencyAccountRow = Record<string, string>
+type InvoiceSettingsField = { key: string; label: string; type?: string; multiline?: boolean; options?: string[]; placeholder?: string }
 
 const defaultInvoiceListMeta: InvoiceListMeta = { page: 1, perPage: 25, total: 0, lastPage: 1 }
 
@@ -319,13 +321,6 @@ const emptyPricingCategoryForm: Partial<PricingCategory> = {
   sortOrder: 0,
 }
 
-const emptyPricingFeatureForm: Partial<PricingFeature> = {
-  title: '',
-  description: '',
-  groupName: 'Design',
-  isActive: true,
-}
-
 const emptyPricingPlanForm: Partial<PricingPlan> = {
   pricingCategoryId: 0,
   name: '',
@@ -489,6 +484,8 @@ const settingLabels: Record<string, string> = {
   contactEmail: 'Contact email',
   facebookUrl: 'Facebook link',
   googleReviewUrl: 'Google review link',
+  google_business_client_id: 'Google Business Client ID',
+  google_business_client_secret: 'Google Business Client Secret',
   homePortfolioShowDescriptions: 'Show public project summaries',
   instagramUrl: 'Instagram link',
   linkedinUrl: 'LinkedIn link',
@@ -524,19 +521,19 @@ const defaultHeaderMenu = [
   { label: 'Contact', href: '/contact', visible: true, children: [] },
 ]
 
-function parseHeaderMenu(value?: string) {
+function parseHeaderMenu(value?: string): HeaderMenuItem[] {
   try {
-    const parsed = JSON.parse(value || '[]')
+    const parsed: unknown = JSON.parse(value || '[]')
     if (Array.isArray(parsed) && parsed.length) {
-      return parsed.map((item) => ({
-        label: String(item?.label || ''),
-        href: String(item?.href || ''),
-        visible: item?.visible !== false,
-        children: Array.isArray(item?.children)
-          ? item.children.map((child: any) => ({
-              label: String(child?.label || ''),
-              href: String(child?.href || ''),
-              visible: child?.visible !== false,
+      return parsed.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object')).map((item) => ({
+        label: String(item.label || ''),
+        href: String(item.href || ''),
+        visible: item.visible !== false,
+        children: Array.isArray(item.children)
+          ? item.children.filter((child): child is Record<string, unknown> => Boolean(child && typeof child === 'object')).map((child) => ({
+              label: String(child.label || ''),
+              href: String(child.href || ''),
+              visible: child.visible !== false,
               children: [],
             }))
           : [],
@@ -647,14 +644,9 @@ export function AdminDashboard() {
   const [invoiceClientsMeta, setInvoiceClientsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceClientsMeta ?? defaultInvoiceListMeta)
   const [invoiceEmailLogsMeta, setInvoiceEmailLogsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceEmailLogsMeta ?? defaultInvoiceListMeta)
   const [pricingCategories, setPricingCategories] = useState<PricingCategory[]>([])
-  const [pricingFeatures, setPricingFeatures] = useState<PricingFeature[]>([])
   const [pricingCategoryForm, setPricingCategoryForm] = useState(emptyPricingCategoryForm)
-  const [pricingFeatureForm, setPricingFeatureForm] = useState(emptyPricingFeatureForm)
   const [pricingPlanForm, setPricingPlanForm] = useState(emptyPricingPlanForm)
-  const [pricingFeatureDraft, setPricingFeatureDraft] = useState({ title: '', description: '', groupName: 'General' })
   const [editingPricingCategory, setEditingPricingCategory] = useState<PricingCategory | null>(null)
-  const [editingPricingFeature, setEditingPricingFeature] = useState<PricingFeature | null>(null)
-  const [editingPricingPlan, setEditingPricingPlan] = useState<PricingPlan | null>(null)
   const [invoiceListPage, setInvoiceListPage] = useState(1)
   const [invoiceClientsPage, setInvoiceClientsPage] = useState(1)
   const [invoiceEmailLogsPage, setInvoiceEmailLogsPage] = useState(1)
@@ -672,6 +664,10 @@ export function AdminDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
+  const [googleReviewLocations, setGoogleReviewLocations] = useState<GoogleReviewLocation[]>([])
+  const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
+  const [googleReviewSettings, setGoogleReviewSettings] = useState<Record<string, string>>({})
+  const loadedGoogleReviewSettings = useRef(false)
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
   const [projects, setProjects] = useState<Project[]>(initialAdminCache?.projects ?? [])
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -745,7 +741,7 @@ export function AdminDashboard() {
   }, [activeInvoiceSubsection])
 
   useEffect(() => {
-    setProjectPage(1)
+    queueMicrotask(() => setProjectPage(1))
   }, [projectSearch, projectStatusFilter, projectCategoryFilter, projectPerPage])
 
   // Global search implementation
@@ -847,11 +843,13 @@ export function AdminDashboard() {
 
   const cards = useMemo(() => (dashboard ? metricCards(dashboard) : []), [dashboard])
   const activeMenu = menuItems.find((item) => item.id === activeSection) ?? menuItems[0]
+  const loadAdminDataEffect = useEffectEvent((showLoading: boolean) => loadAdminData(showLoading))
+  const loadInvoiceDataEffect = useEffectEvent((options: Parameters<typeof loadInvoiceData>[0]) => loadInvoiceData(options))
 
   useEffect(() => {
     if (!token) return
-    void loadAdminData(!initialAdminCache)
-  }, [token])
+    void loadAdminDataEffect(!initialAdminCache)
+  }, [initialAdminCache, token])
 
   useEffect(() => {
     if (!token || activeSection !== 'bookings') return
@@ -863,7 +861,7 @@ export function AdminDashboard() {
     const documentType = ['invoices', 'quotes', 'receipts'].includes(activeInvoiceSubsection)
       ? activeInvoiceSubsection.slice(0, -1)
       : ''
-    void loadInvoiceData({
+    void loadInvoiceDataEffect({
       documentPage: invoiceListPage,
       documentType,
       documentStatus: invoiceStatusFilter,
@@ -875,7 +873,7 @@ export function AdminDashboard() {
       emailType: invoiceEmailTypeFilter,
       emailSearch: invoiceSearch,
     })
-  }, [token, activeSection, activeInvoiceSubsection, invoiceListPage, invoiceClientsPage, invoiceEmailLogsPage, invoiceStatusFilter, invoiceEmailStatusFilter, invoiceEmailTypeFilter])
+  }, [token, activeSection, activeInvoiceSubsection, invoiceListPage, invoiceClientsPage, invoiceEmailLogsPage, invoiceStatusFilter, invoiceEmailStatusFilter, invoiceEmailTypeFilter, invoiceSearch])
 
   useEffect(() => {
     if (!token || activeSection !== 'pricing') return
@@ -883,18 +881,45 @@ export function AdminDashboard() {
   }, [token, activeSection])
 
   useEffect(() => {
+    if (!token || activeSection !== 'reviews' || loadedGoogleReviewSettings.current) return
+    loadedGoogleReviewSettings.current = true
+    void loadGoogleReviewLocations(false)
+  }, [token, activeSection])
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const googleStatus = params.get('booking_google')
-    if (!googleStatus) return
-    setActiveSection('bookings')
-    setActiveBookingSection('settings')
+    const googleReviewsStatus = params.get('google_reviews')
+
+    if (googleStatus) {
+      queueMicrotask(() => {
+        setActiveSection('bookings')
+        setActiveBookingSection('settings')
+      })
+    }
+
+    if (googleReviewsStatus) {
+      queueMicrotask(() => setActiveSection('reviews'))
+    }
+
     if (googleStatus === 'connected') {
       notify('Google account connected.')
       void loadGoogleCalendars()
-    } else {
-      setError('Google connection failed. Please try again.')
+    } else if (googleStatus === 'failed') {
+      queueMicrotask(() => setError('Google connection failed. Please try again.'))
     }
-    window.history.replaceState({}, '', window.location.pathname)
+
+    if (googleReviewsStatus === 'connected') {
+      loadedGoogleReviewSettings.current = true
+      notify('Google reviews account connected.')
+      void loadGoogleReviewLocations(false)
+    } else if (googleReviewsStatus === 'failed') {
+      queueMicrotask(() => setError('Google reviews connection failed. Please try again.'))
+    }
+
+    if (googleStatus || googleReviewsStatus) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   if (!token) {
@@ -1000,7 +1025,6 @@ export function AdminDashboard() {
     try {
       const result = await api.adminPricing()
       setPricingCategories(result.categories)
-      setPricingFeatures(result.features)
       setPricingPlanForm((current) => ({
         ...current,
         pricingCategoryId: current.pricingCategoryId || result.categories[0]?.id || 0,
@@ -1015,64 +1039,17 @@ export function AdminDashboard() {
     setSaving(true)
     try {
       const payload = pricingCategoryForm
-      editingPricingCategory
-        ? await api.updatePricingCategory(editingPricingCategory.id, payload)
-        : await api.createPricingCategory(payload)
+      if (editingPricingCategory) {
+        await api.updatePricingCategory(editingPricingCategory.id, payload)
+      } else {
+        await api.createPricingCategory(payload)
+      }
       notify(editingPricingCategory ? 'Pricing category updated.' : 'Pricing category created.')
       setEditingPricingCategory(null)
       setPricingCategoryForm(emptyPricingCategoryForm)
       await loadPricingData()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing category.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function savePricingFeature(event: FormEvent) {
-    event.preventDefault()
-    setSaving(true)
-    try {
-      editingPricingFeature
-        ? await api.updatePricingFeature(editingPricingFeature.id, pricingFeatureForm)
-        : await api.createPricingFeature(pricingFeatureForm)
-      notify(editingPricingFeature ? 'Pricing feature updated.' : 'Pricing feature created.')
-      setEditingPricingFeature(null)
-      setPricingFeatureForm(emptyPricingFeatureForm)
-      await loadPricingData()
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing feature.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function savePricingPlan(event: FormEvent) {
-    event.preventDefault()
-    setSaving(true)
-    try {
-      const prices = calculatedPricingPrices(Number(pricingPlanForm.prices?.NGN || 0), settingsForm)
-      const payload = {
-        ...pricingPlanForm,
-        pricingCategoryId: Number(pricingPlanForm.pricingCategoryId || pricingCategories[0]?.id || 0),
-        prices,
-        promoPrices: {
-          NGN: pricingPlanForm.promoPrices?.NGN ? Number(pricingPlanForm.promoPrices.NGN) : undefined,
-          USD: pricingPlanForm.promoPrices?.NGN ? Math.round(Number(pricingPlanForm.promoPrices.NGN) * pricingRate(settingsForm, 'USD') * 100) / 100 : undefined,
-          GBP: pricingPlanForm.promoPrices?.NGN ? Math.round(Number(pricingPlanForm.promoPrices.NGN) * pricingRate(settingsForm, 'GBP') * 100) / 100 : undefined,
-        },
-        discountPercentage: Number(pricingPlanForm.discountPercentage || 0),
-        features: pricingPlanForm.features || [],
-      }
-      editingPricingPlan
-        ? await api.updatePricingPlan(editingPricingPlan.id, payload)
-        : await api.createPricingPlan(payload)
-      notify(editingPricingPlan ? 'Pricing plan updated and versioned.' : 'Pricing plan created.')
-      setEditingPricingPlan(null)
-      setPricingPlanForm({ ...emptyPricingPlanForm, pricingCategoryId: pricingCategories[0]?.id || 0 })
-      await loadPricingData()
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save pricing plan.')
     } finally {
       setSaving(false)
     }
@@ -1102,13 +1079,6 @@ export function AdminDashboard() {
     if (!window.confirm('Delete this pricing category and its plans?')) return
     await api.deletePricingCategory(id)
     notify('Pricing category deleted.')
-    await loadPricingData()
-  }
-
-  async function deletePricingFeature(id: number) {
-    if (!window.confirm('Delete this reusable feature? Plan snapshots remain locked on existing invoices.')) return
-    await api.deletePricingFeature(id)
-    notify('Pricing feature deleted.')
     await loadPricingData()
   }
 
@@ -1336,6 +1306,97 @@ export function AdminDashboard() {
     await api.deleteReview(id)
     setCms((current) => (current ? { ...current, reviews: current.reviews.filter((review) => review.id !== id) } : current))
     notify('Review deleted.')
+  }
+
+  async function saveReviewIntegrationSettings() {
+    const keys = ['google_business_client_id', 'google_business_client_secret', 'googleReviewUrl', 'trustpilotReviewUrl']
+    const nextSettings = { ...settingsForm }
+    keys.forEach((key) => {
+      nextSettings[key] = settingsForm[key] ?? ''
+    })
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.updateSettings(nextSettings)
+      setCms((current) => (current ? { ...current, settings: result.settings } : current))
+      setSettingsForm(result.settings)
+      notify('Review settings saved.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save review settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function connectGoogleReviews() {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.googleReviewOauthUrl()
+      if (!result.google.configured || !result.google.authUrl) {
+        setError(result.google.message ?? 'Google Business reviews are not configured yet.')
+        return
+      }
+      window.location.href = result.google.authUrl
+    } catch (connectError) {
+      setError(connectError instanceof Error ? connectError.message : 'Unable to start Google reviews connection.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function loadGoogleReviewLocations(refresh = false) {
+    setLoadingGoogleReviews(true)
+    setError('')
+
+    try {
+      const result = await api.googleReviewLocations(refresh)
+      setGoogleReviewSettings(result.settings)
+      setGoogleReviewLocations(result.locations)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load Google Business locations.')
+    } finally {
+      setLoadingGoogleReviews(false)
+    }
+  }
+
+  async function selectGoogleReviewLocation(locationName: string) {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.selectGoogleReviewLocation(locationName)
+      setGoogleReviewSettings(result.settings)
+      setGoogleReviewLocations(result.locations)
+      notify('Google review location selected.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to select Google review location.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function importGoogleReviews() {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.importGoogleReviews()
+      setCms((current) => current ? { ...current, reviews: result.reviews } : current)
+      setGoogleReviewSettings((current) => ({ ...current, lastError: result.result.ok === false ? result.result.message : '' }))
+      if (result.result.ok === false) {
+        setError(result.result.message)
+      } else {
+        notify(result.result.message)
+      }
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'Unable to import Google reviews.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function updateBookingCmsStatus(booking: BookingCmsBooking, status: string) {
@@ -1753,8 +1814,7 @@ export function AdminDashboard() {
     setActiveInvoiceSubsection(invoiceForm.type === 'quote' ? 'quotes' : 'invoices')
   }
 
-  async function saveInvoiceDocument(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function saveInvoiceDocument() {
     setSaving(true)
     setError('')
 
@@ -1765,7 +1825,7 @@ export function AdminDashboard() {
         : enabledGatewayValues[0] || 'paystack'
       const payload = { ...invoiceForm, paymentGateway: selectedGateway }
       const result = editingInvoice?.id
-        ? await api.updateInvoiceDocument(editingInvoice.id, payload)
+        ? await api.updateInvoiceDocument(editingInvoice.id as number, payload)
         : await api.createInvoiceDocument(payload)
       setInvoiceDocuments((current) => {
         const exists = current.some((doc) => doc.id === result.document.id)
@@ -1782,6 +1842,7 @@ export function AdminDashboard() {
   }
 
   async function sendInvoiceDocument(document: InvoiceDocument) {
+    if (document.id === null || document.id === undefined) return
     await api.sendInvoiceDocument(document.id)
     void loadInvoiceData()
     notify('Document sent.')
@@ -1792,11 +1853,11 @@ export function AdminDashboard() {
     notify('Public document link copied.')
   }
 
-  async function recordInvoicePayment(invoiceId: string, amountPaid: number, paymentMethod: string, paymentDate: string, notes: string) {
+  async function recordInvoicePayment(invoiceId: number, amountPaid: number, paymentMethod: string, paymentDate: string, notes: string) {
     setSaving(true)
     setError('')
     try {
-      const response = await api.recordInvoicePayment(Number(invoiceId), {
+      const response = await api.recordInvoicePayment(invoiceId, {
         amount: amountPaid,
         method: paymentMethod,
         date: paymentDate,
@@ -1816,9 +1877,9 @@ export function AdminDashboard() {
     }
   }
 
-  async function generateReceiptAndNotify(invoiceId: string) {
+  async function generateReceiptAndNotify(invoiceId: number) {
     try {
-      await api.sendInvoiceReceipt(Number(invoiceId))
+      await api.sendInvoiceReceipt(invoiceId)
 
       notify('Receipt sent to client via email.')
     } catch (error) {
@@ -1836,11 +1897,21 @@ export function AdminDashboard() {
         try {
           const content = e.target?.result as string
           const data = JSON.parse(content)
-          await api.importFromJSON(data)
-          setMessage('Import completed successfully')
-          await loadInvoiceData()
-        } catch (parseError) {
-          setError('Invalid JSON file')
+          const result = await api.importFromJSON(data)
+          setInvoiceSearch('')
+          setInvoiceStatusFilter('')
+          setInvoiceListPage(1)
+          await loadInvoiceData({
+            documentPage: 1,
+            documentType: '',
+            documentStatus: '',
+            documentSearch: '',
+            clientsPage: 1,
+            clientsSearch: '',
+          })
+          setMessage(`${result.imported} document${result.imported === 1 ? '' : 's'} imported successfully`)
+        } catch (importError) {
+          setError(importError instanceof Error ? importError.message : 'Invalid JSON file')
         } finally {
           setSaving(false)
         }
@@ -1868,20 +1939,6 @@ export function AdminDashboard() {
       setMessage('Export downloaded successfully')
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Export failed')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleImportFromWordPress(prefix?: string) {
-    setSaving(true)
-    setError('')
-    try {
-      const result = await api.importFromWordPress(prefix)
-      setMessage(result.message)
-      await loadInvoiceData()
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Import failed')
     } finally {
       setSaving(false)
     }
@@ -2567,7 +2624,7 @@ export function AdminDashboard() {
             <Button
               type="button"
               className="bkinv-btn bkinv-btn-primary"
-              onClick={() => void saveInvoiceDocument({ preventDefault: () => { } } as FormEvent)}
+              onClick={() => void saveInvoiceDocument()}
               disabled={saving}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -3004,7 +3061,7 @@ export function AdminDashboard() {
                 <Button
                   type="button"
                   className="bkinv-btn bkinv-btn-primary bkinv-btn-block"
-                  onClick={() => void saveInvoiceDocument({ preventDefault: () => { } } as FormEvent)}
+                  onClick={() => void saveInvoiceDocument()}
                   disabled={saving}
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -3354,7 +3411,7 @@ export function AdminDashboard() {
   }
 
   function renderInvoiceSettings() {
-    const settingGroups = [
+    const settingGroups: Array<{ title: string; description: string; fields: InvoiceSettingsField[] }> = [
       {
         title: 'Business identity',
         description: 'Used on public quotes, invoices, receipts, and generated PDFs.',
@@ -3420,13 +3477,15 @@ export function AdminDashboard() {
     const enabledPaymentGateways = parseInvoiceGatewayList(settingsForm)
     const currencyAccountRows = (() => {
       try {
-        const parsed = JSON.parse(String(settingsForm.bank_currency_accounts || '[]'))
-        return Array.isArray(parsed) ? parsed : []
+        const parsed: unknown = JSON.parse(String(settingsForm.bank_currency_accounts || '[]'))
+        return Array.isArray(parsed)
+          ? parsed.filter((row): row is CurrencyAccountRow => Boolean(row && typeof row === 'object'))
+          : []
       } catch {
         return []
       }
     })()
-    const setCurrencyAccountRows = (rows: any[]) => setField('bank_currency_accounts', JSON.stringify(rows))
+    const setCurrencyAccountRows = (rows: CurrencyAccountRow[]) => setField('bank_currency_accounts', JSON.stringify(rows))
     const updateCurrencyAccount = (index: number, patch: Record<string, string>) => {
       setCurrencyAccountRows(currencyAccountRows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)))
     }
@@ -3463,7 +3522,7 @@ export function AdminDashboard() {
       }))
     }
 
-    const renderField = (field: any) => {
+    const renderField = (field: InvoiceSettingsField) => {
       if (field.options) {
         return (
           <select className="bkinv-select" value={fieldValue(field.key)} onChange={(event) => setField(field.key, event.target.value)}>
@@ -3971,7 +4030,7 @@ export function AdminDashboard() {
           <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
             <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4">Website Activity & Traffic</h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {cards.map((card, index) => (
+              {cards.map((card) => (
                 <div key={card.label} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
@@ -4834,6 +4893,101 @@ export function AdminDashboard() {
           title="Customer Reviews" 
           text="Add manual customer reviews and choose where each review came from." 
         />
+        <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">Google Business Reviews Import</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                Connect the Google account that owns or manages Bakhtech Solutions, choose the verified location, then import reviews into this backend.
+              </p>
+              <ol className="mt-4 grid gap-2 text-sm font-semibold text-gray-600">
+                <li>1. Create or open a Google Cloud OAuth client for this website.</li>
+                <li>2. Enable the Google Business Profile APIs and add the redirect URI below.</li>
+                <li>3. Save the Client ID and Client Secret here.</li>
+                <li>4. Connect Google, load locations, select Bakhtech Solutions, then import reviews.</li>
+              </ol>
+              <p className="mt-3 text-xs font-semibold text-gray-500">
+                Redirect URI: {window.location.origin}/api/admin/reviews/google/callback
+              </p>
+              {googleReviewSettings.connectedEmail ? (
+                <p className="mt-3 text-sm font-bold text-green-700">Connected as {googleReviewSettings.connectedEmail}</p>
+              ) : null}
+              {googleReviewSettings.lastSyncedAt ? (
+                <p className="mt-1 text-xs font-semibold text-gray-500">Last import: {googleReviewSettings.lastSyncedAt}</p>
+              ) : null}
+              {googleReviewSettings.locationsCachedAt ? (
+                <p className="mt-1 text-xs font-semibold text-gray-500">Locations cached: {googleReviewSettings.locationsCachedAt}</p>
+              ) : null}
+              {googleReviewSettings.lastError ? (
+                <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600">{googleReviewSettings.lastError}</p>
+              ) : null}
+            </div>
+            <div className="grid gap-3">
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
+                Google Business Client ID
+                <input
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  value={settingsForm.google_business_client_id ?? ''}
+                  onChange={(event) => setSettingsForm((current) => ({ ...current, google_business_client_id: event.target.value }))}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
+                Google Business Client Secret
+                <input
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  type="password"
+                  value={settingsForm.google_business_client_secret ?? ''}
+                  onChange={(event) => setSettingsForm((current) => ({ ...current, google_business_client_secret: event.target.value }))}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
+                Public Google review link
+                <input
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  value={settingsForm.googleReviewUrl ?? ''}
+                  onChange={(event) => setSettingsForm((current) => ({ ...current, googleReviewUrl: event.target.value }))}
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-gray-700">
+                Trustpilot review link
+                <input
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  value={settingsForm.trustpilotReviewUrl ?? ''}
+                  onChange={(event) => setSettingsForm((current) => ({ ...current, trustpilotReviewUrl: event.target.value }))}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white" onClick={() => void saveReviewIntegrationSettings()} disabled={saving}>
+                  Save Review Settings
+                </Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={connectGoogleReviews} disabled={saving}>
+                  Connect Google
+                </Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={() => void loadGoogleReviewLocations(true)} disabled={loadingGoogleReviews}>
+                  {loadingGoogleReviews ? 'Loading...' : 'Refresh Locations'}
+                </Button>
+                <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white" onClick={() => void importGoogleReviews()} disabled={saving || !googleReviewSettings.locationName}>
+                  Import Reviews
+                </Button>
+              </div>
+            </div>
+          </div>
+          {googleReviewLocations.length ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {googleReviewLocations.map((location) => (
+                <button
+                  key={location.locationName}
+                  type="button"
+                  className={cn('rounded-xl border px-4 py-3 text-left text-sm transition', location.selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 hover:bg-gray-100')}
+                  onClick={() => void selectGoogleReviewLocation(location.locationName)}
+                >
+                  <span className="block font-black">{location.title}</span>
+                  <span className="mt-1 block break-all text-xs font-semibold opacity-75">{location.locationName}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveReview}>
             <div className="flex items-center justify-between gap-4 mb-6">
@@ -6099,7 +6253,7 @@ export function AdminDashboard() {
 
   function renderSettings() {
     const headerMenu = parseHeaderMenu(settingsForm.navigation_items)
-    const setHeaderMenu = (items: Array<{ label: string; href: string; visible: boolean; children?: Array<{ label: string; href: string; visible: boolean; children?: any[] }> }>) => {
+    const setHeaderMenu = (items: HeaderMenuItem[]) => {
       setSettingsForm((current) => ({ ...current, navigation_items: JSON.stringify(items) }))
     }
     const updateHeaderMenuItem = (index: number, patch: Partial<{ label: string; href: string; visible: boolean }>) => {
@@ -6153,8 +6307,9 @@ export function AdminDashboard() {
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
     const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions']
-    const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl', 'googleReviewUrl', 'trustpilotReviewUrl']
-    const visibleKeySet = new Set(['navigation_items', ...themeKeys, ...siteKeys, ...socialKeys])
+    const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
+    const reviewKeys = ['googleReviewUrl', 'trustpilotReviewUrl', 'google_business_client_id', 'google_business_client_secret']
+    const visibleKeySet = new Set(['navigation_items', ...themeKeys, ...siteKeys, ...socialKeys, ...reviewKeys])
     const belongsOutsideSiteSettings = (key: string) => (
       key.startsWith('invoice')
       || key.startsWith('quote_')
@@ -6165,6 +6320,7 @@ export function AdminDashboard() {
       || key.startsWith('flutter_')
       || key.startsWith('bank_')
       || key.startsWith('pricing_rate_')
+      || reviewKeys.includes(key)
       || ['currency', 'currency_symbol', 'default_tax_rate', 'tax_label', 'starting_number', 'homepage_url', 'homepage_label', 'enable_partial_payments', 'bookingIntro'].includes(key)
     )
     const keysForSection = siteSettingsSection === 'site'
@@ -6382,70 +6538,6 @@ export function AdminDashboard() {
     setPricingCategoryForm({ ...category })
   }
 
-  function editPricingFeature(feature: PricingFeature) {
-    setEditingPricingFeature(feature)
-    setPricingFeatureForm({ ...feature })
-  }
-
-  function editPricingPlan(plan: PricingPlan) {
-    setEditingPricingPlan(plan)
-    setPricingPlanForm({
-      ...plan,
-      prices: { NGN: plan.prices?.NGN || 0, USD: plan.prices?.USD || 0, GBP: plan.prices?.GBP || 0 },
-      promoPrices: { NGN: plan.promoPrices?.NGN || '', USD: plan.promoPrices?.USD || '', GBP: plan.promoPrices?.GBP || '' },
-      features: plan.features || [],
-    })
-  }
-
-  function updatePricingPlanFeature(index: number, field: string, value: unknown) {
-    setPricingPlanForm((current) => ({
-      ...current,
-      features: (current.features || []).map((feature, featureIndex) => featureIndex === index ? { ...feature, [field]: value } : feature),
-    }))
-  }
-
-  function addPricingPlanFeature(feature?: PricingFeature) {
-    setPricingPlanForm((current) => ({
-      ...current,
-      features: [
-        ...(current.features || []),
-        {
-          featureId: feature?.id ?? null,
-          title: feature?.title || '',
-          description: feature?.description || '',
-          groupName: feature?.groupName || 'Design',
-          isIncluded: true,
-          sortOrder: (current.features || []).length + 1,
-        },
-      ],
-    }))
-  }
-
-  function addPricingFeatureToCurrentPlan() {
-    const title = pricingFeatureDraft.title.trim()
-    if (!title) {
-      setError('Enter a feature title before adding it to the plan.')
-      return
-    }
-
-    setPricingPlanForm((current) => ({
-      ...current,
-      features: [
-        ...(current.features || []),
-        {
-          featureId: null,
-          title,
-          description: pricingFeatureDraft.description.trim(),
-          groupName: pricingFeatureDraft.groupName.trim() || 'General',
-          isIncluded: true,
-          sortOrder: (current.features || []).length + 1,
-        },
-      ],
-    }))
-    setPricingFeatureDraft({ title: '', description: '', groupName: pricingFeatureDraft.groupName || 'General' })
-    setError('')
-  }
-
   function pricingFeatureLines(plan: PricingPlan) {
     return (plan.features || []).filter((feature) => feature.isIncluded !== false).map((feature) => feature.title).join('\n')
   }
@@ -6516,9 +6608,11 @@ export function AdminDashboard() {
         features: plan.features || [],
       }
 
-      plan.id > 0
-        ? await api.updatePricingPlan(plan.id, payload)
-        : await api.createPricingPlan(payload)
+      if (plan.id > 0) {
+        await api.updatePricingPlan(plan.id, payload)
+      } else {
+        await api.createPricingPlan(payload)
+      }
       notify('Package saved.')
       await loadPricingData()
     } catch (saveError) {

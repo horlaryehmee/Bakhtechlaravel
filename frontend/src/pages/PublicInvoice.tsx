@@ -117,9 +117,10 @@ export function PublicInvoice() {
   const [darkQuoteMode, setDarkQuoteMode] = useState(false)
   const [darkInvoiceMode, setDarkInvoiceMode] = useState(false)
   const [selectedPaymentPercent, setSelectedPaymentPercent] = useState(100)
+  const [startingPayment, setStartingPayment] = useState(false)
   const [expandedInvoiceSections, setExpandedInvoiceSections] = useState<Record<string, boolean>>({})
   const [error, setError] = useState('')
-  const sid = useMemo(sessionId, [])
+  const sid = useMemo(() => sessionId(), [])
 
   useEffect(() => {
     let cancelled = false
@@ -174,8 +175,16 @@ export function PublicInvoice() {
   }
 
   async function handlePaymentClick() {
-    await api.trackInvoiceEvent(token, { eventType: 'payment.clicked', sessionId: sid }).catch(() => undefined)
-    window.alert(`${document?.paymentGateway || 'Payment'} checkout is configured for this document. Gateway redirect wiring is the next integration step.`)
+    setStartingPayment(true)
+    setError('')
+    try {
+      await api.trackInvoiceEvent(token, { eventType: 'payment.clicked', sessionId: sid }).catch(() => undefined)
+      const result = await api.initializePublicInvoicePayment(token, selectedPaymentAmount)
+      window.location.assign(result.payment.authorizationUrl)
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : 'Unable to start payment.')
+      setStartingPayment(false)
+    }
   }
 
   if (loading) {
@@ -511,8 +520,9 @@ export function PublicInvoice() {
               </div>
             )}
             {document.paymentEnabled && onlinePaymentGateway && payableAmount > 0 ? (
-              <Button type="button" className="invoice-sheet-pay-button" onClick={() => void handlePaymentClick()}>
-                <CreditCard className="h-4 w-4" />Pay with {titleCase(onlinePaymentGateway)} ({money(selectedPaymentAmount, document.currency)})
+              <Button type="button" className="invoice-sheet-pay-button" disabled={startingPayment} onClick={() => void handlePaymentClick()}>
+                {startingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                {startingPayment ? 'Opening payment...' : `Pay with ${titleCase(onlinePaymentGateway)} (${money(selectedPaymentAmount, document.currency)})`}
               </Button>
             ) : (
               <div className="invoice-sheet-paid">{payableAmount > 0 ? 'Use manual/offline payment for this invoice.' : 'Payment is not required for this invoice.'}</div>

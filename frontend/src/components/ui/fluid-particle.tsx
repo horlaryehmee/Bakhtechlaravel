@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 type FluidParticlesProps = {
   particleDensity?: number
@@ -42,13 +42,13 @@ export function FluidParticles({
 }: FluidParticlesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const contextRef = useRef<CanvasRenderingContext2D | null>(null)
-  const particlesRef = useRef<Particle[]>([])
+  const particlesRef = useRef<Array<{ update: () => void }>>([])
   const mouseRef = useRef<MouseState>({ x: -9999, y: -9999, prevX: -9999, prevY: -9999 })
   const blastRef = useRef<BlastState>({ active: false, x: 0, y: 0, radius: 0, maxRadius: maxBlastRadius })
   const animationRef = useRef<number>(0)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  class Particle {
+  const Particle = useMemo(() => class Particle {
     x: number
     y: number
     size: number
@@ -128,7 +128,7 @@ export function FluidParticles({
 
       this.draw()
     }
-  }
+  }, [activeColor, interactionDistance, particleColor, particleSize])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -269,7 +269,7 @@ export function FluidParticles({
       clearHoverTimer()
       cancelAnimationFrame(animationRef.current)
     }
-  }, [activeColor, hoverDelay, interactionDistance, maxBlastRadius, particleColor, particleDensity, particleSize])
+  }, [Particle, activeColor, hoverDelay, interactionDistance, maxBlastRadius, particleColor, particleDensity, particleSize])
 
   return <canvas ref={canvasRef} className={className ?? 'absolute inset-0'} />
 }

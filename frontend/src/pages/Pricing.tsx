@@ -123,7 +123,6 @@ export function Pricing() {
 
   useEffect(() => {
     let active = true
-    setLoading(true)
     api.publicPricing(currency)
       .then((result) => {
         if (!active) return
@@ -140,9 +139,11 @@ export function Pricing() {
 
   useEffect(() => {
     if (params.categorySlug) {
-      setNeedType('new')
-      setSelectedCategorySlug(params.categorySlug)
-      setStep(3)
+      queueMicrotask(() => {
+        setNeedType('new')
+        setSelectedCategorySlug(params.categorySlug || '')
+        setStep(3)
+      })
     }
   }, [params.categorySlug])
 
@@ -154,7 +155,7 @@ export function Pricing() {
 
   useEffect(() => {
     if (!params.categorySlug || !selectedCategory) return
-    setNeedType(selectedCategory.serviceType === 'existing_website' ? 'existing' : 'new')
+    queueMicrotask(() => setNeedType(selectedCategory.serviceType === 'existing_website' ? 'existing' : 'new'))
   }, [params.categorySlug, selectedCategory])
 
   function goBack() {
@@ -341,7 +342,7 @@ export function Pricing() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {currencies.map((item) => (
-                        <button key={item} type="button" onClick={() => setCurrency(item)} className={cn('min-h-10 rounded-lg border px-4 text-sm font-black transition', currency === item ? 'border-[#2f73ed] bg-[#2f73ed] text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')}>
+                        <button key={item} type="button" onClick={() => { setLoading(true); setCurrency(item) }} className={cn('min-h-10 rounded-lg border px-4 text-sm font-black transition', currency === item ? 'border-[#2f73ed] bg-[#2f73ed] text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')}>
                           {item}
                         </button>
                       ))}

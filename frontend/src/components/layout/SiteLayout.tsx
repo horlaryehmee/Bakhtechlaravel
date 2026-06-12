@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Menu, Moon, Sun, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useTheme } from '@/components/theme/ThemeProvider'
+import { useTheme } from '@/components/theme/theme-context'
+import { CmsPageSync } from '@/components/cms/CmsPageSync'
 import { navigation } from '@/data/site'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -18,11 +19,12 @@ function visibleNavigationItems(items: unknown): HeaderNavItem[] {
   if (!Array.isArray(items)) return []
 
   return items
-    .filter((item) => item && typeof item === 'object' && (item as any).visible !== false && String((item as any).label || '').trim() && String((item as any).href || '').trim())
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+    .filter((item) => item.visible !== false && String(item.label || '').trim() !== '' && String(item.href || '').trim() !== '')
     .map((item) => ({
-      label: String((item as any).label).trim(),
-      href: String((item as any).href).trim(),
-      children: visibleNavigationItems((item as any).children),
+      label: String(item.label).trim(),
+      href: String(item.href).trim(),
+      children: visibleNavigationItems(item.children),
     }))
 }
 
@@ -69,10 +71,7 @@ export function SiteLayout() {
   }, [])
 
   useEffect(() => {
-    if (isBookingPage) {
-      setShouldRenderFooter(false)
-      return
-    }
+    if (isBookingPage) return
     const footerSentinel = footerSentinelRef.current
     if (!footerSentinel) return
 
@@ -247,6 +246,7 @@ export function SiteLayout() {
       <main>
         <Outlet />
       </main>
+      <CmsPageSync />
       {!isBookingPage && (
         <div ref={footerSentinelRef}>
           {shouldRenderFooter ? (

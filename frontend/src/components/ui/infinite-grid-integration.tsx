@@ -4,11 +4,12 @@ import {
   useAnimationFrame,
   useMotionTemplate,
   useMotionValue,
+  type MotionValue,
 } from 'framer-motion'
 import { Info, Moon, MousePointerClick, Settings2, Sun } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { useTheme } from '@/components/theme/ThemeProvider'
+import { useTheme } from '@/components/theme/theme-context'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 
 /**
@@ -21,7 +22,7 @@ function cn(...inputs: ClassValue[]) {
 /**
  * Helper component for the SVG grid pattern.
  */
-const GridPattern = ({ offsetX, offsetY, size }: { offsetX: any; offsetY: any; size: number }) => {
+const GridPattern = ({ offsetX, offsetY, size }: { offsetX: MotionValue<number>; offsetY: MotionValue<number>; size: number }) => {
   return (
     <svg className="h-full w-full">
       <defs>

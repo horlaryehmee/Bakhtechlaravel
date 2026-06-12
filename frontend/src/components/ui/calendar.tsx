@@ -75,7 +75,7 @@ export function Calendar({
   };
 
   const renderCalendarDays = () => {
-    let days: React.ReactNode[] = [
+    const days: React.ReactNode[] = [
       ...dayNames.map((day) => (
         <CalendarDay key={`header-${day}`} day={day} isHeader />
       )),

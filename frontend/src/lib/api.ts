@@ -498,6 +498,14 @@ export type ReviewInput = {
   isPublished: boolean
 }
 
+export type GoogleReviewLocation = {
+  accountName: string
+  accountLabel: string
+  locationName: string
+  title: string
+  selected: boolean
+}
+
 export type AdminUser = {
   id: number
   email: string
@@ -722,6 +730,23 @@ export const api = {
   deleteReview(id: number) {
     return request<void>(`/api/admin/reviews/${id}`, { method: 'DELETE' })
   },
+  googleReviewOauthUrl() {
+    return request<{ google: { configured: boolean; authUrl?: string; message?: string; redirectUri: string } }>('/api/admin/reviews/google/oauth-url')
+  },
+  googleReviewLocations(refresh = false) {
+    return request<{ settings: Record<string, string>; locations: GoogleReviewLocation[] }>(`/api/admin/reviews/google/locations${refresh ? '?refresh=1' : ''}`)
+  },
+  selectGoogleReviewLocation(locationName: string) {
+    return request<{ settings: Record<string, string>; locations: GoogleReviewLocation[] }>('/api/admin/reviews/google/location', {
+      method: 'POST',
+      body: JSON.stringify({ locationName }),
+    })
+  },
+  importGoogleReviews() {
+    return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; reviews: Review[] }>('/api/admin/reviews/google/import', {
+      method: 'POST',
+    })
+  },
   createBooking(booking: Partial<Booking>) {
     return request<{ booking: Booking }>('/api/admin/bookings', {
       method: 'POST',
@@ -863,6 +888,9 @@ export const api = {
   },
   publicSettings() {
     return request<{ settings: Record<string, string> }>('/api/settings')
+  },
+  publicPage(slug: string) {
+    return request<{ page: CmsPage }>(`/api/pages/${encodeURIComponent(slug)}`)
   },
   publicReviews() {
     return request<{ reviews: Review[] }>('/api/reviews')
@@ -1020,8 +1048,14 @@ export const api = {
   initializeInvoicePayment(id: number) {
     return request<{ payment: { reference: string; gateway: string; amount: number; currency: string; authorizationUrl: string } }>(`/api/admin/invoices/documents/${id}/payments/initialize`, { method: 'POST' })
   },
-  importFromJSON(data: any) {
-    return request<{ imported: number; message: string }>('/api/admin/invoices/import/json', {
+  initializePublicInvoicePayment(token: string, amount: number) {
+    return request<{ payment: { reference: string; gateway: string; amount: number; currency: string; authorizationUrl: string } }>(`/api/invoices/${token}/payments/initialize`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    })
+  },
+  importFromJSON(data: unknown) {
+    return request<{ imported: number; message: string; summary: { documents: number; payments: number; events: number; emails: number } }>('/api/admin/invoices/import/json', {
       method: 'POST',
       body: JSON.stringify(data)
     })

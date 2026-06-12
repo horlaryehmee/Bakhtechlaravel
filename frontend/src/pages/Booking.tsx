@@ -88,6 +88,7 @@ function formatTimeInTimezone(value: string, timezone: string, timeFormat: "12h"
 }
 
 export function Booking() {
+  const showLegacyDetailsStep = false
   const { slug } = useParams();
   const [calendar, setCalendar] = useState<BookingCalendar | null>(null);
   const [selectedType, setSelectedType] = useState<BookingEventType | null>(null);
@@ -644,7 +645,7 @@ export function Booking() {
         </div>
       )}
 
-      {false && currentStep === 2 && selectedSlot && (
+      {showLegacyDetailsStep && currentStep === 2 && selectedSlot && (
         <div className="max-w-xl mx-auto px-4 py-8 md:py-16 pt-24">
           <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
             <div className="flex items-center justify-between mb-6">

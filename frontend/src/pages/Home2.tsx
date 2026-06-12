@@ -5,7 +5,7 @@ import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
-import { useTheme } from '@/components/theme/ThemeProvider'
+import { useTheme } from '@/components/theme/theme-context'
 
 const HomeBelowFold = lazy(() => import('@/pages/home/HomeBelowFold').then((module) => ({ default: module.HomeBelowFold })))
 

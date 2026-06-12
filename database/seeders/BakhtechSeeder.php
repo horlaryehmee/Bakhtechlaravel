@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Services\DatabaseSynchronizer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -12,13 +13,13 @@ class BakhtechSeeder extends Seeder
     public function run(): void
     {
         $now = now();
-        $email = env('ADMIN_EMAIL', 'admin@bakhtech.com.ng');
+        $email = (string) config('security.bootstrap_admin_email');
 
-        if (!DB::table('admins')->where('email', $email)->exists()) {
+        if (! DB::table('admins')->where('email', $email)->exists()) {
             DB::table('admins')->insert([
                 'email' => $email,
-                'password_hash' => Hash::make(env('ADMIN_PASSWORD', 'ChangeMe123!')),
-                'name' => env('ADMIN_NAME', 'Bakhtech Admin'),
+                'password_hash' => Hash::make((string) config('security.bootstrap_admin_password')),
+                'name' => (string) config('security.bootstrap_admin_name'),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -63,31 +64,7 @@ class BakhtechSeeder extends Seeder
             }
         }
 
-        if (DB::table('pages')->count() === 0) {
-            foreach (['Home', 'About', 'Portfolio', 'Ebook', 'Career', 'Contact'] as $title) {
-                DB::table('pages')->insert([
-                    'title' => $title,
-                    'slug' => Str::slug($title),
-                    'content' => $title . ' page content',
-                    'seo_title' => $title . ' | Bakhtech Solutions',
-                    'seo_description' => 'Manage ' . $title . ' page SEO and content.',
-                    'status' => 'published',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-            }
-        }
-
-        if (DB::table('settings')->count() === 0) {
-            foreach ($this->defaultSettings() as $key => $value) {
-                DB::table('settings')->insert([
-                    'key' => $key,
-                    'value' => $value,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-            }
-        }
+        app(DatabaseSynchronizer::class)->repair();
 
         $this->seedDemoReviews($now);
     }
@@ -151,16 +128,5 @@ class BakhtechSeeder extends Seeder
                 ]),
             );
         }
-    }
-
-    private function defaultSettings(): array
-    {
-        return [
-            'siteName' => 'Bakhtech Solutions',
-            'contactEmail' => 'solutions@bakhtech.com.ng',
-            'phone' => '+234 708 637 2833',
-            'activeHome' => 'home',
-            'homePortfolioShowDescriptions' => 'true',
-        ];
     }
 }

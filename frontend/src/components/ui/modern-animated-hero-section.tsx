@@ -145,9 +145,6 @@ export const RainingLettersBackground: React.FC<{ className?: string; density?: 
   density = 180,
   mode = 'dark',
 }) => {
-  const [characters, setCharacters] = useState<Character[]>([])
-  const [activeIndices, setActiveIndices] = useState<Set<number>>(new Set())
-
   const createCharacters = useCallback(() => {
     const allChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
     const newCharacters: Character[] = []
@@ -163,10 +160,8 @@ export const RainingLettersBackground: React.FC<{ className?: string; density?: 
 
     return newCharacters
   }, [density])
-
-  useEffect(() => {
-    setCharacters(createCharacters())
-  }, [createCharacters])
+  const [characters, setCharacters] = useState<Character[]>(createCharacters)
+  const [activeIndices, setActiveIndices] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     const flickerInterval = window.setInterval(() => {

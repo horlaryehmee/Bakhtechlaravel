@@ -12,8 +12,10 @@ Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware(
 Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
 Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
+Route::get('/admin/reviews/google/callback', [BakhtechApiController::class, 'googleReviewCallback'])->middleware('throttle:20,1');
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
+Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
 Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
 Route::get('/pricing', [PricingController::class, 'publicIndex']);
 Route::post('/pricing/checkout', [PricingController::class, 'createDocumentFromPlan'])->middleware('throttle:20,1');
@@ -21,16 +23,17 @@ Route::get('/booking/event-types', [BakhtechApiController::class, 'bookingEventT
 Route::get('/booking/calendars', [BakhtechApiController::class, 'bookingCalendars']);
 Route::get('/booking/calendars/{slug}', [BakhtechApiController::class, 'bookingCalendar']);
 Route::get('/booking/event-types/{slug}/availability', [BakhtechApiController::class, 'bookingAvailability']);
-Route::post('/booking/bookings', [BakhtechApiController::class, 'bookPublicAppointment']);
+Route::post('/booking/bookings', [BakhtechApiController::class, 'bookPublicAppointment'])->middleware('throttle:10,1');
 Route::post('/booking/payments/paystack/initialize', [BookingCmsController::class, 'initializePaystackPayment'])->middleware('throttle:20,1');
 Route::post('/booking/payments/paystack/verify', [BookingCmsController::class, 'verifyPaystackPayment'])->middleware('throttle:30,1');
 Route::get('/booking/google/callback', [BookingCmsController::class, 'googleCallback'])->middleware('throttle:20,1');
-Route::post('/visits', [BakhtechApiController::class, 'trackVisit']);
+Route::post('/visits', [BakhtechApiController::class, 'trackVisit'])->middleware('throttle:60,1');
 Route::get('/invoices/email/open/{token}', [InvoiceController::class, 'trackEmailOpen'])->middleware('throttle:240,1');
 Route::get('/invoices/{token}', [InvoiceController::class, 'publicDocument'])->middleware('throttle:120,1');
 Route::post('/invoices/{token}/events', [InvoiceController::class, 'trackPublicEvent'])->middleware('throttle:120,1');
 Route::post('/invoices/{token}/quote-decision', [InvoiceController::class, 'decideQuote'])->middleware('throttle:20,1');
 Route::post('/invoices/{token}/generate-invoice', [InvoiceController::class, 'generateInvoiceFromQuote'])->middleware('throttle:20,1');
+Route::post('/invoices/{token}/payments/initialize', [InvoiceController::class, 'initializePublicPayment'])->middleware('throttle:10,1');
 Route::get('/invoices/{token}/pdf', [InvoiceController::class, 'printablePdf'])->middleware('throttle:30,1');
 Route::post('/invoices/payments/{gateway}/webhook', [InvoiceController::class, 'webhook'])->middleware('throttle:120,1');
 
@@ -63,6 +66,11 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/reviews', [BakhtechApiController::class, 'createReview']);
     Route::put('/admin/reviews/{id}', [BakhtechApiController::class, 'updateReview']);
     Route::delete('/admin/reviews/{id}', [BakhtechApiController::class, 'deleteReview']);
+    Route::get('/admin/reviews/google/oauth-url', [BakhtechApiController::class, 'googleReviewOauthUrl'])->middleware('admin.role:admin');
+    Route::get('/admin/reviews/google/locations', [BakhtechApiController::class, 'googleReviewLocations'])->middleware('admin.role:admin');
+    Route::post('/admin/reviews/google/location', [BakhtechApiController::class, 'selectGoogleReviewLocation'])->middleware('admin.role:admin');
+    Route::put('/admin/reviews/google/location', [BakhtechApiController::class, 'selectGoogleReviewLocation'])->middleware('admin.role:admin');
+    Route::post('/admin/reviews/google/import', [BakhtechApiController::class, 'importGoogleReviews'])->middleware('admin.role:admin');
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);
     Route::put('/admin/settings', [BakhtechApiController::class, 'updateSettings']);

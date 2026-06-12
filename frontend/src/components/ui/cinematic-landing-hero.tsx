@@ -159,17 +159,9 @@ export interface CinematicHeroProps extends React.HTMLAttributes<HTMLDivElement>
 }
 
 export function CinematicHero({
-  brandName = 'Bakhtech',
   tagline1 = 'Build the platform,',
   tagline2 = 'grow the business.',
   introContent,
-  cardHeading = 'Accountability for every launch.',
-  cardDescription = (
-    <>
-      <span className="font-semibold text-white">Bakhtech Solutions</span> turns CMS, SEO, security, and responsive
-      design into a focused launch system for modern businesses.
-    </>
-  ),
   metricValue = 98,
   metricLabel = 'Speed Score',
   ctaHeading = 'Launch a sharper web presence.',

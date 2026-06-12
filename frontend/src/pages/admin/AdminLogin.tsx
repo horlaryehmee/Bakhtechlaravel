@@ -13,15 +13,12 @@ export function AdminLogin() {
   const [requiresTwoFactor, setRequiresTwoFactor] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
+  const [checkingSession, setCheckingSession] = useState(() => Boolean(getAdminToken()))
 
   useEffect(() => {
     const token = getAdminToken()
 
-    if (!token) {
-      setCheckingSession(false)
-      return
-    }
+    if (!token) return
 
     api
       .me()

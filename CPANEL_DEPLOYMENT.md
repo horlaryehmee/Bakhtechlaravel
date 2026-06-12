@@ -45,6 +45,8 @@ remain Laravel's rewrite file so `/api/...` routes reach `public/index.php`.
    - `ADMIN_PASSWORD`
    - `API_TOKEN_SECRET`
    - `FRONTEND_ORIGINS`
+   - SMTP values (`MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`)
+   - `FLUTTERWAVE_WEBHOOK_SECRET` when Flutterwave invoice payments are enabled
 
 ## First Run
 
@@ -60,6 +62,22 @@ php artisan view:clear
 php artisan optimize
 chmod -R 775 storage bootstrap/cache public/uploads
 ```
+
+Add this cPanel cron entry so booking reminders and future scheduled tasks run:
+
+```cron
+* * * * * cd /home/YOUR_CPANEL_USER/REPO_FOLDER && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Configure payment provider webhooks:
+
+```text
+Paystack:     https://YOUR_DOMAIN_HERE/api/invoices/payments/paystack/webhook
+Flutterwave: https://YOUR_DOMAIN_HERE/api/invoices/payments/flutterwave/webhook
+```
+
+Use the same Flutterwave webhook hash in the provider dashboard and
+`FLUTTERWAVE_WEBHOOK_SECRET`.
 
 ## Frontend Builds
 

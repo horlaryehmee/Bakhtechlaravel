@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\InvoicePaymentService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -447,7 +448,7 @@ class InvoiceController extends Controller
         ], 201);
     }
 
-    public function initializePayment(Request $request, int $id)
+    public function initializePayment(Request $request, int $id, InvoicePaymentService $payments)
     {
         $document = $this->documentRow($id);
         if (!$document) {
@@ -458,30 +459,43 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Payment is not enabled for this document.'], 422);
         }
 
-        $reference = strtoupper($document->payment_gateway) . '-' . Str::upper(Str::random(14));
-        DB::table('invoice_payments')->insert([
-            'document_id' => $document->id,
-            'gateway' => $document->payment_gateway,
-            'reference' => $reference,
-            'amount' => $document->balance_due,
-            'currency' => $document->currency,
-            'status' => 'pending',
-            'authorization_url' => $this->gatewayCheckoutUrl($document, $reference),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $payment = $payments->initialize($document, (float) $document->balance_due);
 
         $this->trackEvent((int) $document->id, 'payment.initialized', $request, ['gateway' => $document->payment_gateway]);
 
-        return [
-            'payment' => [
-                'reference' => $reference,
-                'gateway' => $document->payment_gateway,
-                'amount' => (float) $document->balance_due,
-                'currency' => $document->currency,
-                'authorizationUrl' => $this->gatewayCheckoutUrl($document, $reference),
-            ],
-        ];
+        return ['payment' => $payment];
+    }
+
+    public function initializePublicPayment(Request $request, string $token, InvoicePaymentService $payments)
+    {
+        $document = $this->publicDocumentRow($token);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        if (!$document->payment_enabled || !$document->payment_gateway || $document->payment_gateway === 'manual') {
+            return response()->json(['message' => 'Online payment is not enabled for this document.'], 422);
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+        ]);
+        $amount = $this->money($data['amount']);
+
+        if (!(bool) ($document->partial_payment_enabled ?? false) && abs($amount - (float) $document->balance_due) > 0.01) {
+            return response()->json(['message' => 'This invoice requires full payment.'], 422);
+        }
+        if ($amount > (float) $document->balance_due) {
+            return response()->json(['message' => 'Payment amount exceeds the outstanding balance.'], 422);
+        }
+
+        $payment = $payments->initialize($document, $amount);
+        $this->trackEvent((int) $document->id, 'payment.initialized', $request, [
+            'gateway' => $document->payment_gateway,
+            'amount' => $amount,
+        ], null, 'recipient');
+
+        return ['payment' => $payment];
     }
 
     public function recordPayment(Request $request, int $id)
@@ -556,17 +570,9 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function webhook(Request $request, string $gateway)
+    public function webhook(Request $request, string $gateway, InvoicePaymentService $payments)
     {
-        DB::table('invoice_events')->insert([
-            'event_type' => 'payment.webhook_received',
-            'actor_type' => 'system',
-            'metadata_json' => json_encode(['gateway' => $gateway, 'payload' => $request->all()]),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true, 'processed' => $payments->handleWebhook($request, $gateway)]);
     }
 
     public function importFromJSON(Request $request)
@@ -580,11 +586,15 @@ class InvoiceController extends Controller
             foreach ($import['documents'] as $docData) {
                 $number = trim((string) ($docData['number'] ?? $docData['quote_number'] ?? ''));
                 if ($number === '') {
-                    continue;
+                    $number = $this->nextDocumentNumber(
+                        in_array($docData['type'] ?? '', ['quote', 'invoice', 'receipt'], true)
+                            ? $docData['type']
+                            : 'invoice'
+                    );
                 }
 
                 $clientId = $this->saveImportedClient($docData);
-                $items = $docData['line_items'] ?? $docData['items'] ?? [];
+                $items = $docData['line_items'] ?? $docData['lineItems'] ?? $docData['items'] ?? [];
                 $totals = $this->importedTotals($docData, $items);
                 $amountPaid = $this->money($docData['amount_paid'] ?? $docData['amountPaid'] ?? 0);
                 $status = $this->importedStatus((string) ($docData['status'] ?? 'draft'), $amountPaid, $totals['total'], (string) ($docData['type'] ?? 'invoice'));
@@ -672,6 +682,13 @@ class InvoiceController extends Controller
                 'emails' => $emails,
             ];
         });
+
+        if ($result['documents'] === 0) {
+            return response()->json([
+                'message' => 'No invoice or quote records were found in the JSON file.',
+                'summary' => $result,
+            ], 422);
+        }
 
         return [
             'imported' => $result['documents'],
@@ -875,8 +892,38 @@ class InvoiceController extends Controller
 
     private function normalizeInvoiceImport(array $data): array
     {
+        if (isset($data['data']) && is_array($data['data'])) {
+            $data = $data['data'];
+        }
+
         $tables = $data['tables'] ?? [];
-        $documents = $tables['bk_quotes'] ?? $data['bk_quotes'] ?? $data['documents'] ?? (isset($data[0]) ? $data : [$data]);
+        $documents = $tables['bk_quotes'] ?? $data['bk_quotes'] ?? $data['documents'] ?? null;
+        if ($documents === null) {
+            $documents = [];
+
+            foreach ([
+                'invoices' => 'invoice',
+                'quotes' => 'quote',
+                'receipts' => 'receipt',
+            ] as $key => $type) {
+                foreach (is_array($data[$key] ?? null) ? $data[$key] : [] as $document) {
+                    if (is_array($document)) {
+                        $documents[] = ['type' => $type, ...$document];
+                    }
+                }
+            }
+        }
+
+        if ($documents === [] && isset($data[0])) {
+            $documents = $data;
+        } elseif ($documents === [] && $this->looksLikeInvoiceDocument($data)) {
+            $documents = [$data];
+        }
+
+        if (!is_array($documents)) {
+            $documents = [];
+        }
+
         $lineItems = $tables['bk_line_items'] ?? $data['bk_line_items'] ?? [];
         $payments = $tables['bk_payments'] ?? $data['bk_payments'] ?? [];
         $auditLogs = $tables['bk_audit_logs'] ?? $data['bk_audit_logs'] ?? [];
@@ -900,7 +947,7 @@ class InvoiceController extends Controller
                 continue;
             }
             $sourceId = $doc['id'] ?? null;
-            if ($sourceId !== null && empty($doc['line_items']) && empty($doc['items']) && isset($itemsByQuote[(string) $sourceId])) {
+            if ($sourceId !== null && empty($doc['line_items']) && empty($doc['lineItems']) && empty($doc['items']) && isset($itemsByQuote[(string) $sourceId])) {
                 $doc['line_items'] = $itemsByQuote[(string) $sourceId];
             }
             $doc['_source_id'] = $sourceId;
@@ -916,17 +963,35 @@ class InvoiceController extends Controller
         ];
     }
 
+    private function looksLikeInvoiceDocument(array $data): bool
+    {
+        return collect([
+            'number',
+            'quote_number',
+            'type',
+            'title',
+            'client',
+            'client_name',
+            'client_email',
+            'items',
+            'lineItems',
+            'line_items',
+            'total',
+            'total_amount',
+        ])->contains(fn ($key) => array_key_exists($key, $data));
+    }
+
     private function saveImportedClient(array $docData): ?int
     {
         $client = $docData['client'] ?? [];
-        $name = trim((string) ($docData['client_name'] ?? $client['name'] ?? 'Imported Client'));
-        $email = trim((string) ($docData['client_email'] ?? $client['email'] ?? ''));
+        $name = trim((string) ($docData['client_name'] ?? $docData['clientName'] ?? $client['name'] ?? 'Imported Client'));
+        $email = trim((string) ($docData['client_email'] ?? $docData['clientEmail'] ?? $client['email'] ?? ''));
         $payload = [
             'name' => $name !== '' ? $name : 'Imported Client',
             'email' => $email,
-            'phone' => $docData['client_phone'] ?? $client['phone'] ?? '',
-            'company_name' => $docData['client_company'] ?? $client['companyName'] ?? '',
-            'address' => $docData['client_address'] ?? $client['address'] ?? '',
+            'phone' => $docData['client_phone'] ?? $docData['clientPhone'] ?? $client['phone'] ?? '',
+            'company_name' => $docData['client_company'] ?? $docData['clientCompany'] ?? $client['companyName'] ?? $client['company_name'] ?? '',
+            'address' => $docData['client_address'] ?? $docData['clientAddress'] ?? $client['address'] ?? '',
             'metadata_json' => json_encode(['wordpress_client_id' => $docData['client_id'] ?? null]),
             'updated_at' => now(),
         ];
@@ -2141,12 +2206,6 @@ HTML;
         }
 
         return DB::table('settings')->pluck('value', 'key')->all();
-    }
-
-    private function gatewayCheckoutUrl(object $document, string $reference): string
-    {
-        $base = '/invoice/' . $document->public_token;
-        return $base . '?payment=' . urlencode($document->payment_gateway) . '&reference=' . urlencode($reference);
     }
 
     private function trackEvent(int $documentId, string $eventType, Request $request, array $metadata = [], ?string $sessionId = null, string $actorType = 'anonymous'): void

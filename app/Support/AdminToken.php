@@ -44,6 +44,8 @@ class AdminToken
 
     private static function secret(): string
     {
-        return env('API_TOKEN_SECRET') ?: env('APP_KEY', 'dev-only-change-this-secret');
+        $secret = (string) config('security.admin_token_secret');
+
+        return $secret !== '' ? $secret : (string) config('app.key');
     }
 }

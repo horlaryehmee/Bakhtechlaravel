@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
+use App\Support\SiteDefaults;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -19,7 +21,22 @@ class BakhtechApiController extends Controller
 {
     public function health()
     {
-        return ['ok' => true, 'service' => 'bakhtech-api'];
+        try {
+            DB::connection()->getPdo();
+            DB::table('migrations')->limit(1)->exists();
+        } catch (\Throwable) {
+            return response()->json([
+                'ok' => false,
+                'service' => 'bakhtech-api',
+                'database' => 'disconnected',
+            ], 503);
+        }
+
+        return [
+            'ok' => true,
+            'service' => 'bakhtech-api',
+            'database' => 'connected',
+        ];
     }
 
     public function login(Request $request)
@@ -157,7 +174,52 @@ class BakhtechApiController extends Controller
 
     public function publicSettings()
     {
-        return ['settings' => $this->settings()];
+        $settings = $this->settings();
+        $publicKeys = [
+            'siteName',
+            'contactEmail',
+            'phone',
+            'activeHome',
+            'homePortfolioShowDescriptions',
+            'theme_light_primary',
+            'theme_light_secondary',
+            'theme_light_active',
+            'theme_dark_primary',
+            'theme_dark_secondary',
+            'theme_dark_active',
+            'navigation_items',
+            'googleReviewUrl',
+            'trustpilotReviewUrl',
+            'facebookUrl',
+            'instagramUrl',
+            'linkedinUrl',
+            'tiktokUrl',
+            'twitterUrl',
+            'youtubeUrl',
+            'bookingIntro',
+            'company_name',
+            'company_logo',
+            'company_email',
+            'company_phone',
+            'company_address',
+            'company_website',
+        ];
+
+        return ['settings' => array_intersect_key($settings, array_flip($publicKeys))];
+    }
+
+    public function publicPage(string $slug)
+    {
+        $page = DB::table('pages')
+            ->where('slug', Str::slug($slug))
+            ->where('status', 'published')
+            ->first();
+
+        if (!$page) {
+            return response()->json(['message' => 'Page not found.'], 404);
+        }
+
+        return ['page' => $this->pageShape($page)];
     }
 
     public function publicReviews()
@@ -468,6 +530,42 @@ class BakhtechApiController extends Controller
         return response()->noContent();
     }
 
+    public function googleReviewOauthUrl(Request $request, GoogleBusinessReviewsService $google)
+    {
+        return ['google' => $google->authorizationUrl((int) $request->attributes->get('admin')->id)];
+    }
+
+    public function googleReviewCallback(Request $request, GoogleBusinessReviewsService $google)
+    {
+        $ok = $request->filled('code') && $request->filled('state') && $google->handleCallback((string) $request->input('code'), (string) $request->input('state'));
+
+        return redirect('/admin/dashboard?google_reviews=' . ($ok ? 'connected' : 'failed'));
+    }
+
+    public function googleReviewLocations(Request $request, GoogleBusinessReviewsService $google)
+    {
+        return ['settings' => $google->settingsShape(), 'locations' => $google->locations($request->boolean('refresh'))];
+    }
+
+    public function selectGoogleReviewLocation(Request $request, GoogleBusinessReviewsService $google)
+    {
+        $data = $request->validate([
+            'locationName' => ['required', 'string', 'max:255'],
+        ]);
+
+        return ['settings' => $google->selectLocation($data['locationName']), 'locations' => $google->locations()];
+    }
+
+    public function importGoogleReviews(GoogleBusinessReviewsService $google)
+    {
+        $result = $google->importReviews();
+
+        return [
+            'result' => $result,
+            'reviews' => $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)),
+        ];
+    }
+
     public function createBooking(Request $request)
     {
         if (Schema::hasTable('booking_event_types') && $request->filled('eventTypeId') && $request->filled('startsAt')) {
@@ -620,14 +718,17 @@ class BakhtechApiController extends Controller
 
     public function uploadMedia(Request $request)
     {
-        if (!$request->hasFile('file')) {
-            return response()->json(['message' => 'File is required.'], 400);
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf', 'max:10240'],
+        ]);
+        $file = $data['file'];
+        $extension = strtolower($file->getClientOriginalExtension());
+        $filename = (string) Str::uuid().'.'.$extension;
+        $uploadPath = public_path('uploads');
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
         }
-
-        $file = $request->file('file');
-        $safeName = strtolower(preg_replace('/[^a-zA-Z0-9.]+/', '-', $file->getClientOriginalName()));
-        $filename = time() . '-' . $safeName;
-        $file->move(public_path('uploads'), $filename);
+        $file->move($uploadPath, $filename);
 
         $id = DB::table('media')->insertGetId([
             'filename' => $filename,
@@ -807,72 +908,7 @@ class BakhtechApiController extends Controller
 
     private function defaultSettings(): array
     {
-        return [
-            'siteName' => 'Bakhtech Solutions',
-            'contactEmail' => 'solutions@bakhtech.com.ng',
-            'phone' => '+234 708 637 2833',
-            'activeHome' => 'home',
-            'homePortfolioShowDescriptions' => 'true',
-            'theme_light_primary' => '#1261ff',
-            'theme_light_secondary' => '#12c8a0',
-            'theme_light_active' => '#ef4444',
-            'theme_dark_primary' => '#8bb8ff',
-            'theme_dark_secondary' => '#67e8cf',
-            'theme_dark_active' => '#ef4444',
-            'navigation_items' => json_encode([
-                ['label' => 'Home', 'href' => '/', 'visible' => true],
-                ['label' => 'About', 'href' => '/about', 'visible' => true],
-                ['label' => 'Portfolio', 'href' => '/portfolio', 'visible' => true, 'children' => []],
-                ['label' => 'Booking', 'href' => '/booking', 'visible' => true],
-                ['label' => 'Contact', 'href' => '/contact', 'visible' => true],
-            ]),
-            'googleReviewUrl' => '',
-            'trustpilotReviewUrl' => '',
-            'facebookUrl' => '',
-            'instagramUrl' => '',
-            'linkedinUrl' => '',
-            'tiktokUrl' => '',
-            'twitterUrl' => '',
-            'youtubeUrl' => '',
-            'bookingIntro' => 'Choose a service, pick an available time, and receive a calendar invitation with reminders.',
-            'invoicePaymentEnabled' => 'true',
-            'invoiceDefaultPaymentGateway' => 'paystack',
-            'invoiceEnabledPaymentGateways' => 'paystack,flutterwave',
-            'company_name' => 'Bakhtech Solutions',
-            'company_logo' => '/bakhtech-logo-light.png',
-            'company_email' => 'solutions@bakhtech.com.ng',
-            'company_phone' => '+234 708 637 2833',
-            'company_address' => '',
-            'company_website' => 'https://bakhtech.com.ng',
-            'quote_prefix' => 'QT-',
-            'invoice_prefix' => 'INV-',
-            'starting_number' => '1000',
-            'receipt_starting_number' => '1000',
-            'currency' => 'NGN',
-            'currency_symbol' => '',
-            'pricing_rate_usd' => '0.00067',
-            'pricing_rate_gbp' => '0.00053',
-            'default_tax_rate' => '7.5',
-            'tax_label' => 'VAT',
-            'homepage_url' => '/',
-            'homepage_label' => 'Homepage',
-            'gateway_active' => 'paystack',
-            'gateway_mode' => 'test',
-            'enable_partial_payments' => '1',
-            'paystack_public_test' => '',
-            'paystack_secret_test' => '',
-            'paystack_public_live' => '',
-            'paystack_secret_live' => '',
-            'flutter_public_test' => '',
-            'flutter_secret_test' => '',
-            'flutter_public_live' => '',
-            'flutter_secret_live' => '',
-            'bank_account_name' => '',
-            'bank_account_number' => '',
-            'bank_bank_name' => '',
-            'bank_instructions' => '',
-            'bank_currency_accounts' => '[]',
-        ];
+        return SiteDefaults::settings();
     }
 
     private function storeBooking(Request $request, bool $adminCreated)

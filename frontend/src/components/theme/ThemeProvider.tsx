@@ -1,20 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '@/lib/api'
-
-type Theme = 'light' | 'dark'
-
-type ThemeContextValue = {
-  theme: Theme
-  toggleTheme: () => void
-  setTheme: (theme: Theme) => void
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+import { ThemeContext, type Theme } from '@/components/theme/theme-context'
 
 const storageKey = 'bakhtech-theme'
-const colorKeys = ['primary', 'secondary', 'active'] as const
-
-type ThemeColorKey = (typeof colorKeys)[number]
+type ThemeColorKey = 'primary' | 'secondary' | 'active'
 type ThemeColorSettings = Partial<Record<`theme_${Theme}_${ThemeColorKey}`, string>>
 
 function getInitialTheme(): Theme {
@@ -30,14 +19,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme)
   const [colorSettings, setColorSettings] = useState<ThemeColorSettings>({})
 
-  const setTheme = (nextTheme: Theme) => {
+  const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme)
     window.localStorage.setItem(storageKey, nextTheme)
-  }
+  }, [])
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
-  }
+  }, [setTheme, theme])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -60,7 +49,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [theme])
+  const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [setTheme, theme, toggleTheme])
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
@@ -87,12 +76,4 @@ function applyThemeColors(theme: Theme, settings: ThemeColorSettings) {
     root.style.setProperty('--brand', active)
     root.style.setProperty('--gradient-color', active)
   }
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used inside ThemeProvider')
-  }
-  return context
 }
