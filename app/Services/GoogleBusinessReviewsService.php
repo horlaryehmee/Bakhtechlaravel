@@ -13,6 +13,7 @@ class GoogleBusinessReviewsService
     {
         $token = $this->connectionToken();
         $pageId = $this->setting('google_trustindex_page_id');
+        $accessToken = $this->setting('google_trustindex_access_token');
         $params = [
             'webhook_url' => url('/api/reviews/google/trustindex-webhook'),
             'email' => $this->setting('adminEmail', config('mail.from.address', '')),
@@ -37,9 +38,33 @@ class GoogleBusinessReviewsService
             'businessName' => $this->setting('google_trustindex_business_name'),
             'businessAddress' => $this->setting('google_trustindex_business_address'),
             'pageId' => $pageId,
+            'provider' => 'Trustindex',
+            'hasAccessToken' => $accessToken !== '',
+            'maskedAccessToken' => $this->maskSecret($accessToken),
+            'webhookUrl' => url('/api/reviews/google/trustindex-webhook'),
+            'connectionEndpoint' => url('/api/admin/reviews/google/connection'),
             'lastSyncedAt' => $this->setting('google_business_reviews_last_synced_at'),
             'lastError' => $this->setting('google_business_reviews_last_error'),
         ];
+    }
+
+    public function disconnect(): void
+    {
+        DB::table('settings')->whereIn('key', [
+            'google_trustindex_page_id',
+            'google_trustindex_access_token',
+            'google_trustindex_business_name',
+            'google_trustindex_business_address',
+            'google_business_reviews_last_synced_at',
+            'google_business_reviews_last_error',
+        ])->delete();
+
+        DB::table('review_sources')->where('provider', 'google')->update([
+            'place_id' => '',
+            'oauth_access_token' => null,
+            'last_synced_at' => null,
+            'updated_at' => now(),
+        ]);
     }
 
     public function importPayload(array $payload): array
@@ -216,6 +241,19 @@ class GoogleBusinessReviewsService
         $this->setSetting('google_trustindex_connection_token', $token);
 
         return $token;
+    }
+
+    private function maskSecret(string $secret): string
+    {
+        if ($secret === '') {
+            return '';
+        }
+
+        if (strlen($secret) <= 8) {
+            return str_repeat('*', strlen($secret));
+        }
+
+        return substr($secret, 0, 4) . str_repeat('*', 8) . substr($secret, -4);
     }
 
     private function setting(string $key, string $fallback = ''): string

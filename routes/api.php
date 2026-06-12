@@ -68,6 +68,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::delete('/admin/reviews/{id}', [BakhtechApiController::class, 'deleteReview']);
     Route::get('/admin/reviews/google/connection', [BakhtechApiController::class, 'googleReviewConnection'])->middleware('admin.role:admin');
     Route::post('/admin/reviews/google/import', [BakhtechApiController::class, 'importGoogleReviews'])->middleware('admin.role:admin');
+    Route::post('/admin/reviews/google/disconnect', [BakhtechApiController::class, 'disconnectGoogleReviews'])->middleware('admin.role:admin');
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);
     Route::put('/admin/settings', [BakhtechApiController::class, 'updateSettings']);

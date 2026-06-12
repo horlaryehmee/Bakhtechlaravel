@@ -504,6 +504,11 @@ export type GoogleReviewConnection = {
   businessName: string
   businessAddress: string
   pageId: string
+  provider: string
+  hasAccessToken: boolean
+  maskedAccessToken: string
+  webhookUrl: string
+  connectionEndpoint: string
   lastSyncedAt: string
   lastError: string
 }
@@ -601,6 +606,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -739,6 +745,11 @@ export const api = {
     return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; google: GoogleReviewConnection; reviews: Review[] }>('/api/admin/reviews/google/import', {
       method: 'POST',
       body: JSON.stringify({ payload }),
+    })
+  },
+  disconnectGoogleReviews() {
+    return request<{ google: GoogleReviewConnection }>('/api/admin/reviews/google/disconnect', {
+      method: 'POST',
     })
   },
   createBooking(booking: Partial<Booking>) {

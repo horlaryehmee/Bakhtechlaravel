@@ -30,6 +30,10 @@ Route::get('/', function (Request $request) {
 });
 
 Route::fallback(function () {
+    if (request()->is('api') || request()->is('api/*')) {
+        return response()->json(['message' => 'API route not found. Clear Laravel route caches after deployment.'], 404);
+    }
+
     $index = public_path('index.html');
 
     if (is_file($index)) {
@@ -37,4 +41,4 @@ Route::fallback(function () {
     }
 
     return response()->json(['message' => 'Not found.'], 404);
-})->where('any', '^(?!api).*$');
+});

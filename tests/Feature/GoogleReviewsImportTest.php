@@ -78,4 +78,51 @@ class GoogleReviewsImportTest extends TestCase
             'rating' => 5,
         ]);
     }
+
+    public function test_connection_diagnostics_mask_the_access_token(): void
+    {
+        DB::table('settings')->insert([
+            [
+                'key' => 'google_trustindex_page_id',
+                'value' => 'google-place-123',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'key' => 'google_trustindex_access_token',
+                'value' => 'abcd1234567890wxyz',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $connection = app(GoogleBusinessReviewsService::class)->connection();
+
+        $this->assertTrue($connection['connected']);
+        $this->assertTrue($connection['hasAccessToken']);
+        $this->assertSame('abcd********wxyz', $connection['maskedAccessToken']);
+        $this->assertNotSame('abcd1234567890wxyz', $connection['maskedAccessToken']);
+    }
+
+    public function test_disconnect_removes_credentials_but_keeps_imported_reviews(): void
+    {
+        $service = app(GoogleBusinessReviewsService::class);
+        $service->importPayload([
+            'id' => 'google-place-123',
+            'access_token' => 'private-token',
+            'reviews' => [[
+                'id' => 'review-1',
+                'reviewer' => ['name' => 'Example Customer'],
+                'text' => 'Excellent service.',
+                'rating' => 5,
+                'created_at' => '2026-06-10',
+            ]],
+        ]);
+
+        $service->disconnect();
+
+        $this->assertFalse($service->connection()['connected']);
+        $this->assertDatabaseHas('reviews', ['external_id' => 'review-1']);
+        $this->assertDatabaseMissing('settings', ['key' => 'google_trustindex_access_token']);
+    }
 }

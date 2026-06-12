@@ -556,6 +556,13 @@ class BakhtechApiController extends Controller
         ];
     }
 
+    public function disconnectGoogleReviews(GoogleBusinessReviewsService $google)
+    {
+        $google->disconnect();
+
+        return ['google' => $google->connection()];
+    }
+
     public function createBooking(Request $request)
     {
         if (Schema::hasTable('booking_event_types') && $request->filled('eventTypeId') && $request->filled('startsAt')) {

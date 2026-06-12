@@ -81,6 +81,7 @@ type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availabilit
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
 type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'advanced'
+type ReviewAdminSection = 'reviews' | 'google' | 'settings'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
   key: string
@@ -667,6 +668,7 @@ export function AdminDashboard() {
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const loadedGoogleReviewSettings = useRef(false)
+  const [reviewAdminSection, setReviewAdminSection] = useState<ReviewAdminSection>('google')
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
   const [projects, setProjects] = useState<Project[]>(initialAdminCache?.projects ?? [])
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -1394,6 +1396,23 @@ export function AdminDashboard() {
     }
 
     notify(result.result.message)
+  }
+
+  async function disconnectGoogleReviews() {
+    if (!window.confirm('Disconnect this Google Business integration? Imported reviews will remain in Review Management.')) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.disconnectGoogleReviews()
+      setGoogleReviewSettings(result.google)
+      notify('Google review integration disconnected.')
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : 'Unable to disconnect Google reviews.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function updateBookingCmsStatus(booking: BookingCmsBooking, status: string) {
@@ -4888,8 +4907,29 @@ export function AdminDashboard() {
         <PanelHeader 
           eyebrow="Reviews" 
           title="Customer Reviews" 
-          text="Add manual customer reviews and choose where each review came from." 
+          text="Connect Google, manage imported reviews, and configure review links from one place."
         />
+        <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
+          {([
+            ['google', 'Google Integration'],
+            ['reviews', 'Review Management'],
+            ['settings', 'Settings & Diagnostics'],
+          ] as Array<[ReviewAdminSection, string]>).map(([section, label]) => (
+            <button
+              key={section}
+              type="button"
+              onClick={() => setReviewAdminSection(section)}
+              className={cn(
+                'min-h-11 rounded-xl px-4 text-sm font-black transition',
+                reviewAdminSection === section ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {reviewAdminSection === 'google' ? (
         <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <div>
@@ -4911,8 +4951,15 @@ export function AdminDashboard() {
                   {googleReviewSettings.businessAddress ? (
                     <p className="mt-1 text-xs font-semibold text-green-700/75">{googleReviewSettings.businessAddress}</p>
                   ) : null}
+                  <p className="mt-2 text-xs font-semibold text-green-700/75">
+                    Google Place ID: {googleReviewSettings.pageId}
+                  </p>
                 </div>
-              ) : null}
+              ) : (
+                <p className="mt-3 rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700">
+                  Not connected. Complete the Trustindex business selection popup to connect.
+                </p>
+              )}
               {googleReviewSettings?.lastSyncedAt ? (
                 <p className="mt-1 text-xs font-semibold text-gray-500">Last import: {googleReviewSettings.lastSyncedAt}</p>
               ) : null}
@@ -4921,6 +4968,45 @@ export function AdminDashboard() {
               ) : null}
             </div>
             <div className="grid gap-3">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-gray-500">Connection status</p>
+                <p className={cn('mt-2 text-lg font-black', googleReviewSettings?.connected ? 'text-green-700' : 'text-amber-700')}>
+                  {googleReviewSettings?.connected ? 'Connected' : 'Not connected'}
+                </p>
+                <p className="mt-2 text-sm font-semibold text-gray-600">
+                  Access token: {googleReviewSettings?.hasAccessToken ? googleReviewSettings.maskedAccessToken : 'Not received'}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                  The complete token is stored in the backend and only supplied to the admin-only Trustindex refresh popup. This page displays a masked value.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white" onClick={connectGoogleReviews} disabled={saving}>
+                  {saving
+                    ? 'Waiting for Trustindex...'
+                    : googleReviewSettings?.connected
+                      ? 'Refresh Google Reviews'
+                      : 'Connect Google Business'}
+                </Button>
+                {googleReviewSettings?.connected ? (
+                  <Button type="button" variant="ghost" className="rounded-xl border border-red-200 px-4 text-red-600" onClick={() => void disconnectGoogleReviews()} disabled={saving}>
+                    Disconnect
+                  </Button>
+                ) : null}
+                {loadingGoogleReviews ? <span className="self-center text-sm font-semibold text-gray-500">Loading connection...</span> : null}
+              </div>
+            </div>
+          </div>
+        </section>
+        ) : null}
+
+        {reviewAdminSection === 'settings' ? (
+          <section className="mb-6 grid gap-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm xl:grid-cols-2">
+            <div className="grid gap-4">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Public Review Links</h3>
+                <p className="mt-1 text-sm text-gray-500">These links are used by the public review buttons on the website.</p>
+              </div>
               <label className="grid gap-2 text-sm font-bold text-gray-700">
                 Public Google review link
                 <input
@@ -4937,22 +5023,35 @@ export function AdminDashboard() {
                   onChange={(event) => setSettingsForm((current) => ({ ...current, trustpilotReviewUrl: event.target.value }))}
                 />
               </label>
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white" onClick={() => void saveReviewIntegrationSettings()} disabled={saving}>
-                  Save Review Settings
-                </Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={connectGoogleReviews} disabled={saving}>
-                  {saving
-                    ? 'Waiting for Trustindex...'
-                    : googleReviewSettings?.connected
-                      ? 'Refresh Google Reviews'
-                      : 'Connect Google Business'}
-                </Button>
-                {loadingGoogleReviews ? <span className="self-center text-sm font-semibold text-gray-500">Loading connection...</span> : null}
-              </div>
+              <Button type="button" className="w-fit rounded-xl bg-blue-600 px-4 text-white" onClick={() => void saveReviewIntegrationSettings()} disabled={saving}>
+                Save Review Settings
+              </Button>
             </div>
-          </div>
-        </section>
+            <div className="grid content-start gap-3">
+              <h3 className="text-xl font-black text-gray-900">Integration Diagnostics</h3>
+              {[
+                ['Provider', googleReviewSettings?.provider || 'Trustindex'],
+                ['Status', googleReviewSettings?.connected ? 'Connected' : 'Not connected'],
+                ['Business', googleReviewSettings?.businessName || 'Not selected'],
+                ['Google Place ID', googleReviewSettings?.pageId || 'Not available'],
+                ['Access token', googleReviewSettings?.hasAccessToken ? googleReviewSettings.maskedAccessToken : 'Not received'],
+                ['Last import', googleReviewSettings?.lastSyncedAt || 'Never'],
+                ['Connection endpoint', googleReviewSettings?.connectionEndpoint || `${window.location.origin}/api/admin/reviews/google/connection`],
+                ['Webhook URL', googleReviewSettings?.webhookUrl || `${window.location.origin}/api/reviews/google/trustindex-webhook`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-xs font-black uppercase tracking-wide text-gray-500">{label}</p>
+                  <p className="mt-1 break-all text-sm font-bold text-gray-800">{value}</p>
+                </div>
+              ))}
+              <p className="rounded-xl bg-blue-500/10 px-4 py-3 text-sm font-semibold leading-relaxed text-blue-700">
+                After every cPanel update, run <code>php artisan optimize:clear</code> and <code>php artisan optimize</code> so Laravel loads new API routes.
+              </p>
+            </div>
+          </section>
+        ) : null}
+
+        {reviewAdminSection === 'reviews' ? (
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveReview}>
             <div className="flex items-center justify-between gap-4 mb-6">
@@ -5064,6 +5163,7 @@ export function AdminDashboard() {
             </div>
           </section>
         </div>
+        ) : null}
       </div>
     )
   }
