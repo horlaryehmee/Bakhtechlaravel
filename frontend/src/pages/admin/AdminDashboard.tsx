@@ -679,6 +679,12 @@ export function AdminDashboard() {
   const [projectPerPage, setProjectPerPage] = useState(10)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
+  const [showReviewForm, setShowReviewForm] = useState(false)
+  const [reviewSearch, setReviewSearch] = useState('')
+  const [reviewProviderFilter, setReviewProviderFilter] = useState('all')
+  const [reviewStatusFilter, setReviewStatusFilter] = useState('all')
+  const [reviewPage, setReviewPage] = useState(1)
+  const [reviewPerPage, setReviewPerPage] = useState(10)
   const [projectForm, setProjectForm] = useState<ProjectInput>(emptyProject)
   const [postForm, setPostForm] = useState(emptyPost)
   const [reviewForm, setReviewForm] = useState<ReviewInput>(emptyReview)
@@ -1215,6 +1221,7 @@ export function AdminDashboard() {
 
   function editReview(review: Review) {
     setEditingReview(review)
+    setShowReviewForm(true)
     setReviewForm({
       provider: review.provider,
       authorName: review.authorName,
@@ -1281,6 +1288,7 @@ export function AdminDashboard() {
         }
       })
       resetReviewForm()
+      setShowReviewForm(false)
       notify(editingReview ? 'Review updated.' : 'Review added.')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save review.')
@@ -4913,6 +4921,24 @@ export function AdminDashboard() {
   }
 
   function renderReviews() {
+    const allReviews = cms?.reviews ?? []
+    const normalizedReviewSearch = reviewSearch.trim().toLowerCase()
+    const filteredReviews = allReviews.filter((review) => {
+      const matchesSearch = normalizedReviewSearch === ''
+        || review.authorName.toLowerCase().includes(normalizedReviewSearch)
+        || review.content.toLowerCase().includes(normalizedReviewSearch)
+      const matchesProvider = reviewProviderFilter === 'all' || review.provider === reviewProviderFilter
+      const matchesStatus = reviewStatusFilter === 'all'
+        || (reviewStatusFilter === 'published' && review.isPublished)
+        || (reviewStatusFilter === 'draft' && !review.isPublished)
+        || (reviewStatusFilter === 'featured' && review.isFeatured)
+
+      return matchesSearch && matchesProvider && matchesStatus
+    })
+    const totalReviewPages = Math.max(1, Math.ceil(filteredReviews.length / reviewPerPage))
+    const activeReviewPage = Math.min(reviewPage, totalReviewPages)
+    const paginatedReviews = filteredReviews.slice((activeReviewPage - 1) * reviewPerPage, activeReviewPage * reviewPerPage)
+
     return (
       <div>
         <PanelHeader 
@@ -5162,98 +5188,210 @@ export function AdminDashboard() {
         ) : null}
 
         {reviewAdminSection === 'reviews' ? (
-        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveReview}>
-            <div className="flex items-center justify-between gap-4 mb-6">
-              <h3 className="text-2xl font-black text-gray-900">{editingReview ? 'Edit review' : 'Add review'}</h3>
-              {editingReview && <Button type="button" variant="ghost" onClick={resetReviewForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
+        <div className="grid gap-6">
+          <div className="flex flex-col justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">Review Management</h3>
+              <p className="mt-1 text-sm font-semibold text-gray-500">Browse imported reviews or add a review manually.</p>
             </div>
-            <div className="grid gap-5 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-gray-700">
-                Platform
-                <select 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  value={reviewForm.provider} 
-                  onChange={(e) => setReviewForm((current) => ({ ...current, provider: e.target.value as ReviewInput['provider'] }))}
-                >
-                  {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-gray-700">
-                Rating
-                <select 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  value={reviewForm.rating} 
-                  onChange={(e) => setReviewForm((current) => ({ ...current, rating: Number(e.target.value) }))}
-                >
-                  {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
-                </select>
-              </label>
+            <Button
+              type="button"
+              className="rounded-xl bg-blue-600 px-5 text-white hover:bg-blue-700"
+              onClick={() => {
+                if (showReviewForm) {
+                  resetReviewForm()
+                  setShowReviewForm(false)
+                } else {
+                  resetReviewForm()
+                  setShowReviewForm(true)
+                }
+              }}
+            >
+              {showReviewForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+              {showReviewForm ? 'Close Form' : 'Add Review'}
+            </Button>
+          </div>
+
+          {showReviewForm ? (
+          <form className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm" onSubmit={saveReview}>
+            <div className="flex flex-col justify-between gap-3 border-b border-gray-100 px-6 py-5 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900">{editingReview ? 'Edit Review' : 'Add Review'}</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">Enter the reviewer, review content, source, and publishing status.</p>
+              </div>
+              {editingReview ? (
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={resetReviewForm}>
+                  <Plus className="mr-2 h-4 w-4" /> New Review
+                </Button>
+              ) : null}
             </div>
-            <input 
-              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 my-4" 
-              placeholder="Reviewer name" 
-              value={reviewForm.authorName} 
-              onChange={(e) => setReviewForm((current) => ({ ...current, authorName: e.target.value }))} 
-              required 
-            />
-            <input 
-              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
-              placeholder="Reviewer image URL or uploaded path" 
-              value={reviewForm.authorImage} 
-              onChange={(e) => setReviewForm((current) => ({ ...current, authorImage: e.target.value }))} 
-            />
-            <textarea 
-              className="theme-input min-h-32 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
-              placeholder="Review text" 
-              value={reviewForm.content} 
-              onChange={(e) => setReviewForm((current) => ({ ...current, content: e.target.value }))} 
-              required 
-            />
-            <div className="grid gap-5 md:grid-cols-2">
-              <input 
-                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                type="date" 
-                value={reviewForm.reviewedAt} 
-                onChange={(e) => setReviewForm((current) => ({ ...current, reviewedAt: e.target.value }))} 
-              />
-              <input 
-                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                placeholder="External review URL" 
-                value={reviewForm.externalUrl} 
-                onChange={(e) => setReviewForm((current) => ({ ...current, externalUrl: e.target.value }))} 
-              />
+
+            <div className="grid gap-6 p-6 xl:grid-cols-2">
+              <fieldset className="grid content-start gap-4 rounded-2xl border border-gray-200 p-5">
+                <legend className="px-2 text-sm font-black uppercase tracking-wide text-gray-500">Reviewer Details</legend>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Reviewer name <span className="font-medium text-red-500">Required</span>
+                  <input
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    placeholder="e.g. John Ade"
+                    value={reviewForm.authorName}
+                    onChange={(event) => setReviewForm((current) => ({ ...current, authorName: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Reviewer photo URL
+                  <input
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    placeholder="https://... or /uploads/..."
+                    value={reviewForm.authorImage}
+                    onChange={(event) => setReviewForm((current) => ({ ...current, authorImage: event.target.value }))}
+                  />
+                  <span className="text-xs font-medium text-gray-500">Leave empty to display the reviewer’s initials.</span>
+                </label>
+              </fieldset>
+
+              <fieldset className="grid content-start gap-4 rounded-2xl border border-gray-200 p-5">
+                <legend className="px-2 text-sm font-black uppercase tracking-wide text-gray-500">Source & Rating</legend>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    Platform
+                    <select
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                      value={reviewForm.provider}
+                      onChange={(event) => setReviewForm((current) => ({ ...current, provider: event.target.value as ReviewInput['provider'] }))}
+                    >
+                      {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-gray-700">
+                    Rating
+                    <select
+                      className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                      value={reviewForm.rating}
+                      onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}
+                    >
+                      {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} star{rating === 1 ? '' : 's'}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Review date
+                  <input
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    type="date"
+                    value={reviewForm.reviewedAt}
+                    onChange={(event) => setReviewForm((current) => ({ ...current, reviewedAt: event.target.value }))}
+                  />
+                </label>
+              </fieldset>
+
+              <fieldset className="grid gap-4 rounded-2xl border border-gray-200 p-5 xl:col-span-2">
+                <legend className="px-2 text-sm font-black uppercase tracking-wide text-gray-500">Review Content</legend>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Review text <span className="font-medium text-red-500">Required</span>
+                  <textarea
+                    className="theme-input min-h-36 resize-y rounded-xl border border-gray-200 px-4 py-3 leading-7 outline-none focus:border-blue-500"
+                    placeholder="Enter the complete customer review..."
+                    value={reviewForm.content}
+                    onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))}
+                    required
+                  />
+                  <span className="text-right text-xs font-semibold text-gray-500">{reviewForm.content.length} characters</span>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Original review URL
+                  <input
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    placeholder="https://..."
+                    value={reviewForm.externalUrl}
+                    onChange={(event) => setReviewForm((current) => ({ ...current, externalUrl: event.target.value }))}
+                  />
+                </label>
+              </fieldset>
+
+              <fieldset className="rounded-2xl border border-gray-200 p-5 xl:col-span-2">
+                <legend className="px-2 text-sm font-black uppercase tracking-wide text-gray-500">Publication</legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-4">
+                    <input type="checkbox" checked={reviewForm.isPublished} onChange={(event) => setReviewForm((current) => ({ ...current, isPublished: event.target.checked }))} className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span><strong className="block text-sm text-gray-800">Published</strong><span className="mt-1 block text-xs font-medium text-gray-500">Allow this review to appear through the public review API.</span></span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-4">
+                    <input type="checkbox" checked={reviewForm.isFeatured} onChange={(event) => setReviewForm((current) => ({ ...current, isFeatured: event.target.checked }))} className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span><strong className="block text-sm text-gray-800">Featured</strong><span className="mt-1 block text-xs font-medium text-gray-500">Prioritize this review when featured-only filtering is enabled.</span></span>
+                  </label>
+                </div>
+              </fieldset>
             </div>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
-                <input 
-                  type="checkbox" 
-                  checked={reviewForm.isPublished} 
-                  onChange={(e) => setReviewForm((current) => ({ ...current, isPublished: e.target.checked }))} 
-                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
-                />
-                Published
-              </label>
-              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
-                <input 
-                  type="checkbox" 
-                  checked={reviewForm.isFeatured} 
-                  onChange={(e) => setReviewForm((current) => ({ ...current, isFeatured: e.target.checked }))} 
-                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
-                />
-                Featured
-              </label>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>{saving ? 'Saving...' : editingReview ? 'Update Review' : 'Add Review'}</Button>
-              {editingReview && <Button type="button" variant="ghost" onClick={resetReviewForm}>Cancel</Button>}
+
+            <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-5" onClick={() => {
+                resetReviewForm()
+                setShowReviewForm(false)
+              }}>Cancel</Button>
+              <Button type="submit" className="rounded-xl bg-blue-600 px-6 text-white hover:bg-blue-700" disabled={saving}>
+                <Save className="mr-2 h-4 w-4" /> {saving ? 'Saving...' : editingReview ? 'Update Review' : 'Add Review'}
+              </Button>
             </div>
           </form>
+          ) : null}
           <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
             <h3 className="mb-6 text-2xl font-black text-gray-900">Manage Reviews</h3>
+            <div className="mb-5 grid gap-3 border-b border-gray-100 pb-5 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_170px_150px_110px]">
+              <label className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={reviewSearch}
+                  onChange={(event) => {
+                    setReviewSearch(event.target.value)
+                    setReviewPage(1)
+                  }}
+                  className="theme-input min-h-11 w-full rounded-xl border border-gray-200 pl-10 pr-4 text-sm outline-none focus:border-blue-500"
+                  placeholder="Search reviewer or text"
+                />
+              </label>
+              <select
+                value={reviewProviderFilter}
+                onChange={(event) => {
+                  setReviewProviderFilter(event.target.value)
+                  setReviewPage(1)
+                }}
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-blue-500"
+              >
+                <option value="all">All platforms</option>
+                {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+              </select>
+              <select
+                value={reviewStatusFilter}
+                onChange={(event) => {
+                  setReviewStatusFilter(event.target.value)
+                  setReviewPage(1)
+                }}
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-blue-500"
+              >
+                <option value="all">All statuses</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="featured">Featured</option>
+              </select>
+              <select
+                value={reviewPerPage}
+                onChange={(event) => {
+                  setReviewPerPage(Number(event.target.value))
+                  setReviewPage(1)
+                }}
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold outline-none focus:border-blue-500"
+              >
+                {[10, 20, 50].map((size) => <option key={size} value={size}>{size} / page</option>)}
+              </select>
+            </div>
+            <p className="mb-4 text-sm font-semibold text-gray-500">
+              Showing {paginatedReviews.length} of {filteredReviews.length} matching reviews. {allReviews.length} total stored.
+            </p>
             <div className="grid gap-4">
-              {cms?.reviews.map((review) => (
-                <article key={review.id} className="bg-gray-50 rounded-xl p-5 md:grid-cols-[1fr_auto] md:items-center">
+              {paginatedReviews.map((review) => (
+                <article key={review.id} className="grid rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[minmax(180px,0.7fr)_90px_minmax(260px,1.3fr)_auto] md:items-center md:gap-5">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="font-black text-gray-900">{review.authorName}</h4>
@@ -5269,7 +5407,18 @@ export function AdminDashboard() {
                   </div>
                 </article>
               ))}
-              {cms?.reviews.length === 0 && <p className="text-gray-500">No reviews yet.</p>}
+              {paginatedReviews.length === 0 && <p className="py-10 text-center text-gray-500">No reviews match the selected filters.</p>}
+            </div>
+            <div className="mt-5 flex flex-col justify-between gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center">
+              <p className="text-sm font-semibold text-gray-500">Page {activeReviewPage} of {totalReviewPages}</p>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeReviewPage <= 1} onClick={() => setReviewPage((page) => Math.max(1, page - 1))}>
+                  <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                </Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeReviewPage >= totalReviewPages} onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}>
+                  Next <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </section>
         </div>
