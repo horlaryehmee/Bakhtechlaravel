@@ -514,6 +514,7 @@ export type GoogleReviewConnection = {
   importedReviewCount: number
   googleReviewCount: number
   connectorLimit: string
+  businessUrl: string
 }
 
 export type AdminUser = {
@@ -758,10 +759,10 @@ export const api = {
   trustpilotReviewConnection() {
     return request<{ trustpilot: GoogleReviewConnection }>('/api/admin/reviews/trustpilot/connection')
   },
-  importTrustpilotReviews(payload: Record<string, unknown>) {
+  importTrustpilotReviews(businessUrl: string) {
     return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; trustpilot: GoogleReviewConnection; reviews: Review[] }>('/api/admin/reviews/trustpilot/import', {
       method: 'POST',
-      body: JSON.stringify({ payload }),
+      body: JSON.stringify({ businessUrl }),
     })
   },
   disconnectTrustpilotReviews() {

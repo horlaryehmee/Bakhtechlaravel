@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class GoogleBusinessReviewsService
 {
@@ -15,6 +17,7 @@ class GoogleBusinessReviewsService
         $token = $this->connectionToken($provider);
         $pageId = $this->setting("{$provider}_trustindex_page_id");
         $accessToken = $this->setting("{$provider}_trustindex_access_token");
+        $trustpilotBusinessUrl = $this->setting('trustpilot_business_url');
         $params = [
             'webhook_url' => url("/api/reviews/{$provider}/trustindex-webhook"),
             'email' => $this->setting('adminEmail', config('mail.from.address', '')),
@@ -22,19 +25,23 @@ class GoogleBusinessReviewsService
             'version' => self::TRUSTINDEX_VERSION,
         ];
 
-        if ($pageId === '') {
+        if ($provider === 'trustpilot') {
+            $popupUrl = '';
+        } elseif ($pageId === '') {
             $params['type'] = ucfirst($provider);
             $params['referrer'] = 'public';
-            $popupUrl = 'https://admin.trustindex.io/source/edit2?' . http_build_query($params);
+            $popupUrl = 'https://admin.trustindex.io/source/edit2?'.http_build_query($params);
         } else {
             $params['type'] = $provider;
             $params['page_id'] = $pageId;
             $params['access_token'] = $accessToken;
-            $popupUrl = 'https://admin.trustindex.io/source/wordpressPageRequest?' . http_build_query($params);
+            $popupUrl = 'https://admin.trustindex.io/source/wordpressPageRequest?'.http_build_query($params);
         }
 
         return [
-            'connected' => $pageId !== '',
+            'connected' => $provider === 'trustpilot'
+                ? $pageId !== '' && $trustpilotBusinessUrl !== ''
+                : $pageId !== '',
             'popupUrl' => $popupUrl,
             'businessName' => $this->setting("{$provider}_trustindex_business_name"),
             'businessAddress' => $this->setting("{$provider}_trustindex_business_address"),
@@ -49,6 +56,7 @@ class GoogleBusinessReviewsService
             'importedReviewCount' => (int) DB::table('reviews')->where('provider', $provider)->count(),
             'googleReviewCount' => (int) $this->setting("{$provider}_trustindex_review_count", '0'),
             'connectorLimit' => 'Trustindex free connections may return fewer reviews than the business total. Complete history requires the appropriate Trustindex plan/API entitlement.',
+            'businessUrl' => $provider === 'trustpilot' ? $trustpilotBusinessUrl : '',
         ];
     }
 
@@ -63,6 +71,7 @@ class GoogleBusinessReviewsService
             "{$provider}_trustindex_review_count",
             "{$provider}_reviews_last_synced_at",
             "{$provider}_reviews_last_error",
+            ...($provider === 'trustpilot' ? ['trustpilot_business_url'] : []),
         ])->delete();
 
         DB::table('review_sources')->where('provider', $provider)->update([
@@ -96,7 +105,7 @@ class GoogleBusinessReviewsService
         $updated = 0;
 
         foreach ($reviews as $review) {
-            if (!is_array($review)) {
+            if (! is_array($review)) {
                 continue;
             }
 
@@ -107,7 +116,7 @@ class GoogleBusinessReviewsService
             $externalId = trim((string) ($review['id'] ?? $review['reviewId'] ?? ''));
 
             if ($externalId === '') {
-                $externalId = hash('sha256', $author . '|' . $content . '|' . $reviewedAt);
+                $externalId = hash('sha256', $author.'|'.$content.'|'.$reviewedAt);
             }
 
             $values = [
@@ -117,7 +126,7 @@ class GoogleBusinessReviewsService
                 'author_name' => $author,
                 'author_image' => (string) data_get($review, 'reviewer.avatar_url', data_get($review, 'user.avatar_url', '')),
                 'rating' => $rating,
-                'content' => $content !== '' ? $content : $rating . '-star Google review.',
+                'content' => $content !== '' ? $content : $rating.'-star '.ucfirst($provider).' review.',
                 'external_url' => (string) ($review['url'] ?? $review['review_url'] ?? ''),
                 'reviewed_at' => $reviewedAt,
                 'is_featured' => true,
@@ -151,11 +160,73 @@ class GoogleBusinessReviewsService
         ];
     }
 
+    public function syncTrustpilot(string $businessUrl): array
+    {
+        $businessUrl = $this->normalizeTrustpilotUrl($businessUrl);
+
+        try {
+            $reviews = [];
+            $business = [];
+
+            for ($page = 1; $page <= 5; $page++) {
+                $response = Http::withHeaders([
+                    'Accept' => 'text/html,application/xhtml+xml',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'User-Agent' => 'Mozilla/5.0 (compatible; BakhtechReviews/1.0)',
+                ])
+                    ->timeout(30)
+                    ->retry(2, 250, null, false)
+                    ->get($businessUrl, ['languages' => 'all', 'page' => $page]);
+                $pageData = $this->trustpilotPageData($response->body());
+
+                $pageProps = data_get($pageData, 'props.pageProps', []);
+                if ($page === 1) {
+                    $business = is_array($pageProps['businessUnit'] ?? null)
+                        ? $pageProps['businessUnit']
+                        : [];
+                }
+
+                foreach (($pageProps['reviews'] ?? []) as $review) {
+                    if (is_array($review)) {
+                        $reviews[] = $this->normalizeTrustpilotReview($review, $businessUrl);
+                    }
+                }
+
+                $totalReviews = (int) ($business['numberOfReviews'] ?? count($reviews));
+                if ($page * 20 >= $totalReviews || empty($pageProps['reviews'])) {
+                    break;
+                }
+            }
+
+            $businessId = $this->trustpilotPlaceId($businessUrl);
+            if ($reviews === [] || trim((string) ($business['displayName'] ?? '')) === '') {
+                throw new RuntimeException('No Trustpilot reviews were found at that business profile URL.');
+            }
+
+            $this->setSetting('trustpilot_business_url', $businessUrl);
+
+            return $this->importPayload([
+                'id' => $businessId,
+                'page_id' => $businessId,
+                'name' => $business['displayName'],
+                'review_count' => $business['numberOfReviews'] ?? count($reviews),
+                'reviews' => $reviews,
+            ], 'trustpilot');
+        } catch (RuntimeException $exception) {
+            $this->setSetting('trustpilot_reviews_last_error', $exception->getMessage());
+            throw $exception;
+        } catch (\Throwable $exception) {
+            $message = 'Trustpilot connection failed. Check the public business profile URL and try again.';
+            $this->setSetting('trustpilot_reviews_last_error', $message);
+            throw new RuntimeException($message, 0, $exception);
+        }
+    }
+
     public function webhook(array $payload, string $provider = 'google'): bool
     {
         $provider = $this->provider($provider);
         $token = (string) ($payload['token'] ?? request()->query('token', ''));
-        if ($token === '' || !hash_equals($this->connectionToken($provider), $token)) {
+        if ($token === '' || ! hash_equals($this->connectionToken($provider), $token)) {
             return false;
         }
 
@@ -197,17 +268,19 @@ class GoogleBusinessReviewsService
         $lists = [];
 
         foreach ($payload as $key => $value) {
-            if (!is_array($value)) {
+            if (! is_array($value)) {
                 continue;
             }
 
             if ($key === 'reviews' && array_is_list($value)) {
                 $lists[] = $value;
+
                 continue;
             }
 
             if (in_array($key, ['items', 'data'], true) && array_is_list($value) && $this->looksLikeReviewList($value)) {
                 $lists[] = $value;
+
                 continue;
             }
 
@@ -308,6 +381,76 @@ class GoogleBusinessReviewsService
             : 'google';
     }
 
+    private function normalizeTrustpilotUrl(string $businessUrl): string
+    {
+        $businessUrl = trim($businessUrl);
+        if ($businessUrl === '') {
+            throw new RuntimeException('Enter your public Trustpilot business profile URL.');
+        }
+
+        if (! str_contains($businessUrl, '://')) {
+            $businessUrl = 'https://'.$businessUrl;
+        }
+
+        $host = strtolower((string) parse_url($businessUrl, PHP_URL_HOST));
+        $path = trim((string) parse_url($businessUrl, PHP_URL_PATH), '/');
+
+        if (($host !== 'trustpilot.com' && ! str_ends_with($host, '.trustpilot.com'))
+            || ! preg_match('#^review/([^/]+)$#i', $path, $matches)) {
+            throw new RuntimeException('Use a Trustpilot URL like https://www.trustpilot.com/review/example.com.');
+        }
+
+        return 'https://'.$host.'/review/'.rawurlencode(rawurldecode($matches[1]));
+    }
+
+    private function trustpilotPageData(string $html): array
+    {
+        if (! preg_match('#<script[^>]*\bid=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>#is', $html, $matches)) {
+            if (str_contains(strtolower($html), 'verifying your connection')) {
+                throw new RuntimeException(
+                    'Trustpilot blocked the server request with browser verification. Try again later or from a different server IP.'
+                );
+            }
+
+            throw new RuntimeException('Trustpilot returned a page without review data.');
+        }
+
+        $data = json_decode(trim($matches[1]), true);
+        if (! is_array($data)) {
+            throw new RuntimeException('Trustpilot returned invalid review data.');
+        }
+
+        return $data;
+    }
+
+    private function trustpilotPlaceId(string $businessUrl): string
+    {
+        return rawurldecode((string) basename((string) parse_url($businessUrl, PHP_URL_PATH)));
+    }
+
+    private function normalizeTrustpilotReview(array $review, string $businessUrl): array
+    {
+        $content = trim(implode("\n\n", array_filter([
+            trim((string) ($review['title'] ?? '')),
+            trim((string) ($review['text'] ?? '')),
+        ])));
+        $reviewId = trim((string) ($review['id'] ?? ''));
+
+        return [
+            'id' => $reviewId,
+            'reviewer' => [
+                'name' => (string) data_get($review, 'consumer.displayName', 'Trustpilot reviewer'),
+                'avatar_url' => (string) data_get($review, 'consumer.imageUrl', ''),
+            ],
+            'text' => $content,
+            'rating' => (int) ($review['rating'] ?? $review['stars'] ?? 5),
+            'created_at' => (string) data_get($review, 'dates.publishedDate', $review['createdAt'] ?? now()->toIso8601String()),
+            'url' => $reviewId !== ''
+                ? "https://www.trustpilot.com/reviews/{$reviewId}"
+                : $businessUrl,
+        ];
+    }
+
     private function maskSecret(string $secret): string
     {
         if ($secret === '') {
@@ -318,7 +461,7 @@ class GoogleBusinessReviewsService
             return str_repeat('*', strlen($secret));
         }
 
-        return substr($secret, 0, 4) . str_repeat('*', 8) . substr($secret, -4);
+        return substr($secret, 0, 4).str_repeat('*', 8).substr($secret, -4);
     }
 
     private function setting(string $key, string $fallback = ''): string

@@ -24,6 +24,8 @@ dist
 dist-ssr
 tools/composer.phar
 wp-reviews-plugin-for-google/
+wp-social-ninja-pro/
+wp-social-reviews/
 
 # Laravel runtime files
 database/*.sqlite

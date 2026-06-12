@@ -668,6 +668,7 @@ export function AdminDashboard() {
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const [trustpilotReviewSettings, setTrustpilotReviewSettings] = useState<GoogleReviewConnection | null>(null)
+  const [trustpilotBusinessUrl, setTrustpilotBusinessUrl] = useState('')
   const loadedGoogleReviewSettings = useRef(false)
   const [reviewAdminSection, setReviewAdminSection] = useState<ReviewAdminSection>('google')
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
@@ -1359,12 +1360,10 @@ export function AdminDashboard() {
     setError('')
 
     try {
-      const result = await api.trustpilotReviewConnection()
-      setTrustpilotReviewSettings(result.trustpilot)
-      const payload = await openTrustindexPopup(result.trustpilot.popupUrl)
-      const imported = await api.importTrustpilotReviews(payload)
+      const imported = await api.importTrustpilotReviews(trustpilotBusinessUrl)
       setCms((current) => current ? { ...current, reviews: imported.reviews } : current)
       setTrustpilotReviewSettings(imported.trustpilot)
+      setTrustpilotBusinessUrl(imported.trustpilot.businessUrl)
       if (imported.result.ok === false) throw new Error(imported.result.message)
       notify(imported.result.message)
     } catch (connectError) {
@@ -1400,6 +1399,7 @@ export function AdminDashboard() {
       ])
       setGoogleReviewSettings(google.google)
       setTrustpilotReviewSettings(trustpilot.trustpilot)
+      setTrustpilotBusinessUrl(trustpilot.trustpilot.businessUrl || '')
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load the Google review connection.')
     } finally {
@@ -5090,7 +5090,7 @@ export function AdminDashboard() {
               <div>
                 <h3 className="text-xl font-black text-gray-900">Trustpilot Reviews Import</h3>
                 <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                  Connect your Trustpilot business through Trustindex. Saved word, character, and rating filters are applied before reviews are stored, with up to 20 accepted reviews per extraction.
+                  Enter the public Trustpilot business profile URL. The backend reads up to five review pages, then applies the saved word, character, and rating filters before storing up to 20 accepted reviews.
                 </p>
                 {trustpilotReviewSettings?.connected ? (
                   <div className="mt-4 rounded-xl bg-green-500/10 px-4 py-3 text-green-700">
@@ -5108,13 +5108,22 @@ export function AdminDashboard() {
                   <p className={cn('mt-2 text-lg font-black', trustpilotReviewSettings?.connected ? 'text-green-700' : 'text-amber-700')}>
                     {trustpilotReviewSettings?.connected ? 'Connected' : 'Not connected'}
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-gray-600">
-                    Access token: {trustpilotReviewSettings?.hasAccessToken ? trustpilotReviewSettings.maskedAccessToken : 'Not received'}
-                  </p>
+                  <p className="mt-2 break-all text-sm font-semibold text-gray-600">{trustpilotReviewSettings?.businessUrl || 'No business profile configured'}</p>
                 </div>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Trustpilot business profile URL
+                  <input
+                    type="url"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-[#00b67a]"
+                    placeholder="https://www.trustpilot.com/review/example.com"
+                    value={trustpilotBusinessUrl}
+                    onChange={(event) => setTrustpilotBusinessUrl(event.target.value)}
+                  />
+                </label>
+                <p className="text-xs leading-5 text-gray-500">Example: https://www.trustpilot.com/review/example.com. No Trustpilot API key is required.</p>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" className="rounded-xl bg-[#00b67a] px-4 text-white hover:bg-[#009b68]" onClick={connectTrustpilotReviews} disabled={saving}>
-                    {saving ? 'Waiting for Trustindex...' : trustpilotReviewSettings?.connected ? 'Refresh Trustpilot Reviews' : 'Connect Trustpilot'}
+                    {saving ? 'Connecting...' : trustpilotReviewSettings?.connected ? 'Refresh Trustpilot Reviews' : 'Connect Trustpilot'}
                   </Button>
                   {trustpilotReviewSettings?.connected ? (
                     <Button type="button" variant="ghost" className="rounded-xl border border-red-200 px-4 text-red-600" onClick={() => void disconnectTrustpilotReviews()} disabled={saving}>Disconnect</Button>

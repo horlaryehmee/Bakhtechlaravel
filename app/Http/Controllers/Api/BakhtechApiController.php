@@ -45,11 +45,11 @@ class BakhtechApiController extends Controller
         $password = (string) $request->input('password');
         $admin = DB::table('admins')->where('email', $email)->first();
 
-        if (!$admin || !Hash::check($password, $admin->password_hash)) {
+        if (! $admin || ! Hash::check($password, $admin->password_hash)) {
             return response()->json(['message' => 'Invalid email or password.'], 401);
         }
 
-        if (($admin->two_factor_enabled ?? false) && !$this->validTotpCode($admin, (string) $request->input('twoFactorCode', ''))) {
+        if (($admin->two_factor_enabled ?? false) && ! $this->validTotpCode($admin, (string) $request->input('twoFactorCode', ''))) {
             return response()->json([
                 'message' => 'Enter a valid two-factor authentication code.',
                 'requiresTwoFactor' => true,
@@ -74,7 +74,7 @@ class BakhtechApiController extends Controller
 
         if ($admin) {
             $token = Str::random(72);
-            $resetUrl = rtrim(config('app.url'), '/') . '/admin/reset-password?email=' . rawurlencode($email) . '&token=' . rawurlencode($token);
+            $resetUrl = rtrim(config('app.url'), '/').'/admin/reset-password?email='.rawurlencode($email).'&token='.rawurlencode($token);
 
             DB::table('admin_password_resets')->where('email', $email)->delete();
             DB::table('admin_password_resets')->insert([
@@ -111,7 +111,7 @@ class BakhtechApiController extends Controller
             ->where('expires_at', '>', now())
             ->first();
 
-        if (!$reset) {
+        if (! $reset) {
             return response()->json(['message' => 'This password reset link is invalid or expired.'], 422);
         }
 
@@ -122,7 +122,7 @@ class BakhtechApiController extends Controller
 
         DB::table('admin_password_resets')->where('email', $email)->delete();
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'This password reset link is invalid or expired.'], 422);
         }
 
@@ -215,7 +215,7 @@ class BakhtechApiController extends Controller
             ->where('status', 'published')
             ->first();
 
-        if (!$page) {
+        if (! $page) {
             return response()->json(['message' => 'Page not found.'], 404);
         }
 
@@ -224,7 +224,7 @@ class BakhtechApiController extends Controller
 
     public function publicReviews()
     {
-        if (!Schema::hasTable('reviews')) {
+        if (! Schema::hasTable('reviews')) {
             return ['reviews' => []];
         }
 
@@ -247,7 +247,7 @@ class BakhtechApiController extends Controller
 
                 return (int) $row->rating >= $minRating
                     && ($provider === '' || $provider === 'all' || $row->provider === $provider)
-                    && (!$featuredOnly || (bool) $row->is_featured)
+                    && (! $featuredOnly || (bool) $row->is_featured)
                     && $wordCount >= $minWords
                     && ($maxWords === 0 || $wordCount <= $maxWords)
                     && $characterCount >= $minCharacters
@@ -281,7 +281,7 @@ class BakhtechApiController extends Controller
         ]);
 
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
@@ -296,7 +296,7 @@ class BakhtechApiController extends Controller
     public function updateAdminUser(Request $request, int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
@@ -323,7 +323,7 @@ class BakhtechApiController extends Controller
     public function deleteAdminUser(Request $request, int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
@@ -343,7 +343,7 @@ class BakhtechApiController extends Controller
     public function setupAdminUserTwoFactor(int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
@@ -364,15 +364,15 @@ class BakhtechApiController extends Controller
     public function enableAdminUserTwoFactor(Request $request, int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
-        if (!$admin->two_factor_secret) {
+        if (! $admin->two_factor_secret) {
             return response()->json(['message' => 'Start two-factor setup before enabling it.'], 422);
         }
 
-        if (!$this->validTotpCode($admin, (string) $request->input('code', ''))) {
+        if (! $this->validTotpCode($admin, (string) $request->input('code', ''))) {
             return response()->json(['message' => 'Enter a valid two-factor authentication code.'], 422);
         }
 
@@ -387,7 +387,7 @@ class BakhtechApiController extends Controller
     public function disableAdminUserTwoFactor(int $id)
     {
         $admin = DB::table('admins')->where('id', $id)->first();
-        if (!$admin) {
+        if (! $admin) {
             return response()->json(['message' => 'Admin user not found.'], 404);
         }
 
@@ -444,7 +444,7 @@ class BakhtechApiController extends Controller
     public function updatePage(Request $request, int $id)
     {
         $existing = DB::table('pages')->where('id', $id)->first();
-        if (!$existing) {
+        if (! $existing) {
             return response()->json(['message' => 'Page not found.'], 404);
         }
 
@@ -463,6 +463,7 @@ class BakhtechApiController extends Controller
     public function deletePage(int $id)
     {
         DB::table('pages')->where('id', $id)->delete();
+
         return response()->noContent();
     }
 
@@ -491,7 +492,7 @@ class BakhtechApiController extends Controller
     public function updatePost(Request $request, int $id)
     {
         $exists = DB::table('posts')->where('id', $id)->exists();
-        if (!$exists) {
+        if (! $exists) {
             return response()->json(['message' => 'Post not found.'], 404);
         }
 
@@ -513,6 +514,7 @@ class BakhtechApiController extends Controller
     public function deletePost(int $id)
     {
         DB::table('posts')->where('id', $id)->delete();
+
         return response()->noContent();
     }
 
@@ -524,7 +526,7 @@ class BakhtechApiController extends Controller
         }
 
         $payload['review_source_id'] = $this->reviewSourceId($payload['provider']);
-        $payload['external_id'] = 'manual-' . Str::uuid();
+        $payload['external_id'] = 'manual-'.Str::uuid();
         $payload['created_at'] = now();
         $payload['updated_at'] = now();
 
@@ -536,7 +538,7 @@ class BakhtechApiController extends Controller
     public function updateReview(Request $request, int $id)
     {
         $existing = DB::table('reviews')->where('id', $id)->first();
-        if (!$existing) {
+        if (! $existing) {
             return response()->json(['message' => 'Review not found.'], 404);
         }
 
@@ -556,6 +558,7 @@ class BakhtechApiController extends Controller
     public function deleteReview(int $id)
     {
         DB::table('reviews')->where('id', $id)->delete();
+
         return response()->noContent();
     }
 
@@ -607,9 +610,14 @@ class BakhtechApiController extends Controller
     public function importTrustpilotReviews(Request $request, GoogleBusinessReviewsService $reviews)
     {
         $data = $request->validate([
-            'payload' => ['required', 'array'],
+            'businessUrl' => ['required', 'string', 'max:500'],
         ]);
-        $result = $reviews->importPayload($data['payload'], 'trustpilot');
+
+        try {
+            $result = $reviews->syncTrustpilot($data['businessUrl']);
+        } catch (\RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
 
         return [
             'result' => $result,
@@ -649,7 +657,7 @@ class BakhtechApiController extends Controller
     public function updateBooking(Request $request, int $id)
     {
         $exists = DB::table('bookings')->where('id', $id)->exists();
-        if (!$exists) {
+        if (! $exists) {
             return response()->json(['message' => 'Booking not found.'], 404);
         }
 
@@ -669,7 +677,7 @@ class BakhtechApiController extends Controller
 
     public function bookingEventTypes()
     {
-        if (!Schema::hasTable('booking_event_types')) {
+        if (! Schema::hasTable('booking_event_types')) {
             return ['eventTypes' => []];
         }
 
@@ -685,7 +693,7 @@ class BakhtechApiController extends Controller
 
     public function bookingCalendars()
     {
-        if (!Schema::hasTable('booking_calendars')) {
+        if (! Schema::hasTable('booking_calendars')) {
             return ['calendars' => []];
         }
 
@@ -702,7 +710,7 @@ class BakhtechApiController extends Controller
                     'timezone' => $calendar->timezone,
                     'color' => $calendar->color,
                     'settings' => json_decode($calendar->settings_json ?: '{}', true) ?: [],
-                    'publicUrl' => '/book/' . $calendar->slug,
+                    'publicUrl' => '/book/'.$calendar->slug,
                     'isActive' => (bool) $calendar->is_active,
                 ]),
         ];
@@ -711,7 +719,7 @@ class BakhtechApiController extends Controller
     public function bookingCalendar(string $slug)
     {
         $calendar = DB::table('booking_calendars')->where('slug', $slug)->where('is_active', true)->first();
-        if (!$calendar) {
+        if (! $calendar) {
             return response()->json(['message' => 'Calendar not found.'], 404);
         }
 
@@ -737,7 +745,7 @@ class BakhtechApiController extends Controller
     public function bookingAvailability(Request $request, string $slug)
     {
         $eventType = DB::table('booking_event_types')->where('slug', $slug)->where('is_active', true)->first();
-        if (!$eventType) {
+        if (! $eventType) {
             return response()->json(['message' => 'Booking type not found.'], 404);
         }
 
@@ -784,7 +792,7 @@ class BakhtechApiController extends Controller
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = (string) Str::uuid().'.'.$extension;
         $uploadPath = public_path('uploads');
-        if (!is_dir($uploadPath)) {
+        if (! is_dir($uploadPath)) {
             mkdir($uploadPath, 0755, true);
         }
         $file->move($uploadPath, $filename);
@@ -794,7 +802,7 @@ class BakhtechApiController extends Controller
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getClientMimeType() ?: 'application/octet-stream',
             'size' => $file->getSize() ?: 0,
-            'url' => '/uploads/' . $filename,
+            'url' => '/uploads/'.$filename,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -805,11 +813,11 @@ class BakhtechApiController extends Controller
     public function deleteMedia(int $id)
     {
         $media = DB::table('media')->where('id', $id)->first();
-        if (!$media) {
+        if (! $media) {
             return response()->json(['message' => 'Media not found.'], 404);
         }
 
-        $path = public_path('uploads/' . $media->filename);
+        $path = public_path('uploads/'.$media->filename);
         if (is_file($path)) {
             unlink($path);
         }
@@ -837,7 +845,7 @@ class BakhtechApiController extends Controller
     public function updateProject(Request $request, int $id)
     {
         $existing = DB::table('projects')->where('id', $id)->first();
-        if (!$existing) {
+        if (! $existing) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
 
@@ -853,7 +861,7 @@ class BakhtechApiController extends Controller
     public function deleteProject(int $id)
     {
         $deleted = DB::table('projects')->where('id', $id)->delete();
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
 
@@ -878,7 +886,7 @@ class BakhtechApiController extends Controller
     {
         $query = DB::table('projects');
 
-        if (!$includeDrafts) {
+        if (! $includeDrafts) {
             $query->where('status', 'published')->orderByDesc('is_featured');
         }
 
@@ -889,7 +897,7 @@ class BakhtechApiController extends Controller
     {
         $query = DB::table('reviews');
 
-        if (!$includeUnpublished) {
+        if (! $includeUnpublished) {
             $query->where('is_published', true);
         }
 
@@ -899,12 +907,12 @@ class BakhtechApiController extends Controller
     private function projectPayload(Request $request, ?object $existing = null): array
     {
         $services = $request->input('services', $existing?->services_json ? json_decode($existing->services_json, true) : []);
-        if (!is_array($services)) {
+        if (! is_array($services)) {
             $services = collect(explode(',', (string) $services))->map(fn ($item) => trim($item))->filter()->values()->all();
         }
 
         $metrics = $request->input('metrics', $existing?->metrics_json ? json_decode($existing->metrics_json, true) : []);
-        if (!is_array($metrics)) {
+        if (! is_array($metrics)) {
             $metrics = [];
         }
 
@@ -929,7 +937,7 @@ class BakhtechApiController extends Controller
     {
         $provider = strtolower(trim((string) $request->input('provider', $existing?->provider ?? 'google')));
         $allowedProviders = ['google', 'trustpilot', 'facebook', 'instagram', 'linkedin', 'website', 'manual'];
-        if (!in_array($provider, $allowedProviders, true)) {
+        if (! in_array($provider, $allowedProviders, true)) {
             $provider = 'manual';
         }
 
@@ -974,10 +982,10 @@ class BakhtechApiController extends Controller
     {
         $eventType = DB::table('booking_event_types')
             ->where('id', (int) $request->input('eventTypeId'))
-            ->when(!$adminCreated, fn ($query) => $query->where('is_active', true))
+            ->when(! $adminCreated, fn ($query) => $query->where('is_active', true))
             ->first();
 
-        if (!$eventType) {
+        if (! $eventType) {
             return response()->json(['message' => 'Booking type is required.'], 422);
         }
 
@@ -985,7 +993,7 @@ class BakhtechApiController extends Controller
         $email = strtolower(trim((string) $request->input('email')));
         $startsAt = (string) $request->input('startsAt');
 
-        if ($name === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $startsAt === '') {
+        if ($name === '' || $email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $startsAt === '') {
             return response()->json(['message' => 'Name, valid email, and appointment time are required.'], 422);
         }
 
@@ -993,11 +1001,11 @@ class BakhtechApiController extends Controller
         $start = Carbon::parse($startsAt, $attendeeTimezone)->setTimezone($eventType->timezone);
         $end = $start->copy()->addMinutes((int) $eventType->duration_minutes);
         $minimumStart = now($eventType->timezone)->addHours((int) $eventType->min_notice_hours);
-        if (!$adminCreated && $start->lessThan($minimumStart)) {
+        if (! $adminCreated && $start->lessThan($minimumStart)) {
             return response()->json(['message' => 'Please choose a later time.'], 422);
         }
 
-        if (!$this->slotIsAvailable($eventType, $start)) {
+        if (! $this->slotIsAvailable($eventType, $start)) {
             return response()->json(['message' => 'That time is no longer available.'], 409);
         }
 
@@ -1033,7 +1041,7 @@ class BakhtechApiController extends Controller
         $booking = DB::table('bookings')->where('id', $id)->first();
         $zoomSync = app(ZoomMeetingService::class)->createBookingMeeting($booking, $eventType);
 
-        if (($zoomSync['status'] ?? '') === 'synced' && !empty($zoomSync['joinUrl'])) {
+        if (($zoomSync['status'] ?? '') === 'synced' && ! empty($zoomSync['joinUrl'])) {
             DB::table('bookings')->where('id', $id)->update([
                 'location_value' => $zoomSync['joinUrl'],
                 'updated_at' => now(),
@@ -1061,12 +1069,12 @@ class BakhtechApiController extends Controller
             'value' => $eventType->location_label,
         ];
 
-        if (!$selectedId || empty($eventType->booking_calendar_id)) {
+        if (! $selectedId || empty($eventType->booking_calendar_id)) {
             return $fallback;
         }
 
         $calendar = DB::table('booking_calendars')->where('id', $eventType->booking_calendar_id)->first();
-        if (!$calendar) {
+        if (! $calendar) {
             return $fallback;
         }
 
@@ -1144,14 +1152,15 @@ class BakhtechApiController extends Controller
         $insideWindow = collect($this->eventAvailability($eventType)[$dayName] ?? [])->contains(function ($window) use ($start, $end) {
             $windowStart = $start->copy()->setTimeFromTimeString($window['start']);
             $windowEnd = $start->copy()->setTimeFromTimeString($window['end']);
+
             return $start->greaterThanOrEqualTo($windowStart) && $end->lessThanOrEqualTo($windowEnd);
         });
 
-        if (!$insideWindow) {
+        if (! $insideWindow) {
             return false;
         }
 
-        return !DB::table('bookings')
+        return ! DB::table('bookings')
             ->where('booking_event_type_id', $eventType->id)
             ->whereNotIn('status', ['cancelled', 'closed'])
             ->where(function ($query) use ($start, $end) {
@@ -1164,6 +1173,7 @@ class BakhtechApiController extends Controller
     private function eventAvailability(object $eventType): array
     {
         $decoded = json_decode($eventType->availability_json ?: '{}', true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
@@ -1195,12 +1205,12 @@ class BakhtechApiController extends Controller
 
     private function uniqueSlug(string $table, string $title, ?int $ignoreId = null): string
     {
-        $baseSlug = Str::slug($title) ?: $table . '-' . time();
+        $baseSlug = Str::slug($title) ?: $table.'-'.time();
         $candidate = $baseSlug;
         $index = 2;
 
         while (DB::table($table)->where('slug', $candidate)->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))->exists()) {
-            $candidate = $baseSlug . '-' . $index;
+            $candidate = $baseSlug.'-'.$index;
             $index++;
         }
 
@@ -1287,13 +1297,13 @@ class BakhtechApiController extends Controller
     private function totpCode(string $secret, int $counter): string
     {
         $key = $this->base32Decode($secret);
-        $binaryCounter = pack('N*', 0) . pack('N*', $counter);
+        $binaryCounter = pack('N*', 0).pack('N*', $counter);
         $hash = hash_hmac('sha1', $binaryCounter, $key, true);
-        $offset = ord(substr($hash, -1)) & 0x0f;
-        $value = ((ord($hash[$offset]) & 0x7f) << 24)
-            | ((ord($hash[$offset + 1]) & 0xff) << 16)
-            | ((ord($hash[$offset + 2]) & 0xff) << 8)
-            | (ord($hash[$offset + 3]) & 0xff);
+        $offset = ord(substr($hash, -1)) & 0x0F;
+        $value = ((ord($hash[$offset]) & 0x7F) << 24)
+            | ((ord($hash[$offset + 1]) & 0xFF) << 16)
+            | ((ord($hash[$offset + 2]) & 0xFF) << 8)
+            | (ord($hash[$offset + 3]) & 0xFF);
 
         return str_pad((string) ($value % 1000000), 6, '0', STR_PAD_LEFT);
     }
@@ -1325,10 +1335,11 @@ class BakhtechApiController extends Controller
     private function totpUri(string $email, string $secret): string
     {
         $issuer = 'Bakhtech Admin';
-        return 'otpauth://totp/' . rawurlencode($issuer . ':' . $email)
-            . '?secret=' . rawurlencode($secret)
-            . '&issuer=' . rawurlencode($issuer)
-            . '&algorithm=SHA1&digits=6&period=30';
+
+        return 'otpauth://totp/'.rawurlencode($issuer.':'.$email)
+            .'?secret='.rawurlencode($secret)
+            .'&issuer='.rawurlencode($issuer)
+            .'&algorithm=SHA1&digits=6&period=30';
     }
 
     private function projectShape(object $row): array
