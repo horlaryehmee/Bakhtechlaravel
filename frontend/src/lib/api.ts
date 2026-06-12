@@ -755,6 +755,20 @@ export const api = {
       method: 'POST',
     })
   },
+  trustpilotReviewConnection() {
+    return request<{ trustpilot: GoogleReviewConnection }>('/api/admin/reviews/trustpilot/connection')
+  },
+  importTrustpilotReviews(payload: Record<string, unknown>) {
+    return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; trustpilot: GoogleReviewConnection; reviews: Review[] }>('/api/admin/reviews/trustpilot/import', {
+      method: 'POST',
+      body: JSON.stringify({ payload }),
+    })
+  },
+  disconnectTrustpilotReviews() {
+    return request<{ trustpilot: GoogleReviewConnection }>('/api/admin/reviews/trustpilot/disconnect', {
+      method: 'POST',
+    })
+  },
   createBooking(booking: Partial<Booking>) {
     return request<{ booking: Booking }>('/api/admin/bookings', {
       method: 'POST',

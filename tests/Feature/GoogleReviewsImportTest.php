@@ -153,4 +153,62 @@ class GoogleReviewsImportTest extends TestCase
         $this->assertSame(3, DB::table('reviews')->where('provider', 'google')->count());
         $this->assertSame(3, app(GoogleBusinessReviewsService::class)->connection()['googleReviewCount']);
     }
+
+    public function test_extraction_filters_reviews_and_caps_accepted_results_at_twenty(): void
+    {
+        DB::table('settings')->insert([
+            ['key' => 'reviewFrontendMinWords', 'value' => '5', 'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'reviewFrontendMinCharacters', 'value' => '20', 'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'reviewFrontendMinRating', 'value' => '4', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $reviews = [[
+            'id' => 'filtered-out',
+            'reviewer' => ['name' => 'Short'],
+            'text' => 'Too short',
+            'rating' => 5,
+        ]];
+
+        foreach (range(1, 25) as $index) {
+            $reviews[] = [
+                'id' => "accepted-{$index}",
+                'reviewer' => ['name' => "Reviewer {$index}"],
+                'text' => "This is accepted review number {$index}",
+                'rating' => 5,
+            ];
+        }
+
+        $result = app(GoogleBusinessReviewsService::class)->importPayload([
+            'id' => 'google-place-123',
+            'reviews' => $reviews,
+        ]);
+
+        $this->assertSame(20, $result['imported']);
+        $this->assertSame(20, DB::table('reviews')->where('provider', 'google')->count());
+        $this->assertDatabaseMissing('reviews', ['external_id' => 'filtered-out']);
+    }
+
+    public function test_trustpilot_uses_separate_connection_and_review_storage(): void
+    {
+        $service = app(GoogleBusinessReviewsService::class);
+        $result = $service->importPayload([
+            'id' => 'trustpilot-business-123',
+            'name' => 'Bakhtech Solutions',
+            'access_token' => 'trustpilot-token',
+            'reviews' => [[
+                'id' => 'trustpilot-review-1',
+                'reviewer' => ['name' => 'Trustpilot Customer'],
+                'text' => 'Excellent service from the entire team.',
+                'rating' => 5,
+            ]],
+        ], 'trustpilot');
+
+        $this->assertTrue($result['ok']);
+        $this->assertDatabaseHas('reviews', [
+            'provider' => 'trustpilot',
+            'external_id' => 'trustpilot-review-1',
+        ]);
+        $this->assertTrue($service->connection('trustpilot')['connected']);
+        $this->assertFalse($service->connection('google')['connected']);
+    }
 }

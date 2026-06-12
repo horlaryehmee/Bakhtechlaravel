@@ -571,6 +571,18 @@ class BakhtechApiController extends Controller
             : response()->json(['ok' => false], 403);
     }
 
+    public function trustpilotReviewConnection(GoogleBusinessReviewsService $reviews)
+    {
+        return ['trustpilot' => $reviews->connection('trustpilot')];
+    }
+
+    public function trustpilotReviewWebhook(Request $request, GoogleBusinessReviewsService $reviews)
+    {
+        return $reviews->webhook($request->all(), 'trustpilot')
+            ? response()->json(['ok' => true])
+            : response()->json(['ok' => false], 403);
+    }
+
     public function importGoogleReviews(Request $request, GoogleBusinessReviewsService $google)
     {
         $data = $request->validate([
@@ -590,6 +602,27 @@ class BakhtechApiController extends Controller
         $google->disconnect();
 
         return ['google' => $google->connection()];
+    }
+
+    public function importTrustpilotReviews(Request $request, GoogleBusinessReviewsService $reviews)
+    {
+        $data = $request->validate([
+            'payload' => ['required', 'array'],
+        ]);
+        $result = $reviews->importPayload($data['payload'], 'trustpilot');
+
+        return [
+            'result' => $result,
+            'trustpilot' => $reviews->connection('trustpilot'),
+            'reviews' => $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)),
+        ];
+    }
+
+    public function disconnectTrustpilotReviews(GoogleBusinessReviewsService $reviews)
+    {
+        $reviews->disconnect('trustpilot');
+
+        return ['trustpilot' => $reviews->connection('trustpilot')];
     }
 
     public function createBooking(Request $request)

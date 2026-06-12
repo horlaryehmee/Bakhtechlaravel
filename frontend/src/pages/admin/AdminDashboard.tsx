@@ -81,7 +81,7 @@ type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availabilit
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
 type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'advanced'
-type ReviewAdminSection = 'reviews' | 'google' | 'settings'
+type ReviewAdminSection = 'reviews' | 'google' | 'trustpilot' | 'settings'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
   key: string
@@ -667,6 +667,7 @@ export function AdminDashboard() {
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
+  const [trustpilotReviewSettings, setTrustpilotReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const loadedGoogleReviewSettings = useRef(false)
   const [reviewAdminSection, setReviewAdminSection] = useState<ReviewAdminSection>('google')
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
@@ -1353,13 +1354,52 @@ export function AdminDashboard() {
     }
   }
 
+  async function connectTrustpilotReviews() {
+    setSaving(true)
+    setError('')
+
+    try {
+      const result = await api.trustpilotReviewConnection()
+      setTrustpilotReviewSettings(result.trustpilot)
+      const payload = await openTrustindexPopup(result.trustpilot.popupUrl)
+      const imported = await api.importTrustpilotReviews(payload)
+      setCms((current) => current ? { ...current, reviews: imported.reviews } : current)
+      setTrustpilotReviewSettings(imported.trustpilot)
+      if (imported.result.ok === false) throw new Error(imported.result.message)
+      notify(imported.result.message)
+    } catch (connectError) {
+      setError(connectError instanceof Error ? connectError.message : 'Unable to connect Trustpilot reviews.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function disconnectTrustpilotReviews() {
+    if (!window.confirm('Disconnect Trustpilot? Imported reviews will remain in Review Management.')) return
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.disconnectTrustpilotReviews()
+      setTrustpilotReviewSettings(result.trustpilot)
+      notify('Trustpilot integration disconnected.')
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : 'Unable to disconnect Trustpilot.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function loadGoogleReviewConnection() {
     setLoadingGoogleReviews(true)
     setError('')
 
     try {
-      const result = await api.googleReviewConnection()
-      setGoogleReviewSettings(result.google)
+      const [google, trustpilot] = await Promise.all([
+        api.googleReviewConnection(),
+        api.trustpilotReviewConnection(),
+      ])
+      setGoogleReviewSettings(google.google)
+      setTrustpilotReviewSettings(trustpilot.trustpilot)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load the Google review connection.')
     } finally {
@@ -4949,6 +4989,7 @@ export function AdminDashboard() {
         <div className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
           {([
             ['google', 'Google Integration'],
+            ['trustpilot', 'Trustpilot Integration'],
             ['reviews', 'Review Management'],
             ['settings', 'Settings & Diagnostics'],
           ] as Array<[ReviewAdminSection, string]>).map(([section, label]) => (
@@ -5041,6 +5082,48 @@ export function AdminDashboard() {
             </div>
           </div>
         </section>
+        ) : null}
+
+        {reviewAdminSection === 'trustpilot' ? (
+          <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Trustpilot Reviews Import</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                  Connect your Trustpilot business through Trustindex. Saved word, character, and rating filters are applied before reviews are stored, with up to 20 accepted reviews per extraction.
+                </p>
+                {trustpilotReviewSettings?.connected ? (
+                  <div className="mt-4 rounded-xl bg-green-500/10 px-4 py-3 text-green-700">
+                    <p className="text-sm font-black">Connected to {trustpilotReviewSettings.businessName || 'Trustpilot business'}</p>
+                    <p className="mt-1 text-xs font-semibold">Business ID: {trustpilotReviewSettings.pageId}</p>
+                    <p className="mt-1 text-xs font-semibold">{trustpilotReviewSettings.importedReviewCount} reviews stored</p>
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-xl bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-700">Trustpilot is not connected.</p>
+                )}
+              </div>
+              <div className="grid content-start gap-3">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-gray-500">Connection status</p>
+                  <p className={cn('mt-2 text-lg font-black', trustpilotReviewSettings?.connected ? 'text-green-700' : 'text-amber-700')}>
+                    {trustpilotReviewSettings?.connected ? 'Connected' : 'Not connected'}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-gray-600">
+                    Access token: {trustpilotReviewSettings?.hasAccessToken ? trustpilotReviewSettings.maskedAccessToken : 'Not received'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" className="rounded-xl bg-[#00b67a] px-4 text-white hover:bg-[#009b68]" onClick={connectTrustpilotReviews} disabled={saving}>
+                    {saving ? 'Waiting for Trustindex...' : trustpilotReviewSettings?.connected ? 'Refresh Trustpilot Reviews' : 'Connect Trustpilot'}
+                  </Button>
+                  {trustpilotReviewSettings?.connected ? (
+                    <Button type="button" variant="ghost" className="rounded-xl border border-red-200 px-4 text-red-600" onClick={() => void disconnectTrustpilotReviews()} disabled={saving}>Disconnect</Button>
+                  ) : null}
+                </div>
+                {trustpilotReviewSettings?.lastError ? <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600">{trustpilotReviewSettings.lastError}</p> : null}
+              </div>
+            </div>
+          </section>
         ) : null}
 
         {reviewAdminSection === 'settings' ? (

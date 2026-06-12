@@ -13,6 +13,7 @@ Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
 Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
 Route::post('/reviews/google/trustindex-webhook', [BakhtechApiController::class, 'googleReviewWebhook'])->middleware('throttle:20,1');
+Route::post('/reviews/trustpilot/trustindex-webhook', [BakhtechApiController::class, 'trustpilotReviewWebhook'])->middleware('throttle:20,1');
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
@@ -69,6 +70,9 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/reviews/google/connection', [BakhtechApiController::class, 'googleReviewConnection'])->middleware('admin.role:admin');
     Route::post('/admin/reviews/google/import', [BakhtechApiController::class, 'importGoogleReviews'])->middleware('admin.role:admin');
     Route::post('/admin/reviews/google/disconnect', [BakhtechApiController::class, 'disconnectGoogleReviews'])->middleware('admin.role:admin');
+    Route::get('/admin/reviews/trustpilot/connection', [BakhtechApiController::class, 'trustpilotReviewConnection'])->middleware('admin.role:admin');
+    Route::post('/admin/reviews/trustpilot/import', [BakhtechApiController::class, 'importTrustpilotReviews'])->middleware('admin.role:admin');
+    Route::post('/admin/reviews/trustpilot/disconnect', [BakhtechApiController::class, 'disconnectTrustpilotReviews'])->middleware('admin.role:admin');
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);
     Route::put('/admin/settings', [BakhtechApiController::class, 'updateSettings']);
