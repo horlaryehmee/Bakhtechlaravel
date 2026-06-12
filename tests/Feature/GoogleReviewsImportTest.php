@@ -214,39 +214,44 @@ class GoogleReviewsImportTest extends TestCase
         $this->assertFalse($service->connection('google')['connected']);
     }
 
-    public function test_trustpilot_sync_reads_public_profile_pages_and_applies_import_filters(): void
+    public function test_trustpilot_sync_uses_official_api_and_applies_import_filters(): void
     {
         DB::table('settings')->insert([
             ['key' => 'reviewFrontendMinWords', 'value' => '4', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         Http::fake([
-            'www.trustpilot.com/review/bakhtech.com.ng*' => Http::response(
-                $this->trustpilotPage([
+            'api.trustpilot.com/v1/business-units/find*' => Http::response([
+                'id' => 'business-unit-123',
+                'displayName' => 'Bakhtech Solutions',
+                'numberOfReviews' => ['total' => 2],
+            ]),
+            'api.trustpilot.com/v1/business-units/business-unit-123/reviews*' => Http::response([
+                'reviews' => [
                     [
                         'id' => 'trustpilot-short',
-                        'rating' => 5,
+                        'stars' => 5,
                         'text' => 'Too short',
                         'consumer' => ['displayName' => 'Short Reviewer'],
-                        'dates' => ['publishedDate' => '2026-06-10T12:00:00Z'],
+                        'createdAt' => '2026-06-10T12:00:00Z',
                     ],
                     [
                         'id' => 'trustpilot-review-2',
-                        'rating' => 5,
+                        'stars' => 5,
                         'title' => 'Excellent service',
                         'text' => 'The entire team delivered excellent work.',
                         'consumer' => [
                             'displayName' => 'Happy Customer',
                             'imageUrl' => 'https://example.test/customer.jpg',
                         ],
-                        'dates' => ['publishedDate' => '2026-06-11T12:00:00Z'],
+                        'createdAt' => '2026-06-11T12:00:00Z',
                     ],
-                ])
-            ),
+                ],
+            ]),
         ]);
 
         $result = app(GoogleBusinessReviewsService::class)
-            ->syncTrustpilot('https://www.trustpilot.com/review/bakhtech.com.ng');
+            ->syncTrustpilot('https://www.trustpilot.com/review/bakhtech.com.ng', 'test-api-key');
 
         $this->assertTrue($result['ok']);
         $this->assertSame(1, $result['imported']);
@@ -264,7 +269,7 @@ class GoogleReviewsImportTest extends TestCase
         );
         $this->assertTrue(app(GoogleBusinessReviewsService::class)->connection('trustpilot')['connected']);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
     }
 
     public function test_trustpilot_sync_rejects_non_trustpilot_urls_without_requesting_them(): void
@@ -284,60 +289,47 @@ class GoogleReviewsImportTest extends TestCase
     public function test_trustpilot_sync_fetches_multiple_pages_when_the_business_has_more_reviews(): void
     {
         Http::fake(function ($request) {
+            if (str_contains($request->url(), '/business-units/find')) {
+                return Http::response([
+                    'id' => 'business-unit-123',
+                    'displayName' => 'Bakhtech Solutions',
+                    'numberOfReviews' => ['total' => 21],
+                ]);
+            }
+
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
             $page = (int) ($query['page'] ?? 1);
 
-            return Http::response($this->trustpilotPage([[
-                'id' => "trustpilot-page-{$page}",
-                'rating' => 5,
-                'text' => "Review fetched from page {$page}.",
-                'consumer' => ['displayName' => "Reviewer {$page}"],
-                'dates' => ['publishedDate' => "2026-06-0{$page}T12:00:00Z"],
-            ]], 21));
+            return Http::response(['reviews' => [[
+                    'id' => "trustpilot-page-{$page}",
+                    'stars' => 5,
+                    'text' => "Review fetched from page {$page}.",
+                    'consumer' => ['displayName' => "Reviewer {$page}"],
+                    'createdAt' => "2026-06-0{$page}T12:00:00Z",
+                ]]]);
         });
 
         $result = app(GoogleBusinessReviewsService::class)
-            ->syncTrustpilot('https://uk.trustpilot.com/review/bakhtech.com.ng');
+            ->syncTrustpilot('https://uk.trustpilot.com/review/bakhtech.com.ng', 'test-api-key');
 
         $this->assertSame(2, $result['imported']);
         $this->assertDatabaseHas('reviews', ['external_id' => 'trustpilot-page-1']);
         $this->assertDatabaseHas('reviews', ['external_id' => 'trustpilot-page-2']);
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
-    public function test_trustpilot_sync_reports_browser_verification_blocks(): void
+    public function test_trustpilot_sync_requires_an_api_key_instead_of_scraping(): void
     {
-        Http::fake([
-            'www.trustpilot.com/*' => Http::response(
-                '<html><title>Verifying your connection...</title></html>',
-                403
-            ),
-        ]);
+        Http::fake();
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Trustpilot blocked the server request with browser verification.');
+        $this->expectExceptionMessage('Enter your Trustpilot API key.');
 
-        app(GoogleBusinessReviewsService::class)
-            ->syncTrustpilot('https://www.trustpilot.com/review/bakhtech.com.ng');
-    }
-
-    private function trustpilotPage(array $reviews, ?int $totalReviews = null): string
-    {
-        $payload = [
-            'props' => [
-                'pageProps' => [
-                    'businessUnit' => [
-                        'displayName' => 'Bakhtech Solutions',
-                        'numberOfReviews' => $totalReviews ?? count($reviews),
-                        'trustScore' => 4.8,
-                    ],
-                    'reviews' => $reviews,
-                ],
-            ],
-        ];
-
-        return '<html><body><script id="__NEXT_DATA__" type="application/json">'
-            .json_encode($payload, JSON_THROW_ON_ERROR)
-            .'</script></body></html>';
+        try {
+            app(GoogleBusinessReviewsService::class)
+                ->syncTrustpilot('https://www.trustpilot.com/review/bakhtech.com.ng');
+        } finally {
+            Http::assertNothingSent();
+        }
     }
 }

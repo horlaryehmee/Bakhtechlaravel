@@ -611,10 +611,11 @@ class BakhtechApiController extends Controller
     {
         $data = $request->validate([
             'businessUrl' => ['required', 'string', 'max:500'],
+            'apiKey' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
-            $result = $reviews->syncTrustpilot($data['businessUrl']);
+            $result = $reviews->syncTrustpilot($data['businessUrl'], $data['apiKey'] ?? '');
         } catch (\RuntimeException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }

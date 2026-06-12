@@ -669,6 +669,7 @@ export function AdminDashboard() {
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const [trustpilotReviewSettings, setTrustpilotReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const [trustpilotBusinessUrl, setTrustpilotBusinessUrl] = useState('')
+  const [trustpilotApiKey, setTrustpilotApiKey] = useState('')
   const loadedGoogleReviewSettings = useRef(false)
   const [reviewAdminSection, setReviewAdminSection] = useState<ReviewAdminSection>('google')
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
@@ -1360,10 +1361,11 @@ export function AdminDashboard() {
     setError('')
 
     try {
-      const imported = await api.importTrustpilotReviews(trustpilotBusinessUrl)
+      const imported = await api.importTrustpilotReviews(trustpilotBusinessUrl, trustpilotApiKey)
       setCms((current) => current ? { ...current, reviews: imported.reviews } : current)
       setTrustpilotReviewSettings(imported.trustpilot)
       setTrustpilotBusinessUrl(imported.trustpilot.businessUrl)
+      setTrustpilotApiKey('')
       if (imported.result.ok === false) throw new Error(imported.result.message)
       notify(imported.result.message)
     } catch (connectError) {
@@ -5090,7 +5092,7 @@ export function AdminDashboard() {
               <div>
                 <h3 className="text-xl font-black text-gray-900">Trustpilot Reviews Import</h3>
                 <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                  Enter the public Trustpilot business profile URL. The backend reads up to five review pages, then applies the saved word, character, and rating filters before storing up to 20 accepted reviews.
+                  Enter your public Trustpilot business profile URL and API key. The backend uses Trustpilot's supported API, applies the saved filters, and stores up to 20 accepted reviews.
                 </p>
                 {trustpilotReviewSettings?.connected ? (
                   <div className="mt-4 rounded-xl bg-green-500/10 px-4 py-3 text-green-700">
@@ -5109,6 +5111,7 @@ export function AdminDashboard() {
                     {trustpilotReviewSettings?.connected ? 'Connected' : 'Not connected'}
                   </p>
                   <p className="mt-2 break-all text-sm font-semibold text-gray-600">{trustpilotReviewSettings?.businessUrl || 'No business profile configured'}</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-600">API key: {trustpilotReviewSettings?.hasApiKey ? trustpilotReviewSettings.maskedApiKey : 'Not configured'}</p>
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-gray-700">
                   Trustpilot business profile URL
@@ -5120,7 +5123,17 @@ export function AdminDashboard() {
                     onChange={(event) => setTrustpilotBusinessUrl(event.target.value)}
                   />
                 </label>
-                <p className="text-xs leading-5 text-gray-500">Example: https://www.trustpilot.com/review/example.com. No Trustpilot API key is required.</p>
+                <label className="grid gap-2 text-sm font-bold text-gray-700">
+                  Trustpilot API key
+                  <input
+                    type="password"
+                    className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-[#00b67a]"
+                    placeholder={trustpilotReviewSettings?.hasApiKey ? 'Leave blank to reuse the saved key' : 'Enter your Trustpilot API key'}
+                    value={trustpilotApiKey}
+                    onChange={(event) => setTrustpilotApiKey(event.target.value)}
+                  />
+                </label>
+                <p className="text-xs leading-5 text-gray-500">Create an API application in Trustpilot Business and paste its API key here. The complete key remains on the backend.</p>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" className="rounded-xl bg-[#00b67a] px-4 text-white hover:bg-[#009b68]" onClick={connectTrustpilotReviews} disabled={saving}>
                     {saving ? 'Connecting...' : trustpilotReviewSettings?.connected ? 'Refresh Trustpilot Reviews' : 'Connect Trustpilot'}

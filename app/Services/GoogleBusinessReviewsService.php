@@ -18,6 +18,7 @@ class GoogleBusinessReviewsService
         $pageId = $this->setting("{$provider}_trustindex_page_id");
         $accessToken = $this->setting("{$provider}_trustindex_access_token");
         $trustpilotBusinessUrl = $this->setting('trustpilot_business_url');
+        $trustpilotApiKey = $this->setting('trustpilot_api_key');
         $params = [
             'webhook_url' => url("/api/reviews/{$provider}/trustindex-webhook"),
             'email' => $this->setting('adminEmail', config('mail.from.address', '')),
@@ -40,7 +41,7 @@ class GoogleBusinessReviewsService
 
         return [
             'connected' => $provider === 'trustpilot'
-                ? $pageId !== '' && $trustpilotBusinessUrl !== ''
+                ? $pageId !== '' && $trustpilotBusinessUrl !== '' && $trustpilotApiKey !== ''
                 : $pageId !== '',
             'popupUrl' => $popupUrl,
             'businessName' => $this->setting("{$provider}_trustindex_business_name"),
@@ -57,6 +58,8 @@ class GoogleBusinessReviewsService
             'googleReviewCount' => (int) $this->setting("{$provider}_trustindex_review_count", '0'),
             'connectorLimit' => 'Trustindex free connections may return fewer reviews than the business total. Complete history requires the appropriate Trustindex plan/API entitlement.',
             'businessUrl' => $provider === 'trustpilot' ? $trustpilotBusinessUrl : '',
+            'hasApiKey' => $provider === 'trustpilot' && $trustpilotApiKey !== '',
+            'maskedApiKey' => $provider === 'trustpilot' ? $this->maskSecret($trustpilotApiKey) : '',
         ];
     }
 
@@ -71,7 +74,7 @@ class GoogleBusinessReviewsService
             "{$provider}_trustindex_review_count",
             "{$provider}_reviews_last_synced_at",
             "{$provider}_reviews_last_error",
-            ...($provider === 'trustpilot' ? ['trustpilot_business_url'] : []),
+            ...($provider === 'trustpilot' ? ['trustpilot_business_url', 'trustpilot_api_key'] : []),
         ])->delete();
 
         DB::table('review_sources')->where('provider', $provider)->update([
@@ -160,63 +163,72 @@ class GoogleBusinessReviewsService
         ];
     }
 
-    public function syncTrustpilot(string $businessUrl): array
+    public function syncTrustpilot(string $businessUrl, string $apiKey = ''): array
     {
         $businessUrl = $this->normalizeTrustpilotUrl($businessUrl);
+        $apiKey = trim($apiKey) ?: $this->setting('trustpilot_api_key');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('Enter your Trustpilot API key. Public profile pages cannot be imported reliably because Trustpilot blocks server scraping.');
+        }
 
         try {
             $reviews = [];
-            $business = [];
+            $domain = $this->trustpilotPlaceId($businessUrl);
+            $businessResponse = Http::acceptJson()
+                ->withHeaders(['apikey' => $apiKey])
+                ->timeout(30)
+                ->get('https://api.trustpilot.com/v1/business-units/find', ['name' => $domain])
+                ->throw();
+            $business = $businessResponse->json();
+            $businessId = trim((string) ($business['id'] ?? ''));
+
+            if ($businessId === '') {
+                throw new RuntimeException('Trustpilot could not find a business profile for that URL.');
+            }
 
             for ($page = 1; $page <= 5; $page++) {
-                $response = Http::withHeaders([
-                    'Accept' => 'text/html,application/xhtml+xml',
-                    'Accept-Language' => 'en-US,en;q=0.9',
-                    'User-Agent' => 'Mozilla/5.0 (compatible; BakhtechReviews/1.0)',
-                ])
+                $response = Http::acceptJson()
+                    ->withHeaders(['apikey' => $apiKey])
                     ->timeout(30)
-                    ->retry(2, 250, null, false)
-                    ->get($businessUrl, ['languages' => 'all', 'page' => $page]);
-                $pageData = $this->trustpilotPageData($response->body());
+                    ->get("https://api.trustpilot.com/v1/business-units/{$businessId}/reviews", [
+                        'page' => $page,
+                        'perPage' => 20,
+                    ])
+                    ->throw()
+                    ->json();
 
-                $pageProps = data_get($pageData, 'props.pageProps', []);
-                if ($page === 1) {
-                    $business = is_array($pageProps['businessUnit'] ?? null)
-                        ? $pageProps['businessUnit']
-                        : [];
-                }
-
-                foreach (($pageProps['reviews'] ?? []) as $review) {
+                foreach (($response['reviews'] ?? []) as $review) {
                     if (is_array($review)) {
                         $reviews[] = $this->normalizeTrustpilotReview($review, $businessUrl);
                     }
                 }
 
-                $totalReviews = (int) ($business['numberOfReviews'] ?? count($reviews));
-                if ($page * 20 >= $totalReviews || empty($pageProps['reviews'])) {
+                $totalReviews = (int) data_get($business, 'numberOfReviews.total', count($reviews));
+                if ($page * 20 >= $totalReviews || empty($response['reviews'])) {
                     break;
                 }
             }
 
-            $businessId = $this->trustpilotPlaceId($businessUrl);
-            if ($reviews === [] || trim((string) ($business['displayName'] ?? '')) === '') {
-                throw new RuntimeException('No Trustpilot reviews were found at that business profile URL.');
+            if ($reviews === []) {
+                throw new RuntimeException('Trustpilot returned no reviews for that business profile.');
             }
 
             $this->setSetting('trustpilot_business_url', $businessUrl);
+            $this->setSetting('trustpilot_api_key', $apiKey);
 
             return $this->importPayload([
                 'id' => $businessId,
                 'page_id' => $businessId,
-                'name' => $business['displayName'],
-                'review_count' => $business['numberOfReviews'] ?? count($reviews),
+                'name' => $business['displayName'] ?? $domain,
+                'review_count' => data_get($business, 'numberOfReviews.total', count($reviews)),
                 'reviews' => $reviews,
             ], 'trustpilot');
         } catch (RuntimeException $exception) {
             $this->setSetting('trustpilot_reviews_last_error', $exception->getMessage());
             throw $exception;
         } catch (\Throwable $exception) {
-            $message = 'Trustpilot connection failed. Check the public business profile URL and try again.';
+            $message = 'Trustpilot API connection failed. Check the API key, business profile URL, and API access.';
             $this->setSetting('trustpilot_reviews_last_error', $message);
             throw new RuntimeException($message, 0, $exception);
         }
@@ -401,26 +413,6 @@ class GoogleBusinessReviewsService
         }
 
         return 'https://'.$host.'/review/'.rawurlencode(rawurldecode($matches[1]));
-    }
-
-    private function trustpilotPageData(string $html): array
-    {
-        if (! preg_match('#<script[^>]*\bid=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>#is', $html, $matches)) {
-            if (str_contains(strtolower($html), 'verifying your connection')) {
-                throw new RuntimeException(
-                    'Trustpilot blocked the server request with browser verification. Try again later or from a different server IP.'
-                );
-            }
-
-            throw new RuntimeException('Trustpilot returned a page without review data.');
-        }
-
-        $data = json_decode(trim($matches[1]), true);
-        if (! is_array($data)) {
-            throw new RuntimeException('Trustpilot returned invalid review data.');
-        }
-
-        return $data;
     }
 
     private function trustpilotPlaceId(string $businessUrl): string
