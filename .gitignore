@@ -23,6 +23,7 @@ frontend/dist
 dist
 dist-ssr
 tools/composer.phar
+wp-reviews-plugin-for-google/
 
 # Laravel runtime files
 database/*.sqlite

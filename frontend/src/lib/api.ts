@@ -498,12 +498,14 @@ export type ReviewInput = {
   isPublished: boolean
 }
 
-export type GoogleReviewLocation = {
-  accountName: string
-  accountLabel: string
-  locationName: string
-  title: string
-  selected: boolean
+export type GoogleReviewConnection = {
+  connected: boolean
+  popupUrl: string
+  businessName: string
+  businessAddress: string
+  pageId: string
+  lastSyncedAt: string
+  lastError: string
 }
 
 export type AdminUser = {
@@ -730,21 +732,13 @@ export const api = {
   deleteReview(id: number) {
     return request<void>(`/api/admin/reviews/${id}`, { method: 'DELETE' })
   },
-  googleReviewOauthUrl() {
-    return request<{ google: { configured: boolean; authUrl?: string; message?: string; redirectUri: string } }>('/api/admin/reviews/google/oauth-url')
+  googleReviewConnection() {
+    return request<{ google: GoogleReviewConnection }>('/api/admin/reviews/google/connection')
   },
-  googleReviewLocations(refresh = false) {
-    return request<{ settings: Record<string, string>; locations: GoogleReviewLocation[] }>(`/api/admin/reviews/google/locations${refresh ? '?refresh=1' : ''}`)
-  },
-  selectGoogleReviewLocation(locationName: string) {
-    return request<{ settings: Record<string, string>; locations: GoogleReviewLocation[] }>('/api/admin/reviews/google/location', {
+  importGoogleReviews(payload: Record<string, unknown>) {
+    return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; google: GoogleReviewConnection; reviews: Review[] }>('/api/admin/reviews/google/import', {
       method: 'POST',
-      body: JSON.stringify({ locationName }),
-    })
-  },
-  importGoogleReviews() {
-    return request<{ result: { ok?: boolean; imported: number; updated: number; total: number; message: string }; reviews: Review[] }>('/api/admin/reviews/google/import', {
-      method: 'POST',
+      body: JSON.stringify({ payload }),
     })
   },
   createBooking(booking: Partial<Booking>) {

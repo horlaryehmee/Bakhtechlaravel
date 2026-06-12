@@ -2,348 +2,220 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class GoogleBusinessReviewsService
 {
-    public function authorizationUrl(int $adminId): array
-    {
-        $clientId = trim($this->setting('google_business_client_id', $this->setting('google_oauth_client_id')));
-        $clientSecret = trim($this->setting('google_business_client_secret', $this->setting('google_oauth_client_secret')));
+    private const TRUSTINDEX_VERSION = '13.2.9';
 
-        if ($clientId === '' || $clientSecret === '') {
-            return [
-                'configured' => false,
-                'message' => 'Save Google Business Client ID and Client Secret before connecting reviews.',
-                'redirectUri' => $this->redirectUri(),
-            ];
+    public function connection(): array
+    {
+        $token = $this->connectionToken();
+        $pageId = $this->setting('google_trustindex_page_id');
+        $params = [
+            'webhook_url' => url('/api/reviews/google/trustindex-webhook'),
+            'email' => $this->setting('adminEmail', config('mail.from.address', '')),
+            'token' => $token,
+            'version' => self::TRUSTINDEX_VERSION,
+        ];
+
+        if ($pageId === '') {
+            $params['type'] = 'Google';
+            $params['referrer'] = 'public';
+            $popupUrl = 'https://admin.trustindex.io/source/edit2?' . http_build_query($params);
+        } else {
+            $params['type'] = 'google';
+            $params['page_id'] = $pageId;
+            $params['access_token'] = $this->setting('google_trustindex_access_token');
+            $popupUrl = 'https://admin.trustindex.io/source/wordpressPageRequest?' . http_build_query($params);
         }
 
-        $state = Str::random(48);
-        Cache::put($this->stateKey($state), $adminId, now()->addMinutes(15));
-
-        $query = http_build_query([
-            'client_id' => $clientId,
-            'redirect_uri' => $this->redirectUri(),
-            'response_type' => 'code',
-            'scope' => implode(' ', [
-                'https://www.googleapis.com/auth/business.manage',
-                'https://www.googleapis.com/auth/userinfo.email',
-            ]),
-            'access_type' => 'offline',
-            'prompt' => 'consent',
-            'state' => $state,
-        ]);
-
         return [
-            'configured' => true,
-            'authUrl' => 'https://accounts.google.com/o/oauth2/v2/auth?' . $query,
-            'redirectUri' => $this->redirectUri(),
+            'connected' => $pageId !== '',
+            'popupUrl' => $popupUrl,
+            'businessName' => $this->setting('google_trustindex_business_name'),
+            'businessAddress' => $this->setting('google_trustindex_business_address'),
+            'pageId' => $pageId,
+            'lastSyncedAt' => $this->setting('google_business_reviews_last_synced_at'),
+            'lastError' => $this->setting('google_business_reviews_last_error'),
         ];
     }
 
-    public function handleCallback(string $code, string $state): bool
+    public function importPayload(array $payload): array
     {
-        if (!Cache::pull($this->stateKey($state))) {
-            return false;
-        }
+        $payload = $this->unwrapPayload($payload);
+        $reviews = $this->reviewItems($payload);
 
-        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
-            'client_id' => $this->setting('google_business_client_id', $this->setting('google_oauth_client_id')),
-            'client_secret' => $this->setting('google_business_client_secret', $this->setting('google_oauth_client_secret')),
-            'redirect_uri' => $this->redirectUri(),
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-        ]);
-
-        if (!$response->successful()) {
-            return false;
-        }
-
-        $token = $response->json();
-        $accessToken = (string) ($token['access_token'] ?? '');
-        if ($accessToken === '') {
-            return false;
-        }
-
-        $this->setSetting('google_business_access_token', $accessToken);
-        if (!empty($token['refresh_token'])) {
-            $this->setSetting('google_business_refresh_token', (string) $token['refresh_token']);
-        }
-        $this->setSetting('google_business_token_expires_at', now()->addSeconds((int) ($token['expires_in'] ?? 3600) - 60)->toIso8601String());
-
-        $profile = Http::withToken($accessToken)->acceptJson()->get('https://www.googleapis.com/oauth2/v3/userinfo');
-        if ($profile->successful() && $profile->json('email')) {
-            $this->setSetting('google_business_connected_email', (string) $profile->json('email'));
-        }
-
-        return true;
-    }
-
-    public function locations(bool $forceRefresh = false): array
-    {
-        if (!$forceRefresh) {
-            $cached = $this->cachedLocations();
-            if ($cached !== null) {
-                return $cached;
-            }
-        }
-
-        $token = $this->validAccessToken();
-        if ($token === '') {
-            $this->setSetting('google_business_reviews_last_error', 'Google Business Reviews is connected, but no valid access token is available. Reconnect Google.');
-            return $this->cachedLocations() ?? [];
-        }
-
-        $accounts = Http::withToken($token)
-            ->acceptJson()
-            ->get('https://mybusinessaccountmanagement.googleapis.com/v1/accounts');
-
-        if (!$accounts->successful()) {
-            $this->setSetting('google_business_reviews_last_error', $this->googleErrorMessage($accounts, 'Google could not load Business Profile accounts.'));
-            return $this->cachedLocations() ?? [];
-        }
-
-        $locations = collect($accounts->json('accounts', []))
-            ->flatMap(function ($account) use ($token) {
-                $accountName = (string) ($account['name'] ?? '');
-                if ($accountName === '') {
-                    return [];
-                }
-
-                $locations = Http::withToken($token)
-                    ->acceptJson()
-                    ->get('https://mybusinessbusinessinformation.googleapis.com/v1/' . $accountName . '/locations', [
-                        'readMask' => 'name,title,storefrontAddress',
-                        'pageSize' => 100,
-                    ]);
-
-                if (!$locations->successful()) {
-                    $this->setSetting('google_business_reviews_last_error', $this->googleErrorMessage($locations, 'Google could not load Business Profile locations.'));
-                    return [];
-                }
-
-                return collect($locations->json('locations', []))->map(function ($location) use ($accountName, $account) {
-                    $reviewLocationName = $accountName . '/' . (string) ($location['name'] ?? '');
-
-                    return [
-                        'accountName' => $accountName,
-                        'accountLabel' => (string) ($account['accountName'] ?? $account['name'] ?? ''),
-                        'locationName' => $reviewLocationName,
-                        'title' => (string) ($location['title'] ?? $location['name'] ?? ''),
-                        'selected' => $reviewLocationName === $this->setting('google_business_location_name'),
-                    ];
-                });
-            })
-            ->filter(fn ($location) => $location['locationName'] !== '')
-            ->values()
-            ->all();
-
-        if ($locations) {
-            $this->setSetting('google_business_locations_cache', json_encode($locations));
-            $this->setSetting('google_business_locations_cached_at', now()->toIso8601String());
-            $this->setSetting('google_business_reviews_last_error', '');
-        }
-
-        return $locations;
-    }
-
-    public function selectLocation(string $locationName): array
-    {
-        $this->setSetting('google_business_location_name', $locationName);
-
-        return $this->settingsShape();
-    }
-
-    public function importReviews(): array
-    {
-        $token = $this->validAccessToken();
-        $locationName = $this->setting('google_business_location_name');
-        if ($token === '' || $locationName === '') {
-            $message = $locationName === ''
-                ? 'Select a Google Business location before importing reviews.'
-                : 'Google Business Reviews is connected, but no valid access token is available. Reconnect Google.';
+        if ($reviews === []) {
+            $message = 'Trustindex did not return any Google reviews for this business.';
             $this->setSetting('google_business_reviews_last_error', $message);
 
             return ['ok' => false, 'imported' => 0, 'updated' => 0, 'total' => 0, 'message' => $message];
         }
 
-        $sourceId = $this->reviewSourceId();
-        $pageToken = null;
+        $this->storeBusiness($payload);
+        $sourceId = $this->reviewSourceId($payload);
         $imported = 0;
         $updated = 0;
-        $total = 0;
 
-        do {
-            $query = ['pageSize' => 50];
-            if ($pageToken) {
-                $query['pageToken'] = $pageToken;
+        foreach ($reviews as $review) {
+            if (!is_array($review)) {
+                continue;
             }
 
-            $response = Http::withToken($token)
-                ->acceptJson()
-                ->get('https://mybusiness.googleapis.com/v4/' . $locationName . '/reviews', $query);
+            $author = (string) data_get($review, 'reviewer.name', data_get($review, 'user.name', 'Google reviewer'));
+            $content = trim((string) ($review['text'] ?? $review['comment'] ?? ''));
+            $reviewedAt = substr((string) ($review['created_at'] ?? $review['date'] ?? now()->toDateString()), 0, 10);
+            $rating = max(1, min(5, (int) ($review['rating'] ?? 5)));
+            $externalId = trim((string) ($review['id'] ?? $review['reviewId'] ?? ''));
 
-            if (!$response->successful()) {
-                $message = $this->googleErrorMessage($response, 'Google returned an error while loading reviews.');
-                $this->setSetting('google_business_reviews_last_error', $message);
-
-                return ['ok' => false, 'imported' => $imported, 'updated' => $updated, 'total' => $total, 'message' => $message];
+            if ($externalId === '') {
+                $externalId = hash('sha256', $author . '|' . $content . '|' . $reviewedAt);
             }
 
-            foreach ($response->json('reviews', []) as $review) {
-                $externalId = (string) ($review['reviewId'] ?? '');
-                if ($externalId === '') {
-                    continue;
-                }
+            $values = [
+                'review_source_id' => $sourceId,
+                'provider' => 'google',
+                'external_id' => $externalId,
+                'author_name' => $author,
+                'author_image' => (string) data_get($review, 'reviewer.avatar_url', data_get($review, 'user.avatar_url', '')),
+                'rating' => $rating,
+                'content' => $content !== '' ? $content : $rating . '-star Google review.',
+                'external_url' => (string) ($review['url'] ?? $review['review_url'] ?? ''),
+                'reviewed_at' => $reviewedAt,
+                'is_featured' => true,
+                'is_published' => true,
+                'updated_at' => now(),
+            ];
 
-                $payload = [
-                    'review_source_id' => $sourceId,
-                    'provider' => 'google',
-                    'external_id' => $externalId,
-                    'author_name' => (string) data_get($review, 'reviewer.displayName', 'Google reviewer'),
-                    'author_image' => (string) data_get($review, 'reviewer.profilePhotoUrl', ''),
-                    'rating' => $this->ratingValue((string) ($review['starRating'] ?? 'FIVE')),
-                    'content' => trim((string) ($review['comment'] ?? '')),
-                    'external_url' => (string) ($review['name'] ?? ''),
-                    'reviewed_at' => substr((string) ($review['createTime'] ?? now()->toDateString()), 0, 10),
-                    'is_featured' => true,
-                    'is_published' => true,
-                    'updated_at' => now(),
-                ];
+            $exists = DB::table('reviews')
+                ->where('provider', 'google')
+                ->where('external_id', $externalId)
+                ->exists();
 
-                if ($payload['content'] === '') {
-                    $payload['content'] = $payload['rating'] . '-star Google review.';
-                }
+            DB::table('reviews')->updateOrInsert(
+                ['provider' => 'google', 'external_id' => $externalId],
+                $exists ? $values : [...$values, 'created_at' => now()],
+            );
 
-                $exists = DB::table('reviews')->where('provider', 'google')->where('external_id', $externalId)->exists();
-                DB::table('reviews')->updateOrInsert(
-                    ['provider' => 'google', 'external_id' => $externalId],
-                    $exists ? $payload : array_merge($payload, ['created_at' => now()])
-                );
+            $exists ? $updated++ : $imported++;
+        }
 
-                $exists ? $updated++ : $imported++;
-                $total++;
-            }
-
-            $pageToken = $response->json('nextPageToken');
-        } while ($pageToken);
-
+        $total = $imported + $updated;
         $this->setSetting('google_business_reviews_last_synced_at', now()->toIso8601String());
         $this->setSetting('google_business_reviews_last_error', '');
 
-        return ['ok' => true, 'imported' => $imported, 'updated' => $updated, 'total' => $total, 'message' => "Imported {$imported} new Google reviews and updated {$updated}."];
-    }
-
-    public function settingsShape(): array
-    {
         return [
-            'connectedEmail' => $this->setting('google_business_connected_email'),
-            'locationName' => $this->setting('google_business_location_name'),
-            'lastSyncedAt' => $this->setting('google_business_reviews_last_synced_at'),
-            'lastError' => $this->setting('google_business_reviews_last_error'),
-            'locationsCachedAt' => $this->setting('google_business_locations_cached_at'),
-            'redirectUri' => $this->redirectUri(),
+            'ok' => true,
+            'imported' => $imported,
+            'updated' => $updated,
+            'total' => $total,
+            'message' => "Imported {$imported} new Google reviews and updated {$updated}.",
         ];
     }
 
-    private function cachedLocations(): ?array
+    public function webhook(array $payload): bool
     {
-        $cachedAt = $this->setting('google_business_locations_cached_at');
-        $cacheFresh = $cachedAt !== '' && strtotime($cachedAt) > now()->subDay()->timestamp;
-        $json = $this->setting('google_business_locations_cache');
-        if (!$cacheFresh || $json === '') {
-            return null;
+        $token = (string) ($payload['token'] ?? request()->query('token', ''));
+        if ($token === '' || !hash_equals($this->connectionToken(), $token)) {
+            return false;
         }
 
-        $locations = json_decode($json, true);
-        if (!is_array($locations)) {
-            return null;
-        }
+        $this->importPayload($payload);
 
-        $selectedLocation = $this->setting('google_business_location_name');
-
-        return collect($locations)->map(function ($location) use ($selectedLocation) {
-            $location['selected'] = ($location['locationName'] ?? '') === $selectedLocation;
-            return $location;
-        })->values()->all();
+        return true;
     }
 
-    private function googleErrorMessage($response, string $fallback): string
+    private function unwrapPayload(array $payload): array
     {
-        $status = $response->status();
-        $message = (string) data_get($response->json(), 'error.message', '');
-        if ($message !== '') {
-            return "Google API error {$status}: {$message}";
+        foreach (['place', 'data'] as $key) {
+            if (isset($payload[$key]) && is_array($payload[$key])) {
+                return $payload[$key];
+            }
+
+            if (isset($payload[$key]) && is_string($payload[$key])) {
+                $decoded = json_decode($payload[$key], true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
         }
 
-        $body = trim(substr($response->body(), 0, 220));
-        return $body !== '' ? "Google API error {$status}: {$body}" : "Google API error {$status}: {$fallback}";
+        return $payload;
     }
 
-    private function validAccessToken(): string
+    private function reviewItems(array $payload): array
     {
-        $accessToken = $this->setting('google_business_access_token');
-        $expiresAt = $this->setting('google_business_token_expires_at');
-        if ($accessToken !== '' && ($expiresAt === '' || strtotime($expiresAt) > now()->timestamp)) {
-            return $accessToken;
+        $reviews = $payload['reviews'] ?? [];
+        if (!is_array($reviews)) {
+            return [];
         }
 
-        $refreshToken = $this->setting('google_business_refresh_token');
-        if ($refreshToken === '') {
-            return '';
+        if (array_is_list($reviews)) {
+            return $reviews;
         }
 
-        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
-            'client_id' => $this->setting('google_business_client_id', $this->setting('google_oauth_client_id')),
-            'client_secret' => $this->setting('google_business_client_secret', $this->setting('google_oauth_client_secret')),
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $refreshToken,
-        ]);
-
-        if (!$response->successful()) {
-            return '';
+        foreach (['items', 'data', 'reviews'] as $key) {
+            if (isset($reviews[$key]) && is_array($reviews[$key]) && array_is_list($reviews[$key])) {
+                return $reviews[$key];
+            }
         }
 
-        $token = $response->json();
-        $this->setSetting('google_business_access_token', (string) ($token['access_token'] ?? ''));
-        $this->setSetting('google_business_token_expires_at', now()->addSeconds((int) ($token['expires_in'] ?? 3600) - 60)->toIso8601String());
-
-        return (string) ($token['access_token'] ?? '');
+        return [];
     }
 
-    private function reviewSourceId(): int
+    private function storeBusiness(array $payload): void
     {
+        $pageId = trim((string) ($payload['page_id'] ?? $payload['id'] ?? ''));
+        if ($pageId !== '') {
+            $this->setSetting('google_trustindex_page_id', $pageId);
+        }
+
+        $accessToken = trim((string) ($payload['access_token'] ?? ''));
+        if ($accessToken !== '') {
+            $this->setSetting('google_trustindex_access_token', $accessToken);
+        }
+
+        $name = $payload['name'] ?? '';
+        if (is_array($name)) {
+            $name = $name['name'] ?? reset($name) ?: '';
+        }
+
+        $this->setSetting('google_trustindex_business_name', trim((string) $name));
+        $this->setSetting('google_trustindex_business_address', trim((string) ($payload['address'] ?? '')));
+    }
+
+    private function reviewSourceId(array $payload): int
+    {
+        $pageId = trim((string) ($payload['page_id'] ?? $payload['id'] ?? $this->setting('google_trustindex_page_id')));
+
         DB::table('review_sources')->updateOrInsert(
             ['provider' => 'google'],
-            ['name' => 'Google Reviews', 'enabled' => true, 'updated_at' => now(), 'created_at' => now()]
+            [
+                'name' => 'Google Reviews',
+                'place_id' => $pageId,
+                'enabled' => true,
+                'last_synced_at' => now(),
+                'updated_at' => now(),
+                'created_at' => now(),
+            ],
         );
 
         return (int) DB::table('review_sources')->where('provider', 'google')->value('id');
     }
 
-    private function ratingValue(string $rating): int
+    private function connectionToken(): string
     {
-        return [
-            'ONE' => 1,
-            'TWO' => 2,
-            'THREE' => 3,
-            'FOUR' => 4,
-            'FIVE' => 5,
-        ][$rating] ?? 5;
-    }
+        $token = $this->setting('google_trustindex_connection_token');
+        if ($token !== '') {
+            return $token;
+        }
 
-    private function redirectUri(): string
-    {
-        return url('/api/admin/reviews/google/callback');
-    }
+        $token = Str::random(48);
+        $this->setSetting('google_trustindex_connection_token', $token);
 
-    private function stateKey(string $state): string
-    {
-        return 'google_business_reviews_oauth_state_' . $state;
+        return $token;
     }
 
     private function setting(string $key, string $fallback = ''): string
@@ -355,7 +227,7 @@ class GoogleBusinessReviewsService
     {
         DB::table('settings')->updateOrInsert(
             ['key' => $key],
-            ['value' => $value, 'created_at' => now(), 'updated_at' => now()]
+            ['value' => $value, 'created_at' => now(), 'updated_at' => now()],
         );
     }
 }

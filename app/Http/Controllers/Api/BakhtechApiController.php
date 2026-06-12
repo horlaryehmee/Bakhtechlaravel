@@ -530,38 +530,28 @@ class BakhtechApiController extends Controller
         return response()->noContent();
     }
 
-    public function googleReviewOauthUrl(Request $request, GoogleBusinessReviewsService $google)
+    public function googleReviewConnection(GoogleBusinessReviewsService $google)
     {
-        return ['google' => $google->authorizationUrl((int) $request->attributes->get('admin')->id)];
+        return ['google' => $google->connection()];
     }
 
-    public function googleReviewCallback(Request $request, GoogleBusinessReviewsService $google)
+    public function googleReviewWebhook(Request $request, GoogleBusinessReviewsService $google)
     {
-        $ok = $request->filled('code') && $request->filled('state') && $google->handleCallback((string) $request->input('code'), (string) $request->input('state'));
-
-        return redirect('/admin/dashboard?google_reviews=' . ($ok ? 'connected' : 'failed'));
+        return $google->webhook($request->all())
+            ? response()->json(['ok' => true])
+            : response()->json(['ok' => false], 403);
     }
 
-    public function googleReviewLocations(Request $request, GoogleBusinessReviewsService $google)
-    {
-        return ['settings' => $google->settingsShape(), 'locations' => $google->locations($request->boolean('refresh'))];
-    }
-
-    public function selectGoogleReviewLocation(Request $request, GoogleBusinessReviewsService $google)
+    public function importGoogleReviews(Request $request, GoogleBusinessReviewsService $google)
     {
         $data = $request->validate([
-            'locationName' => ['required', 'string', 'max:255'],
+            'payload' => ['required', 'array'],
         ]);
-
-        return ['settings' => $google->selectLocation($data['locationName']), 'locations' => $google->locations()];
-    }
-
-    public function importGoogleReviews(GoogleBusinessReviewsService $google)
-    {
-        $result = $google->importReviews();
+        $result = $google->importPayload($data['payload']);
 
         return [
             'result' => $result,
+            'google' => $google->connection(),
             'reviews' => $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)),
         ];
     }

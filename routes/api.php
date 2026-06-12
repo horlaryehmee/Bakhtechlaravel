@@ -12,7 +12,7 @@ Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware(
 Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
 Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
-Route::get('/admin/reviews/google/callback', [BakhtechApiController::class, 'googleReviewCallback'])->middleware('throttle:20,1');
+Route::post('/reviews/google/trustindex-webhook', [BakhtechApiController::class, 'googleReviewWebhook'])->middleware('throttle:20,1');
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
@@ -66,10 +66,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/reviews', [BakhtechApiController::class, 'createReview']);
     Route::put('/admin/reviews/{id}', [BakhtechApiController::class, 'updateReview']);
     Route::delete('/admin/reviews/{id}', [BakhtechApiController::class, 'deleteReview']);
-    Route::get('/admin/reviews/google/oauth-url', [BakhtechApiController::class, 'googleReviewOauthUrl'])->middleware('admin.role:admin');
-    Route::get('/admin/reviews/google/locations', [BakhtechApiController::class, 'googleReviewLocations'])->middleware('admin.role:admin');
-    Route::post('/admin/reviews/google/location', [BakhtechApiController::class, 'selectGoogleReviewLocation'])->middleware('admin.role:admin');
-    Route::put('/admin/reviews/google/location', [BakhtechApiController::class, 'selectGoogleReviewLocation'])->middleware('admin.role:admin');
+    Route::get('/admin/reviews/google/connection', [BakhtechApiController::class, 'googleReviewConnection'])->middleware('admin.role:admin');
     Route::post('/admin/reviews/google/import', [BakhtechApiController::class, 'importGoogleReviews'])->middleware('admin.role:admin');
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);

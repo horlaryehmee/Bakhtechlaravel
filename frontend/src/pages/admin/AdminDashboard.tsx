@@ -70,7 +70,7 @@ import {
   type PricingPlan,
   type Project,
   type ProjectInput,
-  type GoogleReviewLocation,
+  type GoogleReviewConnection,
   type Review,
   type ReviewInput,
 } from '@/lib/api'
@@ -664,9 +664,8 @@ export function AdminDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
-  const [googleReviewLocations, setGoogleReviewLocations] = useState<GoogleReviewLocation[]>([])
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
-  const [googleReviewSettings, setGoogleReviewSettings] = useState<Record<string, string>>({})
+  const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const loadedGoogleReviewSettings = useRef(false)
   const [editingPageId, setEditingPageId] = useState<number | null>(initialAdminCache?.cms?.pages?.[0]?.id ?? null)
   const [projects, setProjects] = useState<Project[]>(initialAdminCache?.projects ?? [])
@@ -883,23 +882,18 @@ export function AdminDashboard() {
   useEffect(() => {
     if (!token || activeSection !== 'reviews' || loadedGoogleReviewSettings.current) return
     loadedGoogleReviewSettings.current = true
-    void loadGoogleReviewLocations(false)
+    void loadGoogleReviewConnection()
   }, [token, activeSection])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const googleStatus = params.get('booking_google')
-    const googleReviewsStatus = params.get('google_reviews')
 
     if (googleStatus) {
       queueMicrotask(() => {
         setActiveSection('bookings')
         setActiveBookingSection('settings')
       })
-    }
-
-    if (googleReviewsStatus) {
-      queueMicrotask(() => setActiveSection('reviews'))
     }
 
     if (googleStatus === 'connected') {
@@ -909,15 +903,7 @@ export function AdminDashboard() {
       queueMicrotask(() => setError('Google connection failed. Please try again.'))
     }
 
-    if (googleReviewsStatus === 'connected') {
-      loadedGoogleReviewSettings.current = true
-      notify('Google reviews account connected.')
-      void loadGoogleReviewLocations(false)
-    } else if (googleReviewsStatus === 'failed') {
-      queueMicrotask(() => setError('Google reviews connection failed. Please try again.'))
-    }
-
-    if (googleStatus || googleReviewsStatus) {
+    if (googleStatus) {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
@@ -1309,7 +1295,7 @@ export function AdminDashboard() {
   }
 
   async function saveReviewIntegrationSettings() {
-    const keys = ['google_business_client_id', 'google_business_client_secret', 'googleReviewUrl', 'trustpilotReviewUrl']
+    const keys = ['googleReviewUrl', 'trustpilotReviewUrl']
     const nextSettings = { ...settingsForm }
     keys.forEach((key) => {
       nextSettings[key] = settingsForm[key] ?? ''
@@ -1335,12 +1321,10 @@ export function AdminDashboard() {
     setError('')
 
     try {
-      const result = await api.googleReviewOauthUrl()
-      if (!result.google.configured || !result.google.authUrl) {
-        setError(result.google.message ?? 'Google Business reviews are not configured yet.')
-        return
-      }
-      window.location.href = result.google.authUrl
+      const result = await api.googleReviewConnection()
+      setGoogleReviewSettings(result.google)
+      const payload = await openTrustindexPopup(result.google.popupUrl)
+      await importGoogleReviews(payload)
     } catch (connectError) {
       setError(connectError instanceof Error ? connectError.message : 'Unable to start Google reviews connection.')
     } finally {
@@ -1348,55 +1332,68 @@ export function AdminDashboard() {
     }
   }
 
-  async function loadGoogleReviewLocations(refresh = false) {
+  async function loadGoogleReviewConnection() {
     setLoadingGoogleReviews(true)
     setError('')
 
     try {
-      const result = await api.googleReviewLocations(refresh)
-      setGoogleReviewSettings(result.settings)
-      setGoogleReviewLocations(result.locations)
+      const result = await api.googleReviewConnection()
+      setGoogleReviewSettings(result.google)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load Google Business locations.')
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load the Google review connection.')
     } finally {
       setLoadingGoogleReviews(false)
     }
   }
 
-  async function selectGoogleReviewLocation(locationName: string) {
-    setSaving(true)
-    setError('')
+  function openTrustindexPopup(popupUrl: string): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
+      const openedPopup = window.open(popupUrl, 'trustindex', 'width=850,height=850,menubar=0')
+      if (!openedPopup) {
+        reject(new Error('Allow popups for this site, then try connecting Google reviews again.'))
+        return
+      }
+      const popup = openedPopup
 
-    try {
-      const result = await api.selectGoogleReviewLocation(locationName)
-      setGoogleReviewSettings(result.settings)
-      setGoogleReviewLocations(result.locations)
-      notify('Google review location selected.')
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to select Google review location.')
-    } finally {
-      setSaving(false)
-    }
+      const timeout = window.setTimeout(() => finish(new Error('The Trustindex connection timed out. Please try again.')), 10 * 60 * 1000)
+      const closed = window.setInterval(() => {
+        if (popup.closed) finish(new Error('The Trustindex window was closed before the connection finished.'))
+      }, 1000)
+
+      const onMessage = (event: MessageEvent) => {
+        if (event.origin !== 'https://admin.trustindex.io' || !event.data || typeof event.data !== 'object') return
+        const data = event.data as Record<string, unknown>
+        const payload = data.place && typeof data.place === 'object'
+          ? data.place as Record<string, unknown>
+          : data
+
+        if (!payload.id && !payload.page_id && !payload.reviews) return
+        finish(null, payload)
+      }
+
+      function finish(error: Error | null, payload?: Record<string, unknown>) {
+        window.clearTimeout(timeout)
+        window.clearInterval(closed)
+        window.removeEventListener('message', onMessage)
+        if (!popup.closed) popup.close()
+        if (error) reject(error)
+        else resolve(payload ?? {})
+      }
+
+      window.addEventListener('message', onMessage)
+    })
   }
 
-  async function importGoogleReviews() {
-    setSaving(true)
-    setError('')
+  async function importGoogleReviews(payload: Record<string, unknown>) {
+    const result = await api.importGoogleReviews(payload)
+    setCms((current) => current ? { ...current, reviews: result.reviews } : current)
+    setGoogleReviewSettings(result.google)
 
-    try {
-      const result = await api.importGoogleReviews()
-      setCms((current) => current ? { ...current, reviews: result.reviews } : current)
-      setGoogleReviewSettings((current) => ({ ...current, lastError: result.result.ok === false ? result.result.message : '' }))
-      if (result.result.ok === false) {
-        setError(result.result.message)
-      } else {
-        notify(result.result.message)
-      }
-    } catch (importError) {
-      setError(importError instanceof Error ? importError.message : 'Unable to import Google reviews.')
-    } finally {
-      setSaving(false)
+    if (result.result.ok === false) {
+      throw new Error(result.result.message)
     }
+
+    notify(result.result.message)
   }
 
   async function updateBookingCmsStatus(booking: BookingCmsBooking, status: string) {
@@ -4896,50 +4893,34 @@ export function AdminDashboard() {
         <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <div>
-              <h3 className="text-xl font-black text-gray-900">Google Business Reviews Import</h3>
+              <h3 className="text-xl font-black text-gray-900">Google Reviews Import</h3>
               <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                Connect the Google account that owns or manages Bakhtech Solutions, choose the verified location, then import reviews into this backend.
+                Find and connect your Google Business Profile through Trustindex, then import its reviews into this backend.
               </p>
               <ol className="mt-4 grid gap-2 text-sm font-semibold text-gray-600">
-                <li>1. Create or open a Google Cloud OAuth client for this website.</li>
-                <li>2. Enable the Google Business Profile APIs and add the redirect URI below.</li>
-                <li>3. Save the Client ID and Client Secret here.</li>
-                <li>4. Connect Google, load locations, select Bakhtech Solutions, then import reviews.</li>
+                <li>1. Click Connect Google Business.</li>
+                <li>2. Search for and select Bakhtech Solutions in the Trustindex window.</li>
+                <li>3. Confirm the business to import its available Google reviews.</li>
+                <li>4. Use Refresh Google Reviews later to fetch updated reviews.</li>
               </ol>
-              <p className="mt-3 text-xs font-semibold text-gray-500">
-                Redirect URI: {window.location.origin}/api/admin/reviews/google/callback
-              </p>
-              {googleReviewSettings.connectedEmail ? (
-                <p className="mt-3 text-sm font-bold text-green-700">Connected as {googleReviewSettings.connectedEmail}</p>
+              {googleReviewSettings?.connected ? (
+                <div className="mt-3 rounded-xl bg-green-500/10 px-4 py-3">
+                  <p className="text-sm font-bold text-green-700">
+                    Connected to {googleReviewSettings.businessName || 'Google Business'}
+                  </p>
+                  {googleReviewSettings.businessAddress ? (
+                    <p className="mt-1 text-xs font-semibold text-green-700/75">{googleReviewSettings.businessAddress}</p>
+                  ) : null}
+                </div>
               ) : null}
-              {googleReviewSettings.lastSyncedAt ? (
+              {googleReviewSettings?.lastSyncedAt ? (
                 <p className="mt-1 text-xs font-semibold text-gray-500">Last import: {googleReviewSettings.lastSyncedAt}</p>
               ) : null}
-              {googleReviewSettings.locationsCachedAt ? (
-                <p className="mt-1 text-xs font-semibold text-gray-500">Locations cached: {googleReviewSettings.locationsCachedAt}</p>
-              ) : null}
-              {googleReviewSettings.lastError ? (
+              {googleReviewSettings?.lastError ? (
                 <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600">{googleReviewSettings.lastError}</p>
               ) : null}
             </div>
             <div className="grid gap-3">
-              <label className="grid gap-2 text-sm font-bold text-gray-700">
-                Google Business Client ID
-                <input
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
-                  value={settingsForm.google_business_client_id ?? ''}
-                  onChange={(event) => setSettingsForm((current) => ({ ...current, google_business_client_id: event.target.value }))}
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-gray-700">
-                Google Business Client Secret
-                <input
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
-                  type="password"
-                  value={settingsForm.google_business_client_secret ?? ''}
-                  onChange={(event) => setSettingsForm((current) => ({ ...current, google_business_client_secret: event.target.value }))}
-                />
-              </label>
               <label className="grid gap-2 text-sm font-bold text-gray-700">
                 Public Google review link
                 <input
@@ -4961,32 +4942,16 @@ export function AdminDashboard() {
                   Save Review Settings
                 </Button>
                 <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={connectGoogleReviews} disabled={saving}>
-                  Connect Google
+                  {saving
+                    ? 'Waiting for Trustindex...'
+                    : googleReviewSettings?.connected
+                      ? 'Refresh Google Reviews'
+                      : 'Connect Google Business'}
                 </Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" onClick={() => void loadGoogleReviewLocations(true)} disabled={loadingGoogleReviews}>
-                  {loadingGoogleReviews ? 'Loading...' : 'Refresh Locations'}
-                </Button>
-                <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white" onClick={() => void importGoogleReviews()} disabled={saving || !googleReviewSettings.locationName}>
-                  Import Reviews
-                </Button>
+                {loadingGoogleReviews ? <span className="self-center text-sm font-semibold text-gray-500">Loading connection...</span> : null}
               </div>
             </div>
           </div>
-          {googleReviewLocations.length ? (
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {googleReviewLocations.map((location) => (
-                <button
-                  key={location.locationName}
-                  type="button"
-                  className={cn('rounded-xl border px-4 py-3 text-left text-sm transition', location.selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-gray-50 hover:bg-gray-100')}
-                  onClick={() => void selectGoogleReviewLocation(location.locationName)}
-                >
-                  <span className="block font-black">{location.title}</span>
-                  <span className="mt-1 block break-all text-xs font-semibold opacity-75">{location.locationName}</span>
-                </button>
-              ))}
-            </div>
-          ) : null}
         </section>
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <form className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={saveReview}>
