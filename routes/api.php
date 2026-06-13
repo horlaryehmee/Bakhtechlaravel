@@ -86,7 +86,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/mail/logs/{id}', [MailSettingsController::class, 'log'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/mail/logs/clear', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
-    Route::post('/admin/system/deploy', [SystemMaintenanceController::class, 'deploy'])->middleware(['admin.role:admin', 'throttle:2,10']);
+    Route::post('/admin/system/deploy', [SystemMaintenanceController::class, 'deploy'])->middleware('admin.role:admin');
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
     Route::post('/admin/media', [BakhtechApiController::class, 'uploadMedia']);
     Route::delete('/admin/media/{id}', [BakhtechApiController::class, 'deleteMedia']);
