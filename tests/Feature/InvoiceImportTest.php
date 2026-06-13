@@ -260,6 +260,55 @@ class InvoiceImportTest extends TestCase
         $this->assertDatabaseCount('invoice_email_logs', 250);
     }
 
+    public function test_it_reconciles_partial_payments_after_import_and_reimport(): void
+    {
+        $payload = [
+            'tables' => [
+                'bk_quotes' => [[
+                    'id' => 701,
+                    'quote_number' => 'INV-PARTIAL-701',
+                    'type' => 'invoice',
+                    'client_name' => 'Partial Payment Client',
+                    'status' => 'viewed',
+                    'total_amount' => '400000.00',
+                    'amount_paid' => '0.00',
+                ]],
+                'bk_payments' => [[
+                    'id' => 801,
+                    'quote_id' => 701,
+                    'gateway' => 'bank',
+                    'amount' => '180000.00',
+                    'currency' => 'NGN',
+                    'reference' => '',
+                    'status' => 'completed',
+                    'created_at' => '2026-06-07 10:00:00',
+                ]],
+            ],
+        ];
+
+        $request = Request::create('/api/admin/invoices/import/json', 'POST', $payload);
+        app(InvoiceController::class)->importFromJSON($request);
+
+        $this->assertDatabaseHas('invoice_documents', [
+            'number' => 'INV-PARTIAL-701',
+            'status' => 'partial',
+            'amount_paid' => 180000,
+            'balance_due' => 220000,
+        ]);
+
+        app(InvoiceController::class)->importFromJSON(
+            Request::create('/api/admin/invoices/import/json', 'POST', $payload)
+        );
+
+        $this->assertDatabaseCount('invoice_payments', 1);
+        $this->assertDatabaseHas('invoice_documents', [
+            'number' => 'INV-PARTIAL-701',
+            'status' => 'partial',
+            'amount_paid' => 180000,
+            'balance_due' => 220000,
+        ]);
+    }
+
     public function test_public_quote_can_generate_invoice_and_download_pdf(): void
     {
         $clientId = DB::table('invoice_clients')->insertGetId([

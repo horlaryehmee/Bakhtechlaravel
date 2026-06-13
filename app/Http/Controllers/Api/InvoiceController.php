@@ -674,6 +674,7 @@ class InvoiceController extends Controller
             }
 
             $payments = $this->importPayments($import['payments'], $documentIdsBySourceId);
+            $this->reconcileImportedPayments($documentIdsBySourceId);
             $events = $this->importEvents($import['audit_logs'], $documentIdsBySourceId);
             $emails = $this->importEmailLogs($import['email_logs'], $documentIdsBySourceId);
 
@@ -1108,6 +1109,38 @@ class InvoiceController extends Controller
         return $count;
     }
 
+    private function reconcileImportedPayments(array $documentIdsBySourceId): void
+    {
+        foreach (array_unique($documentIdsBySourceId) as $documentId) {
+            $document = DB::table('invoice_documents')->where('id', $documentId)->first();
+
+            if (!$document || $document->type === 'quote') {
+                continue;
+            }
+
+            $paymentTotal = (float) DB::table('invoice_payments')
+                ->where('document_id', $documentId)
+                ->whereIn('status', ['', 'completed', 'paid', 'success', 'successful'])
+                ->sum('amount');
+            $amountPaid = min((float) $document->total, max((float) $document->amount_paid, $paymentTotal));
+            $balanceDue = max(0, (float) $document->total - $amountPaid);
+
+            if ($amountPaid <= 0) {
+                continue;
+            }
+
+            DB::table('invoice_documents')->where('id', $documentId)->update([
+                'amount_paid' => $amountPaid,
+                'balance_due' => $balanceDue,
+                'status' => $balanceDue <= 0 ? 'paid' : 'partial',
+                'paid_at' => $balanceDue <= 0
+                    ? ($document->paid_at ?: DB::table('invoice_payments')->where('document_id', $documentId)->max('paid_at'))
+                    : null,
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
     private function importedJson(mixed $value): ?string
     {
         if ($value === null || $value === '') {
@@ -1206,11 +1239,16 @@ class InvoiceController extends Controller
     private function importedStatus(string $status, float $amountPaid, float $total, string $type): string
     {
         $status = strtolower($status);
+
+        if ($type !== 'quote' && $amountPaid > 0) {
+            return $amountPaid >= $total && $total > 0 ? 'paid' : 'partial';
+        }
+
         if ($status === 'declined') {
             return 'rejected';
         }
         if ($status === 'partial') {
-            return $amountPaid >= $total && $total > 0 ? 'paid' : 'sent';
+            return 'partial';
         }
         if ($type === 'quote' && $status === 'paid') {
             return 'accepted';
