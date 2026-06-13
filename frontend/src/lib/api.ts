@@ -461,6 +461,8 @@ export type SiteEmailLog = {
   id: number
   recipient: string
   subject: string
+  bodyHtml: string
+  bodyText: string
   source: string
   mailer: string
   status: 'sent' | 'failed'
@@ -930,6 +932,9 @@ export const api = {
   siteEmailLogs(params: Record<string, string | number> = {}) {
     const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
     return request<{ logs: SiteEmailLog[]; meta: InvoiceListMeta }>(`/api/admin/mail/logs${query ? `?${query}` : ''}`)
+  },
+  siteEmailLog(id: number) {
+    return request<{ log: SiteEmailLog }>(`/api/admin/mail/logs/${id}`)
   },
   clearSiteEmailLogs() {
     return request<{ deleted: number }>('/api/admin/mail/logs/clear', { method: 'POST' })

@@ -50,9 +50,11 @@ class MailSettingsController extends Controller
 
         $this->mailConfiguration->apply();
 
+        $bodyText = 'This is a test email from the Bakhtech website SMTP settings.';
+
         try {
             Mail::raw(
-                'This is a test email from the Bakhtech website SMTP settings.',
+                $bodyText,
                 function ($message) use ($data) {
                     $message->to($data['email'])
                         ->subject('Bakhtech SMTP test')
@@ -64,6 +66,7 @@ class MailSettingsController extends Controller
             DB::table('email_logs')->insert([
                 'recipient' => strtolower($data['email']),
                 'subject' => 'Bakhtech SMTP test',
+                'body_text' => $bodyText,
                 'source' => 'smtp-test',
                 'mailer' => 'smtp',
                 'status' => 'failed',
@@ -101,17 +104,7 @@ class MailSettingsController extends Controller
         $logs = $query->orderByDesc('created_at')->forPage($page, $perPage)->get();
 
         return [
-            'logs' => $logs->map(fn ($log) => [
-                'id' => (int) $log->id,
-                'recipient' => $log->recipient,
-                'subject' => (string) $log->subject,
-                'source' => $log->source,
-                'mailer' => (string) $log->mailer,
-                'status' => $log->status,
-                'errorMessage' => (string) $log->error_message,
-                'sentAt' => (string) $log->sent_at,
-                'createdAt' => (string) $log->created_at,
-            ]),
+            'logs' => $logs->map(fn ($log) => $this->logShape($log)),
             'meta' => [
                 'page' => $page,
                 'perPage' => $perPage,
@@ -121,10 +114,38 @@ class MailSettingsController extends Controller
         ];
     }
 
+    public function log(int $id)
+    {
+        $log = DB::table('email_logs')->where('id', $id)->first();
+
+        if (! $log) {
+            return response()->json(['message' => 'Email log not found.'], 404);
+        }
+
+        return ['log' => $this->logShape($log, true)];
+    }
+
     public function clear()
     {
         $deleted = DB::table('email_logs')->delete();
 
         return ['deleted' => $deleted];
+    }
+
+    private function logShape(object $log, bool $includeBody = false): array
+    {
+        return [
+            'id' => (int) $log->id,
+            'recipient' => $log->recipient,
+            'subject' => (string) $log->subject,
+            'bodyHtml' => $includeBody ? (string) ($log->body_html ?? '') : '',
+            'bodyText' => $includeBody ? (string) ($log->body_text ?? '') : '',
+            'source' => $log->source,
+            'mailer' => (string) $log->mailer,
+            'status' => $log->status,
+            'errorMessage' => (string) $log->error_message,
+            'sentAt' => (string) $log->sent_at,
+            'createdAt' => (string) $log->created_at,
+        ];
     }
 }

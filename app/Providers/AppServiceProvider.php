@@ -33,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
 
             $message = $event->message;
             $subject = $message->getSubject();
+            $bodyHtml = $message->getHtmlBody();
+            $bodyText = $message->getTextBody();
             $sourceHeader = $message->getHeaders()->get('X-Bakhtech-Source');
             $source = $sourceHeader ? trim($sourceHeader->getBodyAsString()) : 'website';
 
@@ -40,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
                 DB::table('email_logs')->insert([
                     'recipient' => strtolower($recipient->getAddress()),
                     'subject' => $subject,
+                    'body_html' => $bodyHtml,
+                    'body_text' => $bodyText,
                     'source' => $source ?: 'website',
                     'mailer' => config('mail.default'),
                     'status' => 'sent',

@@ -101,6 +101,16 @@ type HeaderMenuItem = { label: string; href: string; visible: boolean; children:
 type CurrencyAccountRow = Record<string, string>
 type InvoiceSettingsField = { key: string; label: string; type?: string; multiline?: boolean; options?: string[]; placeholder?: string }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[character] ?? character)
+}
+
 const emptyMailSettings: MailSettings = {
   enabled: false,
   host: '',
@@ -716,6 +726,7 @@ export function AdminDashboard() {
   const [mailSettings, setMailSettings] = useState<MailSettings>(emptyMailSettings)
   const [mailTestEmail, setMailTestEmail] = useState('')
   const [siteEmailLogs, setSiteEmailLogs] = useState<SiteEmailLog[]>([])
+  const [selectedSiteEmailLog, setSelectedSiteEmailLog] = useState<SiteEmailLog | null>(null)
   const [siteEmailLogsMeta, setSiteEmailLogsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
   const [siteEmailLogStatus, setSiteEmailLogStatus] = useState('')
   const [siteEmailLogSearch, setSiteEmailLogSearch] = useState('')
@@ -1785,11 +1796,24 @@ export function AdminDashboard() {
     try {
       const result = await api.clearSiteEmailLogs()
       notify(`${result.deleted} email logs cleared.`)
+      setSelectedSiteEmailLog(null)
       await loadSiteEmailLogs(1)
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : 'Unable to clear email logs.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function previewSiteEmail(log: SiteEmailLog) {
+    setSelectedSiteEmailLog(log)
+    setError('')
+    try {
+      const result = await api.siteEmailLog(log.id)
+      setSelectedSiteEmailLog(result.log)
+    } catch (previewError) {
+      setSelectedSiteEmailLog(null)
+      setError(previewError instanceof Error ? previewError.message : 'Unable to load email preview.')
     }
   }
 
@@ -7035,7 +7059,12 @@ export function AdminDashboard() {
         </div>
       </section>
     )
+    const siteEmailPreviewHtml = selectedSiteEmailLog?.bodyHtml
+      || (selectedSiteEmailLog?.bodyText
+        ? `<pre style="box-sizing:border-box;margin:0;min-height:100vh;padding:24px;white-space:pre-wrap;word-break:break-word;font:14px/1.7 Arial,sans-serif;color:#111827;background:#ffffff">${escapeHtml(selectedSiteEmailLog.bodyText)}</pre>`
+        : '<p style="font:14px/1.7 Arial,sans-serif;padding:24px;color:#6b7280">Preview body is not available for this older email log.</p>')
     const renderSiteEmailLogs = () => (
+      <>
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -7071,6 +7100,7 @@ export function AdminDashboard() {
                 <th className="px-4 py-3">Subject</th>
                 <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Preview</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -7086,10 +7116,16 @@ export function AdminDashboard() {
                   <td className="px-4 py-3">
                     <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase', log.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>{log.status}</span>
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => void previewSiteEmail(log)}>
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {siteEmailLogs.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center font-semibold text-gray-500">No email logs found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center font-semibold text-gray-500">No email logs found.</td></tr>
               ) : null}
             </tbody>
           </table>
@@ -7103,6 +7139,37 @@ export function AdminDashboard() {
           </div>
         </div>
       </section>
+      {selectedSiteEmailLog ? (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Email preview">
+          <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 p-5">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Email preview</p>
+                <h3 className="mt-1 truncate text-lg font-black text-gray-900">{selectedSiteEmailLog.subject || 'No subject'}</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">To: {selectedSiteEmailLog.recipient}</p>
+              </div>
+              <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" onClick={() => setSelectedSiteEmailLog(null)} title="Close preview">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid gap-3 border-b border-gray-100 bg-gray-50 px-5 py-3 text-xs font-bold text-gray-500 sm:grid-cols-3">
+              <span>Source: {selectedSiteEmailLog.source}</span>
+              <span>Mailer: {selectedSiteEmailLog.mailer || 'Unknown'}</span>
+              <span>Status: {selectedSiteEmailLog.status}</span>
+            </div>
+            {selectedSiteEmailLog.errorMessage ? (
+              <p className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700">{selectedSiteEmailLog.errorMessage}</p>
+            ) : null}
+            <iframe
+              title="Sent email content"
+              sandbox=""
+              className="min-h-[60vh] w-full flex-1 bg-white"
+              srcDoc={siteEmailPreviewHtml}
+            />
+          </div>
+        </div>
+      ) : null}
+      </>
     )
 
     return (

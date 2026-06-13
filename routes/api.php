@@ -82,6 +82,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::put('/admin/mail/settings', [MailSettingsController::class, 'update'])->middleware('admin.role:admin');
     Route::post('/admin/mail/test', [MailSettingsController::class, 'test'])->middleware(['admin.role:admin', 'throttle:5,1']);
     Route::get('/admin/mail/logs', [MailSettingsController::class, 'logs'])->middleware('admin.role:admin');
+    Route::get('/admin/mail/logs/{id}', [MailSettingsController::class, 'log'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/mail/logs/clear', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
