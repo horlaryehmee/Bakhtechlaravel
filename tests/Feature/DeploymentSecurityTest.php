@@ -13,6 +13,16 @@ class DeploymentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_apache_routes_legacy_invoice_links_through_laravel(): void
+    {
+        $legacyQueryRule = '(view_invoice|view_quote|view_receipt|bkinv_receipt_pdf)';
+
+        $this->assertStringContainsString($legacyQueryRule, file_get_contents(base_path('.htaccess')));
+        $this->assertStringContainsString('RewriteRule ^ public/index.php [L]', file_get_contents(base_path('.htaccess')));
+        $this->assertStringContainsString($legacyQueryRule, file_get_contents(public_path('.htaccess')));
+        $this->assertStringContainsString('RewriteRule ^ index.php [L]', file_get_contents(public_path('.htaccess')));
+    }
+
     public function test_admin_tokens_use_cached_configuration_secret(): void
     {
         config()->set('security.admin_token_secret', 'test-configured-admin-token-secret');
