@@ -1078,7 +1078,10 @@ class BakhtechApiController extends Controller
 
         app(BookingNotificationService::class)->bookingCreated($id);
 
-        return response()->json(['booking' => $this->bookingShape(DB::table('bookings')->where('id', $id)->first())], 201);
+        $bookingResponse = $this->bookingShape(DB::table('bookings')->where('id', $id)->first());
+        $bookingResponse['googleCalendarSyncError'] = (string) ($sync['error'] ?? $bookingResponse['googleCalendarSyncError'] ?? '');
+
+        return response()->json(['booking' => $bookingResponse], 201);
     }
 
     private function selectedBookingLocation(object $eventType, string $selectedId): array

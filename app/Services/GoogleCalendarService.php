@@ -61,9 +61,24 @@ class GoogleCalendarService
             $payload['location'] = $booking->location_value;
         }
 
-        $response = Http::withToken($this->accessToken())
-            ->acceptJson()
-            ->post($this->eventsUrl(), $payload);
+        $calendarId = $this->calendarId();
+        $response = $this->createEvent($calendarId, $payload);
+
+        if (! $response->successful() && isset($payload['conferenceData']) && $calendarId !== 'primary') {
+            $primaryResponse = $this->createEvent('primary', $payload);
+            if ($primaryResponse->successful()) {
+                $calendarId = 'primary';
+                $response = $primaryResponse;
+            } else {
+                return [
+                    'status' => 'failed',
+                    'error' => $primaryResponse->json('error.message')
+                        ?: $response->json('error.message')
+                        ?: $primaryResponse->body()
+                        ?: $response->body(),
+                ];
+            }
+        }
 
         if (! $response->successful()) {
             return [
@@ -77,7 +92,7 @@ class GoogleCalendarService
         $meetLink = $this->meetLink($data);
 
         if ($meetRequested && ! $meetLink && ! empty($data['id'])) {
-            $meetLink = $this->waitForMeetLink((string) $data['id']);
+            $meetLink = $this->waitForMeetLink($calendarId, (string) $data['id']);
         }
 
         return [
@@ -88,7 +103,14 @@ class GoogleCalendarService
         ];
     }
 
-    private function waitForMeetLink(string $eventId): ?string
+    private function createEvent(string $calendarId, array $payload)
+    {
+        return Http::withToken($this->accessToken())
+            ->acceptJson()
+            ->post($this->eventsUrl($calendarId), $payload);
+    }
+
+    private function waitForMeetLink(string $calendarId, string $eventId): ?string
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
             if (! app()->environment('testing')) {
@@ -97,7 +119,7 @@ class GoogleCalendarService
 
             $response = Http::withToken($this->accessToken())
                 ->acceptJson()
-                ->get($this->eventUrl($eventId));
+                ->get($this->eventUrl($calendarId, $eventId));
 
             if (! $response->successful()) {
                 continue;
@@ -158,14 +180,14 @@ class GoogleCalendarService
         return $this->oauth->validAccessToken() ?: $this->setting('google_calendar_access_token', (string) config('services.google_calendar.access_token', ''));
     }
 
-    private function eventsUrl(): string
+    private function eventsUrl(?string $calendarId = null): string
     {
-        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->setting('google_calendar_send_updates', 'all'));
+        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($calendarId ?: $this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->setting('google_calendar_send_updates', 'all'));
     }
 
-    private function eventUrl(string $eventId): string
+    private function eventUrl(string $calendarId, string $eventId): string
     {
-        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($this->calendarId()).'/events/'.rawurlencode($eventId).'?conferenceDataVersion=1';
+        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($calendarId).'/events/'.rawurlencode($eventId).'?conferenceDataVersion=1';
     }
 
     private function setting(string $key, string $fallback = ''): string

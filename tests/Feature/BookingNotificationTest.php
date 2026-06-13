@@ -484,4 +484,84 @@ class BookingNotificationTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_google_meet_retries_on_primary_calendar_when_selected_calendar_rejects_event(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 09:00:00', 'Africa/Lagos'));
+
+        foreach ([
+            'admin_alert_email' => 'admin@example.test',
+            'google_calendar_sync_enabled' => 'true',
+            'google_calendar_id' => 'family@example.test',
+            'google_calendar_access_token' => 'google-access-token',
+            'google_calendar_token_expires_at' => now()->addHour()->toIso8601String(),
+            'google_meet_auto_generate' => 'true',
+        ] as $key => $value) {
+            DB::table('booking_settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'created_at' => now(), 'updated_at' => now()]
+            );
+        }
+
+        $eventTypeId = DB::table('booking_event_types')->insertGetId([
+            'name' => 'Primary Fallback Call',
+            'slug' => 'primary-fallback-call',
+            'description' => '',
+            'duration_minutes' => 30,
+            'buffer_minutes' => 0,
+            'location_type' => 'google_meet',
+            'location_label' => 'Google Meet',
+            'timezone' => 'Africa/Lagos',
+            'availability_json' => json_encode(['wednesday' => [['start' => '10:00', 'end' => '11:00']]]),
+            'min_notice_hours' => 0,
+            'max_future_days' => 30,
+            'reminder_minutes_before' => 60,
+            'price_amount' => 0,
+            'currency' => 'NGN',
+            'payment_required' => false,
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), rawurlencode('family@example.test'))) {
+                return Http::response([
+                    'error' => ['message' => 'The selected calendar does not support this conference type.'],
+                ], 400);
+            }
+
+            return Http::response([
+                'id' => 'primary-fallback-event',
+                'htmlLink' => 'https://calendar.google.com/event?eid=primary',
+                'hangoutLink' => 'https://meet.google.com/primary-fallback',
+            ]);
+        });
+
+        $response = $this->postJson('/api/booking/bookings', [
+            'eventTypeId' => $eventTypeId,
+            'startsAt' => '2026-06-17T10:00:00+01:00',
+            'timezone' => 'Africa/Lagos',
+            'name' => 'Fallback Client',
+            'email' => 'fallback-client@example.test',
+            'phone' => '',
+            'message' => '',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('booking.googleCalendarSyncStatus', 'synced')
+            ->assertJsonPath('booking.locationValue', 'https://meet.google.com/primary-fallback');
+
+        Http::assertSentCount(2);
+        $this->assertStringContainsString(
+            'https://meet.google.com/primary-fallback',
+            DB::table('email_logs')
+                ->where('source', 'booking-confirmation')
+                ->where('recipient', 'fallback-client@example.test')
+                ->value('body_html')
+        );
+
+        Carbon::setTestNow();
+    }
 }
