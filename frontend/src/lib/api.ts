@@ -173,6 +173,7 @@ export type PublicBookingInput = {
   phone: string
   service?: string
   message: string
+  meetingPlatform?: string
 }
 
 export type BookingCalendar = {

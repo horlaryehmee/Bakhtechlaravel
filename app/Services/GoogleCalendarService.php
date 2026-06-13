@@ -73,15 +73,53 @@ class GoogleCalendarService
         }
 
         $data = $response->json();
-        $meetLink = collect($data['conferenceData']['entryPoints'] ?? [])
-            ->firstWhere('entryPointType', 'video')['uri'] ?? ($data['hangoutLink'] ?? null);
+        $meetRequested = isset($payload['conferenceData']);
+        $meetLink = $this->meetLink($data);
+
+        if ($meetRequested && ! $meetLink && ! empty($data['id'])) {
+            $meetLink = $this->waitForMeetLink((string) $data['id']);
+        }
 
         return [
-            'status' => 'synced',
+            'status' => $meetRequested && ! $meetLink ? 'conference_pending' : 'synced',
             'eventId' => $data['id'] ?? null,
             'eventUrl' => $data['htmlLink'] ?? null,
             'locationValue' => $meetLink,
         ];
+    }
+
+    private function waitForMeetLink(string $eventId): ?string
+    {
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            if (! app()->environment('testing')) {
+                usleep(400000);
+            }
+
+            $response = Http::withToken($this->accessToken())
+                ->acceptJson()
+                ->get($this->eventUrl($eventId));
+
+            if (! $response->successful()) {
+                continue;
+            }
+
+            $meetLink = $this->meetLink($response->json());
+            if ($meetLink) {
+                return $meetLink;
+            }
+
+            if ($response->json('conferenceData.createRequest.status.statusCode') === 'failure') {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private function meetLink(array $event): ?string
+    {
+        return collect($event['conferenceData']['entryPoints'] ?? [])
+            ->firstWhere('entryPointType', 'video')['uri'] ?? ($event['hangoutLink'] ?? null);
     }
 
     private function reminderMinutes(object $booking, object $eventType): array
@@ -115,6 +153,11 @@ class GoogleCalendarService
     private function eventsUrl(): string
     {
         return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->setting('google_calendar_send_updates', 'all'));
+    }
+
+    private function eventUrl(string $eventId): string
+    {
+        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($this->calendarId()).'/events/'.rawurlencode($eventId).'?conferenceDataVersion=1';
     }
 
     private function setting(string $key, string $fallback = ''): string

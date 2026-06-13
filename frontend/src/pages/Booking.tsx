@@ -766,6 +766,12 @@ export function Booking() {
               </div>
             ) : null}
 
+            {confirmedBooking.locationType === "google_meet" && confirmedBooking.googleCalendarSyncStatus === "conference_pending" ? (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-800">
+                Your booking is confirmed, but Google is still generating the Meet link. Please check your confirmation email or calendar event shortly.
+              </div>
+            ) : null}
+
             <Button
               className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
               onClick={() => {

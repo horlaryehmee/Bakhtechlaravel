@@ -245,4 +245,104 @@ class BookingNotificationTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_public_booking_waits_for_pending_google_meet_link_before_sending_email(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 09:00:00', 'Africa/Lagos'));
+
+        foreach ([
+            'admin_alert_email' => 'admin@example.test',
+            'google_calendar_sync_enabled' => 'true',
+            'google_calendar_id' => 'team-calendar@example.test',
+            'google_calendar_access_token' => 'google-access-token',
+            'google_calendar_token_expires_at' => now()->addHour()->toIso8601String(),
+            'google_meet_auto_generate' => 'true',
+        ] as $key => $value) {
+            DB::table('booking_settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'created_at' => now(), 'updated_at' => now()]
+            );
+        }
+
+        $calendarId = DB::table('booking_calendars')->insertGetId([
+            'name' => 'Pending Meet Calendar',
+            'slug' => 'pending-meet-calendar',
+            'description' => '',
+            'timezone' => 'Africa/Lagos',
+            'color' => '#1261ff',
+            'settings_json' => '{}',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $eventTypeId = DB::table('booking_event_types')->insertGetId([
+            'booking_calendar_id' => $calendarId,
+            'name' => 'Pending Meet Call',
+            'slug' => 'pending-meet-call',
+            'description' => '',
+            'duration_minutes' => 30,
+            'buffer_minutes' => 0,
+            'location_type' => 'google_meet',
+            'location_label' => 'Google Meet',
+            'timezone' => 'Africa/Lagos',
+            'availability_json' => json_encode(['wednesday' => [['start' => '10:00', 'end' => '11:00']]]),
+            'min_notice_hours' => 0,
+            'max_future_days' => 30,
+            'reminder_minutes_before' => 60,
+            'price_amount' => 0,
+            'currency' => 'NGN',
+            'payment_required' => false,
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $eventFetches = 0;
+        Http::fake(function ($request) use (&$eventFetches) {
+            if ($request->method() === 'POST') {
+                return Http::response([
+                    'id' => 'pending-event-123',
+                    'htmlLink' => 'https://calendar.google.com/event?eid=pending',
+                    'conferenceData' => [
+                        'createRequest' => ['status' => ['statusCode' => 'pending']],
+                    ],
+                ]);
+            }
+
+            $eventFetches++;
+
+            return Http::response([
+                'id' => 'pending-event-123',
+                'hangoutLink' => 'https://meet.google.com/pending-ready-link',
+            ]);
+        });
+
+        $response = $this->postJson('/api/booking/bookings', [
+            'eventTypeId' => $eventTypeId,
+            'startsAt' => '2026-06-17T10:00:00+01:00',
+            'timezone' => 'Africa/Lagos',
+            'name' => 'Pending Meet Client',
+            'email' => 'pending-meet@example.test',
+            'phone' => '08000000000',
+            'message' => '',
+            'meetingPlatform' => 'google-meet',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('booking.locationValue', 'https://meet.google.com/pending-ready-link')
+            ->assertJsonPath('booking.googleCalendarSyncStatus', 'synced');
+
+        $this->assertSame(1, $eventFetches);
+        $this->assertStringContainsString(
+            'https://meet.google.com/pending-ready-link',
+            DB::table('email_logs')
+                ->where('source', 'booking-confirmation')
+                ->where('recipient', 'pending-meet@example.test')
+                ->value('body_html')
+        );
+
+        Carbon::setTestNow();
+    }
 }
