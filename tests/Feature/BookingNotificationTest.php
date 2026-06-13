@@ -345,4 +345,77 @@ class BookingNotificationTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_google_conference_id_is_saved_and_rendered_as_a_meet_link(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 09:00:00', 'Africa/Lagos'));
+
+        foreach ([
+            'admin_alert_email' => 'admin@example.test',
+            'google_calendar_sync_enabled' => 'true',
+            'google_calendar_id' => 'team-calendar@example.test',
+            'google_calendar_access_token' => 'google-access-token',
+            'google_calendar_token_expires_at' => now()->addHour()->toIso8601String(),
+            'google_meet_auto_generate' => 'true',
+        ] as $key => $value) {
+            DB::table('booking_settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'created_at' => now(), 'updated_at' => now()]
+            );
+        }
+
+        $eventTypeId = DB::table('booking_event_types')->insertGetId([
+            'name' => 'Conference ID Call',
+            'slug' => 'conference-id-call',
+            'description' => '',
+            'duration_minutes' => 30,
+            'buffer_minutes' => 0,
+            'location_type' => 'google-meet',
+            'location_label' => 'Google Meet',
+            'timezone' => 'Africa/Lagos',
+            'availability_json' => json_encode(['wednesday' => [['start' => '10:00', 'end' => '11:00']]]),
+            'min_notice_hours' => 0,
+            'max_future_days' => 30,
+            'reminder_minutes_before' => 60,
+            'price_amount' => 0,
+            'currency' => 'NGN',
+            'payment_required' => false,
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://www.googleapis.com/calendar/v3/calendars/*/events*' => Http::response([
+                'id' => 'conference-id-event',
+                'htmlLink' => 'https://calendar.google.com/event?eid=conference-id',
+                'conferenceData' => ['conferenceId' => 'abc-defg-hij'],
+            ]),
+        ]);
+
+        $response = $this->postJson('/api/booking/bookings', [
+            'eventTypeId' => $eventTypeId,
+            'startsAt' => '2026-06-17T10:00:00+01:00',
+            'timezone' => 'Africa/Lagos',
+            'name' => 'Conference Client',
+            'email' => 'conference-client@example.test',
+            'phone' => '',
+            'message' => '',
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('booking.locationType', 'google_meet')
+            ->assertJsonPath('booking.locationValue', 'https://meet.google.com/abc-defg-hij');
+
+        $this->assertStringContainsString(
+            'Join Google Meet',
+            DB::table('email_logs')
+                ->where('source', 'booking-confirmation')
+                ->where('recipient', 'conference-client@example.test')
+                ->value('body_html')
+        );
+
+        Carbon::setTestNow();
+    }
 }

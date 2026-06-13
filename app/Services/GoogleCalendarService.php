@@ -50,7 +50,7 @@ class GoogleCalendarService
             ],
         ];
 
-        if (($booking->location_type ?? $eventType->location_type) === 'google_meet' && $this->setting('google_meet_auto_generate', 'true') === 'true') {
+        if ($this->isGoogleMeetType((string) ($booking->location_type ?? $eventType->location_type)) && $this->setting('google_meet_auto_generate', 'true') === 'true') {
             $payload['conferenceData'] = [
                 'createRequest' => [
                     'requestId' => 'bakhtech-booking-'.$booking->id,
@@ -90,9 +90,9 @@ class GoogleCalendarService
 
     private function waitForMeetLink(string $eventId): ?string
     {
-        for ($attempt = 0; $attempt < 5; $attempt++) {
+        for ($attempt = 0; $attempt < 10; $attempt++) {
             if (! app()->environment('testing')) {
-                usleep(400000);
+                usleep(500000);
             }
 
             $response = Http::withToken($this->accessToken())
@@ -118,8 +118,16 @@ class GoogleCalendarService
 
     private function meetLink(array $event): ?string
     {
-        return collect($event['conferenceData']['entryPoints'] ?? [])
-            ->firstWhere('entryPointType', 'video')['uri'] ?? ($event['hangoutLink'] ?? null);
+        $entryPoint = collect($event['conferenceData']['entryPoints'] ?? [])
+            ->firstWhere('entryPointType', 'video');
+        $conferenceId = trim((string) ($event['conferenceData']['conferenceId'] ?? ''));
+
+        return $entryPoint['uri'] ?? ($event['hangoutLink'] ?? ($conferenceId !== '' ? 'https://meet.google.com/'.$conferenceId : null));
+    }
+
+    private function isGoogleMeetType(string $type): bool
+    {
+        return in_array(strtolower(str_replace(['-', ' '], '_', trim($type))), ['google_meet', 'meet'], true);
     }
 
     private function reminderMinutes(object $booking, object $eventType): array

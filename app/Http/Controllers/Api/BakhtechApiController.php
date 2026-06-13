@@ -1064,10 +1064,13 @@ class BakhtechApiController extends Controller
 
         $sync = app(GoogleCalendarService::class)->createBookingEvent($booking, $eventType);
 
+        $generatedMeetLink = $this->isGoogleMeetUrl((string) ($sync['locationValue'] ?? ''));
+
         DB::table('bookings')->where('id', $id)->update([
             'google_calendar_event_id' => $sync['eventId'] ?? null,
             'google_calendar_event_url' => $sync['eventUrl'] ?? null,
             'google_calendar_sync_status' => $sync['status'] === 'not_configured' && ($zoomSync['status'] ?? '') === 'synced' ? 'zoom_synced' : $sync['status'],
+            'location_type' => $generatedMeetLink ? 'google_meet' : $booking->location_type,
             'location_value' => $sync['locationValue'] ?? $booking->location_value,
             'updated_at' => now(),
         ]);
@@ -1106,6 +1109,11 @@ class BakhtechApiController extends Controller
         }
 
         return $fallback;
+    }
+
+    private function isGoogleMeetUrl(string $value): bool
+    {
+        return (bool) preg_match('#^https://meet\.google\.com/[a-z0-9-]+#i', trim($value));
     }
 
     private function availableSlots(object $eventType, Carbon $from, Carbon $to, ?string $displayTimezone = null): array

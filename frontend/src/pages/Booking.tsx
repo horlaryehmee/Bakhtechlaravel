@@ -38,6 +38,11 @@ function locationIcon(type: string) {
   return Video;
 }
 
+function isGoogleMeetBooking(booking: Booking) {
+  const normalizedType = (booking.locationType || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+  return normalizedType === "google_meet" || /^https:\/\/meet\.google\.com\//i.test(booking.locationValue || "");
+}
+
 function formatTime12Hour(timeStr: string) {
   const [hours, minutes] = timeStr.split(":").map(Number);
   if (isNaN(hours) || isNaN(minutes)) return timeStr;
@@ -742,7 +747,7 @@ export function Booking() {
               </div>
             </div>
 
-            {confirmedBooking.locationType === "google_meet" && /^https?:\/\//i.test(confirmedBooking.locationValue || "") ? (
+            {isGoogleMeetBooking(confirmedBooking) && /^https?:\/\//i.test(confirmedBooking.locationValue || "") ? (
               <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-left">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
@@ -766,9 +771,15 @@ export function Booking() {
               </div>
             ) : null}
 
-            {confirmedBooking.locationType === "google_meet" && confirmedBooking.googleCalendarSyncStatus === "conference_pending" ? (
+            {isGoogleMeetBooking(confirmedBooking) && confirmedBooking.googleCalendarSyncStatus === "conference_pending" ? (
               <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-800">
                 Your booking is confirmed, but Google is still generating the Meet link. Please check your confirmation email or calendar event shortly.
+              </div>
+            ) : null}
+
+            {isGoogleMeetBooking(confirmedBooking) && confirmedBooking.googleCalendarSyncStatus === "failed" ? (
+              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-700">
+                The booking was saved, but Google could not generate the Meet link. Reconnect Google Calendar and confirm the selected calendar allows event creation.
               </div>
             ) : null}
 

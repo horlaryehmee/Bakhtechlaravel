@@ -454,36 +454,37 @@ class BookingNotificationService
 
     private function locationDetails(string $type, string $value): array
     {
-        $normalizedType = strtolower(trim($type));
+        $normalizedType = strtolower(str_replace(['-', ' '], '_', trim($type)));
         $trimmedValue = trim($value);
         $isWebUrl = $this->isWebUrl($trimmedValue);
+        $isGoogleMeet = $normalizedType === 'google_meet' || str_starts_with(strtolower($trimmedValue), 'https://meet.google.com/');
 
-        return match ($normalizedType) {
-            'google_meet' => [
+        return match (true) {
+            $isGoogleMeet => [
                 'label' => 'Google Meet',
                 'value' => $trimmedValue,
                 'actionUrl' => $isWebUrl ? $trimmedValue : '',
                 'actionLabel' => 'Join Google Meet',
             ],
-            'zoom' => [
+            $normalizedType === 'zoom' => [
                 'label' => 'Zoom meeting',
                 'value' => $trimmedValue,
                 'actionUrl' => $isWebUrl ? $trimmedValue : '',
                 'actionLabel' => 'Join Zoom Meeting',
             ],
-            'whatsapp' => [
+            $normalizedType === 'whatsapp' => [
                 'label' => 'WhatsApp call',
                 'value' => $trimmedValue,
                 'actionUrl' => $this->whatsAppUrl($trimmedValue),
                 'actionLabel' => 'Open WhatsApp',
             ],
-            'phone', 'call' => [
+            in_array($normalizedType, ['phone', 'call'], true) => [
                 'label' => 'Phone call',
                 'value' => $trimmedValue,
                 'actionUrl' => $trimmedValue !== '' ? 'tel:'.preg_replace('/[^0-9+]/', '', $trimmedValue) : '',
                 'actionLabel' => 'Call '.$trimmedValue,
             ],
-            'in_person', 'physical' => [
+            in_array($normalizedType, ['in_person', 'physical'], true) => [
                 'label' => 'In-person meeting',
                 'value' => $trimmedValue,
                 'actionUrl' => $trimmedValue !== '' ? 'https://www.google.com/maps/search/?api=1&query='.rawurlencode($trimmedValue) : '',
