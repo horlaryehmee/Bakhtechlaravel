@@ -27,6 +27,7 @@ class InvoiceImportTest extends TestCase
                         'client_company' => 'Client Co',
                         'client_address' => 'Lagos',
                         'issue_date' => '2026-06-01',
+                        'due_date' => '0000-00-00',
                         'valid_until' => '2026-06-30',
                         'status' => 'sent',
                         'subtotal' => '100000.00',
@@ -80,6 +81,7 @@ class InvoiceImportTest extends TestCase
             'amount_paid' => 0,
             'balance_due' => 107500,
             'legacy_client_token' => 'wordpress-client-token',
+            'due_date' => null,
         ]);
         $this->assertDatabaseHas('invoice_clients', [
             'email' => 'client@example.test',

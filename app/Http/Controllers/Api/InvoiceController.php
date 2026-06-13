@@ -1537,7 +1537,9 @@ class InvoiceController extends Controller
         }
 
         try {
-            return \Carbon\Carbon::parse($value)->toDateString();
+            $date = \Carbon\Carbon::parse($value);
+
+            return $date->year >= 1000 && $date->year <= 9999 ? $date->toDateString() : null;
         } catch (\Throwable) {
             return null;
         }
@@ -1550,7 +1552,9 @@ class InvoiceController extends Controller
         }
 
         try {
-            return \Carbon\Carbon::parse($value);
+            $date = \Carbon\Carbon::parse($value);
+
+            return $date->year >= 1000 && $date->year <= 9999 ? $date : null;
         } catch (\Throwable) {
             return null;
         }
