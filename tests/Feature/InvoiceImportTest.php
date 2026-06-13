@@ -62,6 +62,7 @@ class InvoiceImportTest extends TestCase
                         'currency' => 'NGN',
                         'reference' => 'WP-PAY-001',
                         'status' => 'completed',
+                        'txn_payload' => 'a:2:{s:6:"status";s:7:"success";s:9:"reference";s:10:"WP-PAY-001";}',
                         'created_at' => '2026-06-02 12:00:00',
                     ],
                 ],
@@ -93,6 +94,11 @@ class InvoiceImportTest extends TestCase
             'amount' => 25000,
             'status' => 'completed',
         ]);
+        $paymentPayload = DB::table('invoice_payments')->where('reference', 'WP-PAY-001')->value('gateway_response_json');
+        $this->assertSame(
+            'a:2:{s:6:"status";s:7:"success";s:9:"reference";s:10:"WP-PAY-001";}',
+            json_decode($paymentPayload, true, 512, JSON_THROW_ON_ERROR)['legacyPayload']
+        );
 
         $documentId = DB::table('invoice_documents')->where('number', 'WP-QT-001')->value('id');
         $this->assertNotNull($documentId);

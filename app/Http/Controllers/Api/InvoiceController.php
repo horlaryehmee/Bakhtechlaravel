@@ -1095,7 +1095,7 @@ class InvoiceController extends Controller
                 'currency' => strtoupper(substr((string) ($payment['currency'] ?? 'NGN'), 0, 3)),
                 'status' => $payment['status'] ?? 'completed',
                 'authorization_url' => null,
-                'gateway_response_json' => $payment['txn_payload'] ?? null,
+                'gateway_response_json' => $this->importedJson($payment['txn_payload'] ?? null),
                 'paid_at' => ($payment['status'] ?? 'completed') === 'completed' ? ($this->dateTimeOrNull($payment['created_at'] ?? null) ?: now()) : null,
                 'created_at' => $this->dateTimeOrNull($payment['created_at'] ?? null) ?: now(),
                 'updated_at' => now(),
@@ -1104,6 +1104,27 @@ class InvoiceController extends Controller
         }
 
         return $count;
+    }
+
+    private function importedJson(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $value = $decoded;
+            } else {
+                $value = ['legacyPayload' => $value];
+            }
+        }
+
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        return $encoded === false ? json_encode(['legacyPayload' => (string) $value]) : $encoded;
     }
 
     private function importEvents(array $auditLogs, array $documentIdsBySourceId): int
