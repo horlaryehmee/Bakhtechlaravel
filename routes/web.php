@@ -3,7 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (Request $request) {
+$legacyInvoiceRedirect = function (Request $request) {
     $legacyToken = $request->query('view_invoice')
         ?: $request->query('view_quote')
         ?: $request->query('view_receipt')
@@ -14,6 +14,14 @@ Route::get('/', function (Request $request) {
         $isPdf = $request->query('download') === 'pdf' || $request->has('bkinv_receipt_pdf');
 
         return redirect($isPdf ? "/api/invoices/{$token}/pdf" : "/invoice/{$token}");
+    }
+
+    return null;
+};
+
+Route::get('/', function (Request $request) use ($legacyInvoiceRedirect) {
+    if ($redirect = $legacyInvoiceRedirect($request)) {
+        return $redirect;
     }
 
     $index = public_path('index.html');
@@ -29,7 +37,11 @@ Route::get('/', function (Request $request) {
     ]);
 });
 
-Route::fallback(function () {
+Route::fallback(function (Request $request) use ($legacyInvoiceRedirect) {
+    if ($request->isMethod('GET') && $redirect = $legacyInvoiceRedirect($request)) {
+        return $redirect;
+    }
+
     if (request()->is('api') || request()->is('api/*')) {
         return response()->json(['message' => 'API route not found. Clear Laravel route caches after deployment.'], 404);
     }

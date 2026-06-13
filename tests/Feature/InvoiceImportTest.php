@@ -115,6 +115,13 @@ class InvoiceImportTest extends TestCase
         $this->assertSame('1. Page Design & Layout <ul><li>Design a responsive page</li><li>Structure service sections</li></ul>', $publicResponse['document']['scopeOfService']);
         $this->assertSame('', $publicResponse['document']['notes']);
         $this->assertSame('', $publicResponse['document']['terms']);
+
+        $publicTokenResponse = app(InvoiceController::class)->publicDocument(
+            Request::create('/api/invoices/wordpress-public-token', 'GET'),
+            'wordpress-public-token'
+        );
+
+        $this->assertSame('WP-QT-001', $publicTokenResponse['document']['number']);
     }
 
     public function test_old_wordpress_frontend_invoice_links_redirect_to_new_invoice_route(): void
@@ -126,6 +133,15 @@ class InvoiceImportTest extends TestCase
             ->assertRedirect('/invoice/wordpress-client-token');
 
         $this->get('/?view_receipt=wordpress-client-token&download=pdf')
+            ->assertRedirect('/api/invoices/wordpress-client-token/pdf');
+
+        $this->get('/old-invoice-page/?view_invoice=wordpress-client-token')
+            ->assertRedirect('/invoice/wordpress-client-token');
+
+        $this->get('/old-quote-page/?view_quote=wordpress-client-token')
+            ->assertRedirect('/invoice/wordpress-client-token');
+
+        $this->get('/old-receipt-page/?bkinv_receipt_pdf=wordpress-client-token')
             ->assertRedirect('/api/invoices/wordpress-client-token/pdf');
     }
 
