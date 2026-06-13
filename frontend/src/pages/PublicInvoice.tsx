@@ -39,6 +39,10 @@ function titleCase(value: string) {
   return value.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
+function invoiceStatusLabel(status: string) {
+  return status === 'partial' ? 'Partially Paid' : titleCase(status)
+}
+
 function decodeEntities(value: string) {
   if (typeof window === 'undefined') return value
   let decoded = value
@@ -211,7 +215,7 @@ export function PublicInvoice() {
   const isQuote = document.type === 'quote'
   const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
   const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
-  const payableAmount = Math.max(0, document.balanceDue || document.total)
+  const payableAmount = Math.max(0, Number(document.balanceDue ?? document.total))
   const partialPaymentEnabled = document.partialPaymentEnabled !== false
   const effectivePaymentPercent = partialPaymentEnabled ? selectedPaymentPercent : 100
   const selectedPaymentAmount = payableAmount * (effectivePaymentPercent / 100)
@@ -423,7 +427,7 @@ export function PublicInvoice() {
               <b>Issued {compactDate(document.issueDate)}</b>
               <b>Due {compactDate(document.dueDate)}</b>
             </div>
-            <span className={cn('invoice-sheet-status', statusClass)}>{titleCase(document.status)}</span>
+            <span className={cn('invoice-sheet-status', statusClass)}>{invoiceStatusLabel(document.status)}</span>
           </div>
         </header>
 
@@ -471,8 +475,9 @@ export function PublicInvoice() {
             <div><span>Subtotal</span><strong>{money(document.subtotal, document.currency)}</strong></div>
             {document.discountTotal > 0 ? <div><span>Discount</span><strong>-{money(document.discountTotal, document.currency)}</strong></div> : null}
             <div><span>Tax</span><strong>{money(document.taxTotal, document.currency)}</strong></div>
-            {document.amountPaid > 0 ? <div><span>Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div> : null}
-            <div className="is-final"><span>Total</span><strong>{money(document.total, document.currency)}</strong></div>
+            <div><span>Total</span><strong>{money(document.total, document.currency)}</strong></div>
+            {document.amountPaid > 0 ? <div><span>Amount Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div> : null}
+            <div className="is-final"><span>{document.status === 'partial' ? 'Remaining Balance' : 'Balance Due'}</span><strong>{money(document.balanceDue, document.currency)}</strong></div>
           </div>
         </section>
 
