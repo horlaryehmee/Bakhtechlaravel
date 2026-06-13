@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BakhtechApiController;
 use App\Http\Controllers\Api\BookingCmsController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\MailSettingsController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Middleware\RequireAdminToken;
 use Illuminate\Support\Facades\Route;
@@ -76,6 +77,11 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/bookings', [BakhtechApiController::class, 'createBooking']);
     Route::put('/admin/bookings/{id}', [BakhtechApiController::class, 'updateBooking']);
     Route::put('/admin/settings', [BakhtechApiController::class, 'updateSettings']);
+    Route::get('/admin/mail/settings', [MailSettingsController::class, 'show'])->middleware('admin.role:admin');
+    Route::put('/admin/mail/settings', [MailSettingsController::class, 'update'])->middleware('admin.role:admin');
+    Route::post('/admin/mail/test', [MailSettingsController::class, 'test'])->middleware(['admin.role:admin', 'throttle:5,1']);
+    Route::get('/admin/mail/logs', [MailSettingsController::class, 'logs'])->middleware('admin.role:admin');
+    Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
     Route::post('/admin/media', [BakhtechApiController::class, 'uploadMedia']);
     Route::delete('/admin/media/{id}', [BakhtechApiController::class, 'deleteMedia']);

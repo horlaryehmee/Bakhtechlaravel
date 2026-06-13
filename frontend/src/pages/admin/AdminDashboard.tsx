@@ -65,6 +65,7 @@ import {
   type InvoiceListMeta,
   type InvoiceOverview,
   type MediaItem,
+  type MailSettings,
   type PricingCategory,
   type PricingPlanFeature,
   type PricingPlan,
@@ -73,6 +74,7 @@ import {
   type GoogleReviewConnection,
   type Review,
   type ReviewInput,
+  type SiteEmailLog,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -80,7 +82,7 @@ type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | '
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
-type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'advanced'
+type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'smtp' | 'email-logs' | 'advanced'
 type ReviewAdminSection = 'reviews' | 'google' | 'trustpilot' | 'settings'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type BookingQuestion = {
@@ -98,6 +100,18 @@ type QuestionModalState = { mode: 'add' | 'edit'; index: number | null; question
 type HeaderMenuItem = { label: string; href: string; visible: boolean; children: HeaderMenuItem[] }
 type CurrencyAccountRow = Record<string, string>
 type InvoiceSettingsField = { key: string; label: string; type?: string; multiline?: boolean; options?: string[]; placeholder?: string }
+
+const emptyMailSettings: MailSettings = {
+  enabled: false,
+  host: '',
+  port: 587,
+  encryption: 'tls',
+  username: '',
+  password: '',
+  hasPassword: false,
+  fromAddress: '',
+  fromName: '',
+}
 
 const defaultInvoiceListMeta: InvoiceListMeta = { page: 1, perPage: 25, total: 0, lastPage: 1 }
 
@@ -699,6 +713,13 @@ export function AdminDashboard() {
   const [availabilityForm, setAvailabilityForm] = useState(emptyAvailabilityRule)
   const [settingsForm, setSettingsForm] = useState<Record<string, string>>(initialAdminCache?.cms?.settings ?? {})
   const [siteSettingsSection, setSiteSettingsSection] = useState<SiteSettingsSection>('menu')
+  const [mailSettings, setMailSettings] = useState<MailSettings>(emptyMailSettings)
+  const [mailTestEmail, setMailTestEmail] = useState('')
+  const [siteEmailLogs, setSiteEmailLogs] = useState<SiteEmailLog[]>([])
+  const [siteEmailLogsMeta, setSiteEmailLogsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
+  const [siteEmailLogStatus, setSiteEmailLogStatus] = useState('')
+  const [siteEmailLogSearch, setSiteEmailLogSearch] = useState('')
+  const loadedMailSettings = useRef(false)
   const [profileForms, setProfileForms] = useState<Record<number, { name: string; email: string }>>({})
   const [passwordForms, setPasswordForms] = useState<Record<number, { password: string; confirmation: string }>>({})
   const [twoFactorForms, setTwoFactorForms] = useState<Record<number, { secret: string; otpauthUri: string; code: string }>>({})
@@ -726,6 +747,19 @@ export function AdminDashboard() {
     { id: 2, text: 'Invoice #INV-2026-001 has been paid', time: '1 hour ago', unread: true },
     { id: 3, text: 'SEO score improved to 92%', time: 'Yesterday', unread: false },
   ])
+
+  useEffect(() => {
+    if (activeSection !== 'settings') return
+
+    if (siteSettingsSection === 'smtp' && !loadedMailSettings.current) {
+      loadedMailSettings.current = true
+      void loadMailSettings()
+    }
+
+    if (siteSettingsSection === 'email-logs') {
+      void loadSiteEmailLogs()
+    }
+  }, [activeSection, siteSettingsSection])
 
   // Sync dark mode class
   useEffect(() => {
@@ -1680,6 +1714,83 @@ export function AdminDashboard() {
     setCms((current) => (current ? { ...current, settings: result.settings } : current))
     setSettingsForm(result.settings)
     notify('Settings saved.')
+  }
+
+  async function loadMailSettings() {
+    setError('')
+    try {
+      const result = await api.mailSettings()
+      setMailSettings(result.settings)
+      setMailTestEmail((current) => current || result.settings.fromAddress)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load SMTP settings.')
+    }
+  }
+
+  async function saveMailSettings() {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.updateMailSettings(mailSettings)
+      setMailSettings(result.settings)
+      notify('SMTP settings saved.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save SMTP settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function sendTestMail() {
+    if (!mailTestEmail.trim()) {
+      setError('Enter a test email address.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.testMail(mailTestEmail.trim())
+      notify(result.message)
+      await loadSiteEmailLogs()
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Unable to send the test email.')
+      await loadSiteEmailLogs()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function loadSiteEmailLogs(page = 1) {
+    setError('')
+    try {
+      const result = await api.siteEmailLogs({
+        page,
+        perPage: siteEmailLogsMeta.perPage,
+        status: siteEmailLogStatus,
+        search: siteEmailLogSearch,
+      })
+      setSiteEmailLogs(result.logs)
+      setSiteEmailLogsMeta(result.meta)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load email logs.')
+    }
+  }
+
+  async function clearSiteEmailLogs() {
+    if (!window.confirm('Clear all website email logs?')) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.clearSiteEmailLogs()
+      notify(`${result.deleted} email logs cleared.`)
+      await loadSiteEmailLogs(1)
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : 'Unable to clear email logs.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function updateAdminUserPassword(userId: number) {
@@ -6732,6 +6843,8 @@ export function AdminDashboard() {
       { id: 'theme', label: 'Theme Colors', icon: Sun },
       { id: 'site', label: 'Site Info', icon: Settings },
       { id: 'social', label: 'Social Links', icon: Link2 },
+      { id: 'smtp', label: 'SMTP', icon: Send },
+      { id: 'email-logs', label: 'Email Logs', icon: Mail },
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
@@ -6856,6 +6969,141 @@ export function AdminDashboard() {
         ))}
       </div>
     )
+    const mailFieldClass = 'theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500'
+    const renderSmtpSettings = () => (
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Mail delivery</p>
+            <h3 className="mt-1 text-xl font-black text-gray-900">SMTP connection</h3>
+            <p className="mt-2 max-w-2xl text-sm font-semibold text-gray-500">Configure the mail server used by bookings, invoices, password resets, and other website email.</p>
+          </div>
+          <label className="inline-flex min-h-11 items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700">
+            <input type="checkbox" checked={mailSettings.enabled} onChange={(event) => setMailSettings((current) => ({ ...current, enabled: event.target.checked }))} />
+            Enable SMTP
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            SMTP host
+            <input className={mailFieldClass} value={mailSettings.host} placeholder="smtp.example.com" onChange={(event) => setMailSettings((current) => ({ ...current, host: event.target.value }))} />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            Port
+            <input className={mailFieldClass} type="number" min="1" max="65535" value={mailSettings.port} onChange={(event) => setMailSettings((current) => ({ ...current, port: Number(event.target.value) }))} />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            Encryption
+            <select className={mailFieldClass} value={mailSettings.encryption} onChange={(event) => setMailSettings((current) => ({ ...current, encryption: event.target.value as MailSettings['encryption'] }))}>
+              <option value="tls">TLS / STARTTLS</option>
+              <option value="ssl">SSL</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            Username
+            <input className={mailFieldClass} autoComplete="username" value={mailSettings.username} onChange={(event) => setMailSettings((current) => ({ ...current, username: event.target.value }))} />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            Password
+            <input className={mailFieldClass} type="password" autoComplete="new-password" value={mailSettings.password} placeholder={mailSettings.hasPassword ? 'Saved password (leave blank to keep)' : 'SMTP password'} onChange={(event) => setMailSettings((current) => ({ ...current, password: event.target.value }))} />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            From email
+            <input className={mailFieldClass} type="email" value={mailSettings.fromAddress} placeholder="hello@example.com" onChange={(event) => setMailSettings((current) => ({ ...current, fromAddress: event.target.value }))} />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-gray-700">
+            From name
+            <input className={mailFieldClass} value={mailSettings.fromName} placeholder="Bakhtech Solutions" onChange={(event) => setMailSettings((current) => ({ ...current, fromName: event.target.value }))} />
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <label className="grid min-w-[260px] flex-1 gap-2 text-sm font-bold text-gray-700">
+            Test recipient
+            <input className={mailFieldClass} type="email" value={mailTestEmail} placeholder="you@example.com" onChange={(event) => setMailTestEmail(event.target.value)} />
+          </label>
+          <Button type="button" disabled={saving} variant="ghost" className="min-h-11 rounded-xl border border-blue-200 bg-white text-blue-700" onClick={() => void sendTestMail()}>
+            <Send className="h-4 w-4" />
+            Send test email
+          </Button>
+          <Button type="button" disabled={saving} className="min-h-11 rounded-xl bg-blue-600 text-white" onClick={() => void saveMailSettings()}>
+            <Save className="h-4 w-4" />
+            Save SMTP
+          </Button>
+        </div>
+      </section>
+    )
+    const renderSiteEmailLogs = () => (
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Delivery history</p>
+            <h3 className="mt-1 text-xl font-black text-gray-900">Website email logs</h3>
+            <p className="mt-2 text-sm font-semibold text-gray-500">Successful mail and SMTP test failures are recorded here.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => void loadSiteEmailLogs(1)}>Refresh</Button>
+            <Button type="button" variant="ghost" disabled={saving || siteEmailLogs.length === 0} className="rounded-xl border border-red-100 text-red-600" onClick={() => void clearSiteEmailLogs()}>
+              <Trash2 className="h-4 w-4" />
+              Clear logs
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-4 grid gap-3 md:grid-cols-[1fr_180px_auto]">
+          <input className={mailFieldClass} value={siteEmailLogSearch} placeholder="Search recipient, subject, or source" onChange={(event) => setSiteEmailLogSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void loadSiteEmailLogs(1) } }} />
+          <select className={mailFieldClass} value={siteEmailLogStatus} onChange={(event) => setSiteEmailLogStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+          </select>
+          <Button type="button" className="rounded-xl bg-gray-900 text-white" onClick={() => void loadSiteEmailLogs(1)}>Filter</Button>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Recipient</th>
+                <th className="px-4 py-3">Subject</th>
+                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {siteEmailLogs.map((log) => (
+                <tr key={log.id} className="align-top">
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-500">{log.sentAt || log.createdAt ? new Date(log.sentAt || log.createdAt).toLocaleString() : ''}</td>
+                  <td className="px-4 py-3 font-bold text-gray-900">{log.recipient}</td>
+                  <td className="max-w-md px-4 py-3 text-gray-700">
+                    <p className="font-semibold">{log.subject || 'No subject'}</p>
+                    {log.errorMessage ? <p className="mt-1 text-xs font-semibold text-red-600">{log.errorMessage}</p> : null}
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-gray-500">{log.source}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase', log.status === 'sent' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>{log.status}</span>
+                  </td>
+                </tr>
+              ))}
+              {siteEmailLogs.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center font-semibold text-gray-500">No email logs found.</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm font-bold text-gray-500">
+          <span>{siteEmailLogsMeta.total} total logs</span>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" disabled={siteEmailLogsMeta.page <= 1} onClick={() => void loadSiteEmailLogs(siteEmailLogsMeta.page - 1)}>Previous</Button>
+            <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" disabled={siteEmailLogsMeta.page >= siteEmailLogsMeta.lastPage} onClick={() => void loadSiteEmailLogs(siteEmailLogsMeta.page + 1)}>Next</Button>
+          </div>
+        </div>
+      </section>
+    )
 
     return (
       <div>
@@ -6865,7 +7113,7 @@ export function AdminDashboard() {
           text="Configure global settings for your website including contact info, social media links, and more." 
         />
         <form className="grid gap-6" onSubmit={saveSettings}>
-          <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-7">
             {settingSections.map((section) => {
               const Icon = section.icon
               return (
@@ -6959,6 +7207,10 @@ export function AdminDashboard() {
             <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               {renderThemeColorSettings()}
             </section>
+          ) : siteSettingsSection === 'smtp' ? (
+            renderSmtpSettings()
+          ) : siteSettingsSection === 'email-logs' ? (
+            renderSiteEmailLogs()
           ) : (
             <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               {keysForSection.length ? renderSettingsFields(keysForSection) : (
@@ -6967,9 +7219,11 @@ export function AdminDashboard() {
             </section>
           )}
 
-          <div>
-            <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Save Settings</Button>
-          </div>
+          {!['smtp', 'email-logs'].includes(siteSettingsSection) ? (
+            <div>
+              <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Save Settings</Button>
+            </div>
+          ) : null}
         </form>
       </div>
     )

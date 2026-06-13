@@ -445,6 +445,30 @@ export type InvoiceEmailLog = {
   updatedAt: string
 }
 
+export type MailSettings = {
+  enabled: boolean
+  host: string
+  port: number
+  encryption: 'tls' | 'ssl' | 'none'
+  username: string
+  password: string
+  hasPassword: boolean
+  fromAddress: string
+  fromName: string
+}
+
+export type SiteEmailLog = {
+  id: number
+  recipient: string
+  subject: string
+  source: string
+  mailer: string
+  status: 'sent' | 'failed'
+  errorMessage: string
+  sentAt: string
+  createdAt: string
+}
+
 export type BookingAvailabilityRule = {
   id: number
   calendarId: number | null
@@ -887,6 +911,28 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(settings),
     })
+  },
+  mailSettings() {
+    return request<{ settings: MailSettings }>('/api/admin/mail/settings')
+  },
+  updateMailSettings(settings: MailSettings & { clearPassword?: boolean }) {
+    return request<{ settings: MailSettings }>('/api/admin/mail/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    })
+  },
+  testMail(email: string) {
+    return request<{ message: string }>('/api/admin/mail/test', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  },
+  siteEmailLogs(params: Record<string, string | number> = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    return request<{ logs: SiteEmailLog[]; meta: InvoiceListMeta }>(`/api/admin/mail/logs${query ? `?${query}` : ''}`)
+  },
+  clearSiteEmailLogs() {
+    return request<{ deleted: number }>('/api/admin/mail/logs', { method: 'DELETE' })
   },
   uploadMedia(file: File) {
     const token = getAdminToken()
