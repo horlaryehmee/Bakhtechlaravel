@@ -471,6 +471,13 @@ export type SiteEmailLog = {
   createdAt: string
 }
 
+export type DeploymentCommandResult = {
+  command: string
+  exitCode: number
+  output: string
+  durationMs: number
+}
+
 export type BookingAvailabilityRule = {
   id: number
   calendarId: number | null
@@ -938,6 +945,11 @@ export const api = {
   },
   clearSiteEmailLogs() {
     return request<{ deleted: number }>('/api/admin/mail/logs/clear', { method: 'POST' })
+  },
+  runDeploymentMaintenance() {
+    return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/system/deploy', {
+      method: 'POST',
+    })
   },
   uploadMedia(file: File) {
     const token = getAdminToken()

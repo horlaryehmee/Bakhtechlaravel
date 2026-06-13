@@ -58,6 +58,7 @@ import {
   type CmsPage,
   type CmsPost,
   type DashboardData,
+  type DeploymentCommandResult,
   type InvoiceClient,
   type InvoiceDocument,
   type InvoiceEmailLog,
@@ -730,6 +731,9 @@ export function AdminDashboard() {
   const [siteEmailLogsMeta, setSiteEmailLogsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
   const [siteEmailLogStatus, setSiteEmailLogStatus] = useState('')
   const [siteEmailLogSearch, setSiteEmailLogSearch] = useState('')
+  const [deploymentRunning, setDeploymentRunning] = useState(false)
+  const [deploymentResults, setDeploymentResults] = useState<DeploymentCommandResult[]>([])
+  const [deploymentCompletedAt, setDeploymentCompletedAt] = useState('')
   const loadedMailSettings = useRef(false)
   const [profileForms, setProfileForms] = useState<Record<number, { name: string; email: string }>>({})
   const [passwordForms, setPasswordForms] = useState<Record<number, { password: string; confirmation: string }>>({})
@@ -1814,6 +1818,29 @@ export function AdminDashboard() {
     } catch (previewError) {
       setSelectedSiteEmailLog(null)
       setError(previewError instanceof Error ? previewError.message : 'Unable to load email preview.')
+    }
+  }
+
+  async function runDeploymentMaintenance() {
+    const confirmed = window.confirm(
+      'Run database migrations and rebuild Laravel caches now? The site may respond more slowly while this is running.'
+    )
+    if (!confirmed) return
+
+    setDeploymentRunning(true)
+    setDeploymentResults([])
+    setDeploymentCompletedAt('')
+    setError('')
+
+    try {
+      const result = await api.runDeploymentMaintenance()
+      setDeploymentResults(result.results)
+      setDeploymentCompletedAt(result.completedAt)
+      notify(result.message)
+    } catch (maintenanceError) {
+      setError(maintenanceError instanceof Error ? maintenanceError.message : 'Deployment maintenance failed.')
+    } finally {
+      setDeploymentRunning(false)
     }
   }
 
@@ -7171,6 +7198,74 @@ export function AdminDashboard() {
       ) : null}
       </>
     )
+    const renderAdvancedSettings = () => (
+      <div className="grid gap-6">
+        <section className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-600">Deployment maintenance</p>
+              <h3 className="mt-1 text-xl font-black text-gray-900">Update database and Laravel caches</h3>
+              <p className="mt-2 text-sm font-semibold leading-6 text-gray-500">
+                Runs migrations, clears old cached routes and configuration, then rebuilds Laravel's production caches.
+                Use this after deploying backend changes.
+              </p>
+            </div>
+            <Button
+              type="button"
+              disabled={deploymentRunning}
+              className="min-h-11 rounded-xl bg-amber-600 text-white hover:bg-amber-700"
+              onClick={() => void runDeploymentMaintenance()}
+            >
+              {deploymentRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              {deploymentRunning ? 'Running maintenance...' : 'Run deployment update'}
+            </Button>
+          </div>
+
+          <div className="mt-5 rounded-xl border border-gray-200 bg-gray-950 p-4 font-mono text-xs leading-6 text-gray-200">
+            <div>php artisan migrate --force</div>
+            <div>php artisan optimize:clear</div>
+            <div>php artisan optimize</div>
+          </div>
+
+          <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-800">
+            Admin only. Do not close or refresh this page while the update is running.
+          </p>
+        </section>
+
+        {deploymentResults.length ? (
+          <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-600">Completed</p>
+                <h3 className="mt-1 text-xl font-black text-gray-900">Deployment output</h3>
+              </div>
+              <span className="text-sm font-bold text-gray-500">{deploymentCompletedAt ? new Date(deploymentCompletedAt).toLocaleString() : ''}</span>
+            </div>
+            <div className="grid gap-3">
+              {deploymentResults.map((result) => (
+                <article key={result.command} className="overflow-hidden rounded-xl border border-gray-200">
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-4 py-3">
+                    <code className="font-bold text-gray-900">{result.command}</code>
+                    <span className={cn('rounded-full px-2.5 py-1 text-xs font-black uppercase', result.exitCode === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
+                      {result.exitCode === 0 ? 'Success' : `Exit ${result.exitCode}`}
+                    </span>
+                  </div>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap bg-gray-950 p-4 text-xs leading-6 text-gray-200">{result.output || 'Command completed without output.'}</pre>
+                  <p className="border-t border-gray-200 px-4 py-2 text-xs font-bold text-gray-500">{result.durationMs.toLocaleString()} ms</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {keysForSection.length ? (
+          <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 text-lg font-black text-gray-900">Additional settings</h3>
+            {renderSettingsFields(keysForSection)}
+          </section>
+        ) : null}
+      </div>
+    )
 
     return (
       <div>
@@ -7278,6 +7373,8 @@ export function AdminDashboard() {
             renderSmtpSettings()
           ) : siteSettingsSection === 'email-logs' ? (
             renderSiteEmailLogs()
+          ) : siteSettingsSection === 'advanced' ? (
+            renderAdvancedSettings()
           ) : (
             <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               {keysForSection.length ? renderSettingsFields(keysForSection) : (

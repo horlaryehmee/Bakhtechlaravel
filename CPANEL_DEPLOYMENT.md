@@ -74,6 +74,27 @@ php artisan route:list --path=api/admin/mail
 The output must include both `GET` and `POST` for
 `api/admin/mail/settings`, plus the test and log routes.
 
+## Admin Deployment Button
+
+After this version has been deployed and Laravel caches have been cleared once,
+full administrators can use:
+
+```text
+Admin > Settings > Advanced > Run deployment update
+```
+
+The button runs:
+
+```bash
+php artisan migrate --force
+php artisan optimize:clear
+php artisan optimize
+```
+
+The first deployment of the button still requires the terminal commands in
+**First Run**, because an older cached route table cannot know about the new
+maintenance endpoint. Future deployments can use the admin button.
+
 Add this cPanel cron entry so booking reminders and future scheduled tasks run:
 
 ```cron
