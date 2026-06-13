@@ -1070,7 +1070,7 @@ class BakhtechApiController extends Controller
             'google_calendar_event_id' => $sync['eventId'] ?? null,
             'google_calendar_event_url' => $sync['eventUrl'] ?? null,
             'google_calendar_sync_status' => $sync['status'] === 'not_configured' && ($zoomSync['status'] ?? '') === 'synced' ? 'zoom_synced' : $sync['status'],
-            'google_calendar_sync_error' => $sync['error'] ?? null,
+            ...$this->googleCalendarSyncErrorPayload($sync['error'] ?? null),
             'location_type' => $generatedMeetLink ? 'google_meet' : $booking->location_type,
             'location_value' => $sync['locationValue'] ?? $booking->location_value,
             'updated_at' => now(),
@@ -1162,6 +1162,13 @@ class BakhtechApiController extends Controller
     private function attendeeTimezonePayload(string $timezone): array
     {
         return Schema::hasColumn('bookings', 'attendee_timezone') ? ['attendee_timezone' => $timezone] : [];
+    }
+
+    private function googleCalendarSyncErrorPayload(?string $error): array
+    {
+        return Schema::hasColumn('bookings', 'google_calendar_sync_error')
+            ? ['google_calendar_sync_error' => $error]
+            : [];
     }
 
     private function slotIsAvailable(object $eventType, Carbon $start): bool
@@ -1505,7 +1512,7 @@ class BakhtechApiController extends Controller
             'locationValue' => $row->location_value ?? '',
             'googleCalendarEventUrl' => $row->google_calendar_event_url ?? '',
             'googleCalendarSyncStatus' => $row->google_calendar_sync_status ?? 'not_configured',
-            'googleCalendarSyncError' => $row->google_calendar_sync_error ?? '',
+            'googleCalendarSyncError' => Schema::hasColumn('bookings', 'google_calendar_sync_error') ? ($row->google_calendar_sync_error ?? '') : '',
             'reminderSentAt' => (string) ($row->reminder_sent_at ?? ''),
             'createdAt' => (string) $row->created_at,
         ];

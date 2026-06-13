@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class BookingCmsService
@@ -474,7 +475,7 @@ class BookingCmsService
             'googleCalendar' => [
                 'status' => $booking->google_calendar_sync_status ?? 'not_configured',
                 'eventUrl' => $booking->google_calendar_event_url ?? '',
-                'error' => $booking->google_calendar_sync_error ?? '',
+                'error' => Schema::hasColumn('bookings', 'google_calendar_sync_error') ? ($booking->google_calendar_sync_error ?? '') : '',
             ],
             'reminderSentAt' => (string) ($booking->reminder_sent_at ?? ''),
             'createdAt' => (string) $booking->created_at,
@@ -511,7 +512,11 @@ class BookingCmsService
             'location_type' => $data['locationType'] ?? $existing?->location_type ?? 'google_meet',
             'location_value' => $data['locationValue'] ?? $existing?->location_value ?? '',
             'google_calendar_sync_status' => $existing?->google_calendar_sync_status ?? 'not_configured',
-            'google_calendar_sync_error' => $existing?->google_calendar_sync_error ?? null,
+            ...$this->googleCalendarSyncErrorPayload(
+                $existing && Schema::hasColumn('bookings', 'google_calendar_sync_error')
+                    ? ($existing->google_calendar_sync_error ?? null)
+                    : null
+            ),
             'cancel_token' => $existing?->cancel_token ?? (string) \Illuminate\Support\Str::uuid(),
         ];
     }
@@ -592,7 +597,14 @@ class BookingCmsService
 
     private function attendeeTimezonePayload(string $timezone): array
     {
-        return \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'attendee_timezone') ? ['attendee_timezone' => $timezone] : [];
+        return Schema::hasColumn('bookings', 'attendee_timezone') ? ['attendee_timezone' => $timezone] : [];
+    }
+
+    private function googleCalendarSyncErrorPayload(?string $error): array
+    {
+        return Schema::hasColumn('bookings', 'google_calendar_sync_error')
+            ? ['google_calendar_sync_error' => $error]
+            : [];
     }
 
     private function resourceShape(object $row): array
