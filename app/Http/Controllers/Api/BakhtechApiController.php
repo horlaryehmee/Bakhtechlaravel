@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
 use App\Services\DeploymentMaintenanceService;
+use App\Services\BookingNotificationService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
 use App\Support\SiteDefaults;
@@ -1070,6 +1071,8 @@ class BakhtechApiController extends Controller
             'location_value' => $sync['locationValue'] ?? $booking->location_value,
             'updated_at' => now(),
         ]);
+
+        app(BookingNotificationService::class)->bookingCreated($id);
 
         return response()->json(['booking' => $this->bookingShape(DB::table('bookings')->where('id', $id)->first())], 201);
     }

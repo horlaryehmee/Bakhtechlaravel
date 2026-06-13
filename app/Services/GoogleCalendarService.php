@@ -29,6 +29,7 @@ class GoogleCalendarService
             $attendees[] = ['email' => $booking->email, 'displayName' => $booking->name];
         }
 
+        $reminders = $this->reminderMinutes($booking, $eventType);
         $payload = [
             'summary' => $eventType->name . ' with ' . $booking->name,
             'description' => trim("Service: {$booking->service}\nPhone: {$booking->phone}\n\n{$booking->message}"),
@@ -43,10 +44,11 @@ class GoogleCalendarService
             'attendees' => $attendees,
             'reminders' => [
                 'useDefault' => false,
-                'overrides' => [
-                    ['method' => 'email', 'minutes' => (int) $eventType->reminder_minutes_before],
-                    ['method' => 'popup', 'minutes' => 10],
-                ],
+                'overrides' => collect($reminders)
+                    ->take(5)
+                    ->map(fn ($minutes) => ['method' => 'email', 'minutes' => $minutes])
+                    ->values()
+                    ->all(),
             ],
         ];
 
@@ -82,6 +84,24 @@ class GoogleCalendarService
             'eventUrl' => $data['htmlLink'] ?? null,
             'locationValue' => $meetLink,
         ];
+    }
+
+    private function reminderMinutes(object $booking, object $eventType): array
+    {
+        $calendar = ! empty($booking->booking_calendar_id)
+            ? DB::table('booking_calendars')->where('id', $booking->booking_calendar_id)->first()
+            : null;
+        $settings = json_decode($calendar?->settings_json ?: '{}', true);
+        $configured = $settings['email']['reminderMinutesBefore'] ?? [(int) $eventType->reminder_minutes_before];
+        $values = is_array($configured) ? $configured : [$configured];
+
+        return collect($values)
+            ->map(fn ($value) => (int) $value)
+            ->filter(fn ($value) => $value > 0 && $value <= 40320)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
     }
 
     private function calendarId(): string

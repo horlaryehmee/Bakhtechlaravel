@@ -159,7 +159,7 @@ class BookingCmsRepository
                 'customFields' => [],
             ],
             'payment' => ['enabled' => false, 'pricingType' => 'fixed', 'amount' => 0, 'currency' => 'NGN', 'gateway' => 'paystack'],
-            'email' => ['confirmationEnabled' => true, 'adminNotificationEnabled' => true, 'reminderMinutesBefore' => 1440],
+            'email' => ['confirmationEnabled' => true, 'adminNotificationEnabled' => true, 'reminderMinutesBefore' => [1440, 60, 30]],
             'availability' => ['timezone' => 'Africa/Lagos', 'workingDays' => ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], 'startTime' => '09:00', 'endTime' => '17:00', 'bufferMinutes' => 15, 'blackoutDates' => []],
             'locations' => [
                 ['id' => 'google-meet', 'label' => 'Google Meet', 'type' => 'google_meet', 'details' => '', 'enabled' => true],

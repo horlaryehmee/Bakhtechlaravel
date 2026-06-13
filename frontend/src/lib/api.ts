@@ -206,7 +206,7 @@ export type CalendarSettings = {
     customFields: Array<{ key: string; label: string; type: string; required: boolean; enabled?: boolean; system?: boolean; hidden?: boolean; helpMessage?: string; options?: string[] }>
   }
   payment: { enabled: boolean; pricingType: string; amount: number; currency: string; gateway: string }
-  email: { confirmationEnabled: boolean; adminNotificationEnabled: boolean; reminderMinutesBefore: number; confirmationTemplate?: string; adminTemplate?: string; reminderTemplate?: string; cancellationTemplate?: string }
+  email: { confirmationEnabled: boolean; adminNotificationEnabled: boolean; reminderMinutesBefore: number | number[]; confirmationTemplate?: string; adminTemplate?: string; reminderTemplate?: string; cancellationTemplate?: string }
   availability: { timezone: string; workingDays: string[]; startTime: string; endTime: string; bufferMinutes: number; blackoutDates: string[] }
   locations?: Array<{ id: string; label: string; type: string; details?: string; enabled: boolean }>
 }

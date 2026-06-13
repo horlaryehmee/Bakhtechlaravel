@@ -196,7 +196,7 @@ const emptyBookingCalendar: Partial<BookingCalendar> & {
     email: { 
       confirmationEnabled: true, 
       adminNotificationEnabled: true, 
-      reminderMinutesBefore: 1440, 
+      reminderMinutesBefore: [1440, 60, 30],
       confirmationTemplate: `Hello {{name}},
 
 Great news! Your booking has been confirmed.
@@ -6191,12 +6191,82 @@ export function AdminDashboard() {
 
             {calendarSettingsSection === 'email' ? (
               <div className="grid gap-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold">Confirmation email<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={email.confirmationEnabled ? 'on' : 'off'} onChange={(event) => updateSettings('email', { ...email, confirmationEnabled: event.target.value === 'on' })}><option value="on">ON</option><option value="off">OFF</option></select></label>
-                  <label className="grid gap-2 text-sm font-bold">Admin notification<select className="theme-input min-h-11 rounded-xl px-4 outline-none" value={email.adminNotificationEnabled ? 'on' : 'off'} onChange={(event) => updateSettings('email', { ...email, adminNotificationEnabled: event.target.value === 'on' })}><option value="on">ON</option><option value="off">OFF</option></select></label>
-                  <label className="grid gap-2 text-sm font-bold">Reminder timing<input className="theme-input min-h-11 rounded-xl px-4 outline-none" type="number" value={email.reminderMinutesBefore} onChange={(event) => updateSettings('email', { ...email, reminderMinutesBefore: Number(event.target.value) })} /></label>
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-800">
+                  Booking confirmations are always sent to the attendee and the admin for every new booking.
                 </div>
-                
+
+                <section className="rounded-2xl border border-[var(--line)] p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black">Reminder schedule</h3>
+                      <p className="mt-1 text-sm text-soft">Add multiple reminders. Each one is sent to both the attendee and admin.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="rounded-xl border border-[var(--line)]"
+                      onClick={() => {
+                        const current = Array.isArray(email.reminderMinutesBefore) ? email.reminderMinutesBefore : [Number(email.reminderMinutesBefore || 60)]
+                        updateSettings('email', { ...email, reminderMinutesBefore: [...current, 30] })
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add reminder
+                    </Button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {(Array.isArray(email.reminderMinutesBefore) ? email.reminderMinutesBefore : [Number(email.reminderMinutesBefore || 60)]).map((minutes, index, reminders) => {
+                      const unit = minutes % 1440 === 0 ? 1440 : minutes % 60 === 0 ? 60 : 1
+                      const value = Math.max(1, minutes / unit)
+                      return (
+                        <div key={`${minutes}-${index}`} className="grid gap-3 rounded-xl bg-[var(--surface-2)] p-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
+                          <label className="grid gap-2 text-sm font-bold">
+                            Time before meeting
+                            <input
+                              className="theme-input min-h-11 rounded-xl px-4 outline-none"
+                              type="number"
+                              min="1"
+                              value={value}
+                              onChange={(event) => {
+                                const next = [...reminders]
+                                next[index] = Math.max(1, Number(event.target.value)) * unit
+                                updateSettings('email', { ...email, reminderMinutesBefore: next })
+                              }}
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm font-bold">
+                            Unit
+                            <select
+                              className="theme-input min-h-11 rounded-xl px-4 outline-none"
+                              value={unit}
+                              onChange={(event) => {
+                                const next = [...reminders]
+                                next[index] = value * Number(event.target.value)
+                                updateSettings('email', { ...email, reminderMinutesBefore: next })
+                              }}
+                            >
+                              <option value={1}>Minutes</option>
+                              <option value={60}>Hours</option>
+                              <option value={1440}>Days</option>
+                            </select>
+                          </label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-11 rounded-xl border border-red-100 text-red-600"
+                            disabled={reminders.length === 1}
+                            onClick={() => updateSettings('email', { ...email, reminderMinutesBefore: reminders.filter((_, reminderIndex) => reminderIndex !== index) })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remove
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+
                 <div className="grid gap-4">
                   <label className="grid gap-2 text-sm font-bold">Confirmation template<textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" value={email.confirmationTemplate ?? ''} onChange={(event) => updateSettings('email', { ...email, confirmationTemplate: event.target.value })} /></label>
                   <label className="grid gap-2 text-sm font-bold">Admin notification template<textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" value={email.adminTemplate ?? ''} onChange={(event) => updateSettings('email', { ...email, adminTemplate: event.target.value })} /></label>

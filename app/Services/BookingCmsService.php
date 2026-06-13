@@ -12,7 +12,10 @@ use Illuminate\Support\Str;
 
 class BookingCmsService
 {
-    public function __construct(private BookingCmsRepository $repository)
+    public function __construct(
+        private BookingCmsRepository $repository,
+        private BookingNotificationService $notifications
+    )
     {
     }
 
@@ -153,18 +156,26 @@ class BookingCmsService
 
     public function createBooking(array $data, object $admin, ?string $ip): array
     {
-        return DB::transaction(function () use ($data, $admin, $ip) {
+        $bookingId = null;
+        $booking = DB::transaction(function () use ($data, $admin, $ip, &$bookingId) {
             $payload = $this->bookingPayload($data);
             if (!$this->isSlotAvailable($payload['booking_calendar_id'], $payload['starts_at'], $payload['ends_at'], null, $payload['booking_resource_id'])) {
                 throw new HttpResponseException(response()->json(['message' => 'This booking conflicts with an existing booking, blackout date, or availability rule.'], 409));
             }
 
             $id = $this->repository->createBooking($payload);
+            $bookingId = $id;
             $this->history($id, $admin, 'booking.created', null, $payload['status'], $payload);
             $this->audit($admin, 'booking.created', 'booking', $id, ['customer' => $payload['name']], $ip);
 
             return $this->bookingShape($this->repository->booking($id));
         });
+
+        if ($bookingId) {
+            $this->notifications->bookingCreated($bookingId);
+        }
+
+        return $booking;
     }
 
     public function updateBooking(int $id, array $data, object $admin, ?string $ip): array
