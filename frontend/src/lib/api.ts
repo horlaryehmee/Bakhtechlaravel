@@ -917,7 +917,7 @@ export const api = {
   },
   updateMailSettings(settings: MailSettings & { clearPassword?: boolean }) {
     return request<{ settings: MailSettings }>('/api/admin/mail/settings', {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify(settings),
     })
   },
@@ -932,7 +932,7 @@ export const api = {
     return request<{ logs: SiteEmailLog[]; meta: InvoiceListMeta }>(`/api/admin/mail/logs${query ? `?${query}` : ''}`)
   },
   clearSiteEmailLogs() {
-    return request<{ deleted: number }>('/api/admin/mail/logs', { method: 'DELETE' })
+    return request<{ deleted: number }>('/api/admin/mail/logs/clear', { method: 'POST' })
   },
   uploadMedia(file: File) {
     const token = getAdminToken()

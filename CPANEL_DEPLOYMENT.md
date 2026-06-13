@@ -56,12 +56,23 @@ Run from cPanel Terminal inside the repository root:
 composer install --no-dev --optimize-autoloader
 php artisan key:generate --force
 php artisan migrate --seed --force
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
+php artisan optimize:clear
 php artisan optimize
 chmod -R 775 storage bootstrap/cache public/uploads
 ```
+
+Run those commands only after the updated `app/`, `routes/`, and `database/`
+files have been deployed. If the frontend is deployed before the backend route
+files, the admin may show an API route error or a method-not-supported error.
+
+After deployment, verify the SMTP routes:
+
+```bash
+php artisan route:list --path=api/admin/mail
+```
+
+The output must include both `GET` and `POST` for
+`api/admin/mail/settings`, plus the test and log routes.
 
 Add this cPanel cron entry so booking reminders and future scheduled tasks run:
 
