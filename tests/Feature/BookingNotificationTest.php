@@ -67,7 +67,11 @@ class BookingNotificationTest extends TestCase
 
         $service = app(BookingNotificationService::class);
 
-        foreach ([2, 3] as $daysAhead) {
+        foreach ([
+            ['days' => 2, 'type' => 'google_meet', 'value' => 'https://meet.example.test/test'],
+            ['days' => 3, 'type' => 'whatsapp', 'value' => '+234 800 123 4567'],
+        ] as $bookingDetails) {
+            $daysAhead = $bookingDetails['days'];
             $start = now('Africa/Lagos')->addDays($daysAhead)->startOfHour();
             $bookingId = DB::table('bookings')->insertGetId([
                 'booking_event_type_id' => $eventTypeId,
@@ -87,8 +91,8 @@ class BookingNotificationTest extends TestCase
                 'price_amount' => 0,
                 'currency' => 'NGN',
                 'payment_status' => 'not_required',
-                'location_type' => 'google_meet',
-                'location_value' => 'https://meet.example.test/test',
+                'location_type' => $bookingDetails['type'],
+                'location_value' => $bookingDetails['value'],
                 'google_calendar_sync_status' => 'not_configured',
                 'cancel_token' => fake()->uuid(),
                 'created_at' => now(),
@@ -99,6 +103,17 @@ class BookingNotificationTest extends TestCase
         }
 
         $this->assertSame(4, DB::table('email_logs')->count());
+        $confirmationEmails = DB::table('email_logs')
+            ->where('source', 'booking-confirmation')
+            ->orderBy('id')
+            ->get();
+        $this->assertStringContainsString('Your booking is confirmed', $confirmationEmails[0]->body_html);
+        $this->assertStringContainsString('Booking details', $confirmationEmails[0]->body_html);
+        $this->assertStringContainsString('Join Google Meet', $confirmationEmails[0]->body_html);
+        $this->assertStringContainsString('https://meet.example.test/test', $confirmationEmails[0]->body_html);
+        $this->assertStringContainsString('Open WhatsApp', $confirmationEmails[1]->body_html);
+        $this->assertStringContainsString('https://wa.me/2348001234567', $confirmationEmails[1]->body_html);
+        $this->assertStringContainsString('Repeat Client', $confirmationEmails[1]->body_html);
         $this->assertDatabaseCount('booking_reminders', 12);
         $this->assertDatabaseHas('booking_reminders', [
             'recipient_email' => 'client@example.test',
@@ -118,5 +133,9 @@ class BookingNotificationTest extends TestCase
         $this->assertSame(0, $result['failed']);
         $this->assertSame(16, DB::table('email_logs')->count());
         $this->assertDatabaseMissing('booking_reminders', ['status' => 'pending']);
+        $this->assertStringContainsString(
+            'Your meeting is coming up',
+            DB::table('email_logs')->where('source', 'booking-reminder')->value('body_html')
+        );
     }
 }

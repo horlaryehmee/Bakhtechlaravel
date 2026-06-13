@@ -6268,6 +6268,9 @@ export function AdminDashboard() {
                 </section>
 
                 <div className="grid gap-4">
+                  <p className="theme-muted text-sm leading-6">
+                    These templates control the opening message. The branded email automatically includes the booking schedule, attendee details, notes, and the correct meeting link, WhatsApp number, or phone number.
+                  </p>
                   <label className="grid gap-2 text-sm font-bold">Confirmation template<textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" value={email.confirmationTemplate ?? ''} onChange={(event) => updateSettings('email', { ...email, confirmationTemplate: event.target.value })} /></label>
                   <label className="grid gap-2 text-sm font-bold">Admin notification template<textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" value={email.adminTemplate ?? ''} onChange={(event) => updateSettings('email', { ...email, adminTemplate: event.target.value })} /></label>
                   <label className="grid gap-2 text-sm font-bold">Reminder template<textarea className="theme-input min-h-32 rounded-xl px-4 py-3 outline-none" value={email.reminderTemplate ?? ''} onChange={(event) => updateSettings('email', { ...email, reminderTemplate: event.target.value })} /></label>
