@@ -690,6 +690,7 @@ export function AdminDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
+  const [googleCalendarMessage, setGoogleCalendarMessage] = useState('')
   const loadedGoogleCalendarsFor = useRef('')
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
@@ -1706,10 +1707,12 @@ export function AdminDashboard() {
 
   async function loadGoogleCalendars() {
     setLoadingGoogleCalendars(true)
+    setGoogleCalendarMessage('')
     setError('')
     try {
       const result = await api.googleCalendars()
       setGoogleCalendars(result.calendars)
+      setGoogleCalendarMessage(result.message || '')
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load Google calendars.')
     } finally {
@@ -1724,6 +1727,7 @@ export function AdminDashboard() {
       const result = await api.selectGoogleCalendar(calendarId)
       setBookingCmsSettings(result.settings)
       setGoogleCalendars(result.calendars)
+      setGoogleCalendarMessage(result.message || '')
       notify('Google calendar selected.')
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to select Google calendar.')
@@ -6663,7 +6667,10 @@ export function AdminDashboard() {
                   {bookingCmsSettings.google_connected_email ? <span className="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-black text-soft">{bookingCmsSettings.google_connected_email}</span> : null}
                 </div>
               </div>
-              {!googleConnected ? <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={connectGoogleCalendar} disabled={saving}>{saving ? 'Saving...' : 'Save & Connect Google'}</Button> : null}
+              <div className="flex flex-wrap gap-2">
+                {googleConnected ? <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void loadGoogleCalendars()} disabled={loadingGoogleCalendars}>{loadingGoogleCalendars ? 'Loading...' : 'Refresh calendars'}</Button> : null}
+                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={connectGoogleCalendar} disabled={saving}>{saving ? 'Saving...' : googleConnected ? 'Reconnect Google' : 'Save & Connect Google'}</Button>
+              </div>
             </div>
           </div>
 
@@ -6674,7 +6681,7 @@ export function AdminDashboard() {
               {loadingGoogleCalendars ? <p className="text-soft mt-4 text-sm">Loading calendars...</p> : null}
               {!loadingGoogleCalendars && googleCalendars.length === 0 ? (
                 <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-bold text-amber-700">
-                  No calendars were returned by Google. Reconnect the account and allow Calendar access.
+                  {googleCalendarMessage || 'Google did not return any calendars. Refresh the list or reconnect the account.'}
                 </div>
               ) : null}
               <div className="mt-4 grid gap-2">

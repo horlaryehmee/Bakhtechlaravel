@@ -47,14 +47,14 @@ class GoogleCalendarOAuthService
 
         return [
             'configured' => true,
-            'authUrl' => 'https://accounts.google.com/o/oauth2/v2/auth?' . $query,
+            'authUrl' => 'https://accounts.google.com/o/oauth2/v2/auth?'.$query,
             'redirectUri' => $this->redirectUri(),
         ];
     }
 
     public function handleCallback(string $code, string $state): bool
     {
-        if (!Cache::pull($this->stateKey($state))) {
+        if (! Cache::pull($this->stateKey($state))) {
             return false;
         }
 
@@ -66,7 +66,7 @@ class GoogleCalendarOAuthService
             'code' => $code,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return false;
         }
 
@@ -77,7 +77,7 @@ class GoogleCalendarOAuthService
         }
 
         $this->setSetting('google_calendar_access_token', $accessToken);
-        if (!empty($token['refresh_token'])) {
+        if (! empty($token['refresh_token'])) {
             $this->setSetting('google_calendar_refresh_token', (string) $token['refresh_token']);
         }
         $this->setSetting('google_calendar_token_expires_at', now()->addSeconds((int) ($token['expires_in'] ?? 3600) - 60)->toIso8601String());
@@ -92,28 +92,83 @@ class GoogleCalendarOAuthService
         return true;
     }
 
-    public function calendars(): array
+    public function calendarList(): array
     {
         $token = $this->validAccessToken();
         if ($token === '') {
-            return [];
+            return [
+                'calendars' => [],
+                'message' => 'Google access has expired. Reconnect the account to grant Calendar access again.',
+                'needsReconnect' => true,
+            ];
         }
 
         $response = Http::withToken($token)
             ->acceptJson()
             ->get('https://www.googleapis.com/calendar/v3/users/me/calendarList');
 
-        if (!$response->successful()) {
-            return [];
+        if (! $response->successful()) {
+            return [
+                'calendars' => [],
+                'message' => $this->googleErrorMessage($response->json('error.message'), $response->status()),
+                'needsReconnect' => in_array($response->status(), [401, 403], true),
+            ];
         }
 
-        return collect($response->json('items', []))->map(fn ($calendar) => [
+        $calendars = $this->mapCalendars($response->json('items', []));
+        if ($calendars !== []) {
+            return ['calendars' => $calendars, 'message' => null, 'needsReconnect' => false];
+        }
+
+        $primaryResponse = Http::withToken($token)
+            ->acceptJson()
+            ->get('https://www.googleapis.com/calendar/v3/calendars/primary');
+
+        if ($primaryResponse->successful() && $primaryResponse->json('id')) {
+            return [
+                'calendars' => $this->mapCalendars([[
+                    'id' => $primaryResponse->json('id'),
+                    'summary' => $primaryResponse->json('summary') ?: $this->setting('google_connected_email', 'Primary calendar'),
+                    'primary' => true,
+                    'accessRole' => 'owner',
+                ]]),
+                'message' => null,
+                'needsReconnect' => false,
+            ];
+        }
+
+        return [
+            'calendars' => [],
+            'message' => $this->googleErrorMessage($primaryResponse->json('error.message'), $primaryResponse->status()),
+            'needsReconnect' => in_array($primaryResponse->status(), [401, 403], true),
+        ];
+    }
+
+    public function calendars(): array
+    {
+        return $this->calendarList()['calendars'];
+    }
+
+    private function mapCalendars(array $items): array
+    {
+        return collect($items)->map(fn ($calendar) => [
             'id' => (string) ($calendar['id'] ?? ''),
             'summary' => (string) ($calendar['summary'] ?? $calendar['id'] ?? ''),
             'primary' => (bool) ($calendar['primary'] ?? false),
             'accessRole' => (string) ($calendar['accessRole'] ?? ''),
             'selected' => (string) ($calendar['id'] ?? '') === $this->setting('google_calendar_id', 'primary'),
         ])->filter(fn ($calendar) => $calendar['id'] !== '')->values()->all();
+    }
+
+    private function googleErrorMessage(?string $message, int $status): string
+    {
+        if ($message) {
+            return 'Google Calendar: '.$message;
+        }
+
+        return $status === 401
+            ? 'Google access has expired. Reconnect the account to grant Calendar access again.'
+            : 'Google did not return any calendars. Confirm that the Google Calendar API is enabled for this OAuth project, then reconnect.';
     }
 
     public function selectCalendar(string $calendarId): void
@@ -144,7 +199,7 @@ class GoogleCalendarOAuthService
             'refresh_token' => $refreshToken,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return '';
         }
 
@@ -162,7 +217,7 @@ class GoogleCalendarOAuthService
 
     private function stateKey(string $state): string
     {
-        return 'booking_google_oauth_state_' . $state;
+        return 'booking_google_oauth_state_'.$state;
     }
 
     private function setting(string $key, string $fallback = ''): string

@@ -327,7 +327,7 @@ class BookingCmsController extends Controller
 
     public function googleCalendars(GoogleCalendarOAuthService $google)
     {
-        return ['calendars' => $google->calendars()];
+        return $google->calendarList();
     }
 
     public function selectGoogleCalendar(Request $request, GoogleCalendarOAuthService $google)
@@ -338,7 +338,7 @@ class BookingCmsController extends Controller
 
         $google->selectCalendar($data['calendarId']);
 
-        return ['settings' => $this->service->settings(), 'calendars' => $google->calendars()];
+        return ['settings' => $this->service->settings(), ...$google->calendarList()];
     }
 
     public function googleCallback(Request $request, GoogleCalendarOAuthService $google)
