@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class GoogleCalendarService
 {
@@ -32,11 +34,11 @@ class GoogleCalendarService
             'summary' => $eventType->name.' with '.$booking->name,
             'description' => trim("Service: {$booking->service}\nPhone: {$booking->phone}\n\n{$booking->message}"),
             'start' => [
-                'dateTime' => $booking->starts_at,
+                'dateTime' => $this->googleDateTime((string) $booking->starts_at, (string) ($booking->timezone ?: $eventType->timezone)),
                 'timeZone' => $booking->timezone ?: $eventType->timezone,
             ],
             'end' => [
-                'dateTime' => $booking->ends_at,
+                'dateTime' => $this->googleDateTime((string) $booking->ends_at, (string) ($booking->timezone ?: $eventType->timezone)),
                 'timeZone' => $booking->timezone ?: $eventType->timezone,
             ],
             'attendees' => $attendees,
@@ -53,8 +55,7 @@ class GoogleCalendarService
         if ($this->isGoogleMeetType((string) ($booking->location_type ?? $eventType->location_type)) && $this->setting('google_meet_auto_generate', 'true') === 'true') {
             $payload['conferenceData'] = [
                 'createRequest' => [
-                    'requestId' => 'bakhtech-booking-'.$booking->id,
-                    'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
+                    'requestId' => 'bakhtech-'.$booking->id.'-'.Str::lower(Str::random(12)),
                 ],
             ];
         } elseif ($booking->location_value) {
@@ -72,10 +73,7 @@ class GoogleCalendarService
             } else {
                 return [
                     'status' => 'failed',
-                    'error' => $primaryResponse->json('error.message')
-                        ?: $response->json('error.message')
-                        ?: $primaryResponse->body()
-                        ?: $response->body(),
+                    'error' => $this->googleError($primaryResponse) ?: $this->googleError($response),
                 ];
             }
         }
@@ -83,7 +81,7 @@ class GoogleCalendarService
         if (! $response->successful()) {
             return [
                 'status' => 'failed',
-                'error' => $response->json('error.message') ?: $response->body(),
+                'error' => $this->googleError($response),
             ];
         }
 
@@ -150,6 +148,25 @@ class GoogleCalendarService
     private function isGoogleMeetType(string $type): bool
     {
         return in_array(strtolower(str_replace(['-', ' '], '_', trim($type))), ['google_meet', 'meet'], true);
+    }
+
+    private function googleDateTime(string $value, string $timezone): string
+    {
+        return Carbon::parse($value, $timezone)->toRfc3339String();
+    }
+
+    private function googleError($response): string
+    {
+        $message = trim((string) $response->json('error.message'));
+        $details = collect($response->json('error.errors', []))
+            ->map(fn ($error) => trim((string) ($error['message'] ?? $error['reason'] ?? '')))
+            ->filter()
+            ->unique()
+            ->implode(' ');
+
+        return trim($message.($details !== '' && ! str_contains($message, $details) ? ' '.$details : ''))
+            ?: trim($response->body())
+            ?: 'Google Calendar rejected the event request.';
     }
 
     private function reminderMinutes(object $booking, object $eventType): array

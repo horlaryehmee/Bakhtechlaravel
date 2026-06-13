@@ -240,7 +240,9 @@ class BookingNotificationTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), rawurlencode('team-calendar@example.test'))
-                && $request['conferenceData']['createRequest']['conferenceSolutionKey']['type'] === 'hangoutsMeet';
+                && str_starts_with($request['start']['dateTime'], '2026-06-17T10:00:00+01:00')
+                && ! isset($request['conferenceData']['createRequest']['conferenceSolutionKey'])
+                && ! empty($request['conferenceData']['createRequest']['requestId']);
         });
 
         Carbon::setTestNow();
