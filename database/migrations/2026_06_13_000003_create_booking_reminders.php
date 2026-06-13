@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('booking_reminders')) {
+            return;
+        }
+
         Schema::create('booking_reminders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
