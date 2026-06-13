@@ -577,6 +577,8 @@ class InvoiceController extends Controller
 
     public function importFromJSON(Request $request)
     {
+        @set_time_limit(180);
+
         $result = DB::transaction(function () use ($request) {
             $data = $request->all();
             $import = $this->normalizeInvoiceImport($data);
@@ -1129,7 +1131,8 @@ class InvoiceController extends Controller
 
     private function importEvents(array $auditLogs, array $documentIdsBySourceId): int
     {
-        $count = 0;
+        $rows = [];
+
         foreach ($auditLogs as $log) {
             if (!is_array($log)) {
                 continue;
@@ -1138,7 +1141,8 @@ class InvoiceController extends Controller
             if (!$documentId) {
                 continue;
             }
-            DB::table('invoice_events')->insert([
+
+            $rows[] = [
                 'document_id' => $documentId,
                 'event_type' => $this->importedEventType((string) ($log['action'] ?? 'document.updated')),
                 'session_id' => null,
@@ -1154,16 +1158,20 @@ class InvoiceController extends Controller
                 ]),
                 'created_at' => $this->dateTimeOrNull($log['created_at'] ?? null) ?: now(),
                 'updated_at' => now(),
-            ]);
-            $count++;
+            ];
         }
 
-        return $count;
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::table('invoice_events')->insert($chunk);
+        }
+
+        return count($rows);
     }
 
     private function importEmailLogs(array $emailLogs, array $documentIdsBySourceId): int
     {
-        $count = 0;
+        $rows = [];
+
         foreach ($emailLogs as $log) {
             if (!is_array($log)) {
                 continue;
@@ -1172,7 +1180,8 @@ class InvoiceController extends Controller
             if (!$documentId || empty($log['recipient_email'])) {
                 continue;
             }
-            DB::table('invoice_email_logs')->insert([
+
+            $rows[] = [
                 'document_id' => $documentId,
                 'recipient_email' => $log['recipient_email'],
                 'subject' => $log['subject'] ?? 'Imported email',
@@ -1184,11 +1193,14 @@ class InvoiceController extends Controller
                 'opened_at' => $this->dateTimeOrNull($log['opened_at'] ?? null),
                 'created_at' => $this->dateTimeOrNull($log['created_at'] ?? null) ?: now(),
                 'updated_at' => now(),
-            ]);
-            $count++;
+            ];
         }
 
-        return $count;
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::table('invoice_email_logs')->insert($chunk);
+        }
+
+        return count($rows);
     }
 
     private function importedStatus(string $status, float $amountPaid, float $total, string $type): string

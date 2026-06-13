@@ -195,6 +195,53 @@ class InvoiceImportTest extends TestCase
         $this->assertSame('EXPORT-PAY-001', $exportedPayment['reference']);
     }
 
+    public function test_it_imports_large_audit_and_email_log_sets(): void
+    {
+        $auditLogs = [];
+        $emailLogs = [];
+
+        for ($index = 1; $index <= 450; $index++) {
+            $auditLogs[] = [
+                'quote_id' => 501,
+                'action' => 'viewed',
+                'description' => "Imported event {$index}",
+                'created_at' => '2026-06-07 10:00:00',
+            ];
+        }
+
+        for ($index = 1; $index <= 250; $index++) {
+            $emailLogs[] = [
+                'quote_id' => 501,
+                'recipient_email' => "client{$index}@example.test",
+                'subject' => "Imported email {$index}",
+                'template_name' => 'invoice_sent',
+                'status' => 'sent',
+                'created_at' => '2026-06-07 10:00:00',
+            ];
+        }
+
+        $request = Request::create('/api/admin/invoices/import/json', 'POST', [
+            'tables' => [
+                'bk_quotes' => [[
+                    'id' => 501,
+                    'quote_number' => 'INV-BULK-501',
+                    'type' => 'invoice',
+                    'client_name' => 'Bulk Import Client',
+                    'total_amount' => '1000.00',
+                ]],
+                'bk_audit_logs' => $auditLogs,
+                'bk_email_logs' => $emailLogs,
+            ],
+        ]);
+
+        $response = app(InvoiceController::class)->importFromJSON($request);
+
+        $this->assertSame(450, $response['summary']['events']);
+        $this->assertSame(250, $response['summary']['emails']);
+        $this->assertDatabaseCount('invoice_events', 450);
+        $this->assertDatabaseCount('invoice_email_logs', 250);
+    }
+
     public function test_public_quote_can_generate_invoice_and_download_pdf(): void
     {
         $clientId = DB::table('invoice_clients')->insertGetId([
