@@ -690,6 +690,7 @@ export function AdminDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
+  const loadedGoogleCalendarsFor = useRef('')
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false)
   const [googleReviewSettings, setGoogleReviewSettings] = useState<GoogleReviewConnection | null>(null)
   const [trustpilotReviewSettings, setTrustpilotReviewSettings] = useState<GoogleReviewConnection | null>(null)
@@ -904,6 +905,7 @@ export function AdminDashboard() {
   const activeMenu = menuItems.find((item) => item.id === activeSection) ?? menuItems[0]
   const loadAdminDataEffect = useEffectEvent((showLoading: boolean) => loadAdminData(showLoading))
   const loadInvoiceDataEffect = useEffectEvent((options: Parameters<typeof loadInvoiceData>[0]) => loadInvoiceData(options))
+  const loadGoogleCalendarsEffect = useEffectEvent(() => loadGoogleCalendars())
 
   useEffect(() => {
     if (!token) return
@@ -914,6 +916,13 @@ export function AdminDashboard() {
     if (!token || activeSection !== 'bookings') return
     void loadBookingCmsData()
   }, [token, activeSection])
+
+  useEffect(() => {
+    const connectedEmail = bookingCmsSettings.google_connected_email || ''
+    if (!token || activeSection !== 'bookings' || activeBookingSection !== 'settings' || !connectedEmail || loadedGoogleCalendarsFor.current === connectedEmail) return
+    loadedGoogleCalendarsFor.current = connectedEmail
+    void loadGoogleCalendarsEffect()
+  }, [token, activeSection, activeBookingSection, bookingCmsSettings.google_connected_email])
 
   useEffect(() => {
     if (!token || activeSection !== 'invoices') return
@@ -6611,7 +6620,6 @@ export function AdminDashboard() {
   function renderBookingCmsSettings() {
     const paymentKeys = ['payment_provider', 'pricing_enabled', 'currency', 'paystack_enabled', 'paystack_mode', 'paystack_public_key', 'paystack_secret_key', 'paystack_callback_url', 'paystack_channels']
     const googleCredentialKeys = ['google_oauth_client_id', 'google_oauth_client_secret']
-    const googleOptionKeys = ['google_calendar_sync_enabled', 'google_calendar_id', 'google_calendar_send_updates', 'google_meet_auto_generate']
     const zoomKeys = ['zoom_enabled', 'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id', 'zoom_auto_generate']
     const ruleKeys = ['timezone', 'date_format', 'time_format', 'minimum_notice_minutes', 'maximum_future_days', 'maximum_bookings_per_day', 'default_buffer_minutes']
     const notificationKeys = ['email_notifications_enabled', 'sms_notifications_enabled', 'admin_alert_email', 'confirmation_email_subject', 'status_email_subject', 'reminder_email_subject', 'webhook_url']
@@ -6655,75 +6663,72 @@ export function AdminDashboard() {
                   {bookingCmsSettings.google_connected_email ? <span className="rounded-full bg-[var(--surface)] px-3 py-1 text-xs font-black text-soft">{bookingCmsSettings.google_connected_email}</span> : null}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={connectGoogleCalendar} disabled={saving}>{saving ? 'Saving...' : 'Save & Connect Google'}</Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={() => void loadGoogleCalendars()} disabled={loadingGoogleCalendars || !googleConnected}>{loadingGoogleCalendars ? 'Loading...' : 'Load calendars'}</Button>
-              </div>
+              {!googleConnected ? <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" onClick={connectGoogleCalendar} disabled={saving}>{saving ? 'Saving...' : 'Save & Connect Google'}</Button> : null}
             </div>
           </div>
 
-          <div className="grid gap-5 p-5 md:grid-cols-[1fr_1.2fr] md:p-6">
-            <div className="grid gap-4">
-              <div className="rounded-xl border border-[var(--line)] p-4">
-                <h4 className="font-black">Setup guide</h4>
-                <ol className="mt-3 grid gap-3 text-sm text-soft">
-                  <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">1</span><span>Create a Google Cloud OAuth client with application type <b>Web application</b>.</span></li>
-                  <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">2</span><span>Add the redirect URI below to Google Cloud authorized redirect URIs.</span></li>
-                  <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">3</span><span>Paste the Client ID and Client Secret here, then click <b>Save & Connect Google</b>.</span></li>
-                  <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">4</span><span>After login, load calendars and choose the calendar this booking system should use.</span></li>
-                </ol>
-              </div>
-
-              <div className="rounded-xl border border-[var(--line)] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="font-black">Redirect URI</h4>
-                  <Button type="button" variant="ghost" className="h-9 rounded-lg border border-[var(--line)] px-3 text-xs" onClick={() => void navigator.clipboard?.writeText(googleRedirectUri)}>Copy</Button>
-                </div>
-                <p className="mt-2 break-all rounded-lg bg-[var(--surface-2)] p-3 text-xs font-bold text-soft">{googleRedirectUri}</p>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-black">Credentials</h4>
-              <div className="mt-4 grid gap-4">
-                {googleCredentialKeys.map((key) => (
-                  <label key={key} className="grid gap-2 text-sm font-bold">
-                    <span className="capitalize">{key.replaceAll('_', ' ')}</span>
-                    {renderBookingSettingField(key, bookingCmsSettings[key] ?? '')}
-                  </label>
-                ))}
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {googleOptionKeys.map((key) => (
-                  <label key={key} className="grid gap-2 text-sm font-bold">
-                    <span className="capitalize">{key.replaceAll('_', ' ')}</span>
-                    {renderBookingSettingField(key, bookingCmsSettings[key] ?? '')}
-                  </label>
-                ))}
-              </div>
-
-              {!googleHasCredentials ? (
-                <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-bold text-amber-700">
-                  Add both Google OAuth Client ID and Client Secret before connecting. The Client Secret is required when Google sends the login callback.
+          {googleConnected ? (
+            <div className="p-5 md:p-6">
+              <h4 className="font-black">Calendars</h4>
+              <p className="text-soft mt-1 text-sm">Tick the calendar where bookings and Google Meet links should be created.</p>
+              {loadingGoogleCalendars ? <p className="text-soft mt-4 text-sm">Loading calendars...</p> : null}
+              {!loadingGoogleCalendars && googleCalendars.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-bold text-amber-700">
+                  No calendars were returned by Google. Reconnect the account and allow Calendar access.
                 </div>
               ) : null}
-            </div>
-          </div>
-
-          {googleCalendars.length > 0 ? (
-            <div className="mx-5 mb-5 rounded-xl border border-[var(--line)] p-4 md:mx-6 md:mb-6">
-              <h4 className="font-black">Choose calendar</h4>
-              <div className="mt-3 grid gap-2">
+              <div className="mt-4 grid gap-2">
                 {googleCalendars.map((calendar) => (
-                  <button key={calendar.id} type="button" onClick={() => void selectGoogleCalendar(calendar.id)} className={cn('flex min-h-11 items-center justify-between rounded-xl border px-4 text-left text-sm transition', calendar.selected ? 'border-[#3267e3] bg-[#3267e3]/10 text-[#3267e3]' : 'border-[var(--line)] hover:bg-[var(--surface-2)]')}>
+                  <label key={calendar.id} className={cn('flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm transition', calendar.selected ? 'border-[#3267e3] bg-[#3267e3]/10 text-[#3267e3]' : 'border-[var(--line)] hover:bg-[var(--surface-2)]')}>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded border-[var(--line)] accent-[#3267e3]"
+                      checked={calendar.selected}
+                      disabled={saving}
+                      onChange={() => void selectGoogleCalendar(calendar.id)}
+                    />
                     <span className="font-bold">{calendar.summary}{calendar.primary ? ' (Primary)' : ''}</span>
-                    <span className="text-soft">{calendar.accessRole}</span>
-                  </button>
+                  </label>
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="grid gap-5 p-5 md:grid-cols-[1fr_1.2fr] md:p-6">
+              <div className="grid gap-4">
+                <div className="rounded-xl border border-[var(--line)] p-4">
+                  <h4 className="font-black">Setup guide</h4>
+                  <ol className="mt-3 grid gap-3 text-sm text-soft">
+                    <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">1</span><span>Create a Google Cloud OAuth client with application type <b>Web application</b>.</span></li>
+                    <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">2</span><span>Add the redirect URI below to Google Cloud authorized redirect URIs.</span></li>
+                    <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3267e3] text-xs font-black text-white">3</span><span>Paste the Client ID and Client Secret here, then click <b>Save & Connect Google</b>.</span></li>
+                  </ol>
+                </div>
+                <div className="rounded-xl border border-[var(--line)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-black">Redirect URI</h4>
+                    <Button type="button" variant="ghost" className="h-9 rounded-lg border border-[var(--line)] px-3 text-xs" onClick={() => void navigator.clipboard?.writeText(googleRedirectUri)}>Copy</Button>
+                  </div>
+                  <p className="mt-2 break-all rounded-lg bg-[var(--surface-2)] p-3 text-xs font-bold text-soft">{googleRedirectUri}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-black">Credentials</h4>
+                <div className="mt-4 grid gap-4">
+                  {googleCredentialKeys.map((key) => (
+                    <label key={key} className="grid gap-2 text-sm font-bold">
+                      <span className="capitalize">{key.replaceAll('_', ' ')}</span>
+                      {renderBookingSettingField(key, bookingCmsSettings[key] ?? '')}
+                    </label>
+                  ))}
+                </div>
+                {!googleHasCredentials ? (
+                  <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-bold text-amber-700">
+                    Add both Google OAuth Client ID and Client Secret before connecting. The Client Secret is required when Google sends the login callback.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
         </section>
         {renderGroup('Zoom Meetings', zoomKeys)}
         {renderGroup('Booking Rules', ruleKeys)}

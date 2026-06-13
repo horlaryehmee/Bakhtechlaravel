@@ -2,14 +2,12 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class GoogleCalendarService
 {
-    public function __construct(private GoogleCalendarOAuthService $oauth)
-    {
-    }
+    public function __construct(private GoogleCalendarOAuthService $oauth) {}
 
     public function configured(): bool
     {
@@ -20,7 +18,7 @@ class GoogleCalendarService
 
     public function createBookingEvent(object $booking, object $eventType): array
     {
-        if (!$this->configured()) {
+        if (! $this->configured()) {
             return ['status' => 'not_configured'];
         }
 
@@ -31,7 +29,7 @@ class GoogleCalendarService
 
         $reminders = $this->reminderMinutes($booking, $eventType);
         $payload = [
-            'summary' => $eventType->name . ' with ' . $booking->name,
+            'summary' => $eventType->name.' with '.$booking->name,
             'description' => trim("Service: {$booking->service}\nPhone: {$booking->phone}\n\n{$booking->message}"),
             'start' => [
                 'dateTime' => $booking->starts_at,
@@ -55,7 +53,7 @@ class GoogleCalendarService
         if (($booking->location_type ?? $eventType->location_type) === 'google_meet' && $this->setting('google_meet_auto_generate', 'true') === 'true') {
             $payload['conferenceData'] = [
                 'createRequest' => [
-                    'requestId' => 'bakhtech-booking-' . $booking->id,
+                    'requestId' => 'bakhtech-booking-'.$booking->id,
                     'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
                 ],
             ];
@@ -67,7 +65,7 @@ class GoogleCalendarService
             ->acceptJson()
             ->post($this->eventsUrl(), $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return [
                 'status' => 'failed',
                 'error' => $response->json('error.message') ?: $response->body(),
@@ -76,7 +74,7 @@ class GoogleCalendarService
 
         $data = $response->json();
         $meetLink = collect($data['conferenceData']['entryPoints'] ?? [])
-            ->firstWhere('entryPointType', 'video')['uri'] ?? null;
+            ->firstWhere('entryPointType', 'video')['uri'] ?? ($data['hangoutLink'] ?? null);
 
         return [
             'status' => 'synced',
@@ -116,7 +114,7 @@ class GoogleCalendarService
 
     private function eventsUrl(): string
     {
-        return 'https://www.googleapis.com/calendar/v3/calendars/' . rawurlencode($this->calendarId()) . '/events?conferenceDataVersion=1&sendUpdates=' . rawurlencode($this->setting('google_calendar_send_updates', 'all'));
+        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->setting('google_calendar_send_updates', 'all'));
     }
 
     private function setting(string $key, string $fallback = ''): string

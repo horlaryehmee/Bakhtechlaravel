@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Clock, Globe2, Loader2, MapPin, MessageSquare, MonitorUp, Phone, Video } from "lucide-react";
+import { CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Globe2, Loader2, MapPin, MessageSquare, MonitorUp, Phone, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { api, ApiError, type Booking, type BookingAvailabilityDay, type BookingEventType, type BookingCalendar, type BookingSlot } from "@/lib/api";
@@ -741,6 +741,30 @@ export function Booking() {
                 </div>
               </div>
             </div>
+
+            {confirmedBooking.locationType === "google_meet" && /^https?:\/\//i.test(confirmedBooking.locationValue || "") ? (
+              <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
+                    <Video className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Google Meet is ready</h4>
+                    <p className="text-sm text-gray-600">Use this link when it is time for your meeting.</p>
+                  </div>
+                </div>
+                <a
+                  href={confirmedBooking.locationValue}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-semibold text-white hover:bg-blue-700"
+                >
+                  Join Google Meet
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <p className="mt-3 break-all text-xs text-gray-600">{confirmedBooking.locationValue}</p>
+              </div>
+            ) : null}
 
             <Button
               className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
