@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
+use App\Services\DeploymentMaintenanceService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
 use App\Support\SiteDefaults;
@@ -767,8 +768,18 @@ class BakhtechApiController extends Controller
         return $this->storeBooking($request, false);
     }
 
-    public function updateSettings(Request $request)
+    public function updateSettings(Request $request, DeploymentMaintenanceService $maintenance)
     {
+        if ($request->input('_systemAction') === 'deployment-maintenance') {
+            $admin = $request->attributes->get('admin');
+
+            if (($admin?->role ?? '') !== 'admin') {
+                return response()->json(['message' => 'You do not have permission to perform this action.'], 403);
+            }
+
+            return $maintenance->run();
+        }
+
         foreach ($request->all() as $key => $value) {
             DB::table('settings')->updateOrInsert(
                 ['key' => $key],

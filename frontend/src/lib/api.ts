@@ -947,8 +947,9 @@ export const api = {
     return request<{ deleted: number }>('/api/admin/mail/logs/clear', { method: 'POST' })
   },
   runDeploymentMaintenance() {
-    return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/system/deploy', {
-      method: 'POST',
+    return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ _systemAction: 'deployment-maintenance' }),
     })
   },
   uploadMedia(file: File) {
