@@ -688,7 +688,7 @@ export function AdminDashboard() {
     notes: ''
   })
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
-  const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>>([])
+  const [googleCalendars, setGoogleCalendars] = useState<Array<{ id: string; summary: string; primary: boolean; accessRole: string; canCreateEvents: boolean; selected: boolean }>>([])
   const [loadingGoogleCalendars, setLoadingGoogleCalendars] = useState(false)
   const [googleCalendarMessage, setGoogleCalendarMessage] = useState('')
   const loadedGoogleCalendarsFor = useRef('')
@@ -6686,15 +6686,16 @@ export function AdminDashboard() {
               ) : null}
               <div className="mt-4 grid gap-2">
                 {googleCalendars.map((calendar) => (
-                  <label key={calendar.id} className={cn('flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm transition', calendar.selected ? 'border-[#3267e3] bg-[#3267e3]/10 text-[#3267e3]' : 'border-[var(--line)] hover:bg-[var(--surface-2)]')}>
+                  <label key={calendar.id} className={cn('flex min-h-12 items-center gap-3 rounded-xl border px-4 text-sm transition', calendar.canCreateEvents ? 'cursor-pointer' : 'cursor-not-allowed opacity-60', calendar.selected ? 'border-[#3267e3] bg-[#3267e3]/10 text-[#3267e3]' : 'border-[var(--line)] hover:bg-[var(--surface-2)]')}>
                     <input
                       type="checkbox"
                       className="h-5 w-5 rounded border-[var(--line)] accent-[#3267e3]"
                       checked={calendar.selected}
-                      disabled={saving}
+                      disabled={saving || !calendar.canCreateEvents}
                       onChange={() => void selectGoogleCalendar(calendar.id)}
                     />
                     <span className="font-bold">{calendar.summary}{calendar.primary ? ' (Primary)' : ''}</span>
+                    {!calendar.canCreateEvents ? <span className="ml-auto text-xs font-bold text-soft">Read only</span> : null}
                   </label>
                 ))}
               </div>

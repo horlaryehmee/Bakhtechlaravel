@@ -156,6 +156,7 @@ class GoogleCalendarOAuthService
             'summary' => (string) ($calendar['summary'] ?? $calendar['id'] ?? ''),
             'primary' => (bool) ($calendar['primary'] ?? false),
             'accessRole' => (string) ($calendar['accessRole'] ?? ''),
+            'canCreateEvents' => in_array((string) ($calendar['accessRole'] ?? ''), ['owner', 'writer'], true),
             'selected' => (string) ($calendar['id'] ?? '') === $this->setting('google_calendar_id', 'primary'),
         ])->filter(fn ($calendar) => $calendar['id'] !== '')->values()->all();
     }

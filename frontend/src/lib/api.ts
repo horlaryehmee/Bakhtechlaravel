@@ -124,6 +124,7 @@ export type Booking = {
   locationValue: string
   googleCalendarEventUrl: string
   googleCalendarSyncStatus: string
+  googleCalendarSyncError: string
   reminderSentAt: string
   createdAt: string
 }
@@ -885,10 +886,10 @@ export const api = {
     return request<{ google: { configured: boolean; authUrl?: string; redirectUri?: string; message?: string } }>('/api/admin/booking/google/oauth-url')
   },
   googleCalendars() {
-    return request<{ calendars: Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>; message: string | null; needsReconnect: boolean }>('/api/admin/booking/google/calendars')
+    return request<{ calendars: Array<{ id: string; summary: string; primary: boolean; accessRole: string; canCreateEvents: boolean; selected: boolean }>; message: string | null; needsReconnect: boolean }>('/api/admin/booking/google/calendars')
   },
   selectGoogleCalendar(calendarId: string) {
-    return request<{ settings: Record<string, string>; calendars: Array<{ id: string; summary: string; primary: boolean; accessRole: string; selected: boolean }>; message: string | null; needsReconnect: boolean }>('/api/admin/booking/google/calendar', {
+    return request<{ settings: Record<string, string>; calendars: Array<{ id: string; summary: string; primary: boolean; accessRole: string; canCreateEvents: boolean; selected: boolean }>; message: string | null; needsReconnect: boolean }>('/api/admin/booking/google/calendar', {
       method: 'PUT',
       body: JSON.stringify({ calendarId }),
     })

@@ -336,6 +336,15 @@ class BookingCmsController extends Controller
             'calendarId' => ['required', 'string', 'max:255'],
         ]);
 
+        $calendar = collect($google->calendarList()['calendars'])
+            ->firstWhere('id', $data['calendarId']);
+
+        if (! $calendar || ! ($calendar['canCreateEvents'] ?? false)) {
+            return response()->json([
+                'message' => 'Choose a Google calendar where this account has permission to create events.',
+            ], 422);
+        }
+
         $google->selectCalendar($data['calendarId']);
 
         return ['settings' => $this->service->settings(), ...$google->calendarList()];

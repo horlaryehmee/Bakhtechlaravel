@@ -474,6 +474,7 @@ class BookingCmsService
             'googleCalendar' => [
                 'status' => $booking->google_calendar_sync_status ?? 'not_configured',
                 'eventUrl' => $booking->google_calendar_event_url ?? '',
+                'error' => $booking->google_calendar_sync_error ?? '',
             ],
             'reminderSentAt' => (string) ($booking->reminder_sent_at ?? ''),
             'createdAt' => (string) $booking->created_at,
@@ -510,6 +511,7 @@ class BookingCmsService
             'location_type' => $data['locationType'] ?? $existing?->location_type ?? 'google_meet',
             'location_value' => $data['locationValue'] ?? $existing?->location_value ?? '',
             'google_calendar_sync_status' => $existing?->google_calendar_sync_status ?? 'not_configured',
+            'google_calendar_sync_error' => $existing?->google_calendar_sync_error ?? null,
             'cancel_token' => $existing?->cancel_token ?? (string) \Illuminate\Support\Str::uuid(),
         ];
     }

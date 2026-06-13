@@ -779,7 +779,8 @@ export function Booking() {
 
             {isGoogleMeetBooking(confirmedBooking) && confirmedBooking.googleCalendarSyncStatus === "failed" ? (
               <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-left text-sm text-red-700">
-                The booking was saved, but Google could not generate the Meet link. Reconnect Google Calendar and confirm the selected calendar allows event creation.
+                <p className="font-semibold">The booking was saved, but Google could not generate the Meet link.</p>
+                <p className="mt-1">{confirmedBooking.googleCalendarSyncError || "Reconnect Google Calendar and confirm the selected calendar allows event creation."}</p>
               </div>
             ) : null}
 
