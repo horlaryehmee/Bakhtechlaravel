@@ -40,7 +40,7 @@ class BookingNotificationService
         if ($adminEmail !== '') {
             $this->send(
                 $adminEmail,
-                'New booking: '.($booking->event_type_name ?: $booking->service),
+                'New appointment request: '.($booking->event_type_name ?: $booking->service),
                 $adminContent,
                 'booking-admin-notification'
             );
@@ -297,18 +297,18 @@ class BookingNotificationService
         );
         $isAdmin = $kind === 'admin' || $recipientType === 'admin';
         $heading = match ($kind) {
-            'admin' => 'New booking received',
+            'admin' => 'New appointment request',
             'reminder' => $isAdmin ? 'Upcoming booking reminder' : 'Your meeting is coming up',
             default => 'Your booking is confirmed',
         };
         $eyebrow = $kind === 'reminder' && $minutesBefore
             ? 'STARTS IN '.$this->humanizeMinutes($minutesBefore)
-            : ($kind === 'admin' ? 'NEW BOOKING' : 'BOOKING CONFIRMED');
+            : ($kind === 'admin' ? 'NEW APPOINTMENT' : 'BOOKING CONFIRMED');
         $preheader = $heading.' - '.$service.' on '.$start->format('F j, Y');
         $status = ucfirst((string) ($booking->booking_status ?? $booking->status ?? 'confirmed'));
 
         $details = [
-            ['Service', $service],
+            ['Appointment type', $service],
             ['Date', $start->format('l, F j, Y')],
             ['Time', $start->format('g:i A').' - '.$end->format('g:i A')],
             ['Timezone', $timezone],
@@ -339,7 +339,7 @@ class BookingNotificationService
         $locationCard = $this->locationCard($location);
         $logo = $brand['logo'] !== ''
             ? '<img src="'.$this->escape($brand['logo']).'" alt="'.$this->escape($brand['name']).'" style="display:block;max-height:46px;max-width:190px;width:auto;height:auto;">'
-            : '<div style="font-size:22px;font-weight:800;color:#ffffff;">'.$this->escape($brand['name']).'</div>';
+            : '<div style="font-size:22px;font-weight:800;color:#0f172a;">'.$this->escape($brand['name']).'</div>';
         $websiteLink = $brand['website'] !== ''
             ? '<a href="'.$this->escape($brand['website']).'" style="color:#94a3b8;text-decoration:none;">'.$this->escape($brand['websiteLabel']).'</a>'
             : '';
@@ -358,13 +358,13 @@ class BookingNotificationService
             <td align="center" style="padding:28px 12px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 35px rgba(15,23,42,.10);">
                     <tr>
-                        <td style="padding:24px 32px;background:#0b1f3a;">'.$logo.'</td>
+                        <td style="padding:24px 32px;background:#ffffff;border-bottom:1px solid #e2e8f0;">'.$logo.'</td>
                     </tr>
                     <tr>
-                        <td style="padding:34px 32px 26px;background:linear-gradient(135deg,#0b1f3a 0%,#163d6b 100%);color:#ffffff;">
-                            <div style="font-size:12px;font-weight:800;letter-spacing:.14em;color:#7dd3fc;margin-bottom:12px;">'.$this->escape($eyebrow).'</div>
-                            <h1 style="margin:0 0 10px;font-size:30px;line-height:1.2;color:#ffffff;">'.$this->escape($heading).'</h1>
-                            <p style="margin:0;font-size:17px;line-height:1.55;color:#dbeafe;">'.$this->escape($service).'</p>
+                        <td style="padding:34px 32px 26px;background:#f8fafc;color:#0f172a;border-bottom:1px solid #e2e8f0;">
+                            <div style="font-size:12px;font-weight:800;letter-spacing:.14em;color:#ef4444;margin-bottom:12px;">'.$this->escape($eyebrow).'</div>
+                            <h1 style="margin:0 0 10px;font-size:30px;line-height:1.2;color:#0f172a;">'.$this->escape($heading).'</h1>
+                            <p style="margin:0;font-size:17px;line-height:1.55;color:#475569;">'.$this->escape($service).'</p>
                         </td>
                     </tr>
                     <tr>
@@ -376,7 +376,7 @@ class BookingNotificationService
                         <td style="padding:0 32px 24px;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
                                 <tr>
-                                    <td colspan="2" style="padding:17px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:800;letter-spacing:.08em;color:#475569;text-transform:uppercase;">Booking details</td>
+                                    <td colspan="2" style="padding:17px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:800;letter-spacing:.08em;color:#475569;text-transform:uppercase;">Appointment details</td>
                                 </tr>
                                 '.$detailsRows.'
                             </table>
@@ -412,7 +412,7 @@ class BookingNotificationService
             '',
             trim($customMessage),
             '',
-            'BOOKING DETAILS',
+            'APPOINTMENT DETAILS',
             ...array_map(fn ($detail) => $detail[0].': '.$detail[1], $details),
             '',
             strtoupper($location['label']),
@@ -630,7 +630,7 @@ class BookingNotificationService
 
     private function defaultAdminTemplate(): string
     {
-        return 'A new appointment has been booked. Review the attendee, schedule, and connection details below.';
+        return 'A new appointment request has arrived. Review the attendee, schedule, and connection details below.';
     }
 
     private function defaultReminderTemplate(): string

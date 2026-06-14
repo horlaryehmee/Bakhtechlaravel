@@ -53,7 +53,7 @@ function getYoutubeVideoId(url: string) {
 
 function getYoutubeEmbedUrl(url: string) {
   const id = getYoutubeVideoId(url)
-  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0` : undefined
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0` : undefined
 }
 
 function normalizeVideoUrl(url: string) {
@@ -193,7 +193,7 @@ export function Home2() {
           >
             <RippleButton
               as={Link}
-              to="/contact"
+              to="/booking"
               className="inline-flex min-h-14 w-[min(52vw,11rem)] items-center justify-center rounded-xl bg-[var(--foreground)] px-5 text-sm font-bold text-[var(--background)] shadow-[0_14px_30px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:text-white sm:w-auto sm:min-w-40 sm:max-w-[18rem]"
               rippleClassName="bg-[#ef4444]"
             >

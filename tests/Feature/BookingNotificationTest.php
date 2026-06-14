@@ -110,7 +110,7 @@ class BookingNotificationTest extends TestCase
             ->orderBy('id')
             ->get();
         $this->assertStringContainsString('Your booking is confirmed', $confirmationEmails[0]->body_html);
-        $this->assertStringContainsString('Booking details', $confirmationEmails[0]->body_html);
+        $this->assertStringContainsString('Appointment details', $confirmationEmails[0]->body_html);
         $this->assertStringContainsString('Join Google Meet', $confirmationEmails[0]->body_html);
         $this->assertStringContainsString('https://meet.example.test/test', $confirmationEmails[0]->body_html);
         $this->assertStringContainsString('Open WhatsApp', $confirmationEmails[1]->body_html);

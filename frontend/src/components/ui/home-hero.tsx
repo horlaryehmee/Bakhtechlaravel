@@ -36,7 +36,7 @@ export function HomeHero() {
         <div className="mt-9 flex justify-center">
           <RippleButton
             as="a"
-            href="/contact"
+            href="/booking"
             className="inline-flex min-h-14 items-center justify-center rounded-[5px] bg-[#29273d] px-8 font-semibold text-white shadow-none hover:text-white"
             rippleClassName="bg-[#ef4444]"
           >

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Globe2, Loader2, MapPin, MessageSquare, MonitorUp, Phone, Video } from "lucide-react";
+import { CountrySelector, DialCodePreview, defaultCountries, usePhoneInput, type CountryIso2 } from "react-international-phone";
+import "react-international-phone/style.css";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { api, ApiError, type Booking, type BookingAvailabilityDay, type BookingEventType, type BookingCalendar, type BookingSlot } from "@/lib/api";
@@ -90,6 +92,72 @@ function formatTimeInTimezone(value: string, timezone: string, timeFormat: "12h"
     hour12: timeFormat === "12h",
     timeZone: timezone,
   }).format(new Date(value));
+}
+
+function BookingPhoneField({
+  id,
+  label,
+  value,
+  required,
+  helpMessage,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  required: boolean;
+  helpMessage?: string;
+  onChange: (value: string) => void;
+}) {
+  const { inputValue, handlePhoneValueChange, inputRef, country, setCountry } = usePhoneInput({
+    defaultCountry: "ng",
+    value,
+    countries: defaultCountries,
+    preferredCountries: ["ng", "gh", "us", "gb", "ca", "za", "ke", "ae"] as CountryIso2[],
+    disableDialCodeAndPrefix: true,
+    forceDialCode: false,
+    onChange: (data) => onChange(data.phone),
+  });
+
+  return (
+    <div className="grid gap-2">
+      <label htmlFor={id} className="text-xs font-semibold text-gray-700">{label}</label>
+      <div className="booking-phone-control">
+        <div className="booking-phone-country">
+          <CountrySelector
+            selectedCountry={country.iso2}
+            countries={defaultCountries}
+            preferredCountries={["ng", "gh", "us", "gb", "ca", "za", "ke", "ae"] as CountryIso2[]}
+            onSelect={(nextCountry) => setCountry(nextCountry.iso2, { focusOnInput: true })}
+            buttonClassName="booking-phone-country-button"
+            buttonContentWrapperClassName="booking-phone-country-content"
+            dropdownArrowClassName="booking-phone-country-arrow"
+            dropdownStyleProps={{
+              className: "booking-phone-country-dropdown",
+              listItemClassName: "booking-phone-country-item",
+              listItemSelectedClassName: "booking-phone-country-item-selected",
+              listItemFocusedClassName: "booking-phone-country-item-focused",
+            }}
+          />
+          <DialCodePreview dialCode={country.dialCode} prefix="+" className="booking-phone-dial-code" />
+        </div>
+        <input
+          id={id}
+          name={id}
+          ref={inputRef}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          className="booking-phone-local-input"
+          value={inputValue}
+          onChange={handlePhoneValueChange}
+          placeholder="802 123 4567"
+          required={required}
+        />
+      </div>
+      {helpMessage ? <p className="text-xs text-gray-500">{helpMessage}</p> : null}
+    </div>
+  );
 }
 
 export function Booking() {
@@ -245,7 +313,7 @@ export function Booking() {
         eventTypeId: selectedType.id,
         startsAt: selectedSlot.startsAt,
         timezone: selectedTimezone,
-        service: calendar?.name || selectedType.name,
+        service: selectedType.name,
         ...form,
       });
       setConfirmedBooking(result.booking);
@@ -406,6 +474,21 @@ export function Booking() {
     }
 
     const inputType = question.type === "phone" ? "tel" : question.type === "name" ? "text" : question.type;
+
+    if (question.type === "phone") {
+      return (
+        <BookingPhoneField
+          key={question.key}
+          id={question.key}
+          label={label}
+          value={value}
+          required={required}
+          helpMessage={question.helpMessage}
+          onChange={updateValue}
+        />
+      );
+    }
+
     return (
       <div key={question.key} className="grid gap-2">
         <label htmlFor={question.key} className="text-xs font-semibold text-gray-700">{label}</label>
@@ -711,16 +794,16 @@ export function Booking() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
               <CalendarCheck className="h-8 w-8 text-green-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Confirmed!</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Appointment Confirmed!</h3>
             <p className="text-gray-600 mb-6">
               Thank you for your booking. We've sent a confirmation email to {confirmedBooking.email}.
             </p>
 
             <div className="bg-gray-50 rounded-xl p-5 text-left mb-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Booking Details</h4>
+              <h4 className="font-semibold text-gray-900 mb-4">Appointment Details</h4>
               <div className="grid gap-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600 text-sm">Service</span>
+                  <span className="text-gray-600 text-sm">Appointment type</span>
                   <span className="font-semibold text-gray-900 text-sm">{confirmedBooking.service}</span>
                 </div>
                 <div className="flex justify-between">

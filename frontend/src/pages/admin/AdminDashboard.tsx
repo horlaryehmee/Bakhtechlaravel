@@ -6448,7 +6448,7 @@ export function AdminDashboard() {
                 </div>
                 <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Email:</span> {booking.customer.email}</p>
                 {booking.customer.phone ? <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Phone:</span> {booking.customer.phone}</p> : null}
-                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Service:</span> {booking.serviceType}</p>
+                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Appointment type:</span> {booking.serviceType}</p>
                 <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Calendar:</span> {booking.calendarName || 'No calendar'}</p>
                 <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Date & Time:</span> {booking.startsAt} - {booking.endsAt}</p>
                 {booking.notes ? <p className="text-soft mt-2 text-sm"><span className="font-bold text-[var(--foreground)]">Notes:</span> {booking.notes}</p> : null}

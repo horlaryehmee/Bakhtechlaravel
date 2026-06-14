@@ -120,7 +120,7 @@ export default function HeroSection() {
             <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row md:hidden">
               <RippleButton
                 as="a"
-                href="/contact"
+                href="/booking"
                 className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] hover:text-white active:scale-[0.98]"
                 rippleClassName="bg-[#ef4444]"
               >
@@ -140,7 +140,7 @@ export default function HeroSection() {
         <div className="pointer-events-auto absolute left-1/2 top-[70%] z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col gap-3 sm:flex-row md:flex md:gap-4">
           <RippleButton
             as="a"
-            href="/contact"
+            href="/booking"
             className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-8 text-sm font-semibold text-[var(--background)] transition-all hover:scale-[1.02] hover:text-white active:scale-[0.98]"
             rippleClassName="bg-[#ef4444]"
           >
