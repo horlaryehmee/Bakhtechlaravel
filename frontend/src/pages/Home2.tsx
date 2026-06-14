@@ -1,11 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Play, Plus, X } from 'lucide-react'
 import { FluidParticles } from '@/components/ui/fluid-particle'
 import { AnimatedGroup } from '@/components/ui/animated-group'
-import { ShineBorder, TypeWriter } from '@/components/ui/hero-designali'
+import { BorderBeam } from '@/components/ui/border-beam'
+import { RippleButton } from '@/components/ui/ripple-button'
+import { TypeWriter } from '@/components/ui/hero-designali'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { useTheme } from '@/components/theme/theme-context'
+import { api } from '@/lib/api'
 
 const HomeBelowFold = lazy(() => import('@/pages/home/HomeBelowFold').then((module) => ({ default: module.HomeBelowFold })))
 
@@ -42,10 +45,54 @@ const transitionVariants = {
   },
 }
 
+function getYoutubeVideoId(url: string) {
+  const value = url.trim()
+  const match = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match?.[1]
+}
+
+function getYoutubeEmbedUrl(url: string) {
+  const id = getYoutubeVideoId(url)
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : undefined
+}
+
+function normalizeVideoUrl(url: string) {
+  const value = url.trim()
+  if (!value) return ''
+  return /^https?:\/\//i.test(value) || value.startsWith('/') ? value : `https://${value}`
+}
+
+function HomepageVideoModal({ videoUrl, onClose }: { videoUrl: string; onClose: () => void }) {
+  const normalizedUrl = normalizeVideoUrl(videoUrl)
+  const youtubeEmbedUrl = getYoutubeEmbedUrl(normalizedUrl)
+
+  return (
+    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Homepage video">
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+          <h3 className="truncate text-sm font-bold text-white">Bakhtech Solutions</h3>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="aspect-video bg-black">
+          {youtubeEmbedUrl ? (
+            <iframe className="h-full w-full" src={youtubeEmbedUrl} title="Bakhtech Solutions video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+          ) : (
+            <video className="h-full w-full" src={normalizedUrl} controls autoPlay playsInline />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Home2() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const [loadBelowFold, setLoadBelowFold] = useState(false)
+  const [homepageVideoUrl, setHomepageVideoUrl] = useState('')
+  const [showHomepageVideo, setShowHomepageVideo] = useState(false)
 
   useEffect(() => {
     const show = () => setLoadBelowFold(true)
@@ -64,6 +111,20 @@ export function Home2() {
       window.clearTimeout(timeoutId)
       window.removeEventListener('scroll', show)
       window.removeEventListener('pointerdown', show)
+    }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
+
+    api.publicSettings()
+      .then((result) => {
+        if (mounted) setHomepageVideoUrl(result.settings.homepageVideoUrl?.trim() ?? '')
+      })
+      .catch(() => undefined)
+
+    return () => {
+      mounted = false
     }
   }, [])
 
@@ -130,20 +191,27 @@ export function Home2() {
             }}
             className="mt-3 flex items-center justify-center gap-2 sm:gap-3"
           >
-            <Link to="/contact" className="w-[min(46vw,11rem)] sm:w-auto sm:max-w-[18rem]">
-              <ShineBorder
-                borderWidth={3}
-                className="h-auto w-full cursor-pointer border bg-white/5 p-2 backdrop-blur-md dark:bg-black/5"
-                color={['#ef4444', '#f97316', '#fca5a5']}
-              >
-                <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--foreground)] px-3 text-xs font-bold text-[var(--background)] sm:px-5 sm:text-sm">
-                  Start Building
-                </span>
-              </ShineBorder>
-            </Link>
-            <Link to="/contact" className="inline-flex min-h-12 w-[min(46vw,11rem)] items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/60 px-3 text-xs font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] sm:w-auto sm:max-w-[18rem] sm:px-6 sm:text-base">
-              <span className="text-nowrap">Book a call</span>
-            </Link>
+            <RippleButton
+              as={Link}
+              to="/contact"
+              className="inline-flex min-h-14 w-[min(52vw,11rem)] items-center justify-center rounded-xl bg-[var(--foreground)] px-5 text-sm font-bold text-[var(--background)] shadow-[0_14px_30px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:text-white sm:w-auto sm:min-w-40 sm:max-w-[18rem]"
+              rippleClassName="bg-[#ef4444]"
+            >
+              Get Started
+            </RippleButton>
+            <button
+              type="button"
+              className="relative isolate inline-grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--line)] bg-[var(--surface)]/90 text-[var(--foreground)] shadow-[0_14px_30px_rgba(15,23,42,0.12)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-[var(--surface-2)]"
+              onClick={() => {
+                if (homepageVideoUrl) setShowHomepageVideo(true)
+              }}
+              aria-label="Play homepage video"
+              aria-disabled={!homepageVideoUrl}
+              title={homepageVideoUrl ? 'Play video' : 'Add a homepage video in Admin Settings'}
+            >
+              <BorderBeam size={80} duration={4} borderWidth={2.2} colorFrom="#ef4444" colorTo="#fca5a5" />
+              <Play className="ml-0.5 h-5 w-5 fill-current" />
+            </button>
           </AnimatedGroup>
 
           <div className="relative mt-7 h-[7.6rem] w-full overflow-hidden sm:h-[9.2rem] md:mt-10 md:h-[11.25rem]">
@@ -170,6 +238,9 @@ export function Home2() {
       )}
 
       </main>
+      {showHomepageVideo && homepageVideoUrl ? (
+        <HomepageVideoModal videoUrl={homepageVideoUrl} onClose={() => setShowHomepageVideo(false)} />
+      ) : null}
     </>
   )
 }

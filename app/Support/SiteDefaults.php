@@ -24,6 +24,7 @@ class SiteDefaults
             'phone' => '+234 708 637 2833',
             'activeHome' => 'home',
             'homePortfolioShowDescriptions' => 'true',
+            'homepageVideoUrl' => '',
             'theme_light_primary' => '#1261ff',
             'theme_light_secondary' => '#12c8a0',
             'theme_light_active' => '#ef4444',

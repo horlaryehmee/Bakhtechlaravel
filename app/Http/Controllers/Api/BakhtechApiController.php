@@ -183,6 +183,7 @@ class BakhtechApiController extends Controller
             'phone',
             'activeHome',
             'homePortfolioShowDescriptions',
+            'homepageVideoUrl',
             'theme_light_primary',
             'theme_light_secondary',
             'theme_light_active',

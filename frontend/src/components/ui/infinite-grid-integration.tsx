@@ -11,6 +11,7 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { useTheme } from '@/components/theme/theme-context'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
+import { RippleButton } from '@/components/ui/ripple-button'
 
 /**
  * Standard Shadcn utility for merging Tailwind classes safely.
@@ -191,20 +192,24 @@ export const InfiniteGrid = ({
         {showHeroCtas ? (
           <>
             <div className="pointer-events-auto flex w-full flex-col items-center gap-3 pt-1 sm:w-auto sm:flex-row sm:gap-4">
-              <a
+              <RippleButton
+                as="a"
                 href="/contact"
-                className="inline-flex min-h-12 w-full max-w-[18rem] items-center justify-center rounded-[16px] border-2 border-[#d8c3b8] bg-[#161616] px-6 text-base font-black text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#0f0f0f] focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background sm:min-h-14 sm:min-w-44 sm:text-lg"
+                className="inline-flex min-h-12 w-full max-w-[18rem] items-center justify-center rounded-[16px] border-2 border-[#d8c3b8] bg-[#161616] px-6 text-base font-black text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)] transition duration-300 hover:-translate-y-0.5 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background sm:min-h-14 sm:min-w-44 sm:text-lg"
+                rippleClassName="bg-[#ef4444]"
               >
                 Start Building
-              </a>
-              <a
+              </RippleButton>
+              <RippleButton
+                as="a"
                 href="/contact"
                 className="inline-flex min-h-12 w-full max-w-[18rem] rounded-[16px] bg-gradient-to-r from-[#10c8ee] to-[#7c4dff] p-[3px] text-base font-black shadow-[0_14px_30px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-background sm:min-h-14 sm:min-w-52 sm:text-lg"
+                rippleClassName="bg-[#071225]"
               >
                 <span className="flex w-full items-center justify-center rounded-[15px] bg-background px-7 text-foreground">
                   Request a demo
                 </span>
-              </a>
+              </RippleButton>
             </div>
             {heroMarqueeImages.length ? (
               <div className="relative mt-5 h-28 w-full max-w-none sm:h-32 md:mt-10 md:h-48">

@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RippleButton } from "@/components/ui/ripple-button";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
@@ -68,20 +69,22 @@ export function ButtonLink({
   ...props
 }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: string; showArrow?: boolean }) {
   return (
-    <a
+    <RippleButton
+      as="a"
       className={cn(
         "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold transition duration-300 focus:outline-none focus:ring-2 focus:ring-[#12c8a0] focus:ring-offset-2 focus:ring-offset-[var(--background)]",
         variant === "primary"
-          ? "bg-[#1261ff] text-white shadow-[0_18px_40px_rgba(18,97,255,0.32)] hover:bg-[#0b4ed6]"
+          ? "bg-[#1261ff] text-white shadow-[0_18px_40px_rgba(18,97,255,0.32)] hover:text-white"
           : variant === "secondary"
-          ? "surface-card hover:bg-[var(--surface-2)]"
+          ? "surface-card hover:text-white"
           : "bg-transparent text-[var(--foreground)] ring-1 ring-[var(--line)] hover:bg-[var(--surface-2)]",
         className
       )}
+      rippleClassName={variant === "primary" ? "bg-[#071225]" : "bg-[#1261ff]"}
       {...props}
     >
       {children}
       {showArrow && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-    </a>
+    </RippleButton>
   );
 }

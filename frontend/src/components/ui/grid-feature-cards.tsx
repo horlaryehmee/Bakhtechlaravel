@@ -17,13 +17,13 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
   return (
     <div
       className={cn(
-        'group relative overflow-hidden p-6 transition duration-300 hover:-translate-y-1 hover:bg-[var(--surface)] hover:shadow-[0_24px_70px_rgba(18,97,255,0.16)] active:-translate-y-1 active:bg-[var(--surface)] active:shadow-[0_24px_70px_rgba(18,97,255,0.16)]',
+        'group relative overflow-hidden p-6 transition duration-300 hover:-translate-y-1 hover:bg-[var(--surface)] hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)] active:-translate-y-1 active:bg-[var(--surface)] active:shadow-[0_24px_70px_rgba(15,23,42,0.12)]',
         className,
       )}
       {...props}
     >
       <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(18,97,255,0.18),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(18,200,160,0.16),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(239,68,68,0.12),transparent_34%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(17,24,39,0.12),transparent_32%),radial-gradient(circle_at_84%_18%,rgba(75,85,99,0.10),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(239,68,68,0.10),transparent_34%)]" />
       </div>
       <div className="pointer-events-none absolute left-1/2 top-0 -ml-20 -mt-2 h-full w-full [mask-image:linear-gradient(white,transparent)]">
         <div className="absolute inset-0 bg-gradient-to-r from-foreground/5 to-foreground/1 opacity-100 [mask-image:radial-gradient(farthest-side_at_top,white,transparent)]">
@@ -39,9 +39,9 @@ export function FeatureCard({ feature, className, ...props }: FeatureCardProps) 
       </div>
       <div className="feature-icon-ring relative z-10 grid size-11 place-items-center rounded-xl border border-transparent bg-[var(--surface)] transition duration-300">
         <div className="absolute inset-[2px] rounded-[10px] bg-[var(--surface)]" />
-        <feature.icon className="relative z-10 size-6 text-foreground/75 transition duration-300 group-hover:text-[#1261ff] group-active:text-[#1261ff]" strokeWidth={1} aria-hidden />
+        <feature.icon className="relative z-10 size-6 text-[var(--foreground)]/75 transition duration-300 group-hover:text-[var(--foreground)] group-active:text-[var(--foreground)]" strokeWidth={1} aria-hidden />
       </div>
-      <h3 className="relative z-10 mt-8 text-sm font-semibold text-[var(--foreground)] transition duration-300 group-hover:text-[#1261ff] group-active:text-[#1261ff] md:text-base">{feature.title}</h3>
+      <h3 className="relative z-10 mt-8 text-sm font-semibold text-[var(--foreground)] transition duration-300 group-hover:text-[var(--foreground)] group-active:text-[var(--foreground)] md:text-base">{feature.title}</h3>
       <p className="relative z-20 mt-2 text-xs font-light leading-5 text-[var(--muted-foreground)]">{feature.description}</p>
     </div>
   )

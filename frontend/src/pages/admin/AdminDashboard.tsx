@@ -519,6 +519,7 @@ const settingLabels: Record<string, string> = {
   google_business_client_id: 'Google Business Client ID',
   google_business_client_secret: 'Google Business Client Secret',
   homePortfolioShowDescriptions: 'Show public project summaries',
+  homepageVideoUrl: 'Homepage video URL',
   instagramUrl: 'Instagram link',
   linkedinUrl: 'LinkedIn link',
   phone: 'Phone',
@@ -6976,7 +6977,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
@@ -7088,11 +7089,35 @@ export function AdminDashboard() {
         {keys.filter((key) => key in settingsForm).map((key) => (
           <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
             {settingLabels[key] ?? key}
-            <input
-              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
-              value={settingsForm[key] ?? ''}
-              onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
-            />
+            {key === 'homepageVideoUrl' ? (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="theme-input min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm[key] ?? ''}
+                    placeholder="YouTube URL or /uploads/video.mp4"
+                    onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
+                  />
+                  <span className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700 transition hover:bg-gray-100">
+                    <Upload className="h-4 w-4" />
+                    Upload
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept="video/*"
+                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => setSettingsForm(prev => ({ ...prev, homepageVideoUrl: media.url })))}
+                    />
+                  </span>
+                </div>
+                <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library.</span>
+              </>
+            ) : (
+              <input
+                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                value={settingsForm[key] ?? ''}
+                onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
+              />
+            )}
           </label>
         ))}
       </div>

@@ -3,6 +3,7 @@ import { Menu, Moon, Sun, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTheme } from '@/components/theme/theme-context'
 import { CmsPageSync } from '@/components/cms/CmsPageSync'
+import { RippleButton } from '@/components/ui/ripple-button'
 import { navigation } from '@/data/site'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -222,21 +223,25 @@ export function SiteLayout() {
                     {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
 
-                  <NavLink
+                  <RippleButton
+                    as={NavLink}
                     to="/booking"
                     onClick={() => setOpen(false)}
-                    className={cn('inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:hidden')}
+                    className={cn('inline-flex min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:text-white', isScrolled && 'lg:hidden')}
+                    rippleClassName="bg-[#ef4444]"
                   >
                     Book a Call
-                  </NavLink>
+                  </RippleButton>
 
-                  <NavLink
+                  <RippleButton
+                    as={NavLink}
                     to="/booking"
                     onClick={() => setOpen(false)}
-                    className={cn('hidden min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:opacity-90', isScrolled && 'lg:inline-flex')}
+                    className={cn('hidden min-h-10 items-center justify-center rounded-xl bg-[var(--foreground)] px-4 text-sm font-black text-[var(--background)] transition hover:text-white', isScrolled && 'lg:inline-flex')}
+                    rippleClassName="bg-[#ef4444]"
                   >
                     Book a Call
-                  </NavLink>
+                  </RippleButton>
                 </div>
               </div>
             </div>

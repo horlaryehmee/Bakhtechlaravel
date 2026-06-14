@@ -1,5 +1,5 @@
 import { ArrowRight, PencilLine } from 'lucide-react'
-import { ButtonLink } from '@/components/ui/button'
+import { RippleButton } from '@/components/ui/ripple-button'
 
 export function HomeHero() {
   return (
@@ -34,13 +34,14 @@ export function HomeHero() {
           Look no further. Bakhtech Solutions specializes in creating visually striking, user-friendly websites.
         </p>
         <div className="mt-9 flex justify-center">
-          <ButtonLink
+          <RippleButton
+            as="a"
             href="/contact"
-            className="min-h-14 rounded-[5px] bg-[#29273d] px-8 text-white shadow-none hover:bg-[#181626]"
-            showArrow={false}
+            className="inline-flex min-h-14 items-center justify-center rounded-[5px] bg-[#29273d] px-8 font-semibold text-white shadow-none hover:text-white"
+            rippleClassName="bg-[#ef4444]"
           >
             Get Started Now
-          </ButtonLink>
+          </RippleButton>
         </div>
         <div className="mt-10 flex items-center justify-center gap-2 text-xs font-semibold text-[#6f6b7c]">
           <span>Secure CMS</span>

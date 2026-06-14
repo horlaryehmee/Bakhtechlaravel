@@ -16,8 +16,8 @@ import {
   Wrench,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
 import * as PricingCard from '@/components/ui/pricing-card'
+import { RippleButton } from '@/components/ui/ripple-button'
 import { api, type PricingCategory, type PricingPlan } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -77,10 +77,10 @@ function Header() {
             <ArrowLeft className="h-4 w-4" />
             Back to Site
           </Link>
-          <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-950 shadow-sm transition hover:bg-slate-50 md:px-5">
+          <RippleButton as={Link} to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-950 shadow-sm transition hover:text-white md:px-5">
             <Phone className="h-4 w-4" />
             Book a Call
-          </Link>
+          </RippleButton>
         </div>
       </div>
     </header>
@@ -363,9 +363,9 @@ export function Pricing() {
                             <PricingCard.MainPrice>{money(planAmount(plan, currency), currency)}</PricingCard.MainPrice>
                             <PricingCard.Period>{planPeriod(plan, selectedCategory)}</PricingCard.Period>
                           </PricingCard.Price>
-                          <Button type="button" onClick={() => selectPlan(plan)} className="min-h-12 w-full rounded-lg bg-gradient-to-r from-[#2f73ed] to-[#5538ee] text-base font-black text-white hover:opacity-95">
+                          <RippleButton type="button" onClick={() => selectPlan(plan)} className="min-h-12 w-full rounded-lg bg-gradient-to-r from-[#2f73ed] to-[#5538ee] text-base font-black text-white">
                             Select {plan.name}
-                          </Button>
+                          </RippleButton>
                         </PricingCard.Header>
                         <PricingCard.Body>
                           <PricingCard.Description>{plan.description}</PricingCard.Description>
@@ -390,9 +390,9 @@ export function Pricing() {
                       <p className="mt-3 max-w-3xl font-semibold leading-7 text-slate-300">Complex integrations, bespoke logic, or compliance needs? We can tailor a solution to your business.</p>
                       <p className="mt-4 text-sm font-bold text-slate-400">Custom contract and NDA available</p>
                     </div>
-                    <Link to="/booking" className="inline-flex min-h-12 items-center justify-center rounded-lg bg-white px-6 text-sm font-black text-[#071225] transition hover:bg-slate-100">
+                    <RippleButton as={Link} to="/booking" className="inline-flex min-h-12 items-center justify-center rounded-lg bg-white px-6 text-sm font-black text-[#071225] transition hover:text-white">
                       Get a Custom Quote
-                    </Link>
+                    </RippleButton>
                   </div>
                 </section>
               </>
@@ -436,10 +436,10 @@ export function Pricing() {
                       Project notes
                       <textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={5} className="rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#2f73ed]" />
                     </label>
-                    <Button disabled={submitting} className="mt-5 min-h-12 w-full rounded-lg bg-gradient-to-r from-[#2f73ed] to-[#5538ee] text-base font-black text-white hover:opacity-95">
+                    <RippleButton disabled={submitting} className="mt-5 min-h-12 w-full rounded-lg bg-gradient-to-r from-[#2f73ed] to-[#5538ee] text-base font-black text-white disabled:pointer-events-none disabled:opacity-60">
                       {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Generate Invoice
-                    </Button>
+                    </RippleButton>
                   </form>
                 </div>
 
