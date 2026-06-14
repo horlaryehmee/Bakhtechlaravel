@@ -26,8 +26,8 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const isEmpty = !value || value === '<br>'
 
-  // Initialize editor with value
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value && !isEditing) {
       editorRef.current.innerHTML = value || ''
@@ -151,20 +151,31 @@ export function RichTextEditor({
       </div>
 
       {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className="theme-input min-h-32 rounded-none px-4 py-3 outline-none focus:outline-none"
-        style={{
-          wordWrap: 'break-word',
-          overflowWrap: 'break-word',
-        }}
-      >
-        {!value && <span className="text-soft">{placeholder}</span>}
+      <div className="relative">
+        {isEmpty ? (
+          <span
+            aria-hidden="true"
+            className="text-soft pointer-events-none absolute left-4 top-3"
+          >
+            {placeholder}
+          </span>
+        ) : null}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-label={placeholder}
+          aria-multiline="true"
+          onInput={handleInput}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className="theme-input min-h-32 rounded-none px-4 py-3 outline-none focus:outline-none"
+          style={{
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+          }}
+        />
       </div>
     </div>
   )
