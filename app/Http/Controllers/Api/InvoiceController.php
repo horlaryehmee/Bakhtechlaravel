@@ -301,7 +301,7 @@ class InvoiceController extends Controller
             'timeSpentSeconds' => $data['timeSpentSeconds'] ?? null,
         ], $data['sessionId'] ?? null);
 
-        if ($data['eventType'] === 'document.viewed' && !in_array($document->status, ['paid', 'accepted', 'rejected', 'cancelled'], true)) {
+        if ($data['eventType'] === 'document.viewed' && !in_array($document->status, ['paid', 'partial', 'accepted', 'rejected', 'cancelled'], true)) {
             DB::table('invoice_documents')->where('id', $document->id)->update([
                 'status' => $document->status === 'draft' ? 'viewed' : 'viewed',
                 'viewed_at' => $document->viewed_at ?: now(),
@@ -458,6 +458,9 @@ class InvoiceController extends Controller
         if (!$document->payment_enabled || !$document->payment_gateway) {
             return response()->json(['message' => 'Payment is not enabled for this document.'], 422);
         }
+        if ((float) $document->balance_due <= 0 || $document->status === 'paid') {
+            return response()->json(['message' => 'This invoice has already been paid in full.'], 422);
+        }
 
         $payment = $payments->initialize($document, (float) $document->balance_due);
 
@@ -475,6 +478,9 @@ class InvoiceController extends Controller
 
         if (!$document->payment_enabled || !$document->payment_gateway || $document->payment_gateway === 'manual') {
             return response()->json(['message' => 'Online payment is not enabled for this document.'], 422);
+        }
+        if ((float) $document->balance_due <= 0 || $document->status === 'paid') {
+            return response()->json(['message' => 'This invoice has already been paid in full.'], 422);
         }
 
         $data = $request->validate([
@@ -572,7 +578,13 @@ class InvoiceController extends Controller
 
     public function webhook(Request $request, string $gateway, InvoicePaymentService $payments)
     {
-        return response()->json(['ok' => true, 'processed' => $payments->handleWebhook($request, $gateway)]);
+        $result = $payments->handleWebhook($request, $gateway);
+
+        if ($result['newlyProcessed'] && $result['documentId']) {
+            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received');
+        }
+
+        return response()->json(['ok' => true, 'processed' => $result['processed']]);
     }
 
     public function importFromJSON(Request $request)
@@ -1635,13 +1647,60 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function receiptPdf(Request $request, string $token)
+    {
+        $document = $this->publicDocumentRow($token);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+        if ((float) $document->amount_paid <= 0) {
+            return response()->json(['message' => 'A receipt is not available until a payment has been received.'], 422);
+        }
+
+        $this->trackEvent((int) $document->id, 'receipt.viewed', $request);
+
+        $amountPaid = (float) $document->amount_paid;
+        $shape = $this->documentShape($document, true, true);
+        $shape['type'] = 'receipt';
+        $shape['title'] = 'Payment Receipt';
+        $shape['subtotal'] = $amountPaid;
+        $shape['discountTotal'] = 0;
+        $shape['taxTotal'] = 0;
+        $shape['total'] = $amountPaid;
+        $shape['balanceDue'] = 0;
+        $shape['items'] = [[
+            'id' => null,
+            'name' => 'Payment received for invoice ' . $document->number,
+            'description' => $document->status === 'paid' ? 'Paid in full' : 'Partial payment received',
+            'quantity' => 1,
+            'unitPrice' => $amountPaid,
+            'discountRate' => 0,
+            'taxRate' => 0,
+            'lineTotal' => $amountPaid,
+        ]];
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml($this->documentPdfHtml($shape));
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="receipt-' . Str::slug($document->number) . '.pdf"',
+        ]);
+    }
+
     private function validatedDocument(Request $request, ?int $id = null): array
     {
         return $request->validate([
             'type' => ['required', Rule::in(['invoice', 'quote', 'receipt'])],
             'number' => ['nullable', 'string', 'max:80', Rule::unique('invoice_documents', 'number')->ignore($id)],
             'title' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['draft', 'sent', 'viewed', 'paid', 'overdue', 'accepted', 'rejected', 'cancelled'])],
+            'status' => ['nullable', Rule::in(['draft', 'sent', 'viewed', 'partial', 'paid', 'overdue', 'accepted', 'rejected', 'cancelled'])],
             'currency' => ['required', 'string', 'size:3'],
             'exchangeRate' => ['nullable', 'numeric', 'min:0.000001'],
             'issueDate' => ['nullable', 'date'],
@@ -1678,6 +1737,22 @@ class InvoiceController extends Controller
             $totals = $this->calculateTotals($data['items']);
             $number = trim((string) ($data['number'] ?? '')) ?: $this->nextDocumentNumber($data['type']);
             $status = $data['status'] ?? 'draft';
+            $existingDocument = $id ? DB::table('invoice_documents')->where('id', $id)->first() : null;
+            $amountPaid = $existingDocument ? min($totals['total'], (float) $existingDocument->amount_paid) : 0;
+            $balanceDue = max(0, $totals['total'] - $amountPaid);
+
+            if ($amountPaid > 0 && $data['type'] !== 'quote') {
+                $status = $balanceDue <= 0 ? 'paid' : 'partial';
+            } elseif ($status === 'paid') {
+                $amountPaid = $totals['total'];
+                $balanceDue = 0;
+            }
+
+            $issueDate = $data['issueDate'] ?? now()->toDateString();
+            $dueDate = $data['dueDate'] ?? null;
+            if (!$dueDate) {
+                $dueDate = \Carbon\Carbon::parse($issueDate)->addDays(30)->toDateString();
+            }
 
             $payload = [
                 'client_id' => $clientId,
@@ -1691,10 +1766,10 @@ class InvoiceController extends Controller
                 'discount_total' => $totals['discountTotal'],
                 'tax_total' => $totals['taxTotal'],
                 'total' => $totals['total'],
-                'amount_paid' => $status === 'paid' ? $totals['total'] : 0,
-                'balance_due' => $status === 'paid' ? 0 : $totals['total'],
-                'issue_date' => $data['issueDate'] ?? now()->toDateString(),
-                'due_date' => $data['dueDate'] ?? null,
+                'amount_paid' => $amountPaid,
+                'balance_due' => $balanceDue,
+                'issue_date' => $issueDate,
+                'due_date' => $dueDate,
                 'payment_gateway' => $data['paymentGateway'] ?? null,
                 'payment_enabled' => (bool) ($data['paymentEnabled'] ?? false),
                 'branding_json' => json_encode($this->branding($data['branding'] ?? [])),
@@ -2094,6 +2169,7 @@ class InvoiceController extends Controller
 
         return match ($templateKey) {
             'invoice_created_from_quote' => 'Your invoice is ready: ' . $document->number,
+            'payment_received' => 'Payment received: ' . $document->number,
             default => $label . ' ' . $document->number . ' from Bakhtech Solutions',
         };
     }
@@ -2109,34 +2185,45 @@ class InvoiceController extends Controller
         $currencySymbol = htmlspecialchars($this->currencySymbol((string) $document->currency), ENT_QUOTES, 'UTF-8');
         $total = $this->formatEmailAmount((float) $document->total);
         $balance = $this->formatEmailAmount((float) $document->balance_due);
-        $publicUrl = htmlspecialchars($this->absoluteUrl('/invoice/' . $document->public_token), ENT_QUOTES, 'UTF-8');
+        $documentUrl = $templateKey === 'payment_received'
+            ? '/api/invoices/' . $document->public_token . '/receipt'
+            : '/invoice/' . $document->public_token;
+        $publicUrl = htmlspecialchars($this->absoluteUrl($documentUrl), ENT_QUOTES, 'UTF-8');
         $pdfUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/' . $document->public_token . '/pdf'), ENT_QUOTES, 'UTF-8');
         $openUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/email/open/' . $openToken), ENT_QUOTES, 'UTF-8');
         $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
         $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
         $headline = match (true) {
+            $templateKey === 'payment_received' => 'Payment received',
             $templateKey === 'invoice_created_from_quote' => 'Invoice ready',
             $document->type === 'quote' => 'Quote ready',
             $document->type === 'receipt' => 'Receipt issued',
             default => 'Invoice ready',
         };
         $message = match (true) {
+            $templateKey === 'payment_received' => 'Thank you. Your payment has been received and applied to this invoice. You can view your receipt below.',
             $templateKey === 'invoice_created_from_quote' => 'Your approved quote has been converted into an invoice. Please review the invoice details below.',
             $document->type === 'quote' => 'Your quote is available for review. Please confirm the details when you are ready to proceed.',
             $document->type === 'receipt' => 'Your receipt has been issued. You can view the payment record or download a copy below.',
             default => 'Your invoice is available for review. Please check the details below and proceed with payment when convenient.',
         };
-        $primaryAction = match ($document->type) {
-            'quote' => 'Review quote',
-            'receipt' => 'View receipt',
-            default => 'Open invoice',
-        };
-        $priceLabel = match ($document->type) {
-            'quote' => 'Quoted amount',
-            'receipt' => 'Amount recorded',
-            default => 'Amount due',
-        };
-        $priceValue = $document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}";
+        $primaryAction = $templateKey === 'payment_received'
+            ? 'View receipt'
+            : match ($document->type) {
+                'quote' => 'Review quote',
+                'receipt' => 'View receipt',
+                default => 'Open invoice',
+            };
+        $priceLabel = $templateKey === 'payment_received'
+            ? 'Payment received'
+            : match ($document->type) {
+                'quote' => 'Quoted amount',
+                'receipt' => 'Amount recorded',
+                default => 'Amount due',
+            };
+        $priceValue = $templateKey === 'payment_received'
+            ? "{$currencySymbol}" . $this->formatEmailAmount((float) $document->amount_paid)
+            : ($document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}");
         $documentTitle = "{$label} {$number}";
 
         return <<<HTML

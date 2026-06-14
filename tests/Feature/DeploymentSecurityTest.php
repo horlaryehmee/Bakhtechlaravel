@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class DeploymentSecurityTest extends TestCase
@@ -68,6 +69,8 @@ class DeploymentSecurityTest extends TestCase
 
     public function test_signed_paystack_webhook_reconciles_payment_once(): void
     {
+        Mail::fake();
+
         DB::table('settings')->updateOrInsert(
             ['key' => 'gateway_mode'],
             ['value' => 'test', 'created_at' => now(), 'updated_at' => now()],
@@ -161,10 +164,119 @@ class DeploymentSecurityTest extends TestCase
             'amount_paid' => 500,
             'balance_due' => 500,
         ]);
+        $this->postJson('/api/invoices/security-payment-token/events', [
+            'eventType' => 'document.viewed',
+            'sessionId' => 'payment-refresh-session',
+        ])->assertNoContent();
+        $this->getJson('/api/invoices/security-payment-token')
+            ->assertOk()
+            ->assertJsonPath('document.status', 'partial')
+            ->assertJsonPath('document.amountPaid', 500)
+            ->assertJsonPath('document.balanceDue', 500);
+        $this->get('/api/invoices/security-payment-token/receipt')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->assertDatabaseCount('invoice_email_logs', 1);
+        $this->assertDatabaseHas('invoice_email_logs', [
+            'document_id' => $documentId,
+            'template_key' => 'payment_received',
+            'status' => 'sent',
+        ]);
+        $paymentEmailHtml = (string) DB::table('invoice_email_logs')
+            ->where('document_id', $documentId)
+            ->where('template_key', 'payment_received')
+            ->value('body_html');
+        $this->assertStringContainsString('View receipt', $paymentEmailHtml);
+        $this->assertStringContainsString('/api/invoices/security-payment-token/receipt', $paymentEmailHtml);
         $this->assertSame(1, DB::table('invoice_events')
             ->where('document_id', $documentId)
             ->where('event_type', 'payment.completed')
             ->count());
+
+        $finalPayment = $this->postJson('/api/invoices/security-payment-token/payments/initialize', [
+            'amount' => 500,
+        ])->assertOk()->json('payment');
+        $finalPayload = [
+            'event' => 'charge.success',
+            'data' => [
+                'reference' => $finalPayment['reference'],
+                'amount' => 50000,
+                'currency' => 'NGN',
+                'status' => 'success',
+            ],
+        ];
+        $finalBody = json_encode($finalPayload, JSON_UNESCAPED_SLASHES);
+        $finalSignature = hash_hmac('sha512', $finalBody, 'sk_test_webhook_secret');
+
+        $this->call(
+            'POST',
+            '/api/invoices/payments/paystack/webhook',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_X_PAYSTACK_SIGNATURE' => $finalSignature,
+            ],
+            $finalBody,
+        )->assertOk()->assertJson(['ok' => true, 'processed' => true]);
+
+        $this->getJson('/api/invoices/security-payment-token')
+            ->assertOk()
+            ->assertJsonPath('document.status', 'paid')
+            ->assertJsonPath('document.amountPaid', 1000)
+            ->assertJsonPath('document.balanceDue', 0);
+        $this->postJson('/api/invoices/security-payment-token/payments/initialize', [
+            'amount' => 1,
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'This invoice has already been paid in full.');
+        $this->assertSame(2, DB::table('invoice_email_logs')
+            ->where('document_id', $documentId)
+            ->where('template_key', 'payment_received')
+            ->count());
+    }
+
+    public function test_invoice_due_date_defaults_to_thirty_days_after_issue_date(): void
+    {
+        Mail::fake();
+        config()->set('security.admin_token_secret', 'invoice-due-date-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'invoice-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Invoice Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->postJson('/api/admin/invoices/documents', [
+                'type' => 'invoice',
+                'title' => 'Thirty day invoice',
+                'currency' => 'NGN',
+                'issueDate' => '2026-06-01',
+                'paymentGateway' => 'paystack',
+                'paymentEnabled' => true,
+                'client' => [
+                    'name' => 'Due Date Client',
+                    'email' => 'due-date@example.test',
+                ],
+                'items' => [[
+                    'name' => 'Professional Service',
+                    'quantity' => 1,
+                    'unitPrice' => 1000,
+                ]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('document.dueDate', '2026-07-01');
+
+        $this->assertDatabaseHas('invoice_documents', [
+            'id' => $response->json('document.id'),
+            'issue_date' => '2026-06-01',
+            'due_date' => '2026-07-01',
+        ]);
     }
 
     public function test_unsigned_paystack_webhook_is_rejected(): void

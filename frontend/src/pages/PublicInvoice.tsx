@@ -178,6 +178,10 @@ export function PublicInvoice() {
     window.open(`/api/invoices/${token}/pdf`, '_blank')
   }
 
+  function viewReceipt() {
+    window.open(`/api/invoices/${token}/receipt`, '_blank')
+  }
+
   async function handlePaymentClick() {
     setStartingPayment(true)
     setError('')
@@ -216,6 +220,8 @@ export function PublicInvoice() {
   const invoiceUrl = generatedInvoiceUrl || document.generatedInvoice?.publicUrl || ''
   const activeItem = document.items[Math.min(activeItemIndex, Math.max(0, document.items.length - 1))]
   const payableAmount = Math.max(0, Number(document.balanceDue ?? document.total))
+  const hasOutstandingBalance = payableAmount > 0 && document.status !== 'paid'
+  const hasReceipt = Number(document.amountPaid) > 0
   const partialPaymentEnabled = document.partialPaymentEnabled !== false
   const effectivePaymentPercent = partialPaymentEnabled ? selectedPaymentPercent : 100
   const selectedPaymentAmount = payableAmount * (effectivePaymentPercent / 100)
@@ -484,24 +490,30 @@ export function PublicInvoice() {
         <section className="invoice-sheet-payment">
           <h2>Payment Options</h2>
           <div className="invoice-sheet-payment-card">
-            <div className="invoice-sheet-bank">
-              <strong>Bank Transfer</strong>
-              {paymentAccount?.accountName ? <span>Account Name: {paymentAccount.accountName}</span> : <span>{brand.businessName}</span>}
-              {paymentAccount?.accountNumber ? <span>Account Number: {paymentAccount.accountNumber}</span> : null}
-              {paymentAccount?.bankName ? <span>Bank: {paymentAccount.bankName}</span> : null}
-              {paymentAccount?.accountType ? <span>Account Type: {paymentAccount.accountType}</span> : null}
-              {paymentAccount?.wireRouting ? <span>Wire Routing: {paymentAccount.wireRouting}</span> : null}
-              {paymentAccount?.achRouting ? <span>ACH Routing: {paymentAccount.achRouting}</span> : null}
-              {paymentAccount?.instructions ? <span>{paymentAccount.instructions}</span> : null}
-              {!paymentAccount?.accountNumber && !paymentAccount?.bankName && !paymentAccount?.instructions ? <span>Manual/offline payment is available. Contact us for confirmation.</span> : null}
-            </div>
-            {onlinePaymentGateway ? (
-              <div className="invoice-sheet-bank">
-                <strong>Online Payment</strong>
-                <span>{titleCase(onlinePaymentGateway)}</span>
-              </div>
-            ) : null}
-            {partialPaymentEnabled ? (
+            {hasOutstandingBalance ? (
+              <>
+                <div className="invoice-sheet-bank">
+                  <strong>Bank Transfer</strong>
+                  {paymentAccount?.accountName ? <span>Account Name: {paymentAccount.accountName}</span> : <span>{brand.businessName}</span>}
+                  {paymentAccount?.accountNumber ? <span>Account Number: {paymentAccount.accountNumber}</span> : null}
+                  {paymentAccount?.bankName ? <span>Bank: {paymentAccount.bankName}</span> : null}
+                  {paymentAccount?.accountType ? <span>Account Type: {paymentAccount.accountType}</span> : null}
+                  {paymentAccount?.wireRouting ? <span>Wire Routing: {paymentAccount.wireRouting}</span> : null}
+                  {paymentAccount?.achRouting ? <span>ACH Routing: {paymentAccount.achRouting}</span> : null}
+                  {paymentAccount?.instructions ? <span>{paymentAccount.instructions}</span> : null}
+                  {!paymentAccount?.accountNumber && !paymentAccount?.bankName && !paymentAccount?.instructions ? <span>Manual/offline payment is available. Contact us for confirmation.</span> : null}
+                </div>
+                {onlinePaymentGateway ? (
+                  <div className="invoice-sheet-bank">
+                    <strong>Online Payment</strong>
+                    <span>{titleCase(onlinePaymentGateway)}</span>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="invoice-sheet-paid">This invoice has been paid in full.</div>
+            )}
+            {hasOutstandingBalance && partialPaymentEnabled ? (
               <div className="invoice-sheet-pay-row">
                 <span>Pay</span>
                 <div className="invoice-sheet-presets">
@@ -518,20 +530,18 @@ export function PublicInvoice() {
                 </div>
                 <small>Selected: {money(selectedPaymentAmount, document.currency)}</small>
               </div>
-            ) : (
+            ) : hasOutstandingBalance ? (
               <div className="invoice-sheet-pay-row">
                 <span>Pay</span>
                 <small>Full balance: {money(selectedPaymentAmount, document.currency)}</small>
               </div>
-            )}
-            {document.paymentEnabled && onlinePaymentGateway && payableAmount > 0 ? (
+            ) : null}
+            {document.paymentEnabled && onlinePaymentGateway && hasOutstandingBalance ? (
               <Button type="button" className="invoice-sheet-pay-button" disabled={startingPayment} onClick={() => void handlePaymentClick()}>
                 {startingPayment ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                 {startingPayment ? 'Opening payment...' : `Pay with ${titleCase(onlinePaymentGateway)} (${money(selectedPaymentAmount, document.currency)})`}
               </Button>
-            ) : (
-              <div className="invoice-sheet-paid">{payableAmount > 0 ? 'Use manual/offline payment for this invoice.' : 'Payment is not required for this invoice.'}</div>
-            )}
+            ) : hasOutstandingBalance ? <div className="invoice-sheet-paid">Use manual/offline payment for this invoice.</div> : null}
           </div>
         </section>
 
@@ -553,6 +563,11 @@ export function PublicInvoice() {
         ) : null}
 
         <footer className="invoice-sheet-actions">
+          {hasReceipt ? (
+            <Button type="button" className="invoice-sheet-pay-button" onClick={viewReceipt}>
+              <FileText className="h-4 w-4" />View Receipt
+            </Button>
+          ) : null}
           <Button type="button" className="invoice-sheet-download" onClick={downloadPdf}>
             <Download className="h-4 w-4" />Download PDF
           </Button>

@@ -50,7 +50,7 @@ class InvoicePaymentService
         ];
     }
 
-    public function handleWebhook(Request $request, string $gateway): bool
+    public function handleWebhook(Request $request, string $gateway): array
     {
         $gateway = strtolower($gateway);
         $payload = $request->json()->all();
@@ -58,7 +58,7 @@ class InvoicePaymentService
         if ($gateway === 'paystack') {
             $this->verifyPaystackSignature($request);
             if (($payload['event'] ?? '') !== 'charge.success') {
-                return false;
+                return ['processed' => false, 'newlyProcessed' => false, 'documentId' => null];
             }
 
             $data = $payload['data'] ?? [];
@@ -146,10 +146,10 @@ class InvoicePaymentService
         ];
     }
 
-    private function reconcile(string $gateway, string $reference, float $amount, string $currency, string $status, array $gatewayData): bool
+    private function reconcile(string $gateway, string $reference, float $amount, string $currency, string $status, array $gatewayData): array
     {
         if ($reference === '' || !in_array(strtolower($status), ['success', 'successful'], true)) {
-            return false;
+            return ['processed' => false, 'newlyProcessed' => false, 'documentId' => null];
         }
 
         return DB::transaction(function () use ($gateway, $reference, $amount, $currency, $gatewayData) {
@@ -164,7 +164,11 @@ class InvoicePaymentService
             }
 
             if ($payment->status === 'paid') {
-                return true;
+                return [
+                    'processed' => true,
+                    'newlyProcessed' => false,
+                    'documentId' => (int) $payment->document_id,
+                ];
             }
 
             if (strtoupper($currency) !== strtoupper((string) $payment->currency) || abs($amount - (float) $payment->amount) > 0.01) {
@@ -209,7 +213,11 @@ class InvoicePaymentService
                 'updated_at' => now(),
             ]);
 
-            return true;
+            return [
+                'processed' => true,
+                'newlyProcessed' => true,
+                'documentId' => (int) $document->id,
+            ];
         });
     }
 

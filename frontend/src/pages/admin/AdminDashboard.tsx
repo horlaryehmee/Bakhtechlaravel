@@ -292,6 +292,12 @@ const emptyInvoiceItem: InvoiceItem = {
   taxRate: 0,
 }
 
+function dateAfterDays(days: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 const emptyInvoiceForm: Partial<InvoiceDocument> & {
   type: 'invoice' | 'quote' | 'receipt'
   title: string
@@ -317,7 +323,7 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   currency: 'NGN',
   exchangeRate: 1,
   issueDate: new Date().toISOString().slice(0, 10),
-  dueDate: '',
+  dueDate: dateAfterDays(30),
   paymentGateway: 'paystack',
   paymentEnabled: true,
   partialPaymentEnabled: true,
