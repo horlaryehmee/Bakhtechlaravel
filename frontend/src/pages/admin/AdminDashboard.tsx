@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RichTextEditor } from '@/components/RichTextEditor'
+import { SafeImage } from '@/components/ui/safe-image'
 import {
   api,
   ApiError,
@@ -146,6 +147,7 @@ const emptyProject: ProjectInput = {
   services: '',
   status: 'published',
   isFeatured: true,
+  sortOrder: 0,
 }
 
 const emptyPost = {
@@ -452,6 +454,7 @@ function toInput(project: Project): ProjectInput {
     services: project.services.join(', '),
     status: project.status,
     isFeatured: project.isFeatured,
+    sortOrder: project.sortOrder,
   }
 }
 
@@ -472,7 +475,7 @@ function ProjectMediaPreview({ src, title = '' }: { src: string; title?: string 
     return <div className="surface-muted grid h-40 w-full place-items-center rounded-2xl text-sm font-black text-soft">YouTube video</div>
   }
 
-  return <img className="h-40 w-full rounded-2xl object-cover" src={src || '/showcase/showcase-01.jpg'} alt={title} />
+  return <SafeImage className="h-40 w-full rounded-2xl object-cover" src={src || '/showcase/showcase-01.jpg'} alt={title} />
 }
 
 function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
@@ -712,8 +715,7 @@ export function AdminDashboard() {
   const [projectSearch, setProjectSearch] = useState('')
   const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | Project['status']>('all')
   const [projectCategoryFilter, setProjectCategoryFilter] = useState('all')
-  const [projectPage, setProjectPage] = useState(1)
-  const [projectPerPage, setProjectPerPage] = useState(10)
+  const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [showReviewForm, setShowReviewForm] = useState(false)
@@ -807,10 +809,6 @@ export function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
   }, [activeInvoiceSubsection])
-
-  useEffect(() => {
-    queueMicrotask(() => setProjectPage(1))
-  }, [projectSearch, projectStatusFilter, projectCategoryFilter, projectPerPage])
 
   // Global search implementation
   const searchResults = useMemo(() => {
@@ -1205,6 +1203,7 @@ export function AdminDashboard() {
   function editProject(project: Project) {
     setEditingProject(project)
     setProjectForm(toInput(project))
+    setShowProjectForm(true)
     setActiveSection('projects')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -1212,6 +1211,7 @@ export function AdminDashboard() {
   function resetProjectForm() {
     setEditingProject(null)
     setProjectForm(emptyProject)
+    setShowProjectForm(false)
   }
 
   async function saveProject(event: FormEvent<HTMLFormElement>) {
@@ -1223,7 +1223,8 @@ export function AdminDashboard() {
       const result = editingProject ? await api.updateProject(editingProject.id, projectForm) : await api.createProject(projectForm)
       setProjects((current) => {
         const exists = current.some((project) => project.id === result.project.id)
-        return exists ? current.map((project) => (project.id === result.project.id ? result.project : project)) : [result.project, ...current]
+        return (exists ? current.map((project) => (project.id === result.project.id ? result.project : project)) : [result.project, ...current])
+          .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title))
       })
       resetProjectForm()
       notify(editingProject ? 'Project updated.' : 'Project created.')
@@ -1239,6 +1240,40 @@ export function AdminDashboard() {
     await api.deleteProject(id)
     setProjects((current) => current.filter((project) => project.id !== id))
     notify('Project deleted.')
+  }
+
+  async function moveProject(projectId: number, direction: -1 | 1) {
+    const orderedProjects = [...projects]
+      .map((project, index) => ({ ...project, sortOrder: project.sortOrder || index + 1 }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title))
+    const currentIndex = orderedProjects.findIndex((project) => project.id === projectId)
+    const targetIndex = currentIndex + direction
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedProjects.length) return
+
+    const currentProject = orderedProjects[currentIndex]
+    const targetProject = orderedProjects[targetIndex]
+    const currentOrder = currentProject.sortOrder
+    const targetOrder = targetProject.sortOrder
+    const nextCurrent = { ...currentProject, sortOrder: targetOrder }
+    const nextTarget = { ...targetProject, sortOrder: currentOrder }
+
+    setProjects((current) => current
+      .map((project) => project.id === nextCurrent.id ? nextCurrent : project.id === nextTarget.id ? nextTarget : project)
+      .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
+
+    try {
+      const [currentResult, targetResult] = await Promise.all([
+        api.updateProject(nextCurrent.id, toInput(nextCurrent)),
+        api.updateProject(nextTarget.id, toInput(nextTarget)),
+      ])
+      setProjects((current) => current
+        .map((project) => project.id === currentResult.project.id ? currentResult.project : project.id === targetResult.project.id ? targetResult.project : project)
+        .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
+      notify('Portfolio order updated.')
+    } catch (moveError) {
+      setError(moveError instanceof Error ? moveError.message : 'Unable to update portfolio order.')
+      void loadAdminData()
+    }
   }
 
   async function savePage(page: CmsPage) {
@@ -4884,8 +4919,9 @@ export function AdminDashboard() {
   }
 
   function renderProjects() {
-    const projectCategories = Array.from(new Set(projects.map((project) => project.category).filter(Boolean))).sort()
-    const filteredProjects = projects.filter((project) => {
+    const orderedProjects = [...projects].sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title))
+    const projectCategories = Array.from(new Set(orderedProjects.map((project) => project.category).filter(Boolean))).sort()
+    const filteredProjects = orderedProjects.filter((project) => {
       const query = projectSearch.trim().toLowerCase()
       const matchesSearch = !query
         || project.title.toLowerCase().includes(query)
@@ -4896,10 +4932,15 @@ export function AdminDashboard() {
       const matchesCategory = projectCategoryFilter === 'all' || project.category === projectCategoryFilter
       return matchesSearch && matchesStatus && matchesCategory
     })
-    const totalProjectPages = Math.max(1, Math.ceil(filteredProjects.length / projectPerPage))
-    const activeProjectPage = Math.min(projectPage, totalProjectPages)
-    const projectStart = (activeProjectPage - 1) * projectPerPage
-    const paginatedProjects = filteredProjects.slice(projectStart, projectStart + projectPerPage)
+    const openNewProjectForm = () => {
+      setEditingProject(null)
+      setProjectForm({
+        ...emptyProject,
+        sortOrder: (orderedProjects[orderedProjects.length - 1]?.sortOrder ?? orderedProjects.length) + 1,
+      })
+      setShowProjectForm(true)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
 
     return (
       <div>
@@ -4908,11 +4949,11 @@ export function AdminDashboard() {
           title="Portfolio Project Manager" 
           text="Add project images, optional video presentations, website links, and publish them to the frontend portfolio." 
         />
-        <section className="bg-white mb-6 rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+        <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-center">
             <div>
-              <h3 className="text-xl font-black text-gray-900">Project Summaries</h3>
-              <p className="text-gray-500 mt-2 text-sm leading-relaxed">Enable or disable project summaries on public project cards.</p>
+              <h3 className="text-xl font-black text-gray-900">Portfolio Controls</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">Manage project cards, visibility, and frontend order from one full-width list.</p>
             </div>
             <select
               className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
@@ -4922,13 +4963,20 @@ export function AdminDashboard() {
               <option value="true">Enabled</option>
               <option value="false">Disabled</option>
             </select>
+            <Button type="button" className="min-h-11 rounded-xl bg-blue-600 px-5 text-white hover:bg-blue-700" onClick={openNewProjectForm}>
+              <Plus className="h-4 w-4" />
+              Add Project
+            </Button>
           </div>
         </section>
-        <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+        {showProjectForm ? (
+          <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4 mb-6">
               <h3 className="text-2xl font-black text-gray-900">{editingProject ? 'Edit project' : 'Add project'}</h3>
-              {editingProject && <Button type="button" variant="ghost" onClick={resetProjectForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
+              <div className="flex gap-2">
+                {editingProject && <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={openNewProjectForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={resetProjectForm}><X className="h-4 w-4 mr-2" />Close</Button>
+              </div>
             </div>
             <form className="grid gap-4" onSubmit={saveProject}>
               <input 
@@ -5016,7 +5064,7 @@ export function AdminDashboard() {
                     onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('coverImage', media.url))} 
                   />
                 </label>
-                {projectForm.coverImage && <img className="h-40 w-full rounded-xl object-cover" src={projectForm.coverImage} alt="" />}
+                {projectForm.coverImage && <SafeImage className="h-40 w-full rounded-xl object-cover" src={projectForm.coverImage} alt="" />}
                 <input 
                   className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
                   placeholder="Optional cover image URL for video/YouTube projects" 
@@ -5047,13 +5095,20 @@ export function AdminDashboard() {
               </label>
               <div className="flex gap-3 pt-2">
                 <Button className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" type="submit" disabled={saving}>{saving ? 'Saving...' : editingProject ? 'Update Project' : 'Add Project'}</Button>
-                {editingProject && <Button type="button" variant="ghost" onClick={resetProjectForm}>Cancel</Button>}
+                <Button type="button" variant="ghost" onClick={resetProjectForm}>Cancel</Button>
               </div>
             </form>
           </section>
-          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <h3 className="mb-6 text-2xl font-black text-gray-900">Manage Portfolio</h3>
-            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_160px_180px_120px]">
+        ) : null}
+          <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900">Portfolio List</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">Use the arrow buttons to rearrange projects. This exact order is used on the frontend.</p>
+              </div>
+              <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={openNewProjectForm}><Plus className="h-4 w-4" />New Project</Button>
+            </div>
+            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_170px_220px]">
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
@@ -5072,59 +5127,53 @@ export function AdminDashboard() {
                 <option value="all">All categories</option>
                 {projectCategories.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
-              <select className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={projectPerPage} onChange={(event) => setProjectPerPage(Number(event.target.value))}>
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
             </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
               <p className="text-sm font-bold text-gray-600">{filteredProjects.length} of {projects.length} projects</p>
-              <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={resetProjectForm}><Plus className="h-4 w-4" />New Project</Button>
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">List view</p>
             </div>
             <div className="grid gap-4">
-              {paginatedProjects.map((project) => (
-                <article key={project.id} className="grid gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[8rem_1fr_auto] md:items-center">
-                  <div className="h-20 w-full overflow-hidden rounded-lg mb-4 md:mb-0 md:h-20">
+              {filteredProjects.map((project) => {
+                const globalIndex = orderedProjects.findIndex((item) => item.id === project.id)
+                return (
+                <article key={project.id} className="grid gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center">
+                  <div className="h-24 w-full overflow-hidden rounded-lg md:h-20">
                     {isVideoMedia(project.image) ? (
                       <video className="h-full w-full object-cover" src={project.image} muted preload="metadata" />
                     ) : isYoutubeMedia(project.image) ? (
                       <div className="surface-card grid h-full place-items-center text-xs font-black text-soft">YouTube</div>
                     ) : (
-                      <img className="h-full w-full object-cover" src={project.image || '/showcase/showcase-01.jpg'} alt="" />
+                      <SafeImage className="h-full w-full object-cover" src={project.image || '/showcase/showcase-01.jpg'} alt="" />
                     )}
                   </div>
                   <div>
-                    <h4 className="text-lg font-black text-gray-900">{project.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-lg font-black text-gray-900">{project.title}</h4>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-gray-500">#{globalIndex + 1}</span>
+                    </div>
                     <p className="text-gray-500 mt-1 text-sm">{project.category} · {project.status}</p>
                     {project.summary ? <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p> : null}
                   </div>
-                  <div className="flex gap-2 md:flex-col md:mt-4">
+                  <div className="flex flex-wrap gap-2 md:mt-4 md:flex-col">
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" disabled={globalIndex <= 0} onClick={() => void moveProject(project.id, -1)} title="Move project up">
+                        <ChevronLeft className="h-4 w-4 rotate-90" />
+                      </Button>
+                      <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" disabled={globalIndex >= orderedProjects.length - 1} onClick={() => void moveProject(project.id, 1)} title="Move project down">
+                        <ChevronRight className="h-4 w-4 rotate-90" />
+                      </Button>
+                    </div>
                     <Button type="button" variant="ghost" className="min-h-10 px-4" onClick={() => editProject(project)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
                     <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" onClick={() => void deleteProject(project.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button>
                   </div>
                 </article>
-              ))}
-              {!paginatedProjects.length ? (
+                )
+              })}
+              {!filteredProjects.length ? (
                 <div className="rounded-xl bg-gray-50 p-8 text-center text-sm font-semibold text-gray-500">No projects match the current filters.</div>
               ) : null}
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-gray-500">
-                Showing {filteredProjects.length ? projectStart + 1 : 0}-{Math.min(projectStart + projectPerPage, filteredProjects.length)} of {filteredProjects.length}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-3" disabled={activeProjectPage <= 1} onClick={() => setProjectPage((page) => Math.max(1, page - 1))}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-24 text-center text-sm font-black text-gray-700">Page {activeProjectPage} / {totalProjectPages}</span>
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-3" disabled={activeProjectPage >= totalProjectPages} onClick={() => setProjectPage((page) => Math.min(totalProjectPages, page + 1))}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
           </section>
-        </div>
       </div>
     )
   }

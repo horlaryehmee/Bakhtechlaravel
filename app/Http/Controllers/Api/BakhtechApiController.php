@@ -901,7 +901,11 @@ class BakhtechApiController extends Controller
         $query = DB::table('projects');
 
         if (! $includeDrafts) {
-            $query->where('status', 'published')->orderByDesc('is_featured');
+            $query->where('status', 'published');
+        }
+
+        if (Schema::hasColumn('projects', 'sort_order')) {
+            $query->orderBy('sort_order');
         }
 
         return $query->orderByDesc('updated_at')->get();
@@ -930,7 +934,7 @@ class BakhtechApiController extends Controller
             $metrics = [];
         }
 
-        return [
+        $payload = [
             'title' => trim((string) $request->input('title', $existing?->title ?? '')),
             'slug' => trim((string) $request->input('slug', $existing?->slug ?? '')),
             'category' => trim((string) $request->input('category', $existing?->category ?? '')),
@@ -945,6 +949,15 @@ class BakhtechApiController extends Controller
             'is_featured' => (bool) $request->input('isFeatured', $request->input('is_featured', $existing?->is_featured ?? false)),
             'status' => $request->input('status', $existing?->status ?? 'published') === 'draft' ? 'draft' : 'published',
         ];
+
+        if (Schema::hasColumn('projects', 'sort_order')) {
+            $requestedSortOrder = (int) $request->input('sortOrder', $request->input('sort_order', 0));
+            $payload['sort_order'] = $requestedSortOrder > 0
+                ? $requestedSortOrder
+                : (int) ($existing?->sort_order ?? ((int) DB::table('projects')->max('sort_order') + 1));
+        }
+
+        return $payload;
     }
 
     private function reviewPayload(Request $request, ?object $existing = null): array
@@ -1394,6 +1407,7 @@ class BakhtechApiController extends Controller
             'metrics' => json_decode($row->metrics_json ?: '{}', true),
             'isFeatured' => (bool) $row->is_featured,
             'status' => $row->status,
+            'sortOrder' => (int) ($row->sort_order ?? 0),
             'createdAt' => (string) $row->created_at,
             'updatedAt' => (string) $row->updated_at,
         ];

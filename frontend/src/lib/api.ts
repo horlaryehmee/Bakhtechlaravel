@@ -13,6 +13,7 @@ export type Project = {
   metrics: Record<string, string>
   isFeatured: boolean
   status: 'published' | 'draft'
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }
@@ -29,6 +30,7 @@ export type ProjectInput = {
   services: string
   status: 'published' | 'draft'
   isFeatured: boolean
+  sortOrder: number
 }
 
 export type DashboardData = {

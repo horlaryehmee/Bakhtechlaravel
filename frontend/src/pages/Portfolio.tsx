@@ -3,6 +3,7 @@ import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-reac
 import { Link } from 'react-router-dom'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
+import { SafeImage } from '@/components/ui/safe-image'
 import { portfolio } from '@/data/site'
 import { api, type Project } from '@/lib/api'
 
@@ -32,6 +33,7 @@ function fromFallback(item: (typeof portfolio)[number], index: number): Project 
     metrics: {},
     isFeatured: false,
     status: 'published',
+    sortOrder: index + 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -80,7 +82,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
   if (youtubeThumbnailUrl) {
     return (
       <>
-        <img src={coverImage || youtubeThumbnailUrl} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        <SafeImage src={coverImage || youtubeThumbnailUrl} fallbackSrc={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
@@ -94,7 +96,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     return (
       <>
         {coverImage || image ? (
-          <img src={coverImage || image} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+          <SafeImage src={coverImage || image} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
             <source src={videoUrl} />
@@ -109,7 +111,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     )
   }
 
-  return <img src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+  return <SafeImage src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
 }
 
 function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: VideoMedia) => void }) {
