@@ -88,6 +88,78 @@ class InvoicePaymentService
         throw new HttpResponseException(response()->json(['message' => 'Unsupported payment gateway.'], 404));
     }
 
+    public function verifyReturn(object $document, string $reference, ?string $transactionId = null): array
+    {
+        $payment = DB::table('invoice_payments')
+            ->where('document_id', $document->id)
+            ->where('reference', $reference)
+            ->first();
+
+        if (!$payment) {
+            throw new HttpResponseException(response()->json(['message' => 'Payment reference not found for this invoice.'], 404));
+        }
+
+        if ($payment->status === 'paid') {
+            return [
+                'processed' => true,
+                'newlyProcessed' => false,
+                'documentId' => (int) $payment->document_id,
+            ];
+        }
+
+        if ($payment->gateway === 'paystack') {
+            $response = Http::withToken($this->gatewaySecret('paystack'))
+                ->acceptJson()
+                ->get('https://api.paystack.co/transaction/verify/'.rawurlencode($reference));
+
+            if (!$response->successful() || !$response->json('status')) {
+                throw new HttpResponseException(response()->json([
+                    'message' => $response->json('message') ?: 'Unable to verify Paystack payment.',
+                ], 502));
+            }
+
+            $data = $response->json('data', []);
+
+            return $this->reconcile(
+                'paystack',
+                (string) ($data['reference'] ?? ''),
+                ((float) ($data['amount'] ?? 0)) / 100,
+                (string) ($data['currency'] ?? ''),
+                (string) ($data['status'] ?? ''),
+                $data,
+            );
+        }
+
+        if ($payment->gateway === 'flutterwave') {
+            if (!$transactionId) {
+                throw new HttpResponseException(response()->json(['message' => 'Flutterwave transaction ID is required.'], 422));
+            }
+
+            $response = Http::withToken($this->gatewaySecret('flutterwave'))
+                ->acceptJson()
+                ->get('https://api.flutterwave.com/v3/transactions/'.rawurlencode($transactionId).'/verify');
+
+            if (!$response->successful() || $response->json('status') !== 'success') {
+                throw new HttpResponseException(response()->json([
+                    'message' => $response->json('message') ?: 'Unable to verify Flutterwave payment.',
+                ], 502));
+            }
+
+            $data = $response->json('data', []);
+
+            return $this->reconcile(
+                'flutterwave',
+                (string) ($data['tx_ref'] ?? ''),
+                (float) ($data['amount'] ?? 0),
+                (string) ($data['currency'] ?? ''),
+                (string) ($data['status'] ?? ''),
+                $data,
+            );
+        }
+
+        throw new HttpResponseException(response()->json(['message' => 'Unsupported payment gateway.'], 404));
+    }
+
     private function initializePaystack(object $document, string $reference, float $amount): array
     {
         $response = Http::withToken($this->gatewaySecret('paystack'))

@@ -504,6 +504,33 @@ class InvoiceController extends Controller
         return ['payment' => $payment];
     }
 
+    public function verifyPublicPayment(Request $request, string $token, InvoicePaymentService $payments)
+    {
+        $document = $this->publicDocumentRow($token);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'reference' => ['required', 'string', 'max:120'],
+            'transactionId' => ['nullable', 'string', 'max:120'],
+        ]);
+        $result = $payments->verifyReturn($document, $data['reference'], $data['transactionId'] ?? null);
+
+        if (!$result['processed']) {
+            return response()->json(['message' => 'The payment has not been confirmed by the gateway yet.'], 422);
+        }
+
+        if ($result['newlyProcessed'] && $result['documentId']) {
+            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received');
+        }
+
+        return response()->json([
+            'processed' => $result['processed'],
+            'document' => $this->documentShape($this->publicDocumentRow($token), true, true),
+        ]);
+    }
+
     public function recordPayment(Request $request, int $id)
     {
         $document = $this->documentRow($id);

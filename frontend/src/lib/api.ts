@@ -1145,6 +1145,12 @@ export const api = {
       body: JSON.stringify({ amount }),
     })
   },
+  verifyPublicInvoicePayment(token: string, reference: string, transactionId?: string) {
+    return request<{ processed: boolean; document: InvoiceDocument }>(`/api/invoices/${token}/payments/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ reference, transactionId }),
+    })
+  },
   importFromJSON(data: unknown) {
     return request<{ imported: number; message: string; summary: { documents: number; payments: number; events: number; emails: number } }>('/api/admin/invoices/import/json', {
       method: 'POST',

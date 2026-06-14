@@ -279,6 +279,99 @@ class DeploymentSecurityTest extends TestCase
         ]);
     }
 
+    public function test_payment_return_verifies_paystack_and_refreshes_invoice_once(): void
+    {
+        Mail::fake();
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'gateway_mode'],
+            ['value' => 'test', 'created_at' => now(), 'updated_at' => now()],
+        );
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'paystack_secret_test'],
+            ['value' => 'sk_test_return_secret', 'created_at' => now(), 'updated_at' => now()],
+        );
+
+        $clientId = DB::table('invoice_clients')->insertGetId([
+            'name' => 'Return Client',
+            'email' => 'return@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $documentId = DB::table('invoice_documents')->insertGetId([
+            'client_id' => $clientId,
+            'type' => 'invoice',
+            'number' => 'INV-RETURN-001',
+            'title' => 'Return Invoice',
+            'public_token' => 'return-payment-token',
+            'status' => 'sent',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 1000,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'total' => 1000,
+            'amount_paid' => 0,
+            'balance_due' => 1000,
+            'issue_date' => now()->toDateString(),
+            'payment_gateway' => 'paystack',
+            'payment_enabled' => true,
+            'partial_payment_enabled' => true,
+            'branding_json' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('invoice_payments')->insert([
+            'document_id' => $documentId,
+            'gateway' => 'paystack',
+            'reference' => 'PAYSTACK-RETURN-001',
+            'amount' => 1000,
+            'currency' => 'NGN',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'api.paystack.co/transaction/verify/*' => Http::response([
+                'status' => true,
+                'data' => [
+                    'reference' => 'PAYSTACK-RETURN-001',
+                    'amount' => 100000,
+                    'currency' => 'NGN',
+                    'status' => 'success',
+                ],
+            ]),
+        ]);
+
+        $verify = fn () => $this->postJson('/api/invoices/return-payment-token/payments/verify', [
+            'reference' => 'PAYSTACK-RETURN-001',
+        ]);
+
+        $verify()
+            ->assertOk()
+            ->assertJsonPath('processed', true)
+            ->assertJsonPath('document.status', 'paid')
+            ->assertJsonPath('document.amountPaid', 1000)
+            ->assertJsonPath('document.balanceDue', 0);
+        $verify()
+            ->assertOk()
+            ->assertJsonPath('document.status', 'paid');
+
+        $this->assertDatabaseHas('invoice_payments', [
+            'document_id' => $documentId,
+            'reference' => 'PAYSTACK-RETURN-001',
+            'status' => 'paid',
+        ]);
+        $this->assertSame(1, DB::table('invoice_email_logs')
+            ->where('document_id', $documentId)
+            ->where('template_key', 'payment_received')
+            ->count());
+        $this->assertSame(1, DB::table('invoice_events')
+            ->where('document_id', $documentId)
+            ->where('event_type', 'payment.completed')
+            ->count());
+    }
+
     public function test_unsigned_paystack_webhook_is_rejected(): void
     {
         DB::table('settings')->updateOrInsert(

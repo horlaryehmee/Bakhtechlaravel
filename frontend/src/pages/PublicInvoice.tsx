@@ -124,6 +124,7 @@ export function PublicInvoice() {
   const [startingPayment, setStartingPayment] = useState(false)
   const [expandedInvoiceSections, setExpandedInvoiceSections] = useState<Record<string, boolean>>({})
   const [error, setError] = useState('')
+  const [paymentMessage, setPaymentMessage] = useState('')
   const sid = useMemo(() => sessionId(), [])
 
   useEffect(() => {
@@ -133,9 +134,21 @@ export function PublicInvoice() {
       setLoading(true)
       setError('')
       try {
-        const result = await api.publicInvoiceDocument(token)
+        const params = new URLSearchParams(window.location.search)
+        const isPaymentReturn = params.get('payment') === 'return'
+        const reference = params.get('reference') || params.get('tx_ref') || ''
+        const transactionId = params.get('transaction_id') || undefined
+        const result = isPaymentReturn && reference
+          ? await api.verifyPublicInvoicePayment(token, reference, transactionId)
+          : await api.publicInvoiceDocument(token)
         if (cancelled) return
         setDocument(result.document)
+        if (isPaymentReturn && reference) {
+          setPaymentMessage(result.document.status === 'paid'
+            ? 'Payment confirmed. This invoice has been paid in full.'
+            : 'Payment confirmed. Your remaining balance has been updated.')
+          window.history.replaceState({}, '', window.location.pathname)
+        }
         await api.trackInvoiceEvent(token, { eventType: 'document.viewed', sessionId: sid }).catch(() => undefined)
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Unable to load document.')
@@ -438,6 +451,7 @@ export function PublicInvoice() {
         </header>
 
         {error ? <div className="invoice-sheet-alert">{error}</div> : null}
+        {paymentMessage ? <div className="invoice-sheet-alert is-success">{paymentMessage}</div> : null}
 
         <section className="invoice-sheet-info-grid">
           <div className="invoice-sheet-card">
