@@ -53,7 +53,7 @@ function getYoutubeVideoId(url: string) {
 
 function getYoutubeEmbedUrl(url: string) {
   const id = getYoutubeVideoId(url)
-  return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : undefined
+  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0` : undefined
 }
 
 function normalizeVideoUrl(url: string) {
