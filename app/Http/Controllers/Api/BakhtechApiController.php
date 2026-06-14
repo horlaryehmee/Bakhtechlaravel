@@ -643,17 +643,49 @@ class BakhtechApiController extends Controller
             return $this->storeBooking($request, true);
         }
 
-        $id = DB::table('bookings')->insertGetId([
+        $scheduledAt = (string) $request->input('scheduledAt', '');
+        $timezone = (string) $request->input('timezone', 'Africa/Lagos');
+        $start = $scheduledAt !== '' ? Carbon::parse($scheduledAt, $timezone) : now($timezone);
+        $end = $start->copy()->addMinutes((int) $request->input('durationMinutes', 30));
+        $payload = [
             'name' => (string) $request->input('name', 'Website visitor'),
             'email' => (string) $request->input('email', ''),
             'phone' => (string) $request->input('phone', ''),
             'service' => (string) $request->input('service', ''),
             'message' => (string) $request->input('message', ''),
             'status' => (string) $request->input('status', 'open'),
-            'scheduled_at' => (string) $request->input('scheduledAt', ''),
+            'scheduled_at' => $scheduledAt,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        if (Schema::hasColumn('bookings', 'timezone')) {
+            $payload['timezone'] = $timezone;
+        }
+        if (Schema::hasColumn('bookings', 'attendee_timezone')) {
+            $payload['attendee_timezone'] = $timezone;
+        }
+        if (Schema::hasColumn('bookings', 'starts_at')) {
+            $payload['starts_at'] = $start->toDateTimeString();
+        }
+        if (Schema::hasColumn('bookings', 'ends_at')) {
+            $payload['ends_at'] = $end->toDateTimeString();
+        }
+        if (Schema::hasColumn('bookings', 'duration_minutes')) {
+            $payload['duration_minutes'] = (int) $request->input('durationMinutes', 30);
+        }
+        if (Schema::hasColumn('bookings', 'location_type')) {
+            $payload['location_type'] = (string) $request->input('locationType', 'phone');
+        }
+        if (Schema::hasColumn('bookings', 'location_value')) {
+            $payload['location_value'] = (string) $request->input('locationValue', $request->input('phone', ''));
+        }
+        if (Schema::hasColumn('bookings', 'cancel_token')) {
+            $payload['cancel_token'] = (string) Str::uuid();
+        }
+
+        $id = DB::table('bookings')->insertGetId($payload);
+        app(BookingNotificationService::class)->bookingCreated($id);
 
         return response()->json(['booking' => $this->bookingShape(DB::table('bookings')->where('id', $id)->first())], 201);
     }

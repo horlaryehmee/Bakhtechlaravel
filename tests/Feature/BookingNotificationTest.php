@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\BookingNotificationService;
+use App\Support\AdminToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,55 @@ use Tests\TestCase;
 class BookingNotificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_legacy_admin_booking_creation_sends_email_notifications(): void
+    {
+        config()->set('security.admin_token_secret', 'booking-notification-secret');
+
+        DB::table('booking_settings')->updateOrInsert(
+            ['key' => 'admin_alert_email'],
+            ['value' => 'admin@example.test', 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'bookings-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Bookings Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->postJson('/api/admin/bookings', [
+                'name' => 'Legacy Client',
+                'email' => 'legacy-client@example.test',
+                'phone' => '+2348021234567',
+                'service' => 'Website Consultation',
+                'message' => 'Please prepare a proposal.',
+                'status' => 'confirmed',
+                'scheduledAt' => now('Africa/Lagos')->addDays(3)->setTime(10, 0)->toIso8601String(),
+                'timezone' => 'Africa/Lagos',
+            ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('email_logs', [
+            'recipient' => 'legacy-client@example.test',
+            'source' => 'booking-confirmation',
+            'status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('email_logs', [
+            'recipient' => 'admin@example.test',
+            'source' => 'booking-admin-notification',
+            'status' => 'sent',
+        ]);
+        $this->assertStringContainsString(
+            'Website Consultation',
+            DB::table('email_logs')->where('recipient', 'admin@example.test')->value('body_html')
+        );
+    }
 
     public function test_each_booking_notifies_attendee_and_admin_and_schedules_multiple_reminders(): void
     {
