@@ -104,6 +104,7 @@ class InvoicePaymentService
                 'processed' => true,
                 'newlyProcessed' => false,
                 'documentId' => (int) $payment->document_id,
+                'reference' => (string) $payment->reference,
             ];
         }
 
@@ -240,6 +241,7 @@ class InvoicePaymentService
                     'processed' => true,
                     'newlyProcessed' => false,
                     'documentId' => (int) $payment->document_id,
+                    'reference' => (string) $payment->reference,
                 ];
             }
 
@@ -289,6 +291,7 @@ class InvoicePaymentService
                 'processed' => true,
                 'newlyProcessed' => true,
                 'documentId' => (int) $document->id,
+                'reference' => (string) $payment->reference,
             ];
         });
     }

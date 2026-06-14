@@ -2123,26 +2123,11 @@ export function AdminDashboard() {
       })
       
       setEditingInvoice(response.document)
-
-      // Generate and send receipt automatically
-      await generateReceiptAndNotify(invoiceId)
-      
-      notify('Payment recorded successfully. Receipt generated and sent.')
+      notify('Payment recorded successfully. Receipt notification sent.')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to record payment.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function generateReceiptAndNotify(invoiceId: number) {
-    try {
-      await api.sendInvoiceReceipt(invoiceId)
-
-      notify('Receipt sent to client via email.')
-    } catch (error) {
-      console.error('Error generating/sending receipt:', error)
-      setError('Receipt generated but failed to send via email.')
     }
   }
 

@@ -15,6 +15,7 @@ const Home2 = lazy(() => import('@/pages/Home2').then((module) => ({ default: mo
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
+const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 
 function App() {
   const [enableVisitTracking, setEnableVisitTracking] = useState(false)
@@ -57,6 +58,7 @@ function App() {
           <Route path="admin/pricing-preview" element={<Pricing />} />
           <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />
           <Route path="invoice/:token" element={<PublicInvoice />} />
+          <Route path="receipt/:token" element={<PublicReceipt />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="pricing/:categorySlug" element={<Pricing />} />
           <Route element={<SiteLayout />}>

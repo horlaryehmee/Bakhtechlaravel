@@ -522,7 +522,7 @@ class InvoiceController extends Controller
         }
 
         if ($result['newlyProcessed'] && $result['documentId']) {
-            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received');
+            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received', $result['reference'] ?? null);
         }
 
         return response()->json([
@@ -551,11 +551,13 @@ class InvoiceController extends Controller
         $newBalanceDue = max(0, (float) $document->total - $newAmountPaid);
         $status = $newBalanceDue <= 0 ? 'paid' : 'partial';
 
-        DB::transaction(function () use ($document, $validated, $amount, $paidAt, $newAmountPaid, $newBalanceDue, $status) {
+        $reference = 'MANUAL-' . Str::upper(Str::random(14));
+
+        DB::transaction(function () use ($document, $validated, $amount, $paidAt, $newAmountPaid, $newBalanceDue, $status, $reference) {
             DB::table('invoice_payments')->insert([
                 'document_id' => $document->id,
                 'gateway' => Str::limit((string) $validated['method'], 30, ''),
-                'reference' => 'MANUAL-' . Str::upper(Str::random(14)),
+                'reference' => $reference,
                 'amount' => $amount,
                 'currency' => $document->currency,
                 'status' => 'paid',
@@ -583,6 +585,7 @@ class InvoiceController extends Controller
             'method' => $validated['method'],
             'status' => $status,
         ], null, 'system');
+        $this->sendInvoiceNotification((int) $document->id, $request, 'payment_received', $reference);
 
         return response()->json([
             'document' => $this->documentShape($this->documentRow((int) $document->id), true),
@@ -596,7 +599,12 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Document not found.'], 404);
         }
 
-        $this->sendInvoiceNotification($id, $request, 'receipt_sent');
+        $payment = $this->receiptPayment($id, null);
+        if (!$payment) {
+            return response()->json(['message' => 'No completed payment is available for this document.'], 422);
+        }
+
+        $this->sendInvoiceNotification($id, $request, 'payment_received', $payment->reference);
 
         return response()->json([
             'document' => $this->documentShape($this->documentRow($id), true),
@@ -608,7 +616,7 @@ class InvoiceController extends Controller
         $result = $payments->handleWebhook($request, $gateway);
 
         if ($result['newlyProcessed'] && $result['documentId']) {
-            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received');
+            $this->sendInvoiceNotification((int) $result['documentId'], $request, 'payment_received', $result['reference'] ?? null);
         }
 
         return response()->json(['ok' => true, 'processed' => $result['processed']]);
@@ -1674,22 +1682,58 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function publicReceipt(Request $request, string $token)
+    {
+        $document = $this->publicDocumentRow($token);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+        $payment = $this->receiptPayment((int) $document->id, $request->query('reference'));
+        if (!$payment) {
+            return response()->json(['message' => 'A receipt is not available until a payment has been received.'], 422);
+        }
+
+        $this->trackEvent((int) $document->id, 'receipt.viewed', $request);
+
+        return [
+            'receipt' => [
+                'number' => 'RCT-' . $payment->id,
+                'reference' => $payment->reference,
+                'gateway' => $payment->gateway,
+                'amount' => (float) $payment->amount,
+                'currency' => $payment->currency,
+                'paidAt' => (string) ($payment->paid_at ?? $payment->updated_at),
+                'invoiceNumber' => $document->number,
+                'invoiceUrl' => '/invoice/' . $document->public_token,
+                'downloadUrl' => '/api/invoices/' . $document->public_token . '/receipt/pdf?reference=' . rawurlencode($payment->reference),
+                'client' => [
+                    'name' => $document->client_name ?: '',
+                    'email' => $document->client_email ?: '',
+                    'companyName' => $document->client_company_name ?: '',
+                ],
+                'branding' => $this->branding(json_decode($document->branding_json ?: '{}', true) ?: []),
+            ],
+        ];
+    }
+
     public function receiptPdf(Request $request, string $token)
     {
         $document = $this->publicDocumentRow($token);
         if (!$document) {
             return response()->json(['message' => 'Document not found.'], 404);
         }
-        if ((float) $document->amount_paid <= 0) {
+        $payment = $this->receiptPayment((int) $document->id, $request->query('reference'));
+        if (!$payment) {
             return response()->json(['message' => 'A receipt is not available until a payment has been received.'], 422);
         }
 
-        $this->trackEvent((int) $document->id, 'receipt.viewed', $request);
+        $this->trackEvent((int) $document->id, 'receipt.downloaded', $request);
 
-        $amountPaid = (float) $document->amount_paid;
+        $amountPaid = (float) $payment->amount;
         $shape = $this->documentShape($document, true, true);
         $shape['type'] = 'receipt';
-        $shape['title'] = 'Payment Receipt';
+        $shape['number'] = 'RCT-' . $payment->id;
+        $shape['title'] = 'Payment Receipt for ' . $document->number;
         $shape['subtotal'] = $amountPaid;
         $shape['discountTotal'] = 0;
         $shape['taxTotal'] = 0;
@@ -1697,8 +1741,8 @@ class InvoiceController extends Controller
         $shape['balanceDue'] = 0;
         $shape['items'] = [[
             'id' => null,
-            'name' => 'Payment received for invoice ' . $document->number,
-            'description' => $document->status === 'paid' ? 'Paid in full' : 'Partial payment received',
+            'name' => 'Payment for invoice ' . $document->number,
+            'description' => 'Reference: ' . $payment->reference . ' via ' . ucfirst((string) $payment->gateway),
             'quantity' => 1,
             'unitPrice' => $amountPaid,
             'discountRate' => 0,
@@ -1717,8 +1761,19 @@ class InvoiceController extends Controller
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="receipt-' . Str::slug($document->number) . '.pdf"',
+            'Content-Disposition' => 'attachment; filename="receipt-' . Str::slug($payment->reference) . '.pdf"',
         ]);
+    }
+
+    private function receiptPayment(int $documentId, ?string $reference): ?object
+    {
+        return DB::table('invoice_payments')
+            ->where('document_id', $documentId)
+            ->where('status', 'paid')
+            ->when($reference, fn ($query, $value) => $query->where('reference', $value))
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function validatedDocument(Request $request, ?int $id = null): array
@@ -2126,7 +2181,7 @@ class InvoiceController extends Controller
         ];
     }
 
-    private function sendInvoiceNotification(int $documentId, Request $request, string $templateKey): void
+    private function sendInvoiceNotification(int $documentId, Request $request, string $templateKey, ?string $receiptReference = null): void
     {
         if (!Schema::hasTable('invoice_email_logs')) {
             return;
@@ -2140,7 +2195,7 @@ class InvoiceController extends Controller
         $openToken = (string) Str::uuid();
         $clickToken = (string) Str::uuid();
         $subject = $this->invoiceEmailSubject($document, $templateKey);
-        $bodyHtml = $this->invoiceEmailHtml($document, $templateKey, $openToken);
+        $bodyHtml = $this->invoiceEmailHtml($document, $templateKey, $openToken, $receiptReference);
         $payload = [
             'document_id' => $documentId,
             'recipient_email' => $document->client_email,
@@ -2201,7 +2256,7 @@ class InvoiceController extends Controller
         };
     }
 
-    private function invoiceEmailHtml(object $document, string $templateKey, string $openToken): string
+    private function invoiceEmailHtml(object $document, string $templateKey, string $openToken, ?string $receiptReference = null): string
     {
         $branding = $this->branding(json_decode($document->branding_json ?: '{}', true) ?: []);
         $label = ucfirst((string) $document->type);
@@ -2212,11 +2267,15 @@ class InvoiceController extends Controller
         $currencySymbol = htmlspecialchars($this->currencySymbol((string) $document->currency), ENT_QUOTES, 'UTF-8');
         $total = $this->formatEmailAmount((float) $document->total);
         $balance = $this->formatEmailAmount((float) $document->balance_due);
+        $receiptQuery = $receiptReference ? '?reference=' . rawurlencode($receiptReference) : '';
         $documentUrl = $templateKey === 'payment_received'
-            ? '/api/invoices/' . $document->public_token . '/receipt'
+            ? '/receipt/' . $document->public_token . $receiptQuery
             : '/invoice/' . $document->public_token;
         $publicUrl = htmlspecialchars($this->absoluteUrl($documentUrl), ENT_QUOTES, 'UTF-8');
-        $pdfUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/' . $document->public_token . '/pdf'), ENT_QUOTES, 'UTF-8');
+        $pdfPath = $templateKey === 'payment_received'
+            ? '/api/invoices/' . $document->public_token . '/receipt/pdf' . $receiptQuery
+            : '/api/invoices/' . $document->public_token . '/pdf';
+        $pdfUrl = htmlspecialchars($this->absoluteUrl($pdfPath), ENT_QUOTES, 'UTF-8');
         $openUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/email/open/' . $openToken), ENT_QUOTES, 'UTF-8');
         $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
         $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
@@ -2248,9 +2307,17 @@ class InvoiceController extends Controller
                 'receipt' => 'Amount recorded',
                 default => 'Amount due',
             };
+        $receiptAmount = $receiptReference
+            ? (float) (DB::table('invoice_payments')
+                ->where('document_id', $document->id)
+                ->where('reference', $receiptReference)
+                ->where('status', 'paid')
+                ->value('amount') ?? $document->amount_paid)
+            : (float) $document->amount_paid;
         $priceValue = $templateKey === 'payment_received'
-            ? "{$currencySymbol}" . $this->formatEmailAmount((float) $document->amount_paid)
+            ? "{$currencySymbol}" . $this->formatEmailAmount($receiptAmount)
             : ($document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}");
+        $downloadLabel = $templateKey === 'payment_received' ? 'Download receipt PDF' : 'Download PDF';
         $documentTitle = "{$label} {$number}";
 
         return <<<HTML
@@ -2290,7 +2357,7 @@ class InvoiceController extends Controller
                 <tr>
                   <td><a href="{$publicUrl}" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;font-weight:900;border-radius:14px;padding:15px 22px;">{$primaryAction}</a></td>
                   <td width="10"></td>
-                  <td><a href="{$pdfUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:900;border-radius:14px;padding:15px 22px;">Download PDF</a></td>
+                  <td><a href="{$pdfUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:900;border-radius:14px;padding:15px 22px;">{$downloadLabel}</a></td>
                 </tr>
               </table>
             </td>

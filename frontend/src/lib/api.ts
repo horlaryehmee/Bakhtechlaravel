@@ -362,6 +362,20 @@ export type InvoiceDocument = {
   updatedAt: string
 }
 
+export type PublicReceiptData = {
+  number: string
+  reference: string
+  gateway: string
+  amount: number
+  currency: string
+  paidAt: string
+  invoiceNumber: string
+  invoiceUrl: string
+  downloadUrl: string
+  client: { name: string; email: string; companyName: string }
+  branding: NonNullable<InvoiceDocument['branding']>
+}
+
 export type PricingPlanFeature = {
   id?: number
   featureId?: number | null
@@ -1150,6 +1164,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reference, transactionId }),
     })
+  },
+  publicInvoiceReceipt(token: string, reference?: string) {
+    const query = reference ? `?reference=${encodeURIComponent(reference)}` : ''
+    return request<{ receipt: PublicReceiptData }>(`/api/invoices/${token}/receipt${query}`)
   },
   importFromJSON(data: unknown) {
     return request<{ imported: number; message: string; summary: { documents: number; payments: number; events: number; emails: number } }>('/api/admin/invoices/import/json', {

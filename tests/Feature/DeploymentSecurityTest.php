@@ -69,6 +69,7 @@ class DeploymentSecurityTest extends TestCase
 
     public function test_signed_paystack_webhook_reconciles_payment_once(): void
     {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Mail::fake();
 
         DB::table('settings')->updateOrInsert(
@@ -173,9 +174,14 @@ class DeploymentSecurityTest extends TestCase
             ->assertJsonPath('document.status', 'partial')
             ->assertJsonPath('document.amountPaid', 500)
             ->assertJsonPath('document.balanceDue', 500);
-        $this->get('/api/invoices/security-payment-token/receipt')
+        $this->getJson('/api/invoices/security-payment-token/receipt?reference=' . urlencode($payment['reference']))
             ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            ->assertJsonPath('receipt.reference', $payment['reference'])
+            ->assertJsonPath('receipt.amount', 500);
+        $this->get('/api/invoices/security-payment-token/receipt/pdf?reference=' . urlencode($payment['reference']))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertHeader('content-disposition', 'attachment; filename="receipt-' . strtolower($payment['reference']) . '.pdf"');
         $this->assertDatabaseCount('invoice_email_logs', 1);
         $this->assertDatabaseHas('invoice_email_logs', [
             'document_id' => $documentId,
@@ -187,7 +193,8 @@ class DeploymentSecurityTest extends TestCase
             ->where('template_key', 'payment_received')
             ->value('body_html');
         $this->assertStringContainsString('View receipt', $paymentEmailHtml);
-        $this->assertStringContainsString('/api/invoices/security-payment-token/receipt', $paymentEmailHtml);
+        $this->assertStringContainsString('/receipt/security-payment-token?reference=', $paymentEmailHtml);
+        $this->assertStringContainsString('/api/invoices/security-payment-token/receipt/pdf?reference=', $paymentEmailHtml);
         $this->assertSame(1, DB::table('invoice_events')
             ->where('document_id', $documentId)
             ->where('event_type', 'payment.completed')
@@ -277,6 +284,75 @@ class DeploymentSecurityTest extends TestCase
             'issue_date' => '2026-06-01',
             'due_date' => '2026-07-01',
         ]);
+    }
+
+    public function test_manual_payment_sends_payment_specific_receipt_email(): void
+    {
+        Mail::fake();
+        config()->set('security.admin_token_secret', 'manual-payment-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'manual-payment-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Manual Payment Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+        $clientId = DB::table('invoice_clients')->insertGetId([
+            'name' => 'Manual Payment Client',
+            'email' => 'manual-payer@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $documentId = DB::table('invoice_documents')->insertGetId([
+            'client_id' => $clientId,
+            'type' => 'invoice',
+            'number' => 'INV-MANUAL-001',
+            'title' => 'Manual Payment Invoice',
+            'public_token' => 'manual-payment-token',
+            'status' => 'sent',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 1000,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'total' => 1000,
+            'amount_paid' => 0,
+            'balance_due' => 1000,
+            'issue_date' => now()->toDateString(),
+            'payment_enabled' => true,
+            'branding_json' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->postJson("/api/admin/invoices/documents/{$documentId}/payments", [
+                'amount' => 400,
+                'method' => 'bank transfer',
+                'date' => now()->toDateString(),
+                'notes' => 'Deposit received',
+            ])
+            ->assertOk()
+            ->assertJsonPath('document.status', 'partial')
+            ->assertJsonPath('document.amountPaid', 400);
+
+        $payment = DB::table('invoice_payments')->where('document_id', $documentId)->first();
+        $this->assertNotNull($payment);
+        $this->assertDatabaseHas('invoice_email_logs', [
+            'document_id' => $documentId,
+            'template_key' => 'payment_received',
+            'status' => 'sent',
+        ]);
+        $emailHtml = (string) DB::table('invoice_email_logs')->where('document_id', $documentId)->value('body_html');
+        $this->assertStringContainsString('/receipt/manual-payment-token?reference=' . $payment->reference, $emailHtml);
+        $this->assertStringContainsString('/receipt/pdf?reference=' . $payment->reference, $emailHtml);
+        $this->getJson('/api/invoices/manual-payment-token/receipt?reference=' . $payment->reference)
+            ->assertOk()
+            ->assertJsonPath('receipt.amount', 400)
+            ->assertJsonPath('receipt.gateway', 'bank transfer');
     }
 
     public function test_payment_return_verifies_paystack_and_refreshes_invoice_once(): void

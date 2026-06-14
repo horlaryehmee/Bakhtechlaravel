@@ -192,7 +192,7 @@ export function PublicInvoice() {
   }
 
   function viewReceipt() {
-    window.open(`/api/invoices/${token}/receipt`, '_blank')
+    window.location.href = `/receipt/${token}`
   }
 
   async function handlePaymentClick() {
@@ -498,6 +498,11 @@ export function PublicInvoice() {
             <div><span>Total</span><strong>{money(document.total, document.currency)}</strong></div>
             {document.amountPaid > 0 ? <div><span>Amount Paid</span><strong>{money(document.amountPaid, document.currency)}</strong></div> : null}
             <div className="is-final"><span>{document.status === 'partial' ? 'Remaining Balance' : 'Balance Due'}</span><strong>{money(document.balanceDue, document.currency)}</strong></div>
+            {hasReceipt ? (
+              <Button type="button" className="invoice-sheet-receipt-link" onClick={viewReceipt}>
+                <FileText className="h-4 w-4" />View Payment Receipt
+              </Button>
+            ) : null}
           </div>
         </section>
 
@@ -577,11 +582,6 @@ export function PublicInvoice() {
         ) : null}
 
         <footer className="invoice-sheet-actions">
-          {hasReceipt ? (
-            <Button type="button" className="invoice-sheet-pay-button" onClick={viewReceipt}>
-              <FileText className="h-4 w-4" />View Receipt
-            </Button>
-          ) : null}
           <Button type="button" className="invoice-sheet-download" onClick={downloadPdf}>
             <Download className="h-4 w-4" />Download PDF
           </Button>
