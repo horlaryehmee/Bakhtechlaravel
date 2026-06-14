@@ -324,7 +324,7 @@ export function CinematicFooter() {
 
             <div ref={linksRef} className="flex w-full flex-col items-center gap-6">
               <div className="flex w-full flex-wrap justify-center gap-3">
-                <MagneticLink href="/contact" className="footer-primary-cta flex items-center gap-3 rounded-full px-7 py-4 text-sm font-extrabold md:px-9 md:text-base">
+                <MagneticLink href="/booking" className="footer-primary-cta flex items-center gap-3 rounded-full px-7 py-4 text-sm font-extrabold md:px-9 md:text-base">
                   Start a project
                   <ExternalLink className="h-4 w-4" />
                 </MagneticLink>

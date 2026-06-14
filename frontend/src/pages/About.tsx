@@ -149,7 +149,7 @@ export function About() {
               Bakhtech Solutions helps businesses look better, work smarter, and serve customers online with websites, shops, booking systems, and custom tools.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
+              <Link to="/booking" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
                 Start a project
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -269,7 +269,7 @@ export function About() {
                 Let us turn your business goals into a fast, modern, trustworthy website or platform that is easy to manage and built to grow.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/contact" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
+                <Link to="/booking" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
                   Start a project
                   <ArrowRight className="h-4 w-4" />
                 </Link>
