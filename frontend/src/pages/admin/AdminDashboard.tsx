@@ -113,6 +113,86 @@ function escapeHtml(value: string) {
   })[character] ?? character)
 }
 
+const optimizedImageMaxBytes = 1_800_000
+const optimizedImageMaxSide = 1920
+
+function isCompressibleImage(file: File) {
+  return file.type.startsWith('image/') && !['image/gif', 'image/svg+xml'].includes(file.type)
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality))
+}
+
+function loadImageElement(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Unable to read this image. Try saving it as JPG or PNG first.'))
+    }
+    image.src = objectUrl
+  })
+}
+
+async function optimizeImageFile(file: File) {
+  if (!isCompressibleImage(file)) {
+    return file
+  }
+
+  let width = 0
+  let height = 0
+  let source: CanvasImageSource
+
+  try {
+    if (!('createImageBitmap' in window)) {
+      throw new Error('createImageBitmap is unavailable.')
+    }
+    const bitmap = await createImageBitmap(file)
+    width = bitmap.width
+    height = bitmap.height
+    source = bitmap
+  } catch {
+    const image = await loadImageElement(file)
+    width = image.naturalWidth || image.width
+    height = image.naturalHeight || image.height
+    source = image
+  }
+
+  const scale = Math.min(1, optimizedImageMaxSide / Math.max(width, height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(width * scale))
+  canvas.height = Math.max(1, Math.round(height * scale))
+  const context = canvas.getContext('2d')
+  if (!context) {
+    return file
+  }
+  context.drawImage(source, 0, 0, canvas.width, canvas.height)
+
+  if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {
+    source.close()
+  }
+
+  let quality = 0.86
+  let blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  while (blob && blob.size > optimizedImageMaxBytes && quality > 0.58) {
+    quality -= 0.08
+    blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  }
+
+  if (!blob || blob.size >= file.size) {
+    return file
+  }
+
+  const cleanName = file.name.replace(/\.[^.]+$/, '') || 'project-image'
+  return new File([blob], `${cleanName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() })
+}
+
 const emptyMailSettings: MailSettings = {
   enabled: false,
   host: '',
@@ -1200,7 +1280,11 @@ export function AdminDashboard() {
   async function uploadFile(file: File, onDone?: (media: MediaItem) => void) {
     setError('')
     try {
-      const result = await api.uploadMedia(file)
+      const uploadTarget = await optimizeImageFile(file)
+      if (uploadTarget !== file) {
+        notify('Image optimized for upload.')
+      }
+      const result = await api.uploadMedia(uploadTarget)
       setCms((current) => (current ? { ...current, media: [result.media, ...current.media] } : current))
       onDone?.(result.media)
       notify('File uploaded to library.')

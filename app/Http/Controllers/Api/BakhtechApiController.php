@@ -838,7 +838,7 @@ class BakhtechApiController extends Controller
         }
 
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf,mp4,webm,mov,ogg', 'max:51200'],
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,avif,heic,heif,pdf,mp4,webm,mov,ogg', 'max:51200'],
         ]);
         $file = $data['file'];
         $extension = strtolower($file->getClientOriginalExtension());
@@ -871,6 +871,10 @@ class BakhtechApiController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ];
+
+        if (! Schema::hasTable('media')) {
+            return response()->json(['media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload))], 201);
+        }
 
         try {
             $id = DB::table('media')->insertGetId(array_intersect_key($mediaPayload, array_flip(Schema::getColumnListing('media'))));
