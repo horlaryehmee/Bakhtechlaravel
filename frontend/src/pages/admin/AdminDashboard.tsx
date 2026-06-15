@@ -559,6 +559,13 @@ function isYoutubeMedia(url: string) {
   return /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}/.test(url)
 }
 
+function adminMediaFallbackSrc(title: string) {
+  const safeTitle = escapeHtml(title || 'Selected media')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675"><rect width="1200" height="675" rx="28" fill="#f8fafc"/><rect x="32" y="32" width="1136" height="611" rx="24" fill="none" stroke="#d7dce5" stroke-width="3"/><text x="600" y="326" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="#1f2937">${safeTitle}</text><text x="600" y="378" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#6b7280">Image could not be previewed</text></svg>`
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
+
 function ProjectMediaPreview({ src, title = '' }: { src: string; title?: string }) {
   if (isVideoMedia(src)) {
     return <video className="h-40 w-full rounded-2xl object-cover" src={src} controls preload="metadata" />
@@ -568,7 +575,7 @@ function ProjectMediaPreview({ src, title = '' }: { src: string; title?: string 
     return <div className="surface-muted grid h-40 w-full place-items-center rounded-2xl text-sm font-black text-soft">YouTube video</div>
   }
 
-  return <SafeImage className="h-40 w-full rounded-2xl object-cover" src={src || '/showcase/showcase-01.jpg'} alt={title} />
+  return <SafeImage className="h-40 w-full rounded-2xl object-cover" src={src} fallbackSrc={adminMediaFallbackSrc(title)} alt={title} />
 }
 
 function PanelHeader({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
@@ -5479,7 +5486,7 @@ export function AdminDashboard() {
                     ) : isYoutubeMedia(project.image) ? (
                       <div className="surface-card grid h-full place-items-center text-xs font-black text-soft">YouTube</div>
                     ) : (
-                      <SafeImage className="h-full w-full object-cover" src={project.image || '/showcase/showcase-01.jpg'} alt="" />
+                      <SafeImage className="h-full w-full object-cover" src={project.image} fallbackSrc={adminMediaFallbackSrc(project.title)} alt="" />
                     )}
                   </div>
                   <div>
