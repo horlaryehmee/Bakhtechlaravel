@@ -6,12 +6,7 @@ import { BorderBeam } from '@/components/ui/border-beam'
 import { SafeImage } from '@/components/ui/safe-image'
 import { portfolio } from '@/data/site'
 import { api, type Project } from '@/lib/api'
-
-type VideoMedia = {
-  title: string
-  type: 'video' | 'youtube'
-  url: string
-}
+import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 function fromProject(project: Project): Project {
   return project
@@ -45,45 +40,16 @@ function cleanProjectUrl(url?: string) {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`
 }
 
-function getYoutubeVideoId(url: string) {
-  const value = url.trim()
-  const match = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
-  return match?.[1]
-}
-
-function getYoutubeEmbedUrl(url: string) {
-  const id = getYoutubeVideoId(url)
-  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0` : undefined
-}
-
-function getYoutubeThumbnailUrl(url?: string) {
-  const id = url ? getYoutubeVideoId(url) : undefined
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined
-}
-
-function isVideoUrl(url?: string) {
-  return url ? /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) : false
-}
-
-function getProjectVideoUrl(project: Project) {
-  const explicitVideo = project.videoUrl?.trim()
-  if (explicitVideo) return explicitVideo
-
-  const legacyMedia = project.image?.trim()
-  return legacyMedia && (getYoutubeVideoId(legacyMedia) || isVideoUrl(legacyMedia)) ? legacyMedia : ''
-}
-
-function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (media: VideoMedia) => void }) {
+function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (media: ProjectVideoMedia) => void }) {
   const videoUrl = getProjectVideoUrl(project)
-  const youtubeThumbnailUrl = getYoutubeThumbnailUrl(videoUrl)
-  const coverImage = project.coverImage?.trim()
-  const image = project.image?.trim()
-  const displayImage = image || coverImage
+  const displayImage = getProjectPrimaryImage(project)
+  const videoCoverImage = getProjectVideoCoverImage(project)
+  const fallbackSrc = projectImageFallbackSrc(project)
 
-  if (youtubeThumbnailUrl) {
+  if (getYoutubeEmbedUrl(videoUrl)) {
     return (
       <>
-        <SafeImage src={displayImage || youtubeThumbnailUrl} fallbackSrc={youtubeThumbnailUrl || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
@@ -96,8 +62,8 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
   if (isVideoUrl(videoUrl)) {
     return (
       <>
-        {displayImage ? (
-          <SafeImage src={displayImage} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        {videoCoverImage ? (
+          <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
             <source src={videoUrl} />
@@ -112,17 +78,12 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     )
   }
 
-  return <SafeImage src={displayImage || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+  return <SafeImage src={displayImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
 }
 
-function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: VideoMedia) => void }) {
+function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: ProjectVideoMedia) => void }) {
   const projectUrl = cleanProjectUrl(project.websiteUrl)
-  const videoUrl = getProjectVideoUrl(project)
-  const videoMedia: VideoMedia | null = getYoutubeEmbedUrl(videoUrl)
-    ? { title: project.title, type: 'youtube', url: videoUrl }
-    : isVideoUrl(videoUrl)
-      ? { title: project.title, type: 'video', url: videoUrl }
-      : null
+  const videoMedia = getProjectVideoMedia(project)
 
   return (
     <article className="surface-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-[var(--foreground)]">
@@ -155,7 +116,7 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
   )
 }
 
-function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () => void }) {
+function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClose: () => void }) {
   const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
 
   return (
@@ -180,7 +141,7 @@ function ProjectVideoModal({ media, onClose }: { media: VideoMedia; onClose: () 
 }
 
 export function Portfolio() {
-  const [activeVideo, setActiveVideo] = useState<VideoMedia | null>(null)
+  const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const [items, setItems] = useState<Project[]>(() => portfolio.map(fromFallback))
   const [showProjectSummaries, setShowProjectSummaries] = useState(true)
 
