@@ -831,6 +831,12 @@ class BakhtechApiController extends Controller
 
     public function uploadMedia(Request $request)
     {
+        if ($request->hasFile('file') && ! $request->file('file')->isValid()) {
+            return response()->json([
+                'message' => 'The upload did not reach the server correctly. Check the file size and server upload limits.',
+            ], 422);
+        }
+
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf,mp4,webm,mov,ogg', 'max:51200'],
         ]);
@@ -856,7 +862,7 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Unable to save the uploaded file. Check upload size and folder permissions.'], 500);
         }
 
-        $id = DB::table('media')->insertGetId([
+        $mediaPayload = [
             'filename' => $filename,
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getClientMimeType() ?: 'application/octet-stream',
@@ -864,7 +870,21 @@ class BakhtechApiController extends Controller
             'url' => '/uploads/'.$filename,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        try {
+            $id = DB::table('media')->insertGetId(array_intersect_key($mediaPayload, array_flip(Schema::getColumnListing('media'))));
+        } catch (\Throwable $error) {
+            report($error);
+            $savedPath = $uploadPath.DIRECTORY_SEPARATOR.$filename;
+            if (is_file($savedPath)) {
+                @unlink($savedPath);
+            }
+
+            return response()->json([
+                'message' => 'The file uploaded, but the media library could not save it. Run migrations and check the media table.',
+            ], 500);
+        }
 
         return response()->json(['media' => $this->mediaShape(DB::table('media')->where('id', $id)->first())], 201);
     }
@@ -1466,13 +1486,13 @@ class BakhtechApiController extends Controller
     private function mediaShape(object $row): array
     {
         return [
-            'id' => $row->id,
-            'filename' => $row->filename,
-            'originalName' => $row->original_name,
-            'mimeType' => $row->mime_type,
-            'size' => $row->size,
-            'url' => $row->url,
-            'createdAt' => (string) $row->created_at,
+            'id' => (int) $row->id,
+            'filename' => $row->filename ?? '',
+            'originalName' => $row->original_name ?? ($row->filename ?? 'Uploaded file'),
+            'mimeType' => $row->mime_type ?? 'application/octet-stream',
+            'size' => (int) ($row->size ?? 0),
+            'url' => $row->url ?? (($row->filename ?? '') ? '/uploads/'.$row->filename : ''),
+            'createdAt' => (string) ($row->created_at ?? ''),
         ];
     }
 

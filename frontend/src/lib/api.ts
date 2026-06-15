@@ -633,8 +633,9 @@ async function parseErrorPayload(response: Response, fallbackMessage: string) {
       requiresTwoFactor: Boolean(body.requiresTwoFactor),
     }
   } catch (error) {
+    const statusLabel = response.status ? ` (${response.status})` : ''
     return {
-      message: error instanceof ApiError ? error.message : fallbackMessage,
+      message: error instanceof ApiError ? error.message : `${fallbackMessage}${statusLabel}`,
       requiresTwoFactor: false,
     }
   }
