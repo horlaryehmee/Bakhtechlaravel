@@ -1018,6 +1018,16 @@ export const api = {
   deleteMedia(id: number) {
     return request<void>(`/api/admin/media/${id}`, { method: 'DELETE' })
   },
+  deleteMediaFile(media: Pick<MediaItem, 'id' | 'url' | 'filename'>) {
+    if (media.id > 0) {
+      return request<void>(`/api/admin/media/${media.id}`, { method: 'DELETE' })
+    }
+
+    return request<void>('/api/admin/media/delete', {
+      method: 'POST',
+      body: JSON.stringify({ url: media.url, filename: media.filename }),
+    })
+  },
   publicProjects() {
     return request<{ projects: Project[] }>('/api/projects')
   },

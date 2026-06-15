@@ -895,6 +895,10 @@ class BakhtechApiController extends Controller
 
     public function deleteMedia(int $id)
     {
+        if (! Schema::hasTable('media')) {
+            return response()->json(['message' => 'Media library table is not available.'], 404);
+        }
+
         $media = DB::table('media')->where('id', $id)->first();
         if (! $media) {
             return response()->json(['message' => 'Media not found.'], 404);
@@ -906,6 +910,29 @@ class BakhtechApiController extends Controller
         }
 
         DB::table('media')->where('id', $id)->delete();
+
+        return response()->noContent();
+    }
+
+    public function deleteMediaFile(Request $request)
+    {
+        $url = trim((string) $request->input('url', ''));
+        $filename = basename(parse_url($url, PHP_URL_PATH) ?: (string) $request->input('filename', ''));
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            return response()->json(['message' => 'Media file not found.'], 404);
+        }
+
+        $path = public_path('uploads/'.$filename);
+        if (is_file($path)) {
+            @unlink($path);
+        }
+
+        if (Schema::hasTable('media')) {
+            DB::table('media')
+                ->where('filename', $filename)
+                ->orWhere('url', '/uploads/'.$filename)
+                ->delete();
+        }
 
         return response()->noContent();
     }
@@ -1532,7 +1559,44 @@ class BakhtechApiController extends Controller
 
     private function mediaList()
     {
-        return DB::table('media')->orderByDesc('created_at')->get()->map(fn ($row) => $this->mediaShape($row));
+        $items = collect();
+        $knownFilenames = [];
+
+        if (Schema::hasTable('media')) {
+            $items = DB::table('media')->orderByDesc('created_at')->get()->map(function ($row) use (&$knownFilenames) {
+                if (! empty($row->filename)) {
+                    $knownFilenames[$row->filename] = true;
+                }
+
+                return $this->mediaShape($row);
+            });
+        }
+
+        $uploadPath = public_path('uploads');
+        if (is_dir($uploadPath)) {
+            foreach (glob($uploadPath.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+                if (! is_file($path)) {
+                    continue;
+                }
+
+                $filename = basename($path);
+                if (isset($knownFilenames[$filename])) {
+                    continue;
+                }
+
+                $items->push($this->mediaShape((object) [
+                    'id' => -abs((int) sprintf('%u', crc32($filename))),
+                    'filename' => $filename,
+                    'original_name' => $filename,
+                    'mime_type' => @mime_content_type($path) ?: 'application/octet-stream',
+                    'size' => filesize($path) ?: 0,
+                    'url' => '/uploads/'.$filename,
+                    'created_at' => date('Y-m-d H:i:s', filemtime($path) ?: time()),
+                ]));
+            }
+        }
+
+        return $items->sortByDesc('createdAt')->values();
     }
 
     private function mediaShape(object $row): array

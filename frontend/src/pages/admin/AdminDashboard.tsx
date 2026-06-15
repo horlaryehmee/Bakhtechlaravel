@@ -87,6 +87,10 @@ type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'ava
 type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'smtp' | 'email-logs' | 'advanced'
 type ReviewAdminSection = 'reviews' | 'google' | 'trustpilot' | 'settings'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
+type MediaPickerState = {
+  field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>
+  title: string
+} | null
 type BookingQuestion = {
   key: string
   label: string
@@ -746,6 +750,8 @@ export function AdminDashboard() {
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData | null>(initialAdminCache?.dashboard ?? null)
   const [cms, setCms] = useState<CmsData | null>(initialAdminCache?.cms ?? null)
+  const [mediaPicker, setMediaPicker] = useState<MediaPickerState>(null)
+  const [mediaSearch, setMediaSearch] = useState('')
   const [bookingOverview, setBookingOverview] = useState<BookingCmsOverview | null>(null)
   const [bookingCalendars, setBookingCalendars] = useState<BookingCalendar[]>([])
   const [bookingCmsBookings, setBookingCmsBookings] = useState<BookingCmsBooking[]>([])
@@ -2257,8 +2263,8 @@ export function AdminDashboard() {
 
   async function deleteMedia(media: MediaItem) {
     if (!window.confirm(`Delete ${media.originalName}?`)) return
-    await api.deleteMedia(media.id)
-    setCms((current) => (current ? { ...current, media: current.media.filter((item) => item.id !== media.id) } : current))
+    await api.deleteMediaFile(media)
+    setCms((current) => (current ? { ...current, media: current.media.filter((item) => item.id !== media.id && item.url !== media.url) } : current))
     notify('File deleted.')
   }
 
@@ -5166,6 +5172,11 @@ export function AdminDashboard() {
       setProjects((current) => current.map((project) => (project.id === result.project.id ? result.project : project)))
       notify('Project image updated.')
     }
+    const pickerItems = (cms?.media ?? []).filter((media) => media.mimeType.startsWith(mediaPicker?.field === 'videoUrl' ? 'video/' : 'image/'))
+    const filteredPickerItems = pickerItems.filter((media) => {
+      const query = mediaSearch.trim().toLowerCase()
+      return !query || media.originalName.toLowerCase().includes(query) || media.url.toLowerCase().includes(query)
+    })
     const renderMediaInput = (
       title: string,
       text: string,
@@ -5186,16 +5197,29 @@ export function AdminDashboard() {
             </button>
           ) : null}
         </div>
-        <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60">
-          <Upload className="h-5 w-5 text-blue-600" />
-          Upload file
-          <input
-            className="hidden"
-            type="file"
-            accept={accept}
-            onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => persistProjectMedia(field, media.url))}
-          />
-        </label>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60">
+            <Upload className="h-5 w-5 text-blue-600" />
+            Upload to library
+            <input
+              className="hidden"
+              type="file"
+              accept={accept}
+              onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => persistProjectMedia(field, media.url))}
+            />
+          </label>
+          <button
+            type="button"
+            className="flex min-h-24 flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white p-4 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60"
+            onClick={() => {
+              setMediaSearch('')
+              setMediaPicker({ field, title })
+            }}
+          >
+            <Images className="h-5 w-5 text-blue-600" />
+            Choose from library
+          </button>
+        </div>
         {value ? <div className="mt-4"><ProjectMediaPreview src={value} title={projectForm.title} /></div> : null}
         <input
           className={`${fieldClass} mt-4 w-full text-sm`}
@@ -5317,6 +5341,49 @@ export function AdminDashboard() {
               </aside>
             </form>
           </section>
+        ) : null}
+        {mediaPicker ? (
+          <div className="fixed inset-0 z-[160] grid place-items-center bg-black/60 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
+            <section className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="flex flex-col gap-4 border-b border-gray-100 p-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Media Library</p>
+                  <h3 className="mt-1 text-xl font-black text-gray-900">Choose {mediaPicker.title}</h3>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
+                    placeholder="Search media"
+                    value={mediaSearch}
+                    onChange={(event) => setMediaSearch(event.target.value)}
+                  />
+                  <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => setMediaPicker(null)}><X className="h-4 w-4" />Close</Button>
+                </div>
+              </div>
+              <div className="grid gap-4 overflow-y-auto p-5 sm:grid-cols-2 lg:grid-cols-4">
+                {filteredPickerItems.map((media) => (
+                  <button
+                    key={`${media.id}-${media.url}`}
+                    type="button"
+                    className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50 text-left shadow-sm transition hover:border-blue-400 hover:ring-2 hover:ring-blue-100"
+                    onClick={() => {
+                      void persistProjectMedia(mediaPicker.field, media.url)
+                        .then(() => setMediaPicker(null))
+                        .catch((selectError) => setError(selectError instanceof Error ? selectError.message : 'Unable to select this media.'))
+                    }}
+                  >
+                    {media.mimeType.startsWith('video/') ? (
+                      <video className="h-36 w-full object-cover" src={media.url} muted preload="metadata" />
+                    ) : (
+                      <img className="h-36 w-full object-cover" src={media.url} alt={media.originalName} />
+                    )}
+                    <span className="block truncate p-3 text-xs font-black text-gray-800">{media.originalName}</span>
+                  </button>
+                ))}
+                {filteredPickerItems.length === 0 ? <p className="col-span-full py-12 text-center text-sm font-semibold text-gray-500">No matching media found.</p> : null}
+              </div>
+            </section>
+          </div>
         ) : null}
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -5967,6 +6034,11 @@ export function AdminDashboard() {
   }
 
   function renderLibrary() {
+    const libraryItems = (cms?.media ?? []).filter((media) => {
+      const query = mediaSearch.trim().toLowerCase()
+      return !query || media.originalName.toLowerCase().includes(query) || media.url.toLowerCase().includes(query)
+    })
+
     return (
       <div>
         <PanelHeader 
@@ -5974,24 +6046,40 @@ export function AdminDashboard() {
           title="Media Library" 
           text="Upload, preview, copy, select, and delete files used across the website." 
         />
-        <label className="bg-white mb-6 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-100 p-8 text-sm font-black shadow-sm">
-          <Upload className="h-5 w-5" />
-          Upload file to library
-          <input 
-            className="hidden" 
-            type="file" 
-            onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0])} 
-          />
-        </label>
+        <section className="mb-6 grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              className="theme-input min-h-11 w-full rounded-xl border border-gray-200 pl-10 pr-4 outline-none focus:border-blue-500"
+              placeholder="Search media library"
+              value={mediaSearch}
+              onChange={(event) => setMediaSearch(event.target.value)}
+            />
+          </label>
+          <label className="flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-sm font-black text-white shadow-sm transition hover:bg-blue-700">
+            <Upload className="h-5 w-5" />
+            Upload to library
+            <input
+              className="hidden"
+              type="file"
+              accept="image/*,video/*,application/pdf"
+              onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0])}
+            />
+          </label>
+        </section>
+        <p className="mb-4 text-sm font-semibold text-gray-500">{libraryItems.length} media item{libraryItems.length === 1 ? '' : 's'} visible.</p>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cms?.media.map((media) => (
-            <article key={media.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-              {media.mimeType.startsWith('image/') ? 
+          {libraryItems.map((media) => (
+            <article key={`${media.id}-${media.url}`} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              {media.mimeType.startsWith('image/') ?
                 <img className="h-44 w-full object-cover" src={media.url} alt={media.originalName} /> : 
+                media.mimeType.startsWith('video/') ?
+                <video className="h-44 w-full object-cover" src={media.url} muted preload="metadata" /> :
                 <div className="grid h-44 place-items-center border-b border-gray-100"><FileText className="h-10 w-10 text-gray-300" /></div>
               }
               <div className="grid gap-3 p-4">
                 <p className="truncate text-sm font-black text-gray-900">{media.originalName}</p>
+                <p className="truncate text-xs font-semibold text-gray-500">{media.mimeType} - {Math.round(media.size / 1024)} KB</p>
                 <input 
                   className="theme-input min-h-10 rounded-lg px-3 text-xs outline-none" 
                   value={media.url} 
@@ -6004,6 +6092,7 @@ export function AdminDashboard() {
               </div>
             </article>
           ))}
+          {libraryItems.length === 0 ? <p className="col-span-full rounded-2xl bg-white p-10 text-center text-sm font-semibold text-gray-500 shadow-sm">No media found. Upload images here, then select them from project forms.</p> : null}
         </div>
       </div>
     )

@@ -92,6 +92,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/system/deploy', [SystemMaintenanceController::class, 'deploy'])->middleware('admin.role:admin');
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
     Route::post('/admin/media', [BakhtechApiController::class, 'uploadMedia']);
+    Route::post('/admin/media/delete', [BakhtechApiController::class, 'deleteMediaFile']);
     Route::delete('/admin/media/{id}', [BakhtechApiController::class, 'deleteMedia']);
     Route::post('/admin/projects', [BakhtechApiController::class, 'createProject']);
     Route::post('/admin/projects/{id}/media', [BakhtechApiController::class, 'updateProjectMedia']);
