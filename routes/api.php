@@ -147,6 +147,8 @@ Route::middleware(RequireAdminToken::class)->group(function () {
         Route::get('/bookings/{id}', [BookingCmsController::class, 'booking']);
         Route::post('/bookings', [BookingCmsController::class, 'createBooking'])->middleware('admin.role:staff');
         Route::put('/bookings/{id}', [BookingCmsController::class, 'updateBooking'])->middleware('admin.role:staff');
+        Route::post('/bookings/bulk-delete', [BookingCmsController::class, 'deleteBookings'])->middleware('admin.role:admin');
+        Route::delete('/bookings/{id}', [BookingCmsController::class, 'deleteBooking'])->middleware('admin.role:admin');
         Route::put('/bookings/{id}/status', [BookingCmsController::class, 'updateBookingStatus'])->middleware('admin.role:staff');
         Route::post('/bookings/{id}/reschedule', [BookingCmsController::class, 'rescheduleBooking'])->middleware('admin.role:staff');
         Route::post('/bookings/{id}/cancel', [BookingCmsController::class, 'cancelBooking'])->middleware('admin.role:staff');

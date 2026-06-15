@@ -896,6 +896,17 @@ export const api = {
       body: JSON.stringify({ adminRemarks }),
     })
   },
+  deleteBookingCmsBooking(id: number) {
+    return request<{ deleted: number }>(`/api/admin/booking/bookings/${id}`, {
+      method: 'DELETE',
+    })
+  },
+  deleteBookingCmsBookings(ids: number[]) {
+    return request<{ deleted: number }>('/api/admin/booking/bookings/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    })
+  },
   bookingAvailabilityAdmin(calendarId?: number) {
     return request<{ rules: BookingAvailabilityRule[]; blackouts: Array<{ id: number; calendarId: number | null; title: string; startsAt: string; endsAt: string; reason: string; isRecurring: boolean }> }>(`/api/admin/booking/availability${calendarId ? `?calendarId=${calendarId}` : ''}`)
   },

@@ -157,6 +157,25 @@ class BookingCmsController extends Controller
         return ['booking' => $this->service->updateBooking($id, $data, $this->admin($request), $request->ip())];
     }
 
+    public function deleteBooking(Request $request, int $id)
+    {
+        $deleted = $this->service->deleteBookings([$id], $this->admin($request), $request->ip());
+
+        return ['deleted' => $deleted];
+    }
+
+    public function deleteBookings(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['required', 'integer', 'distinct', 'exists:bookings,id'],
+        ]);
+
+        $deleted = $this->service->deleteBookings(array_map('intval', $data['ids']), $this->admin($request), $request->ip());
+
+        return ['deleted' => $deleted];
+    }
+
     public function updateBookingStatus(Request $request, int $id)
     {
         $data = $request->validate([

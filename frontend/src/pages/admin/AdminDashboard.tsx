@@ -671,6 +671,7 @@ export function AdminDashboard() {
   const [bookingCmsBookings, setBookingCmsBookings] = useState<BookingCmsBooking[]>([])
   const [bookingCmsBookingsMeta, setBookingCmsBookingsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
   const [expandedBookingId, setExpandedBookingId] = useState<number | null>(null)
+  const [selectedBookingIds, setSelectedBookingIds] = useState<number[]>([])
   const [bookingAvailabilityRules, setBookingAvailabilityRules] = useState<BookingAvailabilityRule[]>([])
   const [bookingCmsSettings, setBookingCmsSettings] = useState<Record<string, string>>({})
   const [invoiceOverview, setInvoiceOverview] = useState<InvoiceOverview | null>(initialAdminCache?.invoiceOverview ?? null)
@@ -1170,6 +1171,7 @@ export function AdminDashboard() {
         total: bookingsResult.meta.total,
         lastPage: bookingsResult.meta.lastPage,
       })
+      setSelectedBookingIds((current) => current.filter((id) => bookingsResult.data.some((booking) => booking.id === id)))
       setBookingAvailabilityRules(availabilityResult.rules)
       setBookingCmsSettings(settingsResult.settings)
       if (expandedBookingId && !bookingsResult.data.some((booking) => booking.id === expandedBookingId)) {
@@ -1642,6 +1644,66 @@ export function AdminDashboard() {
       await loadBookingCmsData()
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : 'Unable to cancel booking.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function toggleBookingSelection(id: number, checked: boolean) {
+    setSelectedBookingIds((current) => checked
+      ? Array.from(new Set([...current, id]))
+      : current.filter((item) => item !== id)
+    )
+  }
+
+  function toggleCurrentBookingPageSelection(checked: boolean) {
+    const currentPageIds = bookingCmsBookings.map((booking) => booking.id)
+    setSelectedBookingIds((current) => checked
+      ? Array.from(new Set([...current, ...currentPageIds]))
+      : current.filter((id) => !currentPageIds.includes(id))
+    )
+  }
+
+  async function deleteBookingCmsBooking(booking: BookingCmsBooking) {
+    if (!window.confirm(`Permanently delete booking for ${booking.customer.name}? This cannot be undone.`)) return
+
+    setSaving(true)
+    setError('')
+    try {
+      await api.deleteBookingCmsBooking(booking.id)
+      setSelectedBookingIds((current) => current.filter((id) => id !== booking.id))
+      setExpandedBookingId((current) => current === booking.id ? null : current)
+      notify('Booking deleted.')
+      const nextPage = bookingCmsBookings.length <= 1 && bookingCmsBookingsMeta.page > 1
+        ? bookingCmsBookingsMeta.page - 1
+        : bookingCmsBookingsMeta.page
+      await loadBookingCmsData(nextPage, bookingCmsBookingsMeta.perPage)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete booking.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteSelectedBookingCmsBookings() {
+    if (selectedBookingIds.length === 0) return
+    if (!window.confirm(`Permanently delete ${selectedBookingIds.length} selected booking${selectedBookingIds.length === 1 ? '' : 's'}? This cannot be undone.`)) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const ids = [...selectedBookingIds]
+      await api.deleteBookingCmsBookings(ids)
+      setSelectedBookingIds([])
+      setExpandedBookingId((current) => current && ids.includes(current) ? null : current)
+      notify('Selected bookings deleted.')
+      const deletedOnPage = bookingCmsBookings.filter((booking) => ids.includes(booking.id)).length
+      const nextPage = deletedOnPage >= bookingCmsBookings.length && bookingCmsBookingsMeta.page > 1
+        ? bookingCmsBookingsMeta.page - 1
+        : bookingCmsBookingsMeta.page
+      await loadBookingCmsData(nextPage, bookingCmsBookingsMeta.perPage)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete selected bookings.')
     } finally {
       setSaving(false)
     }
@@ -6505,6 +6567,10 @@ export function AdminDashboard() {
       const date = new Date(value)
       return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
     }
+    const currentPageBookingIds = bookingCmsBookings.map((booking) => booking.id)
+    const selectedBookingSet = new Set(selectedBookingIds)
+    const selectedOnCurrentPage = currentPageBookingIds.filter((id) => selectedBookingSet.has(id))
+    const allCurrentPageSelected = currentPageBookingIds.length > 0 && selectedOnCurrentPage.length === currentPageBookingIds.length
 
     return (
       <div className="grid gap-4">
@@ -6514,7 +6580,13 @@ export function AdminDashboard() {
               <h3 className="text-xl font-black">Bookings</h3>
               <p className="text-soft mt-1 text-sm">Compact list view. Expand a row to see full booking information.</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedBookingIds.length > 0 ? (
+                <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5" disabled={saving} onClick={() => void deleteSelectedBookingCmsBookings()}>
+                  <Trash2 className="h-4 w-4" />
+                  Delete selected ({selectedBookingIds.length})
+                </Button>
+              ) : null}
               <span className="text-soft text-sm font-bold">Rows</span>
               <select
                 className="theme-input min-h-10 rounded-xl px-3 text-sm outline-none"
@@ -6526,7 +6598,16 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="hidden grid-cols-[44px_1.2fr_1fr_1fr_0.8fr_150px] gap-4 border-b border-[var(--line)] bg-gray-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-gray-500 lg:grid">
+          <div className="hidden grid-cols-[44px_44px_1.2fr_1fr_1fr_0.8fr_150px] gap-4 border-b border-[var(--line)] bg-gray-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-gray-500 lg:grid">
+            <span className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded"
+                checked={allCurrentPageSelected}
+                aria-label="Select all bookings on this page"
+                onChange={(event) => toggleCurrentBookingPageSelection(event.target.checked)}
+              />
+            </span>
             <span />
             <span>Customer</span>
             <span>Service</span>
@@ -6541,35 +6622,46 @@ export function AdminDashboard() {
 
               return (
                 <article key={booking.id} className="bg-white">
-                  <button
-                    type="button"
-                    className="grid w-full gap-3 px-4 py-4 text-left transition hover:bg-gray-50 lg:grid-cols-[44px_1.2fr_1fr_1fr_0.8fr_150px] lg:items-center lg:gap-4"
-                    onClick={() => setExpandedBookingId(expanded ? null : booking.id)}
-                    aria-expanded={expanded}
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white">
-                      <ChevronRight className={cn('h-4 w-4 transition-transform', expanded ? 'rotate-90' : '')} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-base font-black text-[var(--foreground)]">{booking.customer.name || 'Unnamed customer'}</span>
-                      <span className="text-soft block truncate text-sm">{booking.customer.email || 'No email'}</span>
-                    </span>
-                    <span className="min-w-0">
-                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Service</span>
-                      <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.serviceType || booking.eventTypeName || 'No service'}</span>
-                    </span>
-                    <span className="min-w-0">
-                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Date</span>
-                      <span className="block text-sm font-bold text-[var(--foreground)]">{formatBookingDate(booking.startsAt)}</span>
-                    </span>
-                    <span className="min-w-0">
-                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Calendar</span>
-                      <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.calendarName || 'No calendar'}</span>
-                    </span>
-                    <span>
-                      <span className={bookingStatusClass(booking.status)}>{booking.status}</span>
-                    </span>
-                  </button>
+                  <div className="grid gap-3 px-4 py-4 transition hover:bg-gray-50 lg:grid-cols-[44px_1fr] lg:items-center lg:gap-0">
+                    <label className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded"
+                        checked={selectedBookingSet.has(booking.id)}
+                        aria-label={`Select booking for ${booking.customer.name || 'customer'}`}
+                        onChange={(event) => toggleBookingSelection(booking.id, event.target.checked)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="grid w-full gap-3 text-left lg:grid-cols-[44px_1.2fr_1fr_1fr_0.8fr_150px] lg:items-center lg:gap-4"
+                      onClick={() => setExpandedBookingId(expanded ? null : booking.id)}
+                      aria-expanded={expanded}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white">
+                        <ChevronRight className={cn('h-4 w-4 transition-transform', expanded ? 'rotate-90' : '')} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-base font-black text-[var(--foreground)]">{booking.customer.name || 'Unnamed customer'}</span>
+                        <span className="text-soft block truncate text-sm">{booking.customer.email || 'No email'}</span>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="text-soft block text-xs font-black uppercase lg:hidden">Service</span>
+                        <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.serviceType || booking.eventTypeName || 'No service'}</span>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="text-soft block text-xs font-black uppercase lg:hidden">Date</span>
+                        <span className="block text-sm font-bold text-[var(--foreground)]">{formatBookingDate(booking.startsAt)}</span>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="text-soft block text-xs font-black uppercase lg:hidden">Calendar</span>
+                        <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.calendarName || 'No calendar'}</span>
+                      </span>
+                      <span>
+                        <span className={bookingStatusClass(booking.status)}>{booking.status}</span>
+                      </span>
+                    </button>
+                  </div>
 
                   {expanded ? (
                     <div className="grid gap-5 border-t border-[var(--line)] bg-gray-50 px-4 py-5">
@@ -6630,6 +6722,7 @@ export function AdminDashboard() {
                           </select>
                           <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" disabled={saving} onClick={() => void rescheduleBookingCmsBooking(booking)}><CalendarDays className="h-4 w-4" />Reschedule</Button>
                           <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5" disabled={saving || booking.status === 'cancelled'} onClick={() => void cancelBookingCmsBooking(booking)}><Trash2 className="h-4 w-4" />Cancel</Button>
+                          <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 bg-red-500/5 text-red-600 hover:bg-red-500/10" disabled={saving} onClick={() => void deleteBookingCmsBooking(booking)}><Trash2 className="h-4 w-4" />Delete</Button>
                         </div>
                       </div>
                     </div>

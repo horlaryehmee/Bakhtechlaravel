@@ -201,6 +201,43 @@ class BookingCmsService
         });
     }
 
+    public function deleteBookings(array $ids, object $admin, ?string $ip): int
+    {
+        $ids = collect($ids)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($ids, $admin, $ip) {
+            $bookings = $this->repository->bookings()
+                ->whereIn('bookings.id', $ids)
+                ->get();
+
+            if ($bookings->isEmpty()) {
+                throw new HttpResponseException(response()->json(['message' => 'No matching bookings found.'], 404));
+            }
+
+            foreach ($bookings as $booking) {
+                $this->audit($admin, 'booking.deleted', 'booking', (int) $booking->id, [
+                    'customer' => $booking->name,
+                    'email' => $booking->email,
+                    'status' => $booking->status,
+                    'startsAt' => $booking->starts_at,
+                ], $ip);
+            }
+
+            return DB::table('bookings')
+                ->whereIn('id', $bookings->pluck('id')->map(fn ($id) => (int) $id)->all())
+                ->delete();
+        });
+    }
+
     public function updateBookingStatus(int $id, string $status, object $admin, ?string $remarks, ?string $ip): array
     {
         $existing = $this->repository->booking($id);
