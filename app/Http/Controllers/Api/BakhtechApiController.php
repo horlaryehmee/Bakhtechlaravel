@@ -242,7 +242,7 @@ class BakhtechApiController extends Controller
             if (is_file($path)) {
                 return response()->file($path, [
                     'Cache-Control' => 'public, max-age=31536000, immutable',
-                    'Content-Type' => @mime_content_type($path) ?: 'application/octet-stream',
+                    'Content-Type' => $this->mediaMimeType($safeFilename, $path),
                 ]);
             }
         }
@@ -1635,6 +1635,26 @@ class BakhtechApiController extends Controller
             storage_path('app/public/uploads/'.$safeFilename),
             public_path('uploads/'.$safeFilename),
         ];
+    }
+
+    private function mediaMimeType(string $filename, ?string $path = null): string
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $knownTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'avif' => 'image/avif',
+            'pdf' => 'application/pdf',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov' => 'video/quicktime',
+            'ogg' => 'video/ogg',
+        ];
+
+        return $knownTypes[$extension] ?? ($path && is_file($path) ? (@mime_content_type($path) ?: 'application/octet-stream') : 'application/octet-stream');
     }
 
     private function mediaShape(object $row): array

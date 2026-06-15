@@ -5433,7 +5433,7 @@ export function AdminDashboard() {
                     {media.mimeType.startsWith('video/') ? (
                       <video className="h-36 w-full object-cover" src={media.url} muted preload="metadata" />
                     ) : (
-                      <img className="h-36 w-full object-cover" src={media.url} alt={media.originalName} />
+                      <SafeImage className="h-36 w-full object-cover" src={media.url} fallbackSrc={adminMediaFallbackSrc(media.originalName)} alt={media.originalName} />
                     )}
                     <span className="block truncate p-3 text-xs font-black text-gray-800">{media.originalName}</span>
                   </button>
@@ -6130,7 +6130,7 @@ export function AdminDashboard() {
           {libraryItems.map((media) => (
             <article key={`${media.id}-${media.url}`} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
               {media.mimeType.startsWith('image/') ?
-                <img className="h-44 w-full object-cover" src={media.url} alt={media.originalName} /> : 
+                <SafeImage className="h-44 w-full object-cover" src={media.url} fallbackSrc={adminMediaFallbackSrc(media.originalName)} alt={media.originalName} /> : 
                 media.mimeType.startsWith('video/') ?
                 <video className="h-44 w-full object-cover" src={media.url} muted preload="metadata" /> :
                 <div className="grid h-44 place-items-center border-b border-gray-100"><FileText className="h-10 w-10 text-gray-300" /></div>
