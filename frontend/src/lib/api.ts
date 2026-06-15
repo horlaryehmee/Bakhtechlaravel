@@ -1094,8 +1094,8 @@ export const api = {
     })
   },
   updateProject(id: number, project: ProjectInput) {
-    return request<{ project: Project }>(`/api/admin/projects/${id}`, {
-      method: 'PUT',
+    return request<{ project: Project }>(`/api/admin/projects/${id}/save`, {
+      method: 'POST',
       body: JSON.stringify(project),
     })
   },

@@ -913,11 +913,13 @@ class BakhtechApiController extends Controller
     public function createProject(Request $request)
     {
         $payload = $this->projectPayload($request);
-        if ($payload['title'] === '' || $payload['category'] === '') {
+        if (($payload['title'] ?? '') === '' || ($payload['category'] ?? '') === '') {
             return response()->json(['message' => 'Title and category are required.'], 400);
         }
 
-        $payload['slug'] = $this->uniqueSlug('projects', $payload['slug'] ?: $payload['title']);
+        if (Schema::hasColumn('projects', 'slug')) {
+            $payload['slug'] = $this->uniqueSlug('projects', ($payload['slug'] ?? '') ?: $payload['title']);
+        }
         $payload['created_at'] = now();
         $payload['updated_at'] = now();
         $id = DB::table('projects')->insertGetId($payload);
@@ -933,10 +935,20 @@ class BakhtechApiController extends Controller
         }
 
         $payload = $this->projectPayload($request, $existing);
-        $payload['slug'] = $this->uniqueSlug('projects', $payload['slug'] ?: $payload['title'], $id);
+        if (Schema::hasColumn('projects', 'slug')) {
+            $payload['slug'] = $this->uniqueSlug('projects', ($payload['slug'] ?? '') ?: ($payload['title'] ?? $existing->title ?? 'project'), $id);
+        }
         $payload['updated_at'] = now();
 
-        DB::table('projects')->where('id', $id)->update($payload);
+        try {
+            DB::table('projects')->where('id', $id)->update($payload);
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json([
+                'message' => 'Unable to update this project. Check the projects table columns and run migrations.',
+            ], 500);
+        }
 
         return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
     }
@@ -1462,23 +1474,23 @@ class BakhtechApiController extends Controller
     private function projectShape(object $row): array
     {
         return [
-            'id' => $row->id,
-            'title' => $row->title,
-            'slug' => $row->slug,
-            'category' => $row->category,
-            'summary' => $row->summary ?: '',
-            'description' => $row->description ?: '',
-            'image' => $row->image ?: '',
+            'id' => (int) $row->id,
+            'title' => $row->title ?? '',
+            'slug' => $row->slug ?? Str::slug($row->title ?? 'project'),
+            'category' => $row->category ?? '',
+            'summary' => ($row->summary ?? '') ?: '',
+            'description' => ($row->description ?? '') ?: '',
+            'image' => ($row->image ?? '') ?: '',
             'coverImage' => ($row->cover_image ?? '') ?: '',
             'videoUrl' => ($row->video_url ?? '') ?: '',
             'websiteUrl' => ($row->website_url ?? '') ?: '',
             'services' => json_decode(($row->services_json ?? '') ?: '[]', true),
             'metrics' => json_decode(($row->metrics_json ?? '') ?: '{}', true),
             'isFeatured' => (bool) ($row->is_featured ?? false),
-            'status' => $row->status,
+            'status' => $row->status ?? 'published',
             'sortOrder' => (int) ($row->sort_order ?? 0),
-            'createdAt' => (string) $row->created_at,
-            'updatedAt' => (string) $row->updated_at,
+            'createdAt' => (string) ($row->created_at ?? ''),
+            'updatedAt' => (string) ($row->updated_at ?? ''),
         ];
     }
 
