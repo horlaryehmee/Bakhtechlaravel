@@ -1578,9 +1578,62 @@ export function AdminDashboard() {
   }
 
   async function updateBookingCmsStatus(booking: BookingCmsBooking, status: string) {
-    const result = await api.updateBookingCmsStatus(booking.id, status, booking.adminRemarks)
-    setBookingCmsBookings((current) => current.map((item) => (item.id === booking.id ? result.booking : item)))
-    notify('Booking status updated.')
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.updateBookingCmsStatus(booking.id, status, booking.adminRemarks)
+      setBookingCmsBookings((current) => current.map((item) => (item.id === booking.id ? result.booking : item)))
+      notify('Booking status updated.')
+      await loadBookingCmsData()
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : 'Unable to update booking status.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function bookingDateTimeInputValue(value: string) {
+    if (!value) return ''
+    const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+    const match = normalized.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/)
+    return match?.[1] ?? ''
+  }
+
+  async function rescheduleBookingCmsBooking(booking: BookingCmsBooking) {
+    const currentValue = bookingDateTimeInputValue(booking.startsAt)
+    const startsAt = window.prompt('Enter the new start time for this booking (YYYY-MM-DDTHH:mm).', currentValue)
+    if (!startsAt) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.rescheduleBookingCmsBooking(booking.id, startsAt, booking.durationMinutes)
+      setBookingCmsBookings((current) => current.map((item) => (item.id === booking.id ? result.booking : item)))
+      notify('Booking rescheduled.')
+      await loadBookingCmsData()
+    } catch (rescheduleError) {
+      setError(rescheduleError instanceof Error ? rescheduleError.message : 'Unable to reschedule booking.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function cancelBookingCmsBooking(booking: BookingCmsBooking) {
+    if (!window.confirm(`Cancel booking for ${booking.customer.name}?`)) return
+    const adminRemarks = window.prompt('Add a cancellation note for internal records.', booking.adminRemarks) ?? booking.adminRemarks
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.cancelBookingCmsBooking(booking.id, adminRemarks)
+      setBookingCmsBookings((current) => current.map((item) => (item.id === booking.id ? result.booking : item)))
+      notify('Booking cancelled.')
+      await loadBookingCmsData()
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : 'Unable to cancel booking.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function saveBookingCalendar(event: FormEvent<HTMLFormElement>) {
@@ -6461,8 +6514,8 @@ export function AdminDashboard() {
                   <option value="cancelled">Cancelled</option>
                   <option value="closed">Closed</option>
                 </select>
-                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]"><CalendarDays className="h-4 w-4" />Reschedule</Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5"><Trash2 className="h-4 w-4" />Cancel</Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" disabled={saving} onClick={() => void rescheduleBookingCmsBooking(booking)}><CalendarDays className="h-4 w-4" />Reschedule</Button>
+                <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5" disabled={saving || booking.status === 'cancelled'} onClick={() => void cancelBookingCmsBooking(booking)}><Trash2 className="h-4 w-4" />Cancel</Button>
               </div>
             </div>
           </article>

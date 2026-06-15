@@ -880,6 +880,18 @@ export const api = {
       body: JSON.stringify({ status, adminRemarks }),
     })
   },
+  rescheduleBookingCmsBooking(id: number, startsAt: string, durationMinutes?: number) {
+    return request<{ booking: BookingCmsBooking }>(`/api/admin/booking/bookings/${id}/reschedule`, {
+      method: 'POST',
+      body: JSON.stringify({ startsAt, durationMinutes }),
+    })
+  },
+  cancelBookingCmsBooking(id: number, adminRemarks = '') {
+    return request<{ booking: BookingCmsBooking }>(`/api/admin/booking/bookings/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ adminRemarks }),
+    })
+  },
   bookingAvailabilityAdmin(calendarId?: number) {
     return request<{ rules: BookingAvailabilityRule[]; blackouts: Array<{ id: number; calendarId: number | null; title: string; startsAt: string; endsAt: string; reason: string; isRecurring: boolean }> }>(`/api/admin/booking/availability${calendarId ? `?calendarId=${calendarId}` : ''}`)
   },
