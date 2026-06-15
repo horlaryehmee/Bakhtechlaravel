@@ -90,6 +90,7 @@ type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'pho
 type MediaPickerState = {
   field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>
   title: string
+  accept: string
 } | null
 type BookingQuestion = {
   key: string
@@ -146,7 +147,7 @@ function loadImageElement(file: File) {
 
 function uploadErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && error.status >= 500) {
-    return 'Upload could not be completed because the server returned an unexpected response. Check public/uploads permission and PHP upload limits, then try again.'
+    return 'Upload did not complete. You can choose an existing library item, or check public/uploads permission and PHP upload limits before trying another upload.'
   }
 
   return error instanceof Error ? error.message : fallback
@@ -5195,9 +5196,9 @@ export function AdminDashboard() {
       setProjects((current) => current.map((project) => (project.id === result.project.id ? result.project : project)))
       notify('Project image updated.')
     }
-    const uploadProjectMedia = async (
+    const uploadMediaForPicker = async (
       file: File,
-      field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>,
+      picker: NonNullable<MediaPickerState>,
     ) => {
       setError('')
       try {
@@ -5207,12 +5208,13 @@ export function AdminDashboard() {
         }
         const result = await api.uploadMedia(uploadTarget)
         setCms((current) => (current ? { ...current, media: [result.media, ...current.media.filter((item) => item.url !== result.media.url)] } : current))
-        await persistProjectMedia(field, result.media.url)
+        await persistProjectMedia(picker.field, result.media.url)
         if (result.warning) {
           setError(result.warning)
         }
+        setMediaPicker(null)
       } catch (uploadError) {
-        setError(uploadErrorMessage(uploadError, 'Unable to update project image.'))
+        setError(uploadErrorMessage(uploadError, 'Unable to upload and select this media.'))
       }
     }
     const pickerItems = (cms?.media ?? []).filter((media) => media.mimeType.startsWith(mediaPicker?.field === 'videoUrl' ? 'video/' : 'image/'))
@@ -5240,29 +5242,13 @@ export function AdminDashboard() {
             </button>
           ) : null}
         </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60">
-            <Upload className="h-5 w-5 text-blue-600" />
-            Upload to library
-            <input
-              className="hidden"
-              type="file"
-              accept={accept}
-              onChange={(event) => {
-                const selectedFile = event.target.files?.[0]
-                event.currentTarget.value = ''
-                if (selectedFile) {
-                  void uploadProjectMedia(selectedFile, field)
-                }
-              }}
-            />
-          </label>
+        <div className="mt-4">
           <button
             type="button"
-            className="flex min-h-24 flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white p-4 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60"
+            className="flex min-h-24 w-full flex-col items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white p-4 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60"
             onClick={() => {
               setMediaSearch('')
-              setMediaPicker({ field, title })
+              setMediaPicker({ field, title, accept })
             }}
           >
             <Images className="h-5 w-5 text-blue-600" />
@@ -5400,6 +5386,22 @@ export function AdminDashboard() {
                   <h3 className="mt-1 text-xl font-black text-gray-900">Choose {mediaPicker.title}</h3>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
+                  <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700 transition hover:bg-blue-100">
+                    <Upload className="h-4 w-4" />
+                    Upload to library
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept={mediaPicker.accept}
+                      onChange={(event) => {
+                        const selectedFile = event.target.files?.[0]
+                        event.currentTarget.value = ''
+                        if (selectedFile) {
+                          void uploadMediaForPicker(selectedFile, mediaPicker)
+                        }
+                      }}
+                    />
+                  </label>
                   <input
                     className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
                     placeholder="Search media"
