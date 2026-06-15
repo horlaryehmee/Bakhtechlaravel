@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BakhtechApiController extends Controller
@@ -223,6 +224,30 @@ class BakhtechApiController extends Controller
         }
 
         return ['page' => $this->pageShape($page)];
+    }
+
+    public function uploadedMedia(string $filename)
+    {
+        $safeFilename = basename($filename);
+        if ($safeFilename !== $filename) {
+            abort(404);
+        }
+
+        $paths = [
+            storage_path('app/public/uploads/'.$safeFilename),
+            public_path('uploads/'.$safeFilename),
+        ];
+
+        foreach ($paths as $path) {
+            if (is_file($path)) {
+                return response()->file($path, [
+                    'Cache-Control' => 'public, max-age=31536000, immutable',
+                    'Content-Type' => @mime_content_type($path) ?: 'application/octet-stream',
+                ]);
+            }
+        }
+
+        abort(404);
     }
 
     public function publicReviews()
@@ -843,23 +868,17 @@ class BakhtechApiController extends Controller
         $file = $data['file'];
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = (string) Str::uuid().'.'.$extension;
-        $uploadPath = public_path('uploads');
-        if (! is_dir($uploadPath)) {
-            if (! @mkdir($uploadPath, 0755, true) && ! is_dir($uploadPath)) {
-                return response()->json(['message' => 'Unable to create public/uploads. Please create the folder and make it writable.'], 422);
-            }
-        }
-
-        if (! is_writable($uploadPath)) {
-            return response()->json(['message' => 'public/uploads is not writable. Please update the folder permission, then upload again.'], 422);
-        }
 
         try {
-            $file->move($uploadPath, $filename);
+            $stored = Storage::disk('public')->putFileAs('uploads', $file, $filename);
         } catch (\Throwable $error) {
             report($error);
 
-            return response()->json(['message' => 'Unable to save this file. Check the file type, file size, and public/uploads permission.'], 422);
+            $stored = false;
+        }
+
+        if (! $stored) {
+            return response()->json(['message' => 'Unable to save this file. Check storage/app/public permission and PHP upload limits.'], 422);
         }
 
         $mediaPayload = [
@@ -867,7 +886,7 @@ class BakhtechApiController extends Controller
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getClientMimeType() ?: 'application/octet-stream',
             'size' => $file->getSize() ?: 0,
-            'url' => '/uploads/'.$filename,
+            'url' => '/api/uploads/'.$filename,
             'created_at' => now(),
             'updated_at' => now(),
         ];
@@ -901,9 +920,10 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Media not found.'], 404);
         }
 
-        $path = public_path('uploads/'.$media->filename);
-        if (is_file($path)) {
-            unlink($path);
+        foreach ($this->mediaPaths((string) $media->filename) as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
         }
 
         DB::table('media')->where('id', $id)->delete();
@@ -919,15 +939,17 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Media file not found.'], 404);
         }
 
-        $path = public_path('uploads/'.$filename);
-        if (is_file($path)) {
-            @unlink($path);
+        foreach ($this->mediaPaths($filename) as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
         }
 
         if (Schema::hasTable('media')) {
             DB::table('media')
                 ->where('filename', $filename)
                 ->orWhere('url', '/uploads/'.$filename)
+                ->orWhere('url', '/api/uploads/'.$filename)
                 ->delete();
         }
 
@@ -1569,9 +1591,17 @@ class BakhtechApiController extends Controller
             });
         }
 
-        $uploadPath = public_path('uploads');
-        if (is_dir($uploadPath)) {
-            foreach (glob($uploadPath.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+        $locations = [
+            ['path' => storage_path('app/public/uploads'), 'urlPrefix' => '/api/uploads/'],
+            ['path' => public_path('uploads'), 'urlPrefix' => '/uploads/'],
+        ];
+
+        foreach ($locations as $location) {
+            if (! is_dir($location['path'])) {
+                continue;
+            }
+
+            foreach (glob($location['path'].DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
                 if (! is_file($path)) {
                     continue;
                 }
@@ -1581,19 +1611,30 @@ class BakhtechApiController extends Controller
                     continue;
                 }
 
+                $knownFilenames[$filename] = true;
                 $items->push($this->mediaShape((object) [
-                    'id' => -abs((int) sprintf('%u', crc32($filename))),
+                    'id' => -abs((int) sprintf('%u', crc32($location['urlPrefix'].$filename))),
                     'filename' => $filename,
                     'original_name' => $filename,
                     'mime_type' => @mime_content_type($path) ?: 'application/octet-stream',
                     'size' => filesize($path) ?: 0,
-                    'url' => '/uploads/'.$filename,
+                    'url' => $location['urlPrefix'].$filename,
                     'created_at' => date('Y-m-d H:i:s', filemtime($path) ?: time()),
                 ]));
             }
         }
 
         return $items->sortByDesc('createdAt')->values();
+    }
+
+    private function mediaPaths(string $filename): array
+    {
+        $safeFilename = basename($filename);
+
+        return [
+            storage_path('app/public/uploads/'.$safeFilename),
+            public_path('uploads/'.$safeFilename),
+        ];
     }
 
     private function mediaShape(object $row): array

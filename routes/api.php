@@ -19,6 +19,7 @@ Route::post('/reviews/trustpilot/trustindex-webhook', [BakhtechApiController::cl
 Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
 Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
 Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
+Route::get('/uploads/{filename}', [BakhtechApiController::class, 'uploadedMedia'])->where('filename', '[^/]+');
 Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
 Route::get('/pricing', [PricingController::class, 'publicIndex']);
 Route::post('/pricing/checkout', [PricingController::class, 'createDocumentFromPlan'])->middleware('throttle:20,1');
