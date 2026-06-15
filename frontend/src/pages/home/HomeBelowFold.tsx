@@ -104,11 +104,12 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
   const youtubeThumbnailUrl = getYoutubeThumbnailUrl(videoUrl)
   const coverImage = project.coverImage?.trim()
   const image = project.image?.trim()
+  const displayImage = image || coverImage
 
   if (youtubeThumbnailUrl) {
     return (
       <>
-        <SafeImage src={coverImage || youtubeThumbnailUrl} fallbackSrc={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        <SafeImage src={displayImage || youtubeThumbnailUrl} fallbackSrc={youtubeThumbnailUrl || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
@@ -121,8 +122,8 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
   if (isVideoUrl(videoUrl)) {
     return (
       <>
-        {coverImage || image ? (
-          <SafeImage src={coverImage || image} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        {displayImage ? (
+          <SafeImage src={displayImage} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
             <source src={videoUrl} />
@@ -137,7 +138,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     )
   }
 
-  return <SafeImage src={image || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+  return <SafeImage src={displayImage || '/showcase/showcase-01.jpg'} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
 }
 
 function ProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: VideoMedia) => void }) {
