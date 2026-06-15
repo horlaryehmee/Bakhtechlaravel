@@ -5163,14 +5163,43 @@ export function AdminDashboard() {
       field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>,
       url: string,
     ) => {
+      const nextForm = { ...projectForm, [field]: url }
       updateProjectField(field, url)
       if (!editingProject) {
         return
       }
-      const result = await api.updateProjectMedia(editingProject.id, field, url)
+
+      let result: { project: Project }
+      try {
+        result = await api.updateProjectMedia(editingProject.id, field, url)
+      } catch {
+        try {
+          result = await api.updateProject(editingProject.id, nextForm)
+        } catch {
+          result = await api.updateProjectLegacy(editingProject.id, nextForm)
+        }
+      }
       setEditingProject(result.project)
+      setProjectForm(toInput(result.project))
       setProjects((current) => current.map((project) => (project.id === result.project.id ? result.project : project)))
       notify('Project image updated.')
+    }
+    const uploadProjectMedia = async (
+      file: File,
+      field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>,
+    ) => {
+      setError('')
+      try {
+        const uploadTarget = await optimizeImageFile(file)
+        if (uploadTarget !== file) {
+          notify('Image optimized for upload.')
+        }
+        const result = await api.uploadMedia(uploadTarget)
+        setCms((current) => (current ? { ...current, media: [result.media, ...current.media.filter((item) => item.url !== result.media.url)] } : current))
+        await persistProjectMedia(field, result.media.url)
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : 'Unable to update project image.')
+      }
     }
     const pickerItems = (cms?.media ?? []).filter((media) => media.mimeType.startsWith(mediaPicker?.field === 'videoUrl' ? 'video/' : 'image/'))
     const filteredPickerItems = pickerItems.filter((media) => {
@@ -5205,7 +5234,13 @@ export function AdminDashboard() {
               className="hidden"
               type="file"
               accept={accept}
-              onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => persistProjectMedia(field, media.url))}
+              onChange={(event) => {
+                const selectedFile = event.target.files?.[0]
+                event.currentTarget.value = ''
+                if (selectedFile) {
+                  void uploadProjectMedia(selectedFile, field)
+                }
+              }}
             />
           </label>
           <button

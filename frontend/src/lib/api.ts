@@ -1109,6 +1109,12 @@ export const api = {
       body: JSON.stringify(project),
     })
   },
+  updateProjectLegacy(id: number, project: ProjectInput) {
+    return request<{ project: Project }>(`/api/admin/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(project),
+    })
+  },
   updateProjectMedia(id: number, field: 'image' | 'coverImage' | 'videoUrl', value: string) {
     return request<{ project: Project }>(`/api/admin/projects/${id}/media`, {
       method: 'POST',
