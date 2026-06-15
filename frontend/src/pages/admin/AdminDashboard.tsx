@@ -5067,6 +5067,47 @@ export function AdminDashboard() {
       setShowProjectForm(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
+    const fieldClass = 'theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500'
+    const labelClass = 'grid gap-2 text-sm font-bold text-gray-700'
+    const renderMediaInput = (
+      title: string,
+      text: string,
+      value: string,
+      accept: string,
+      field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>,
+      placeholder: string,
+    ) => (
+      <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-black uppercase tracking-wide text-gray-900">{title}</h4>
+            <p className="mt-1 text-xs font-semibold leading-5 text-gray-500">{text}</p>
+          </div>
+          {value ? (
+            <button type="button" className="text-xs font-black text-red-500" onClick={() => updateProjectField(field, '')}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-center text-sm font-black text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/60">
+          <Upload className="h-5 w-5 text-blue-600" />
+          Upload file
+          <input
+            className="hidden"
+            type="file"
+            accept={accept}
+            onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updateProjectField(field, media.url))}
+          />
+        </label>
+        {value ? <div className="mt-4"><ProjectMediaPreview src={value} title={projectForm.title} /></div> : null}
+        <input
+          className={`${fieldClass} mt-4 w-full text-sm`}
+          placeholder={placeholder}
+          value={value}
+          onChange={(event) => updateProjectField(field, event.target.value)}
+        />
+      </section>
+    )
 
     return (
       <div>
@@ -5096,133 +5137,87 @@ export function AdminDashboard() {
           </div>
         </section>
         {showProjectForm ? (
-          <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4 mb-6">
-              <h3 className="text-2xl font-black text-gray-900">{editingProject ? 'Edit project' : 'Add project'}</h3>
-              <div className="flex gap-2">
-                {editingProject && <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={openNewProjectForm}><Plus className="h-4 w-4 mr-2" />New</Button>}
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={resetProjectForm}><X className="h-4 w-4 mr-2" />Close</Button>
+          <section className="mb-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="flex flex-col gap-4 border-b border-gray-100 bg-gray-50/70 p-5 md:flex-row md:items-center md:justify-between md:p-6">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">{editingProject ? 'Editing project' : 'New project'}</p>
+                <h3 className="mt-1 text-2xl font-black text-gray-900">{editingProject ? projectForm.title || 'Edit project' : 'Add project'}</h3>
+                <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-gray-500">Use the primary image for the portfolio card. The cover image is only a fallback for video presentations.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {editingProject ? <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 bg-white" onClick={openNewProjectForm}><Plus className="h-4 w-4" />New</Button> : null}
+                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 bg-white" onClick={resetProjectForm}><X className="h-4 w-4" />Close</Button>
               </div>
             </div>
-            <form className="grid gap-4" onSubmit={saveProject}>
-              <input 
-                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                placeholder="Project title" 
-                value={projectForm.title} 
-                onChange={(e) => updateProjectField('title', e.target.value)} 
-                required 
-              />
-              <div className="grid gap-4 md:grid-cols-2">
-                <input 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  placeholder="Category" 
-                  value={projectForm.category} 
-                  onChange={(e) => updateProjectField('category', e.target.value)} 
-                  required 
-                />
-                <select 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  value={projectForm.status} 
-                  onChange={(e) => updateProjectField('status', e.target.value as ProjectInput['status'])}
-                >
-                  <option value="published">Published</option>
-                  <option value="draft">Draft</option>
-                </select>
+
+            <form className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-6 xl:grid-cols-[minmax(0,1fr)_26rem]" onSubmit={saveProject}>
+              <div className="grid gap-5">
+                <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
+                  <h4 className="text-lg font-black text-gray-900">Project details</h4>
+                  <div className="mt-5 grid gap-4">
+                    <label className={labelClass}>
+                      Project title
+                      <input className={fieldClass} placeholder="e.g. Celeb Beauty Clinic" value={projectForm.title} onChange={(event) => updateProjectField('title', event.target.value)} required />
+                    </label>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label className={labelClass}>
+                        Category
+                        <input className={fieldClass} placeholder="Beauty, Booking Website" value={projectForm.category} onChange={(event) => updateProjectField('category', event.target.value)} required />
+                      </label>
+                      <label className={labelClass}>
+                        Status
+                        <select className={fieldClass} value={projectForm.status} onChange={(event) => updateProjectField('status', event.target.value as ProjectInput['status'])}>
+                          <option value="published">Published</option>
+                          <option value="draft">Draft</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label className={labelClass}>
+                      Website URL
+                      <input className={fieldClass} placeholder="https://example.com" value={projectForm.websiteUrl} onChange={(event) => updateProjectField('websiteUrl', event.target.value)} />
+                    </label>
+                    <label className={labelClass}>
+                      Services
+                      <input className={fieldClass} placeholder="Website, SEO, UI/UX" value={projectForm.services} onChange={(event) => updateProjectField('services', event.target.value)} />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
+                  <h4 className="text-lg font-black text-gray-900">Content</h4>
+                  <div className="mt-5 grid gap-4">
+                    <label className={labelClass}>
+                      Short summary
+                      <textarea className="theme-input min-h-28 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" placeholder="Brief project result or client context" value={projectForm.summary} onChange={(event) => updateProjectField('summary', event.target.value)} />
+                    </label>
+                    <label className={labelClass}>
+                      Full description
+                      <textarea className="theme-input min-h-36 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" placeholder="Longer case study notes, scope, or outcomes" value={projectForm.description} onChange={(event) => updateProjectField('description', event.target.value)} />
+                    </label>
+                  </div>
+                </section>
               </div>
-              <textarea 
-                className="theme-input min-h-24 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
-                placeholder="Short summary (optional)" 
-                value={projectForm.summary} 
-                onChange={(e) => updateProjectField('summary', e.target.value)} 
-              />
-              <textarea 
-                className="theme-input min-h-28 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500" 
-                placeholder="Full description (optional)" 
-                value={projectForm.description} 
-                onChange={(e) => updateProjectField('description', e.target.value)} 
-              />
-              <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
-                  <Upload className="h-5 w-5" />
-                  Upload project image
-                  <input 
-                    className="hidden" 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('image', media.url))} 
-                  />
-                </label>
-                {projectForm.image && <ProjectMediaPreview src={projectForm.image} title={projectForm.title} />}
-                <input 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  placeholder="Project image URL or uploaded path" 
-                  value={projectForm.image} 
-                  onChange={(e) => updateProjectField('image', e.target.value)} 
-                />
-              </div>
-              <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
-                  <Upload className="h-5 w-5" />
-                  Upload video presentation
-                  <input 
-                    className="hidden" 
-                    type="file" 
-                    accept="video/*" 
-                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('videoUrl', media.url))} 
-                  />
-                </label>
-                {projectForm.videoUrl && <ProjectMediaPreview src={projectForm.videoUrl} title={projectForm.title} />}
-                <input 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  placeholder="Video presentation URL, uploaded path, or YouTube URL" 
-                  value={projectForm.videoUrl} 
-                  onChange={(e) => updateProjectField('videoUrl', e.target.value)} 
-                />
-              </div>
-              <div className="grid gap-4">
-                <label className="surface-muted flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-gray-100 p-5 text-sm font-black">
-                  <Upload className="h-5 w-5" />
-                  Optional video cover image
-                  <input 
-                    className="hidden" 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0], (media) => updateProjectField('coverImage', media.url))} 
-                  />
-                </label>
-                {projectForm.coverImage && <SafeImage className="h-40 w-full rounded-xl object-cover" src={projectForm.coverImage} alt="" />}
-                <input 
-                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                  placeholder="Optional cover image URL for video/YouTube projects" 
-                  value={projectForm.coverImage} 
-                  onChange={(e) => updateProjectField('coverImage', e.target.value)} 
-                />
-              </div>
-              <input 
-                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                placeholder="Website URL" 
-                value={projectForm.websiteUrl} 
-                onChange={(e) => updateProjectField('websiteUrl', e.target.value)} 
-              />
-              <input 
-                className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-                placeholder="Services: Website, SEO, UI/UX" 
-                value={projectForm.services} 
-                onChange={(e) => updateProjectField('services', e.target.value)} 
-              />
-              <label className="flex items-center gap-3 text-sm font-bold text-gray-700">
-                <input 
-                  type="checkbox" 
-                  checked={projectForm.isFeatured} 
-                  onChange={(e) => updateProjectField('isFeatured', e.target.checked)} 
-                  className="rounded border-gray-200 text-blue-600 focus:ring-blue-500"
-                />
-                Show as featured project
-              </label>
-              <div className="flex gap-3 pt-2">
-                <Button className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" type="submit" disabled={saving}>{saving ? 'Saving...' : editingProject ? 'Update Project' : 'Add Project'}</Button>
-                <Button type="button" variant="ghost" onClick={resetProjectForm}>Cancel</Button>
-              </div>
+
+              <aside className="grid gap-5 lg:self-start">
+                {renderMediaInput('Primary project image', 'Always used first on portfolio cards and homepage project boxes.', projectForm.image, 'image/*', 'image', 'Project image URL or uploaded path')}
+                {renderMediaInput('Video presentation', 'Optional uploaded video or YouTube link. Adds a play action to the project card.', projectForm.videoUrl, 'video/*', 'videoUrl', 'Video URL, uploaded path, or YouTube URL')}
+                {renderMediaInput('Video cover image', 'Optional fallback for video cards only. It will not override the primary image.', projectForm.coverImage, 'image/*', 'coverImage', 'Optional cover image URL')}
+
+                <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <label className="flex items-center justify-between gap-4 text-sm font-bold text-gray-700">
+                    <span>
+                      <span className="block text-gray-900">Featured project</span>
+                      <span className="mt-1 block text-xs font-semibold text-gray-500">Keep this enabled for important portfolio work.</span>
+                    </span>
+                    <input type="checkbox" checked={projectForm.isFeatured} onChange={(event) => updateProjectField('isFeatured', event.target.checked)} className="h-5 w-5 rounded border-gray-200 text-blue-600 focus:ring-blue-500" />
+                  </label>
+                </section>
+
+                <div className="sticky bottom-4 z-10 flex flex-col gap-2 rounded-2xl border border-gray-100 bg-white/95 p-3 shadow-lg backdrop-blur md:flex-row lg:top-4 lg:bottom-auto lg:flex-col">
+                  <Button className="min-h-11 flex-1 rounded-xl bg-blue-600 text-white hover:bg-blue-700" type="submit" disabled={saving}>{saving ? 'Saving...' : editingProject ? 'Update Project' : 'Add Project'}</Button>
+                  <Button type="button" variant="ghost" className="min-h-11 flex-1 rounded-xl border border-gray-200" onClick={resetProjectForm}>Cancel</Button>
+                </div>
+              </aside>
             </form>
           </section>
         ) : null}

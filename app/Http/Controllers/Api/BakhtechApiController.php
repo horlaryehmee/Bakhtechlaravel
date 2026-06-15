@@ -832,16 +832,29 @@ class BakhtechApiController extends Controller
     public function uploadMedia(Request $request)
     {
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf', 'max:10240'],
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf,mp4,webm,mov,ogg', 'max:51200'],
         ]);
         $file = $data['file'];
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = (string) Str::uuid().'.'.$extension;
         $uploadPath = public_path('uploads');
         if (! is_dir($uploadPath)) {
-            mkdir($uploadPath, 0755, true);
+            if (! @mkdir($uploadPath, 0755, true) && ! is_dir($uploadPath)) {
+                return response()->json(['message' => 'Unable to create the uploads directory. Check public/uploads permissions.'], 500);
+            }
         }
-        $file->move($uploadPath, $filename);
+
+        if (! is_writable($uploadPath)) {
+            return response()->json(['message' => 'The uploads directory is not writable. Check public/uploads permissions.'], 500);
+        }
+
+        try {
+            $file->move($uploadPath, $filename);
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json(['message' => 'Unable to save the uploaded file. Check upload size and folder permissions.'], 500);
+        }
 
         $id = DB::table('media')->insertGetId([
             'filename' => $filename,
@@ -989,7 +1002,7 @@ class BakhtechApiController extends Controller
                 : (int) ($existing?->sort_order ?? ((int) DB::table('projects')->max('sort_order') + 1));
         }
 
-        return $payload;
+        return array_intersect_key($payload, array_flip(Schema::getColumnListing('projects')));
     }
 
     private function reviewPayload(Request $request, ?object $existing = null): array
@@ -1432,12 +1445,12 @@ class BakhtechApiController extends Controller
             'summary' => $row->summary ?: '',
             'description' => $row->description ?: '',
             'image' => $row->image ?: '',
-            'coverImage' => $row->cover_image ?: '',
-            'videoUrl' => $row->video_url ?: '',
-            'websiteUrl' => $row->website_url ?: '',
-            'services' => json_decode($row->services_json ?: '[]', true),
-            'metrics' => json_decode($row->metrics_json ?: '{}', true),
-            'isFeatured' => (bool) $row->is_featured,
+            'coverImage' => ($row->cover_image ?? '') ?: '',
+            'videoUrl' => ($row->video_url ?? '') ?: '',
+            'websiteUrl' => ($row->website_url ?? '') ?: '',
+            'services' => json_decode(($row->services_json ?? '') ?: '[]', true),
+            'metrics' => json_decode(($row->metrics_json ?? '') ?: '{}', true),
+            'isFeatured' => (bool) ($row->is_featured ?? false),
             'status' => $row->status,
             'sortOrder' => (int) ($row->sort_order ?? 0),
             'createdAt' => (string) $row->created_at,
