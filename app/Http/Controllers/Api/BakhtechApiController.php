@@ -953,6 +953,40 @@ class BakhtechApiController extends Controller
         return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
     }
 
+    public function updateProjectMedia(Request $request, int $id)
+    {
+        $existing = DB::table('projects')->where('id', $id)->first();
+        if (! $existing) {
+            return response()->json(['message' => 'Project not found.'], 404);
+        }
+
+        $field = (string) $request->input('field', 'image');
+        $column = match ($field) {
+            'coverImage', 'cover_image' => 'cover_image',
+            'videoUrl', 'video_url' => 'video_url',
+            default => 'image',
+        };
+
+        if (! Schema::hasColumn('projects', $column)) {
+            return response()->json(['message' => 'This project media field is not available on the live projects table. Run migrations.'], 500);
+        }
+
+        $payload = [$column => trim((string) $request->input('value', ''))];
+        if (Schema::hasColumn('projects', 'updated_at')) {
+            $payload['updated_at'] = now();
+        }
+
+        try {
+            DB::table('projects')->where('id', $id)->update($payload);
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json(['message' => 'Unable to save this project image. Check the projects table and folder permissions.'], 500);
+        }
+
+        return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
+    }
+
     public function deleteProject(int $id)
     {
         $deleted = DB::table('projects')->where('id', $id)->delete();
@@ -1005,12 +1039,14 @@ class BakhtechApiController extends Controller
 
     private function projectPayload(Request $request, ?object $existing = null): array
     {
-        $services = $request->input('services', $existing?->services_json ? json_decode($existing->services_json, true) : []);
+        $existingServicesJson = $existing->services_json ?? null;
+        $existingMetricsJson = $existing->metrics_json ?? null;
+        $services = $request->input('services', $existingServicesJson ? json_decode($existingServicesJson, true) : []);
         if (! is_array($services)) {
             $services = collect(explode(',', (string) $services))->map(fn ($item) => trim($item))->filter()->values()->all();
         }
 
-        $metrics = $request->input('metrics', $existing?->metrics_json ? json_decode($existing->metrics_json, true) : []);
+        $metrics = $request->input('metrics', $existingMetricsJson ? json_decode($existingMetricsJson, true) : []);
         if (! is_array($metrics)) {
             $metrics = [];
         }
@@ -1022,12 +1058,12 @@ class BakhtechApiController extends Controller
             'summary' => trim((string) $request->input('summary', $existing?->summary ?? '')),
             'description' => trim((string) $request->input('description', $existing?->description ?? '')),
             'image' => trim((string) $request->input('image', $existing?->image ?? '')),
-            'cover_image' => trim((string) $request->input('coverImage', $request->input('cover_image', $existing?->cover_image ?? ''))),
-            'video_url' => trim((string) $request->input('videoUrl', $request->input('video_url', $existing?->video_url ?? ''))),
-            'website_url' => trim((string) $request->input('websiteUrl', $request->input('website_url', $existing?->website_url ?? ''))),
+            'cover_image' => trim((string) $request->input('coverImage', $request->input('cover_image', $existing->cover_image ?? ''))),
+            'video_url' => trim((string) $request->input('videoUrl', $request->input('video_url', $existing->video_url ?? ''))),
+            'website_url' => trim((string) $request->input('websiteUrl', $request->input('website_url', $existing->website_url ?? ''))),
             'services_json' => json_encode($services),
             'metrics_json' => json_encode($metrics),
-            'is_featured' => (bool) $request->input('isFeatured', $request->input('is_featured', $existing?->is_featured ?? false)),
+            'is_featured' => (bool) $request->input('isFeatured', $request->input('is_featured', $existing->is_featured ?? false)),
             'status' => $request->input('status', $existing?->status ?? 'published') === 'draft' ? 'draft' : 'published',
         ];
 

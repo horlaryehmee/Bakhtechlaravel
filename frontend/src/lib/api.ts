@@ -1099,6 +1099,12 @@ export const api = {
       body: JSON.stringify(project),
     })
   },
+  updateProjectMedia(id: number, field: 'image' | 'coverImage' | 'videoUrl', value: string) {
+    return request<{ project: Project }>(`/api/admin/projects/${id}/media`, {
+      method: 'POST',
+      body: JSON.stringify({ field, value }),
+    })
+  },
   deleteProject(id: number) {
     return request<void>(`/api/admin/projects/${id}`, { method: 'DELETE' })
   },

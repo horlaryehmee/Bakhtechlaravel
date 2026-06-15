@@ -1277,7 +1277,7 @@ export function AdminDashboard() {
     navigate('/admin/login')
   }
 
-  async function uploadFile(file: File, onDone?: (media: MediaItem) => void) {
+  async function uploadFile(file: File, onDone?: (media: MediaItem) => void | Promise<void>) {
     setError('')
     try {
       const uploadTarget = await optimizeImageFile(file)
@@ -1286,7 +1286,7 @@ export function AdminDashboard() {
       }
       const result = await api.uploadMedia(uploadTarget)
       setCms((current) => (current ? { ...current, media: [result.media, ...current.media] } : current))
-      onDone?.(result.media)
+      await onDone?.(result.media)
       notify('File uploaded to library.')
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Upload failed.')
@@ -5153,6 +5153,19 @@ export function AdminDashboard() {
     }
     const fieldClass = 'theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500'
     const labelClass = 'grid gap-2 text-sm font-bold text-gray-700'
+    const persistProjectMedia = async (
+      field: keyof Pick<ProjectInput, 'image' | 'coverImage' | 'videoUrl'>,
+      url: string,
+    ) => {
+      updateProjectField(field, url)
+      if (!editingProject) {
+        return
+      }
+      const result = await api.updateProjectMedia(editingProject.id, field, url)
+      setEditingProject(result.project)
+      setProjects((current) => current.map((project) => (project.id === result.project.id ? result.project : project)))
+      notify('Project image updated.')
+    }
     const renderMediaInput = (
       title: string,
       text: string,
@@ -5180,7 +5193,7 @@ export function AdminDashboard() {
             className="hidden"
             type="file"
             accept={accept}
-            onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => updateProjectField(field, media.url))}
+            onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => persistProjectMedia(field, media.url))}
           />
         </label>
         {value ? <div className="mt-4"><ProjectMediaPreview src={value} title={projectForm.title} /></div> : null}
