@@ -72,6 +72,15 @@ type UploadMediaResponse = {
   warning?: string
 }
 
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Unable to read this file for upload.'))
+    reader.readAsDataURL(file)
+  })
+}
+
 export type CmsPage = {
   id: number
   title: string
@@ -1003,24 +1012,37 @@ export const api = {
       body: JSON.stringify({ _systemAction: 'deployment-maintenance' }),
     })
   },
-  uploadMedia(file: File) {
+  async uploadMedia(file: File) {
     const token = getAdminToken()
     const formData = new FormData()
     formData.append('file', file)
 
-    return fetch(apiUrl('/api/admin/media'), {
+    const multipartUpload = await fetch(apiUrl('/api/admin/media'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
-    }).then(async (response) => {
-      if (!response.ok) {
-        const errorPayload = await parseErrorPayload(response, 'Upload failed.')
-        throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
-      }
-      return parseJsonResponse<UploadMediaResponse>(response, 'Upload failed.')
+    })
+
+    if (multipartUpload.ok) {
+      return parseJsonResponse<UploadMediaResponse>(multipartUpload, 'Upload failed.')
+    }
+
+    const multipartError = await parseErrorPayload(multipartUpload, 'Upload failed.')
+    if (multipartUpload.status < 500 && !multipartError.message.includes('HTML page instead of JSON')) {
+      throw new ApiError(multipartError.message, multipartUpload.status, multipartError.requiresTwoFactor)
+    }
+
+    const dataUrl = await fileToDataUrl(file)
+    return request<UploadMediaResponse>('/api/admin/media/base64', {
+      method: 'POST',
+      body: JSON.stringify({
+        filename: file.name || 'uploaded-file',
+        mimeType: file.type || 'application/octet-stream',
+        data: dataUrl,
+      }),
     })
   },
   deleteMedia(id: number) {

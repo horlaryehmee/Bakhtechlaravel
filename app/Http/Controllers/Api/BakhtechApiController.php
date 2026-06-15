@@ -887,22 +887,62 @@ class BakhtechApiController extends Controller
             'updated_at' => now(),
         ];
 
-        if (! Schema::hasTable('media')) {
-            return response()->json(['media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload))], 201);
+        return $this->saveUploadedMediaRecord($mediaPayload);
+    }
+
+    public function uploadMediaBase64(Request $request)
+    {
+        $data = $request->validate([
+            'filename' => ['required', 'string', 'max:180'],
+            'mimeType' => ['required', 'string', 'max:120'],
+            'data' => ['required', 'string'],
+        ]);
+
+        $mimeType = strtolower(trim((string) $data['mimeType']));
+        $allowedTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+            'application/pdf' => 'pdf',
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
+            'video/ogg' => 'ogg',
+        ];
+
+        if (! isset($allowedTypes[$mimeType])) {
+            return response()->json(['message' => 'This file type is not supported. Upload JPG, PNG, WebP, PDF, MP4, WebM, MOV, or OGG.'], 422);
         }
 
-        try {
-            $id = DB::table('media')->insertGetId(array_intersect_key($mediaPayload, array_flip(Schema::getColumnListing('media'))));
-        } catch (\Throwable $error) {
-            report($error);
-
-            return response()->json([
-                'media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload)),
-                'warning' => 'The file uploaded, but the media library database could not save a row. The project image can still use this uploaded file.',
-            ], 201);
+        $base64 = preg_replace('/^data:[^;]+;base64,/', '', trim((string) $data['data']));
+        $binary = base64_decode($base64, true);
+        if ($binary === false || $binary === '') {
+            return response()->json(['message' => 'The uploaded file could not be read. Try exporting it as JPG or PNG and upload again.'], 422);
         }
 
-        return response()->json(['media' => $this->mediaShape(DB::table('media')->where('id', $id)->first())], 201);
+        if (strlen($binary) > 50 * 1024 * 1024) {
+            return response()->json(['message' => 'The uploaded file is too large. Please use a file below 50 MB.'], 422);
+        }
+
+        $originalName = basename((string) $data['filename']) ?: 'uploaded-file.'.$allowedTypes[$mimeType];
+        $filename = (string) Str::uuid().'.'.$allowedTypes[$mimeType];
+        $savedUrl = $this->storeBinaryMediaFile($binary, $filename);
+
+        if (! $savedUrl) {
+            return response()->json(['message' => 'Unable to save this file. Check public/uploads or storage/app/public/uploads permissions.'], 422);
+        }
+
+        return $this->saveUploadedMediaRecord([
+            'filename' => $filename,
+            'original_name' => $originalName,
+            'mime_type' => $mimeType,
+            'size' => strlen($binary),
+            'url' => $savedUrl,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function deleteMedia(int $id)
@@ -1644,6 +1684,46 @@ class BakhtechApiController extends Controller
         }
 
         return $stored ? '/api/uploads/'.$filename : '';
+    }
+
+    private function storeBinaryMediaFile(string $binary, string $filename): string
+    {
+        $publicUploadsPath = public_path('uploads');
+        if ($this->ensureWritableDirectory($publicUploadsPath)) {
+            $path = $publicUploadsPath.DIRECTORY_SEPARATOR.$filename;
+            if (@file_put_contents($path, $binary) !== false) {
+                return '/uploads/'.$filename;
+            }
+        }
+
+        try {
+            $stored = Storage::disk('public')->put('uploads/'.$filename, $binary);
+        } catch (\Throwable $error) {
+            report($error);
+            $stored = false;
+        }
+
+        return $stored ? '/api/uploads/'.$filename : '';
+    }
+
+    private function saveUploadedMediaRecord(array $mediaPayload)
+    {
+        if (! Schema::hasTable('media')) {
+            return response()->json(['media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload))], 201);
+        }
+
+        try {
+            $id = DB::table('media')->insertGetId(array_intersect_key($mediaPayload, array_flip(Schema::getColumnListing('media'))));
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json([
+                'media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload)),
+                'warning' => 'The file uploaded, but the media library database could not save a row. The project image can still use this uploaded file.',
+            ], 201);
+        }
+
+        return response()->json(['media' => $this->mediaShape(DB::table('media')->where('id', $id)->first())], 201);
     }
 
     private function ensureWritableDirectory(string $path): bool

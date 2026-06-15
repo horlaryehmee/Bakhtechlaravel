@@ -147,7 +147,7 @@ function loadImageElement(file: File) {
 
 function uploadErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError && error.status >= 500) {
-    return 'Upload did not complete. You can choose an existing library item, or check public/uploads permission and PHP upload limits before trying another upload.'
+    return 'Upload did not complete after both upload methods. Check public/uploads or storage/app/public/uploads permissions on the live server.'
   }
 
   return error instanceof Error ? error.message : fallback
