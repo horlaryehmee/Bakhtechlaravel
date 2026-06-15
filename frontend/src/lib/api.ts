@@ -67,6 +67,11 @@ export type MediaItem = {
   createdAt: string
 }
 
+type UploadMediaResponse = {
+  media: MediaItem
+  warning?: string
+}
+
 export type CmsPage = {
   id: number
   title: string
@@ -1005,14 +1010,17 @@ export const api = {
 
     return fetch(apiUrl('/api/admin/media'), {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: formData,
     }).then(async (response) => {
       if (!response.ok) {
         const errorPayload = await parseErrorPayload(response, 'Upload failed.')
         throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
       }
-      return parseJsonResponse<{ media: MediaItem }>(response, 'Upload failed.')
+      return parseJsonResponse<UploadMediaResponse>(response, 'Upload failed.')
     })
   },
   deleteMedia(id: number) {

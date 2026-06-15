@@ -144,6 +144,14 @@ function loadImageElement(file: File) {
   })
 }
 
+function uploadErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError && error.status >= 500) {
+    return 'Upload could not be completed because the server returned an unexpected response. Check public/uploads permission and PHP upload limits, then try again.'
+  }
+
+  return error instanceof Error ? error.message : fallback
+}
+
 async function optimizeImageFile(file: File) {
   if (!isCompressibleImage(file)) {
     return file
@@ -1293,9 +1301,12 @@ export function AdminDashboard() {
       const result = await api.uploadMedia(uploadTarget)
       setCms((current) => (current ? { ...current, media: [result.media, ...current.media] } : current))
       await onDone?.(result.media)
+      if (result.warning) {
+        setError(result.warning)
+      }
       notify('File uploaded to library.')
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed.')
+      setError(uploadErrorMessage(uploadError, 'Upload failed.'))
     }
   }
 
@@ -5197,8 +5208,11 @@ export function AdminDashboard() {
         const result = await api.uploadMedia(uploadTarget)
         setCms((current) => (current ? { ...current, media: [result.media, ...current.media.filter((item) => item.url !== result.media.url)] } : current))
         await persistProjectMedia(field, result.media.url)
+        if (result.warning) {
+          setError(result.warning)
+        }
       } catch (uploadError) {
-        setError(uploadError instanceof Error ? uploadError.message : 'Unable to update project image.')
+        setError(uploadErrorMessage(uploadError, 'Unable to update project image.'))
       }
     }
     const pickerItems = (cms?.media ?? []).filter((media) => media.mimeType.startsWith(mediaPicker?.field === 'videoUrl' ? 'video/' : 'image/'))

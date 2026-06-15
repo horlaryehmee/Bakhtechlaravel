@@ -846,12 +846,12 @@ class BakhtechApiController extends Controller
         $uploadPath = public_path('uploads');
         if (! is_dir($uploadPath)) {
             if (! @mkdir($uploadPath, 0755, true) && ! is_dir($uploadPath)) {
-                return response()->json(['message' => 'Unable to create the uploads directory. Check public/uploads permissions.'], 500);
+                return response()->json(['message' => 'Unable to create public/uploads. Please create the folder and make it writable.'], 422);
             }
         }
 
         if (! is_writable($uploadPath)) {
-            return response()->json(['message' => 'The uploads directory is not writable. Check public/uploads permissions.'], 500);
+            return response()->json(['message' => 'public/uploads is not writable. Please update the folder permission, then upload again.'], 422);
         }
 
         try {
@@ -859,7 +859,7 @@ class BakhtechApiController extends Controller
         } catch (\Throwable $error) {
             report($error);
 
-            return response()->json(['message' => 'Unable to save the uploaded file. Check upload size and folder permissions.'], 500);
+            return response()->json(['message' => 'Unable to save this file. Check the file type, file size, and public/uploads permission.'], 422);
         }
 
         $mediaPayload = [
@@ -880,14 +880,11 @@ class BakhtechApiController extends Controller
             $id = DB::table('media')->insertGetId(array_intersect_key($mediaPayload, array_flip(Schema::getColumnListing('media'))));
         } catch (\Throwable $error) {
             report($error);
-            $savedPath = $uploadPath.DIRECTORY_SEPARATOR.$filename;
-            if (is_file($savedPath)) {
-                @unlink($savedPath);
-            }
 
             return response()->json([
-                'message' => 'The file uploaded, but the media library could not save it. Run migrations and check the media table.',
-            ], 500);
+                'media' => $this->mediaShape((object) array_merge(['id' => 0], $mediaPayload)),
+                'warning' => 'The file uploaded, but the media library database could not save a row. The project image can still use this uploaded file.',
+            ], 201);
         }
 
         return response()->json(['media' => $this->mediaShape(DB::table('media')->where('id', $id)->first())], 201);
@@ -995,7 +992,7 @@ class BakhtechApiController extends Controller
         };
 
         if (! Schema::hasColumn('projects', $column)) {
-            return response()->json(['message' => 'This project media field is not available on the live projects table. Run migrations.'], 500);
+            return response()->json(['message' => 'This project media field is not available on the live projects table. Run migrations.'], 422);
         }
 
         $payload = [$column => trim((string) $request->input('value', ''))];
@@ -1008,7 +1005,7 @@ class BakhtechApiController extends Controller
         } catch (\Throwable $error) {
             report($error);
 
-            return response()->json(['message' => 'Unable to save this project image. Check the projects table and folder permissions.'], 500);
+            return response()->json(['message' => 'The image uploaded, but the project record could not be updated. Check the projects table, then select the image from the media library.'], 422);
         }
 
         return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
