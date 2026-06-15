@@ -240,9 +240,12 @@ class BakhtechApiController extends Controller
 
         foreach ($paths as $path) {
             if (is_file($path)) {
-                return response()->file($path, [
+                return response()->stream(function () use ($path): void {
+                    readfile($path);
+                }, 200, [
                     'Cache-Control' => 'public, max-age=31536000, immutable',
                     'Content-Type' => $this->mediaMimeType($safeFilename, $path),
+                    'Content-Length' => (string) filesize($path),
                 ]);
             }
         }
@@ -868,17 +871,10 @@ class BakhtechApiController extends Controller
         $file = $data['file'];
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = (string) Str::uuid().'.'.$extension;
+        $savedUrl = $this->storeUploadedMediaFile($file, $filename);
 
-        try {
-            $stored = Storage::disk('public')->putFileAs('uploads', $file, $filename);
-        } catch (\Throwable $error) {
-            report($error);
-
-            $stored = false;
-        }
-
-        if (! $stored) {
-            return response()->json(['message' => 'Unable to save this file. Check storage/app/public permission and PHP upload limits.'], 422);
+        if (! $savedUrl) {
+            return response()->json(['message' => 'Unable to save this file. Check public/uploads or storage/app/public/uploads permissions and PHP upload limits.'], 422);
         }
 
         $mediaPayload = [
@@ -886,7 +882,7 @@ class BakhtechApiController extends Controller
             'original_name' => $file->getClientOriginalName(),
             'mime_type' => $file->getClientMimeType() ?: 'application/octet-stream',
             'size' => $file->getSize() ?: 0,
-            'url' => '/api/uploads/'.$filename,
+            'url' => $savedUrl,
             'created_at' => now(),
             'updated_at' => now(),
         ];
@@ -1627,6 +1623,38 @@ class BakhtechApiController extends Controller
         return $items->sortByDesc('createdAt')->values();
     }
 
+    private function storeUploadedMediaFile($file, string $filename): string
+    {
+        $publicUploadsPath = public_path('uploads');
+        if ($this->ensureWritableDirectory($publicUploadsPath)) {
+            try {
+                $file->move($publicUploadsPath, $filename);
+
+                return '/uploads/'.$filename;
+            } catch (\Throwable $error) {
+                report($error);
+            }
+        }
+
+        try {
+            $stored = Storage::disk('public')->putFileAs('uploads', $file, $filename);
+        } catch (\Throwable $error) {
+            report($error);
+            $stored = false;
+        }
+
+        return $stored ? '/api/uploads/'.$filename : '';
+    }
+
+    private function ensureWritableDirectory(string $path): bool
+    {
+        if (! is_dir($path) && ! @mkdir($path, 0755, true) && ! is_dir($path)) {
+            return false;
+        }
+
+        return is_writable($path);
+    }
+
     private function mediaPaths(string $filename): array
     {
         $safeFilename = basename($filename);
@@ -1659,15 +1687,41 @@ class BakhtechApiController extends Controller
 
     private function mediaShape(object $row): array
     {
+        $filename = $row->filename ?? '';
+
         return [
             'id' => (int) $row->id,
-            'filename' => $row->filename ?? '',
-            'originalName' => $row->original_name ?? ($row->filename ?? 'Uploaded file'),
+            'filename' => $filename,
+            'originalName' => $row->original_name ?? ($filename ?: 'Uploaded file'),
             'mimeType' => $row->mime_type ?? 'application/octet-stream',
             'size' => (int) ($row->size ?? 0),
-            'url' => $row->url ?? (($row->filename ?? '') ? '/uploads/'.$row->filename : ''),
+            'url' => $this->mediaUrl($filename, $row->url ?? ''),
             'createdAt' => (string) ($row->created_at ?? ''),
         ];
+    }
+
+    private function mediaUrl(string $filename, string $storedUrl = ''): string
+    {
+        $safeFilename = basename($filename);
+        if ($safeFilename === '' || $safeFilename === '.' || $safeFilename === '..') {
+            return $storedUrl;
+        }
+
+        $publicPath = public_path('uploads/'.$safeFilename);
+        if (is_file($publicPath)) {
+            return '/uploads/'.$safeFilename;
+        }
+
+        $storagePath = storage_path('app/public/uploads/'.$safeFilename);
+        if (is_file($storagePath) && $this->ensureWritableDirectory(dirname($publicPath)) && @copy($storagePath, $publicPath)) {
+            return '/uploads/'.$safeFilename;
+        }
+
+        if (is_file($storagePath)) {
+            return '/api/uploads/'.$safeFilename;
+        }
+
+        return $storedUrl ?: '/uploads/'.$safeFilename;
     }
 
     private function reviewShape(object $row): array
