@@ -871,8 +871,12 @@ export const api = {
       body: JSON.stringify(eventType),
     })
   },
-  bookingCmsBookings() {
-    return request<PaginatedResponse<BookingCmsBooking>>('/api/admin/booking/bookings?perPage=100')
+  bookingCmsBookings(params: { page?: number; perPage?: number } = {}) {
+    const query = new URLSearchParams()
+    if (params.page) query.set('page', String(params.page))
+    if (params.perPage) query.set('perPage', String(params.perPage))
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request<PaginatedResponse<BookingCmsBooking>>(`/api/admin/booking/bookings${suffix}`)
   },
   updateBookingCmsStatus(id: number, status: string, adminRemarks = '') {
     return request<{ booking: BookingCmsBooking }>(`/api/admin/booking/bookings/${id}/status`, {

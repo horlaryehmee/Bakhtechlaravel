@@ -669,6 +669,8 @@ export function AdminDashboard() {
   const [bookingOverview, setBookingOverview] = useState<BookingCmsOverview | null>(null)
   const [bookingCalendars, setBookingCalendars] = useState<BookingCalendar[]>([])
   const [bookingCmsBookings, setBookingCmsBookings] = useState<BookingCmsBooking[]>([])
+  const [bookingCmsBookingsMeta, setBookingCmsBookingsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
+  const [expandedBookingId, setExpandedBookingId] = useState<number | null>(null)
   const [bookingAvailabilityRules, setBookingAvailabilityRules] = useState<BookingAvailabilityRule[]>([])
   const [bookingCmsSettings, setBookingCmsSettings] = useState<Record<string, string>>({})
   const [invoiceOverview, setInvoiceOverview] = useState<InvoiceOverview | null>(initialAdminCache?.invoiceOverview ?? null)
@@ -1150,20 +1152,29 @@ export function AdminDashboard() {
     await loadPricingData()
   }
 
-  async function loadBookingCmsData() {
+  async function loadBookingCmsData(page = bookingCmsBookingsMeta.page, perPage = bookingCmsBookingsMeta.perPage) {
     try {
       const [overviewResult, calendarsResult, bookingsResult, availabilityResult, settingsResult] = await Promise.all([
         api.bookingOverview(),
         api.bookingCalendars(),
-        api.bookingCmsBookings(),
+        api.bookingCmsBookings({ page, perPage }),
         api.bookingAvailabilityAdmin(),
         api.bookingSettings(),
       ])
       setBookingOverview(overviewResult)
       setBookingCalendars(calendarsResult.data)
       setBookingCmsBookings(bookingsResult.data)
+      setBookingCmsBookingsMeta({
+        page: bookingsResult.meta.currentPage,
+        perPage: bookingsResult.meta.perPage,
+        total: bookingsResult.meta.total,
+        lastPage: bookingsResult.meta.lastPage,
+      })
       setBookingAvailabilityRules(availabilityResult.rules)
       setBookingCmsSettings(settingsResult.settings)
+      if (expandedBookingId && !bookingsResult.data.some((booking) => booking.id === expandedBookingId)) {
+        setExpandedBookingId(null)
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load booking CMS.')
     }
@@ -6482,45 +6493,162 @@ export function AdminDashboard() {
   }
 
   function renderBookingCmsBookings() {
+    const bookingStatusClass = (status: string) => cn(
+      'inline-flex rounded-full px-3 py-1 text-xs font-black capitalize',
+      status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-600' :
+      status === 'cancelled' ? 'bg-red-500/10 text-red-600' :
+      status === 'pending' ? 'bg-amber-500/10 text-amber-600' :
+      'bg-gray-500/10 text-gray-600'
+    )
+    const formatBookingDate = (value: string) => {
+      if (!value) return 'No date'
+      const date = new Date(value)
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+    }
+
     return (
       <div className="grid gap-4">
-        {bookingCmsBookings.map((booking) => (
-          <article key={booking.id} className="surface-card grid gap-5 rounded-2xl p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="font-black text-lg">{booking.customer.name}</h3>
-                  <span className={cn('rounded-full px-3 py-1 text-xs font-black', 
-                    booking.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-600' : 
-                    booking.status === 'cancelled' ? 'bg-red-500/10 text-red-600' : 
-                    booking.status === 'pending' ? 'bg-amber-500/10 text-amber-600' : 
-                    'bg-gray-500/10 text-gray-600'
-                  )}>
-                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                  </span>
-                </div>
-                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Email:</span> {booking.customer.email}</p>
-                {booking.customer.phone ? <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Phone:</span> {booking.customer.phone}</p> : null}
-                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Appointment type:</span> {booking.serviceType}</p>
-                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Calendar:</span> {booking.calendarName || 'No calendar'}</p>
-                <p className="text-soft mt-1 text-sm"><span className="font-bold text-[var(--foreground)]">Date & Time:</span> {booking.startsAt} - {booking.endsAt}</p>
-                {booking.notes ? <p className="text-soft mt-2 text-sm"><span className="font-bold text-[var(--foreground)]">Notes:</span> {booking.notes}</p> : null}
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <select className="theme-input min-h-10 rounded-xl px-3 outline-none" value={booking.status} onChange={(event) => void updateBookingCmsStatus(booking, event.target.value)}>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="closed">Closed</option>
-                </select>
-                <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" disabled={saving} onClick={() => void rescheduleBookingCmsBooking(booking)}><CalendarDays className="h-4 w-4" />Reschedule</Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5" disabled={saving || booking.status === 'cancelled'} onClick={() => void cancelBookingCmsBooking(booking)}><Trash2 className="h-4 w-4" />Cancel</Button>
-              </div>
+        <section className="surface-card overflow-hidden rounded-2xl shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-xl font-black">Bookings</h3>
+              <p className="text-soft mt-1 text-sm">Compact list view. Expand a row to see full booking information.</p>
             </div>
-          </article>
-        ))}
-        {bookingCmsBookings.length === 0 ? <section className="surface-card rounded-2xl p-8 text-center"><p className="text-soft">No CMS bookings yet.</p></section> : null}
+            <div className="flex items-center gap-2">
+              <span className="text-soft text-sm font-bold">Rows</span>
+              <select
+                className="theme-input min-h-10 rounded-xl px-3 text-sm outline-none"
+                value={bookingCmsBookingsMeta.perPage}
+                onChange={(event) => void loadBookingCmsData(1, Number(event.target.value))}
+              >
+                {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="hidden grid-cols-[44px_1.2fr_1fr_1fr_0.8fr_150px] gap-4 border-b border-[var(--line)] bg-gray-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-gray-500 lg:grid">
+            <span />
+            <span>Customer</span>
+            <span>Service</span>
+            <span>Date</span>
+            <span>Calendar</span>
+            <span>Status</span>
+          </div>
+
+          <div className="divide-y divide-[var(--line)]">
+            {bookingCmsBookings.map((booking) => {
+              const expanded = expandedBookingId === booking.id
+
+              return (
+                <article key={booking.id} className="bg-white">
+                  <button
+                    type="button"
+                    className="grid w-full gap-3 px-4 py-4 text-left transition hover:bg-gray-50 lg:grid-cols-[44px_1.2fr_1fr_1fr_0.8fr_150px] lg:items-center lg:gap-4"
+                    onClick={() => setExpandedBookingId(expanded ? null : booking.id)}
+                    aria-expanded={expanded}
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--line)] bg-white">
+                      <ChevronRight className={cn('h-4 w-4 transition-transform', expanded ? 'rotate-90' : '')} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-base font-black text-[var(--foreground)]">{booking.customer.name || 'Unnamed customer'}</span>
+                      <span className="text-soft block truncate text-sm">{booking.customer.email || 'No email'}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Service</span>
+                      <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.serviceType || booking.eventTypeName || 'No service'}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Date</span>
+                      <span className="block text-sm font-bold text-[var(--foreground)]">{formatBookingDate(booking.startsAt)}</span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="text-soft block text-xs font-black uppercase lg:hidden">Calendar</span>
+                      <span className="block truncate text-sm font-bold text-[var(--foreground)]">{booking.calendarName || 'No calendar'}</span>
+                    </span>
+                    <span>
+                      <span className={bookingStatusClass(booking.status)}>{booking.status}</span>
+                    </span>
+                  </button>
+
+                  {expanded ? (
+                    <div className="grid gap-5 border-t border-[var(--line)] bg-gray-50 px-4 py-5">
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Contact</p>
+                          <p className="mt-2 text-sm font-bold">{booking.customer.email || 'No email'}</p>
+                          <p className="text-soft mt-1 text-sm">{booking.customer.phone || 'No phone'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Schedule</p>
+                          <p className="mt-2 text-sm font-bold">{formatBookingDate(booking.startsAt)}</p>
+                          <p className="text-soft mt-1 text-sm">{formatBookingDate(booking.endsAt)} · {booking.durationMinutes} mins</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Payment</p>
+                          <p className="mt-2 text-sm font-bold">{booking.currency} {booking.priceAmount.toLocaleString()}</p>
+                          <p className="text-soft mt-1 text-sm capitalize">{booking.payment.status || 'unpaid'} {booking.payment.provider ? `via ${booking.payment.provider}` : ''}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Location</p>
+                          <p className="mt-2 text-sm font-bold capitalize">{booking.location.type || 'Not set'}</p>
+                          <p className="text-soft mt-1 break-words text-sm">{booking.location.value || 'No location value'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Notes</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-[var(--foreground)]">{booking.notes || 'No notes added.'}</p>
+                        </div>
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">Admin remarks</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-[var(--foreground)]">{booking.adminRemarks || 'No admin remarks.'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+                        <div className="rounded-xl border border-[var(--line)] bg-white p-4">
+                          <p className="text-soft text-xs font-black uppercase">System details</p>
+                          <div className="mt-2 grid gap-2 text-sm font-semibold text-[var(--foreground)] md:grid-cols-2">
+                            <span>Event type: {booking.eventTypeName || 'None'}</span>
+                            <span>Resource: {booking.resourceName || 'None'}</span>
+                            <span>Timezone: {booking.timezone || 'Not set'}</span>
+                            <span>Google Calendar: {booking.googleCalendar.status || 'not_configured'}</span>
+                            <span>Created: {formatBookingDate(booking.createdAt)}</span>
+                            <span>Updated: {formatBookingDate(booking.updatedAt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <select className="theme-input min-h-10 rounded-xl px-3 outline-none" value={booking.status} disabled={saving} onChange={(event) => void updateBookingCmsStatus(booking, event.target.value)}>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="closed">Closed</option>
+                          </select>
+                          <Button type="button" variant="ghost" className="rounded-xl border border-[var(--line)]" disabled={saving} onClick={() => void rescheduleBookingCmsBooking(booking)}><CalendarDays className="h-4 w-4" />Reschedule</Button>
+                          <Button type="button" variant="ghost" className="rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/5" disabled={saving || booking.status === 'cancelled'} onClick={() => void cancelBookingCmsBooking(booking)}><Trash2 className="h-4 w-4" />Cancel</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
+
+          {bookingCmsBookings.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-soft">No CMS bookings yet.</p>
+            </div>
+          ) : null}
+
+          <div className="border-t border-[var(--line)] p-4">
+            {renderPagination(bookingCmsBookingsMeta, (page) => void loadBookingCmsData(page, bookingCmsBookingsMeta.perPage))}
+          </div>
+        </section>
       </div>
     )
   }
