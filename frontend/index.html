@@ -65,11 +65,7 @@
           window.removeEventListener('scroll', loadSmartsupp);
           window.removeEventListener('pointerdown', loadSmartsupp);
         }
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(loadSmartsupp, { timeout: 6500 });
-        } else {
-          window.setTimeout(loadSmartsupp, 6500);
-        }
+        window.setTimeout(loadSmartsupp, 15000);
         window.addEventListener('scroll', loadSmartsupp, { passive: true, once: true });
         window.addEventListener('pointerdown', loadSmartsupp, { passive: true, once: true });
       })(document);

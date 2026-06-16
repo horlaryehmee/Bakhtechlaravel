@@ -45,7 +45,7 @@
       })()
     </script>
     <title>Bakhtech Solutions - Laravel, React, Vue CMS Websites</title>
-    <script type="module" crossorigin src="/assets/index-UcP336Yy.js"></script>
+    <script type="module" crossorigin src="/assets/index-DQwQcYAJ.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DoX_eSzb.css">
   </head>
   <body>
@@ -67,11 +67,7 @@
           window.removeEventListener('scroll', loadSmartsupp);
           window.removeEventListener('pointerdown', loadSmartsupp);
         }
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(loadSmartsupp, { timeout: 6500 });
-        } else {
-          window.setTimeout(loadSmartsupp, 6500);
-        }
+        window.setTimeout(loadSmartsupp, 15000);
         window.addEventListener('scroll', loadSmartsupp, { passive: true, once: true });
         window.addEventListener('pointerdown', loadSmartsupp, { passive: true, once: true });
       })(document);

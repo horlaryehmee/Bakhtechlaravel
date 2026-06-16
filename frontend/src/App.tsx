@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
 
-const VisitTracker = lazy(() => import('@/components/analytics/VisitTracker').then((module) => ({ default: module.VisitTracker })))
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
 const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
 const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin').then((module) => ({ default: module.AdminLogin })))
@@ -43,11 +43,7 @@ function App() {
 
   return (
     <>
-      {enableVisitTracking ? (
-        <Suspense fallback={null}>
-          <VisitTracker />
-        </Suspense>
-      ) : null}
+      {enableVisitTracking ? <VisitTracker /> : null}
       <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
         <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
