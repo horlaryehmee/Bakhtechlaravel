@@ -17,6 +17,7 @@
 
     RewriteRule ^api(/.*)?$ index.php [L]
     RewriteRule ^up$ index.php [L]
+    RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ index.php [L]
 
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
