@@ -7,9 +7,37 @@ use App\Http\Controllers\Api\MailSettingsController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\SystemMaintenanceController;
 use App\Http\Middleware\RequireAdminToken;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 Route::get('/health', [BakhtechApiController::class, 'health']);
+Route::get('/sitemap.xml', function () {
+    $baseUrl = rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
+    $paths = collect(['/', '/about', '/portfolio', '/pricing', '/booking', '/contact']);
+
+    if (Schema::hasTable('pages')) {
+        $cmsPaths = DB::table('pages')
+            ->where('status', 'published')
+            ->where('meta_robots', 'not like', '%noindex%')
+            ->pluck('slug')
+            ->map(fn ($slug) => $slug === 'home' ? '/' : '/'.trim((string) $slug, '/'));
+
+        $paths = $paths->merge($cmsPaths);
+    }
+
+    $paths = $paths->merge(['/llms.txt', '/markdown-mirrors.txt']);
+
+    $urls = $paths
+        ->filter()
+        ->unique()
+        ->map(fn ($path) => '<url><loc>'.e($baseUrl.($path === '/' ? '' : $path)).'</loc><changefreq>weekly</changefreq><priority>'.($path === '/' ? '1.0' : '0.8').'</priority></url>')
+        ->implode('');
+
+    return response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.$urls.'</urlset>', 200, [
+        'Content-Type' => 'application/xml; charset=UTF-8',
+    ]);
+});
 Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
