@@ -824,6 +824,7 @@ export function AdminDashboard() {
   const [projectPage, setProjectPage] = useState(1)
   const [projectPerPage, setProjectPerPage] = useState(10)
   const [projectDragId, setProjectDragId] = useState<number | null>(null)
+  const [showProjectArrangeView, setShowProjectArrangeView] = useState(false)
   const [mediaPickerVisibleCount, setMediaPickerVisibleCount] = useState(12)
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
@@ -5373,6 +5374,82 @@ export function AdminDashboard() {
         />
       </section>
     )
+    const renderProjectRow = (project: Project, options: { compact?: boolean } = {}) => {
+      const globalIndex = orderedProjects.findIndex((item) => item.id === project.id)
+      return (
+        <article
+          key={project.id}
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', String(project.id))
+            setProjectDragId(project.id)
+          }}
+          onDragEnd={() => setProjectDragId(null)}
+          onDragOver={(event) => {
+            if (projectDragId && projectDragId !== project.id) {
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault()
+            const draggedProjectId = Number(event.dataTransfer.getData('text/plain')) || projectDragId
+            setProjectDragId(null)
+            if (!draggedProjectId || draggedProjectId === project.id) return
+            const bounds = event.currentTarget.getBoundingClientRect()
+            const placement = event.clientY > bounds.top + (bounds.height / 2) ? 'after' : 'before'
+            void dropProject(draggedProjectId, project.id, placement)
+          }}
+          className={cn(
+            'grid cursor-grab gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 transition md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center',
+            options.compact ? 'md:grid-cols-[4.5rem_minmax(0,1fr)_auto] md:p-3' : '',
+            projectDragId === project.id ? 'opacity-50 ring-2 ring-blue-200' : 'hover:border-blue-200',
+          )}
+        >
+          <div className={cn('h-24 w-full overflow-hidden rounded-lg md:h-20', options.compact ? 'md:h-14' : '')}>
+            {isVideoMedia(project.image) ? (
+              <video className="h-full w-full object-cover" src={project.image} muted preload="metadata" />
+            ) : isYoutubeMedia(project.image) ? (
+              <div className="surface-card grid h-full place-items-center text-xs font-black text-soft">YouTube</div>
+            ) : (
+              <SafeImage className="h-full w-full object-cover" src={project.image} fallbackSrc={adminMediaFallbackSrc(project.title)} alt="" />
+            )}
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <GripVertical className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <h4 className={cn('font-black text-gray-900', options.compact ? 'text-base' : 'text-lg')}>{project.title}</h4>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-gray-500">#{globalIndex + 1}</span>
+              {project.status === 'draft' ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-black uppercase text-amber-700">Draft</span> : null}
+            </div>
+            <p className="text-gray-500 mt-1 text-sm">{project.category} - {project.status}</p>
+            {!options.compact && project.summary ? <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-2 md:mt-4 md:flex-col">
+            <select
+              className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 text-sm font-bold outline-none focus:border-blue-500"
+              value={project.status}
+              onChange={(event) => void updateProjectStatus(project, event.target.value as Project['status'])}
+              title="Change project publish status"
+            >
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" disabled={globalIndex <= 0} onClick={() => void moveProject(project.id, -1)} title="Move project up">
+                <ChevronLeft className="h-4 w-4 rotate-90" />
+              </Button>
+              <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" disabled={globalIndex >= orderedProjects.length - 1} onClick={() => void moveProject(project.id, 1)} title="Move project down">
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </Button>
+            </div>
+            <Button type="button" variant="ghost" className="min-h-10 px-4" onClick={() => editProject(project)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
+            {!options.compact ? <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" onClick={() => void deleteProject(project.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button> : null}
+          </div>
+        </article>
+      )
+    }
 
     return (
       <div>
@@ -5552,6 +5629,30 @@ export function AdminDashboard() {
             </section>
           </div>
         ) : null}
+          <section className="mb-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900">Arrange All Projects</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">Open one compact view to drag every project into the exact frontend order.</p>
+              </div>
+              <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => setShowProjectArrangeView((current) => !current)}>
+                <GripVertical className="h-4 w-4" />
+                {showProjectArrangeView ? 'Hide arranger' : 'Arrange all'}
+              </Button>
+            </div>
+            {showProjectArrangeView ? (
+              <div className="grid max-h-[70vh] gap-3 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50/70 p-3">
+                {orderedProjects.map((project) => renderProjectRow(project, { compact: true }))}
+                {!orderedProjects.length ? (
+                  <div className="rounded-xl bg-white p-8 text-center text-sm font-semibold text-gray-500">No projects to arrange.</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm font-bold text-gray-600">
+                {projects.length} projects available. Click Arrange all to manage the full order in one scrollable view.
+              </div>
+            )}
+          </section>
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
