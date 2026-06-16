@@ -12,6 +12,7 @@ import {
   FileText as QuoteIcon,
   FolderKanban,
   Gauge,
+  GripVertical,
   Images,
   LayoutDashboard,
   Link2,
@@ -822,6 +823,7 @@ export function AdminDashboard() {
   const [projectCategoryFilter, setProjectCategoryFilter] = useState('all')
   const [projectPage, setProjectPage] = useState(1)
   const [projectPerPage, setProjectPerPage] = useState(10)
+  const [projectDragId, setProjectDragId] = useState<number | null>(null)
   const [mediaPickerVisibleCount, setMediaPickerVisibleCount] = useState(12)
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
@@ -1375,38 +1377,61 @@ export function AdminDashboard() {
     notify('Project deleted.')
   }
 
-  async function moveProject(projectId: number, direction: -1 | 1) {
-    const orderedProjects = [...projects]
+  function normalizedProjectOrder(source: Project[] = projects) {
+    return [...source]
       .map((project, index) => ({ ...project, sortOrder: project.sortOrder || index + 1 }))
       .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title))
+      .map((project, index) => ({ ...project, sortOrder: index + 1 }))
+  }
+
+  async function persistProjectOrder(nextOrderedProjects: Project[], successMessage = 'Portfolio order updated.') {
+    const normalizedProjects = nextOrderedProjects.map((project, index) => ({ ...project, sortOrder: index + 1 }))
+    const previousOrder = new Map(projects.map((project) => [project.id, project.sortOrder || 0]))
+    const changedProjects = normalizedProjects.filter((project) => previousOrder.get(project.id) !== project.sortOrder)
+
+    setProjects((current) => current
+      .map((project) => normalizedProjects.find((item) => item.id === project.id) ?? project)
+      .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
+
+    if (!changedProjects.length) return
+
+    try {
+      const results = await Promise.all(changedProjects.map((project) => api.updateProject(project.id, toInput(project))))
+      setProjects((current) => current
+        .map((project) => results.find((result) => result.project.id === project.id)?.project ?? project)
+        .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
+      notify(successMessage)
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : 'Unable to update portfolio order.')
+      void loadAdminData()
+    }
+  }
+
+  async function moveProject(projectId: number, direction: -1 | 1) {
+    const orderedProjects = normalizedProjectOrder()
     const currentIndex = orderedProjects.findIndex((project) => project.id === projectId)
     const targetIndex = currentIndex + direction
     if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedProjects.length) return
 
-    const currentProject = orderedProjects[currentIndex]
-    const targetProject = orderedProjects[targetIndex]
-    const currentOrder = currentProject.sortOrder
-    const targetOrder = targetProject.sortOrder
-    const nextCurrent = { ...currentProject, sortOrder: targetOrder }
-    const nextTarget = { ...targetProject, sortOrder: currentOrder }
+    const [project] = orderedProjects.splice(currentIndex, 1)
+    orderedProjects.splice(targetIndex, 0, project)
+    await persistProjectOrder(orderedProjects)
+  }
 
-    setProjects((current) => current
-      .map((project) => project.id === nextCurrent.id ? nextCurrent : project.id === nextTarget.id ? nextTarget : project)
-      .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
+  async function dropProject(projectId: number, targetProjectId: number, placement: 'before' | 'after') {
+    if (projectId === targetProjectId) return
+    const orderedProjects = normalizedProjectOrder()
+    const currentIndex = orderedProjects.findIndex((project) => project.id === projectId)
+    const targetIndex = orderedProjects.findIndex((project) => project.id === targetProjectId)
+    if (currentIndex < 0 || targetIndex < 0) return
 
-    try {
-      const [currentResult, targetResult] = await Promise.all([
-        api.updateProject(nextCurrent.id, toInput(nextCurrent)),
-        api.updateProject(nextTarget.id, toInput(nextTarget)),
-      ])
-      setProjects((current) => current
-        .map((project) => project.id === currentResult.project.id ? currentResult.project : project.id === targetResult.project.id ? targetResult.project : project)
-        .sort((a, b) => (a.sortOrder || Number.MAX_SAFE_INTEGER) - (b.sortOrder || Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)))
-      notify('Portfolio order updated.')
-    } catch (moveError) {
-      setError(moveError instanceof Error ? moveError.message : 'Unable to update portfolio order.')
-      void loadAdminData()
+    const [project] = orderedProjects.splice(currentIndex, 1)
+    let insertIndex = targetIndex + (placement === 'after' ? 1 : 0)
+    if (currentIndex < insertIndex) {
+      insertIndex -= 1
     }
+    orderedProjects.splice(Math.max(0, Math.min(orderedProjects.length, insertIndex)), 0, project)
+    await persistProjectOrder(orderedProjects, 'Project order saved.')
   }
 
   async function savePage(page: CmsPage) {
@@ -2513,6 +2538,54 @@ export function AdminDashboard() {
     )
   }
 
+  function numberedPages(currentPage: number, totalPages: number) {
+    const pages = new Set<number>([1, totalPages])
+    for (let page = currentPage - 2; page <= currentPage + 2; page += 1) {
+      if (page >= 1 && page <= totalPages) {
+        pages.add(page)
+      }
+    }
+    return Array.from(pages).sort((a, b) => a - b)
+  }
+
+  function renderNumberedPagination(args: {
+    currentPage: number
+    totalPages: number
+    onPage: (page: number) => void
+    buttonClassName?: string
+    activeClassName?: string
+  }) {
+    const totalPages = Math.max(1, args.totalPages)
+    const currentPage = Math.min(Math.max(1, args.currentPage), totalPages)
+    const pages = numberedPages(currentPage, totalPages)
+    const buttonClassName = args.buttonClassName ?? 'rounded-xl border border-gray-200 px-4'
+    const activeClassName = args.activeClassName ?? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+    let previousPage = 0
+
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {pages.map((page) => {
+          const needsGap = previousPage > 0 && page - previousPage > 1
+          previousPage = page
+          return (
+            <span key={page} className="flex items-center gap-2">
+              {needsGap ? <span className="px-1 text-sm font-black text-gray-400">...</span> : null}
+              <Button
+                type="button"
+                variant="ghost"
+                className={cn(buttonClassName, page === currentPage ? activeClassName : '')}
+                aria-current={page === currentPage ? 'page' : undefined}
+                onClick={() => args.onPage(page)}
+              >
+                {page}
+              </Button>
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
   function renderPagination(meta: InvoiceListMeta, onPage: (page: number) => void) {
     const from = meta.total === 0 ? 0 : ((meta.page - 1) * meta.perPage) + 1
     const to = Math.min(meta.total, meta.page * meta.perPage)
@@ -2520,14 +2593,13 @@ export function AdminDashboard() {
     return (
       <div className="bkinv-pagination">
         <span>{from}-{to} of {meta.total}</span>
-        <div>
-          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={meta.page <= 1} onClick={() => onPage(Math.max(1, meta.page - 1))}>
-            <ChevronLeft className="h-4 w-4" /> Previous
-          </Button>
-          <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={meta.page >= meta.lastPage} onClick={() => onPage(Math.min(meta.lastPage, meta.page + 1))}>
-            Next <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        {renderNumberedPagination({
+          currentPage: meta.page,
+          totalPages: meta.lastPage,
+          onPage,
+          buttonClassName: 'bkinv-btn bkinv-btn-secondary min-w-10 justify-center px-3',
+          activeClassName: 'is-active bg-blue-600 text-white',
+        })}
       </div>
     )
   }
@@ -5484,7 +5556,7 @@ export function AdminDashboard() {
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-black text-gray-900">Portfolio List</h3>
-                <p className="mt-1 text-sm font-semibold text-gray-500">Use the arrow buttons to rearrange projects. This exact order is used on the frontend.</p>
+                <p className="mt-1 text-sm font-semibold text-gray-500">Drag project rows to rearrange them. This exact order is used on the frontend.</p>
               </div>
               <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={openNewProjectForm}><Plus className="h-4 w-4" />New Project</Button>
             </div>
@@ -5519,7 +5591,35 @@ export function AdminDashboard() {
               {visibleProjects.map((project) => {
                 const globalIndex = orderedProjects.findIndex((item) => item.id === project.id)
                 return (
-                <article key={project.id} className="grid gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center">
+                <article
+                  key={project.id}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData('text/plain', String(project.id))
+                    setProjectDragId(project.id)
+                  }}
+                  onDragEnd={() => setProjectDragId(null)}
+                  onDragOver={(event) => {
+                    if (projectDragId && projectDragId !== project.id) {
+                      event.preventDefault()
+                      event.dataTransfer.dropEffect = 'move'
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    const draggedProjectId = Number(event.dataTransfer.getData('text/plain')) || projectDragId
+                    setProjectDragId(null)
+                    if (!draggedProjectId || draggedProjectId === project.id) return
+                    const bounds = event.currentTarget.getBoundingClientRect()
+                    const placement = event.clientY > bounds.top + (bounds.height / 2) ? 'after' : 'before'
+                    void dropProject(draggedProjectId, project.id, placement)
+                  }}
+                  className={cn(
+                    'grid cursor-grab gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 transition md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center',
+                    projectDragId === project.id ? 'opacity-50 ring-2 ring-blue-200' : 'hover:border-blue-200',
+                  )}
+                >
                   <div className="h-24 w-full overflow-hidden rounded-lg md:h-20">
                     {isVideoMedia(project.image) ? (
                       <video className="h-full w-full object-cover" src={project.image} muted preload="metadata" />
@@ -5531,6 +5631,7 @@ export function AdminDashboard() {
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <GripVertical className="h-4 w-4 text-gray-400" aria-hidden="true" />
                       <h4 className="text-lg font-black text-gray-900">{project.title}</h4>
                       <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-gray-500">#{globalIndex + 1}</span>
                     </div>
@@ -5570,14 +5671,11 @@ export function AdminDashboard() {
                 <p className="text-sm font-semibold text-gray-500">
                   Showing {((activeProjectPage - 1) * projectPerPage) + 1}-{Math.min(filteredProjects.length, activeProjectPage * projectPerPage)} of {filteredProjects.length}
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeProjectPage <= 1} onClick={() => setProjectPage((page) => Math.max(1, page - 1))}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                  </Button>
-                  <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeProjectPage >= totalProjectPages} onClick={() => setProjectPage((page) => Math.min(totalProjectPages, page + 1))}>
-                    Next <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
+                {renderNumberedPagination({
+                  currentPage: activeProjectPage,
+                  totalPages: totalProjectPages,
+                  onPage: setProjectPage,
+                })}
               </div>
             ) : null}
           </section>
@@ -6139,14 +6237,11 @@ export function AdminDashboard() {
             </div>
             <div className="mt-5 flex flex-col justify-between gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center">
               <p className="text-sm font-semibold text-gray-500">Page {activeReviewPage} of {totalReviewPages}</p>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeReviewPage <= 1} onClick={() => setReviewPage((page) => Math.max(1, page - 1))}>
-                  <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                </Button>
-                <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeReviewPage >= totalReviewPages} onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}>
-                  Next <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+              {renderNumberedPagination({
+                currentPage: activeReviewPage,
+                totalPages: totalReviewPages,
+                onPage: setReviewPage,
+              })}
             </div>
           </section>
         </div>
@@ -7888,10 +7983,11 @@ export function AdminDashboard() {
 
         <div className="mt-4 flex items-center justify-between gap-3 text-sm font-bold text-gray-500">
           <span>{siteEmailLogsMeta.total} total logs</span>
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" disabled={siteEmailLogsMeta.page <= 1} onClick={() => void loadSiteEmailLogs(siteEmailLogsMeta.page - 1)}>Previous</Button>
-            <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" disabled={siteEmailLogsMeta.page >= siteEmailLogsMeta.lastPage} onClick={() => void loadSiteEmailLogs(siteEmailLogsMeta.page + 1)}>Next</Button>
-          </div>
+          {renderNumberedPagination({
+            currentPage: siteEmailLogsMeta.page,
+            totalPages: siteEmailLogsMeta.lastPage,
+            onPage: (page) => void loadSiteEmailLogs(page),
+          })}
         </div>
       </section>
       {selectedSiteEmailLog ? (
