@@ -193,6 +193,17 @@ export type PublicBookingInput = {
   meetingPlatform?: string
 }
 
+export type ContactMessageInput = {
+  name: string
+  email: string
+  phone?: string
+  subject?: string
+  message: string
+  website?: string
+  company?: string
+  submittedAt?: number
+}
+
 export type BookingCalendar = {
   id: number
   name: string
@@ -1075,6 +1086,12 @@ export const api = {
   },
   publicSettings() {
     return publicSettings()
+  },
+  submitContact(payload: ContactMessageInput) {
+    return request<{ message: string }>('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
   },
   publicPage(slug: string) {
     return request<{ page: CmsPage }>(`/api/pages/${encodeURIComponent(slug)}`)

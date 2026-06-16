@@ -213,6 +213,57 @@ class BakhtechApiController extends Controller
         return ['settings' => array_intersect_key($settings, array_flip($publicKeys))];
     }
 
+    public function submitContact(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'email' => ['required', 'email:rfc', 'max:190'],
+            'phone' => ['nullable', 'string', 'max:60'],
+            'subject' => ['nullable', 'string', 'max:160'],
+            'message' => ['required', 'string', 'min:20', 'max:5000'],
+            'website' => ['nullable', 'string', 'max:120'],
+            'company' => ['nullable', 'string', 'max:120'],
+            'submittedAt' => ['nullable', 'integer'],
+        ]);
+
+        $spamReason = $this->contactSpamReason($request, $data);
+        if ($spamReason !== null) {
+            $this->storeContactMessage($request, $data, 'spam', $spamReason);
+
+            return response()->json(['message' => 'Thanks. Your message has been received.']);
+        }
+
+        $messageId = $this->storeContactMessage($request, $data, 'received');
+        $adminEmail = $this->contactAdminEmail();
+        if ($adminEmail === '') {
+            $this->updateContactMessageStatus($messageId, 'missing_recipient');
+
+            return response()->json(['message' => 'Thanks. Your message has been received.']);
+        }
+
+        $content = $this->contactEmailContent($data, $request);
+        $subject = 'New website enquiry from '.trim((string) $data['name']);
+
+        try {
+            Mail::html($content['html'], function ($message) use ($adminEmail, $subject, $content, $data) {
+                $message->to($adminEmail)
+                    ->replyTo(strtolower(trim((string) $data['email'])), trim((string) $data['name']))
+                    ->subject($subject)
+                    ->getHeaders()
+                    ->addTextHeader('X-Bakhtech-Source', 'contact-form');
+                $message->getSymfonyMessage()->text($content['text']);
+            });
+
+            $this->updateContactMessageStatus($messageId, 'notified', ['notified_at' => now()]);
+        } catch (\Throwable $exception) {
+            $this->updateContactMessageStatus($messageId, 'notification_failed', ['spam_reason' => $exception->getMessage()]);
+
+            $this->logContactEmailFailure($adminEmail, $subject, $content, $exception);
+        }
+
+        return response()->json(['message' => 'Thanks. Your message has been received.']);
+    }
+
     public function publicPage(string $slug)
     {
         $page = DB::table('pages')
@@ -1467,6 +1518,173 @@ class BakhtechApiController extends Controller
         }
 
         return $candidate;
+    }
+
+    private function contactSpamReason(Request $request, array $data): ?string
+    {
+        if (! empty($data['website']) || ! empty($data['company'])) {
+            return 'honeypot';
+        }
+
+        $submittedAt = (int) ($data['submittedAt'] ?? 0);
+        if ($submittedAt > 0 && now()->timestamp - $submittedAt < 4) {
+            return 'submitted_too_fast';
+        }
+
+        $message = trim((string) $data['message']);
+        $lowerMessage = Str::lower($message);
+        if (preg_match_all('#https?://|www\.#i', $message) > 2) {
+            return 'too_many_links';
+        }
+
+        foreach (['casino', 'crypto investment', 'forex signals', 'loan offer', 'viagra', 'porn', 'seo backlinks', 'guest post'] as $term) {
+            if (str_contains($lowerMessage, $term)) {
+                return 'blocked_term:'.$term;
+            }
+        }
+
+        if (preg_match('/(.)\1{14,}/u', $message)) {
+            return 'repeated_characters';
+        }
+
+        $ipHash = $this->contactIpHash($request);
+        if ($ipHash !== '' && Schema::hasTable('contact_messages')) {
+            $recentCount = DB::table('contact_messages')
+                ->where('ip_hash', $ipHash)
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->count();
+
+            if ($recentCount >= 3) {
+                return 'too_many_recent_messages';
+            }
+        }
+
+        return null;
+    }
+
+    private function storeContactMessage(Request $request, array $data, string $status, ?string $spamReason = null): int
+    {
+        if (! Schema::hasTable('contact_messages')) {
+            return 0;
+        }
+
+        return (int) DB::table('contact_messages')->insertGetId([
+            'name' => trim((string) $data['name']),
+            'email' => strtolower(trim((string) $data['email'])),
+            'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
+            'subject' => trim((string) ($data['subject'] ?? '')) ?: null,
+            'message' => trim((string) $data['message']),
+            'status' => $status,
+            'ip_hash' => $this->contactIpHash($request) ?: null,
+            'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
+            'referrer' => Str::limit((string) $request->headers->get('referer', ''), 1000, ''),
+            'spam_reason' => $spamReason,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function updateContactMessageStatus(int $messageId, string $status, array $extra = []): void
+    {
+        if ($messageId <= 0 || ! Schema::hasTable('contact_messages')) {
+            return;
+        }
+
+        DB::table('contact_messages')->where('id', $messageId)->update($extra + [
+            'status' => $status,
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function contactAdminEmail(): string
+    {
+        $settings = $this->settings();
+
+        return strtolower(trim((string) (
+            $settings['contactEmail']
+            ?? $settings['company_email']
+            ?? (Schema::hasTable('booking_settings') ? DB::table('booking_settings')->where('key', 'admin_alert_email')->value('value') : null)
+            ?? config('mail.from.address')
+            ?? ''
+        )));
+    }
+
+    private function contactIpHash(Request $request): string
+    {
+        $ip = trim((string) $request->ip());
+
+        return $ip !== '' ? hash('sha256', config('app.key').'|'.$ip) : '';
+    }
+
+    private function contactEmailContent(array $data, Request $request): array
+    {
+        $name = trim((string) $data['name']);
+        $email = strtolower(trim((string) $data['email']));
+        $phone = trim((string) ($data['phone'] ?? ''));
+        $subject = trim((string) ($data['subject'] ?? ''));
+        $body = trim((string) $data['message']);
+        $details = [
+            'Name' => $name,
+            'Email' => $email,
+            'Phone' => $phone,
+            'Subject' => $subject,
+            'Submitted from' => (string) $request->headers->get('referer', config('app.url')),
+            'User agent' => (string) $request->userAgent(),
+        ];
+
+        $rows = collect($details)
+            ->filter(fn ($value) => trim((string) $value) !== '')
+            ->map(fn ($value, $label) => '<tr><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#64748b;font-weight:700;">'.$this->escape((string) $label).'</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;">'.$this->escape((string) $value).'</td></tr>')
+            ->implode('');
+
+        $html = '<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:28px 12px;">
+                <tr><td align="center">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+                        <tr><td style="padding:26px 30px;background:#0f172a;color:#ffffff;">
+                            <div style="font-size:12px;font-weight:800;letter-spacing:.14em;color:#fca5a5;text-transform:uppercase;">New contact form message</div>
+                            <h1 style="margin:10px 0 0;font-size:28px;line-height:1.25;">'.$this->escape($name).'</h1>
+                        </td></tr>
+                        <tr><td style="padding:26px 30px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">'.$rows.'</table></td></tr>
+                        <tr><td style="padding:0 30px 30px;">
+                            <div style="font-size:12px;font-weight:800;letter-spacing:.08em;color:#64748b;text-transform:uppercase;margin-bottom:8px;">Message</div>
+                            <div style="font-size:15px;line-height:1.75;color:#334155;white-space:pre-wrap;">'.$this->escape($body).'</div>
+                        </td></tr>
+                    </table>
+                </td></tr>
+            </table>
+        </body></html>';
+
+        $text = "New contact form message\n\n"
+            .collect($details)->filter(fn ($value) => trim((string) $value) !== '')->map(fn ($value, $label) => $label.': '.$value)->implode("\n")
+            ."\n\nMessage:\n".$body;
+
+        return ['html' => $html, 'text' => $text];
+    }
+
+    private function logContactEmailFailure(string $email, string $subject, array $content, \Throwable $exception): void
+    {
+        if (! Schema::hasTable('email_logs')) {
+            return;
+        }
+
+        DB::table('email_logs')->insert([
+            'recipient' => strtolower($email),
+            'subject' => $subject,
+            'body_html' => $content['html'],
+            'body_text' => $content['text'],
+            'source' => 'contact-form',
+            'mailer' => config('mail.default'),
+            'status' => 'failed',
+            'error_message' => $exception->getMessage(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function escape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
     private function pagePayload(Request $request, object $existing): array

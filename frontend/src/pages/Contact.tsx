@@ -1,8 +1,10 @@
+import { type FormEvent, useMemo, useState } from 'react'
 import { Mail, MapPin, Phone } from 'lucide-react'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { Button } from '@/components/ui/button'
 import { contactItems } from '@/data/site'
+import { ApiError, api } from '@/lib/api'
 
 function contactHref(label: string, value: string) {
   if (label.toLowerCase() === 'email') return `mailto:${value}`
@@ -17,6 +19,57 @@ function ContactIcon({ label }: { label: string }) {
 }
 
 export function Contact() {
+  const submittedAt = useMemo(() => Math.floor(Date.now() / 1000), [])
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+    website: '',
+    company: '',
+  })
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [feedback, setFeedback] = useState('')
+
+  function updateField(field: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [field]: value }))
+    if (status !== 'sending') {
+      setStatus('idle')
+      setFeedback('')
+    }
+  }
+
+  async function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('sending')
+    setFeedback('')
+
+    try {
+      const result = await api.submitContact({
+        ...form,
+        submittedAt,
+      })
+
+      setStatus('sent')
+      setFeedback(result.message || 'Thanks. Your message has been received.')
+      setForm({
+        name: '',
+        email: '',
+        phone: '',
+        subject: '',
+        message: '',
+        website: '',
+        company: '',
+      })
+    } catch (error) {
+      setStatus('error')
+      setFeedback(error instanceof ApiError && error.status === 422
+        ? 'Please check your details and write a clear message.'
+        : error instanceof Error ? error.message : 'Unable to send your message right now.')
+    }
+  }
+
   return (
     <main className="contact-page home-page overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.13),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pb-16 pt-32 md:pb-24 md:pt-36">
@@ -74,21 +127,36 @@ export function Contact() {
 
             <div className="surface-card relative overflow-hidden rounded-2xl p-5 md:p-8">
               <BorderBeam size={280} duration={8} borderWidth={1.8} colorFrom="#ef4444" colorTo="#587d9f" />
-              <form className="relative z-10 grid gap-6">
+              <form className="relative z-10 grid gap-6" onSubmit={submitContact}>
+                <div className="hidden" aria-hidden="true">
+                  <label>
+                    Website
+                    <input tabIndex={-1} autoComplete="off" name="website" value={form.website} onChange={(event) => updateField('website', event.target.value)} />
+                  </label>
+                  <label>
+                    Company
+                    <input tabIndex={-1} autoComplete="off" name="company" value={form.company} onChange={(event) => updateField('company', event.target.value)} />
+                  </label>
+                </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold">
                     Name
-                    <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="name" autoComplete="name" />
+                    <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="name" autoComplete="name" value={form.name} onChange={(event) => updateField('name', event.target.value)} required minLength={2} maxLength={120} />
                   </label>
                   <label className="grid gap-2 text-sm font-bold">
                     Email
-                    <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="email" type="email" autoComplete="email" />
+                    <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="email" type="email" autoComplete="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} required maxLength={190} />
                   </label>
                 </div>
 
                 <label className="grid gap-2 text-sm font-bold">
                   Phone
-                  <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="phone" type="tel" autoComplete="tel" />
+                  <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="phone" type="tel" autoComplete="tel" value={form.phone} onChange={(event) => updateField('phone', event.target.value)} maxLength={60} />
+                </label>
+
+                <label className="grid gap-2 text-sm font-bold">
+                  Subject
+                  <input className="theme-input min-h-12 rounded-xl px-4 outline-none" name="subject" value={form.subject} onChange={(event) => updateField('subject', event.target.value)} maxLength={160} />
                 </label>
 
                 <label className="grid gap-2 text-sm font-bold">
@@ -97,11 +165,22 @@ export function Contact() {
                     className="theme-input min-h-44 resize-y rounded-xl px-4 py-3 outline-none"
                     name="message"
                     placeholder="What are we building?"
+                    value={form.message}
+                    onChange={(event) => updateField('message', event.target.value)}
+                    required
+                    minLength={20}
+                    maxLength={5000}
                   />
                 </label>
 
-                <Button type="submit" showArrow className="min-h-12 rounded-xl bg-[#ef4444] px-6 font-black text-white shadow-none hover:bg-[#dc2626]">
-                  Send message
+                {feedback ? (
+                  <p className={status === 'error' ? 'rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-600' : 'rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-600'}>
+                    {feedback}
+                  </p>
+                ) : null}
+
+                <Button type="submit" showArrow disabled={status === 'sending'} className="min-h-12 rounded-xl bg-[#ef4444] px-6 font-black text-white shadow-none hover:bg-[#dc2626] disabled:pointer-events-none disabled:opacity-70">
+                  {status === 'sending' ? 'Sending...' : 'Send message'}
                 </Button>
               </form>
             </div>
