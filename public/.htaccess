@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    RewriteRule ^(api|admin|invoice|receipt)(/.*)?$ - [E=Cache-Control:no-cache]
+    RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ - [E=Cache-Control:no-cache]
+
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 

@@ -17,32 +17,6 @@ const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 
-const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://bakhtech.com.ng</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://bakhtech.com.ng/about</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://bakhtech.com.ng/portfolio</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://bakhtech.com.ng/pricing</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://bakhtech.com.ng/booking</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://bakhtech.com.ng/contact</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://bakhtech.com.ng/llms.txt</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown-mirrors.txt</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/home.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/about.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/portfolio.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/pricing.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/booking.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://bakhtech.com.ng/markdown/contact.md</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-</urlset>`
-
-function SitemapFallback() {
-  return (
-    <pre style={{ margin: 0, minHeight: '100vh', whiteSpace: 'pre-wrap', background: '#ffffff', color: '#111827', padding: 16, font: '14px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>
-      {sitemapXml}
-    </pre>
-  )
-}
-
 function App() {
   const [enableVisitTracking, setEnableVisitTracking] = useState(false)
 
@@ -79,8 +53,6 @@ function App() {
           <Route path="admin/dashboard" element={<AdminDashboard />} />
           <Route path="admin/pricing-preview" element={<Pricing />} />
           <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />
-          <Route path="sitemap.xml" element={<SitemapFallback />} />
-          <Route path="sitemaps.xml" element={<SitemapFallback />} />
           <Route path="invoice/:token" element={<PublicInvoice />} />
           <Route path="receipt/:token" element={<PublicReceipt />} />
           <Route path="pricing" element={<Pricing />} />
