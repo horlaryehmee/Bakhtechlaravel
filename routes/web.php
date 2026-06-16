@@ -120,7 +120,7 @@ Route::get('/markdown/{slug}.md', function (string $slug) use ($markdownMirror) 
     ]);
 })->where('slug', '[A-Za-z0-9_-]+');
 
-Route::get('/sitemap.xml', function () use ($seoBaseUrl, $seoStaticPages) {
+Route::get('/{sitemapFile}', function () use ($seoBaseUrl, $seoStaticPages) {
     $baseUrl = $seoBaseUrl();
     $paths = $seoStaticPages()->pluck('path');
 
@@ -147,7 +147,7 @@ Route::get('/sitemap.xml', function () use ($seoBaseUrl, $seoStaticPages) {
     return response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.$urls.'</urlset>', 200, [
         'Content-Type' => 'application/xml; charset=UTF-8',
     ]);
-});
+})->where('sitemapFile', 'sitemaps?\.xml');
 
 Route::fallback(function (Request $request) use ($legacyInvoiceRedirect) {
     if ($request->isMethod('GET') && $redirect = $legacyInvoiceRedirect($request)) {
