@@ -1,6 +1,10 @@
 User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /markdown-mirrors.txt
+Allow: /markdown/
 Disallow: /admin
 Disallow: /api/admin
 Disallow: /api/auth
 Disallow: /invoice
-
+Sitemap: https://bakhtech.com.ng/sitemap.xml
