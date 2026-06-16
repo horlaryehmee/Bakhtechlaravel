@@ -375,7 +375,7 @@ class BookingCmsService
             'google_oauth_client_secret' => '',
             'google_calendar_sync_enabled' => 'false',
             'google_calendar_id' => 'primary',
-            'google_calendar_send_updates' => 'all',
+            'google_calendar_send_updates' => 'none',
             'google_meet_auto_generate' => 'true',
             'google_connected_email' => '',
         ], DB::table('booking_settings')->pluck('value', 'key')->all());

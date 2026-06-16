@@ -24,8 +24,9 @@ class GoogleCalendarService
             return ['status' => 'not_configured'];
         }
 
+        $sendUpdates = $this->sendUpdates();
         $attendees = [];
-        if ($booking->email) {
+        if ($sendUpdates !== 'none' && $booking->email) {
             $attendees[] = ['email' => $booking->email, 'displayName' => $booking->name];
         }
 
@@ -41,7 +42,6 @@ class GoogleCalendarService
                 'dateTime' => $this->googleDateTime((string) $booking->ends_at, (string) ($booking->timezone ?: $eventType->timezone)),
                 'timeZone' => $booking->timezone ?: $eventType->timezone,
             ],
-            'attendees' => $attendees,
             'reminders' => [
                 'useDefault' => false,
                 'overrides' => collect($reminders)
@@ -51,6 +51,10 @@ class GoogleCalendarService
                     ->all(),
             ],
         ];
+
+        if ($attendees !== []) {
+            $payload['attendees'] = $attendees;
+        }
 
         if ($this->isGoogleMeetType((string) ($booking->location_type ?? $eventType->location_type)) && $this->setting('google_meet_auto_generate', 'true') === 'true') {
             $payload['conferenceData'] = [
@@ -199,7 +203,14 @@ class GoogleCalendarService
 
     private function eventsUrl(?string $calendarId = null): string
     {
-        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($calendarId ?: $this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->setting('google_calendar_send_updates', 'all'));
+        return 'https://www.googleapis.com/calendar/v3/calendars/'.rawurlencode($calendarId ?: $this->calendarId()).'/events?conferenceDataVersion=1&sendUpdates='.rawurlencode($this->sendUpdates());
+    }
+
+    private function sendUpdates(): string
+    {
+        $value = $this->setting('google_calendar_send_updates', 'none');
+
+        return in_array($value, ['all', 'externalOnly', 'none'], true) ? $value : 'none';
     }
 
     private function eventUrl(string $calendarId, string $eventId): string

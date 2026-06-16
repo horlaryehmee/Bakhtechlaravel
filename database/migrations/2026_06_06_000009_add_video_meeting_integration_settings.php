@@ -30,7 +30,7 @@ return new class extends Migration
             'google_calendar_sync_enabled' => 'false',
             'google_calendar_id' => 'primary',
             'google_calendar_access_token' => '',
-            'google_calendar_send_updates' => 'all',
+            'google_calendar_send_updates' => 'none',
             'google_meet_auto_generate' => 'true',
             'zoom_enabled' => 'false',
             'zoom_account_id' => '',
