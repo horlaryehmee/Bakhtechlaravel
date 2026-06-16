@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\DatabaseSynchronizer;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
 use App\Services\DeploymentMaintenanceService;
@@ -293,6 +294,10 @@ class BakhtechApiController extends Controller
 
     public function cms()
     {
+        if (Schema::hasTable('pages') && DB::table('pages')->count() === 0) {
+            app(DatabaseSynchronizer::class)->repair();
+        }
+
         return [
             'pages' => DB::table('pages')->orderBy('id')->get()->map(fn ($row) => $this->pageShape($row)),
             'posts' => DB::table('posts')->orderByDesc('updated_at')->get()->map(fn ($row) => $this->postShape($row)),

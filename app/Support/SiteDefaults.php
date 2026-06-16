@@ -7,12 +7,54 @@ class SiteDefaults
     public static function pages(): array
     {
         return [
-            ['title' => 'Home', 'slug' => 'home'],
-            ['title' => 'About', 'slug' => 'about'],
-            ['title' => 'Portfolio', 'slug' => 'portfolio'],
-            ['title' => 'Ebook', 'slug' => 'ebook'],
-            ['title' => 'Career', 'slug' => 'career'],
-            ['title' => 'Contact', 'slug' => 'contact'],
+            [
+                'title' => 'Home',
+                'slug' => 'home',
+                'excerpt' => 'Fast, SEO-ready websites, ecommerce stores, booking systems, and custom web apps for businesses in Nigeria, the United States, Canada, and worldwide.',
+                'seo_title' => 'Bakhtech Solutions | SEO Web Design & Web Apps',
+                'seo_description' => 'Bakhtech Solutions builds fast, SEO-ready websites, ecommerce stores, booking systems and custom web apps for businesses in Nigeria, the US, Canada and worldwide.',
+                'focus_keyword' => 'SEO web design agency',
+            ],
+            [
+                'title' => 'About',
+                'slug' => 'about',
+                'excerpt' => 'Learn how Bakhtech Solutions designs and develops conversion-focused websites and web systems for growing businesses.',
+                'seo_title' => 'About Bakhtech Solutions | Web Design Agency',
+                'seo_description' => 'Meet Bakhtech Solutions, a web design and development agency building fast websites, ecommerce stores, booking systems and business web apps.',
+                'focus_keyword' => 'web design agency',
+            ],
+            [
+                'title' => 'Portfolio',
+                'slug' => 'portfolio',
+                'excerpt' => 'Explore Bakhtech Solutions web design, ecommerce, booking system, and custom web app projects.',
+                'seo_title' => 'Web Design Portfolio | Bakhtech Solutions',
+                'seo_description' => 'See websites, ecommerce stores, booking platforms and custom web apps built by Bakhtech Solutions for real businesses.',
+                'focus_keyword' => 'web design portfolio',
+            ],
+            [
+                'title' => 'Ebook',
+                'slug' => 'ebook',
+                'excerpt' => 'Practical website strategy resources for business owners planning a stronger online presence.',
+                'seo_title' => 'Website Strategy Ebook | Bakhtech Solutions',
+                'seo_description' => 'Download practical website strategy resources from Bakhtech Solutions for planning SEO-ready business websites and digital systems.',
+                'focus_keyword' => 'website strategy ebook',
+            ],
+            [
+                'title' => 'Career',
+                'slug' => 'career',
+                'excerpt' => 'Work with Bakhtech Solutions on modern web design, development, SEO, ecommerce, and business automation projects.',
+                'seo_title' => 'Careers | Bakhtech Solutions',
+                'seo_description' => 'Explore career opportunities with Bakhtech Solutions across web design, frontend development, Laravel, SEO and digital product work.',
+                'focus_keyword' => 'web design careers',
+            ],
+            [
+                'title' => 'Contact',
+                'slug' => 'contact',
+                'excerpt' => 'Talk to Bakhtech Solutions about your website, ecommerce store, booking system, portal, dashboard, or SEO project.',
+                'seo_title' => 'Contact Bakhtech Solutions | Start Your Website Project',
+                'seo_description' => 'Contact Bakhtech Solutions to plan a fast, SEO-ready website, ecommerce store, booking system, dashboard, or custom web app.',
+                'focus_keyword' => 'contact web design agency',
+            ],
         ];
     }
 
