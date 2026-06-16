@@ -96,18 +96,12 @@ export function Home2() {
 
   useEffect(() => {
     const show = () => setLoadBelowFold(true)
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
-      cancelIdleCallback?: (id: number) => void
-    }
 
-    const idleId = idleWindow.requestIdleCallback?.(show, { timeout: 3200 })
-    const timeoutId = window.setTimeout(show, 2400)
+    const timeoutId = window.setTimeout(show, 9000)
     window.addEventListener('scroll', show, { passive: true, once: true })
     window.addEventListener('pointerdown', show, { passive: true, once: true })
 
     return () => {
-      if (idleId) idleWindow.cancelIdleCallback?.(idleId)
       window.clearTimeout(timeoutId)
       window.removeEventListener('scroll', show)
       window.removeEventListener('pointerdown', show)

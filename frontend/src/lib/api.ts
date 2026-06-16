@@ -696,6 +696,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return parseJsonResponse<T>(response, 'Request failed.')
 }
 
+let publicSettingsPromise: Promise<{ settings: Record<string, string> }> | null = null
+
+function publicSettings() {
+  publicSettingsPromise ??= request<{ settings: Record<string, string> }>('/api/settings')
+    .catch((error) => {
+      publicSettingsPromise = null
+      throw error
+    })
+
+  return publicSettingsPromise
+}
+
 export const api = {
   login(email: string, password: string, twoFactorCode = '') {
     return request<{ token: string; admin: { id: number; email: string; name: string; twoFactorEnabled: boolean } }>('/api/admin/login', {
@@ -1062,7 +1074,7 @@ export const api = {
     return request<{ projects: Project[] }>('/api/projects')
   },
   publicSettings() {
-    return request<{ settings: Record<string, string> }>('/api/settings')
+    return publicSettings()
   },
   publicPage(slug: string) {
     return request<{ page: CmsPage }>(`/api/pages/${encodeURIComponent(slug)}`)

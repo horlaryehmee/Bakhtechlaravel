@@ -140,10 +140,12 @@ export function FluidParticles({
     contextRef.current = context
     context.globalCompositeOperation = 'lighter'
     blastRef.current.maxRadius = maxBlastRadius
+    const isMobile = window.matchMedia('(max-width: 767px)').matches
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const initParticles = () => {
       particlesRef.current = []
-      const densityMultiplier = window.innerWidth < 768 ? 1.8 : 1
+      const densityMultiplier = window.innerWidth < 768 ? 7.5 : 1
       const particleCount = Math.floor((window.innerWidth * window.innerHeight) / (particleDensity * densityMultiplier))
 
       for (let index = 0; index < particleCount; index += 1) {
@@ -152,7 +154,7 @@ export function FluidParticles({
     }
 
     const handleResize = () => {
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.25 : 1.75)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1 : 1.75)
       canvas.width = window.innerWidth * pixelRatio
       canvas.height = window.innerHeight * pixelRatio
       canvas.style.width = `${window.innerWidth}px`
@@ -238,11 +240,20 @@ export function FluidParticles({
 
     const handleClick = (event: MouseEvent) => triggerBlast(event.clientX, event.clientY)
 
-    const animate = () => {
+    let lastFrame = 0
+    const frameInterval = isMobile || prefersReducedMotion ? 1000 / 24 : 0
+
+    const animate = (timestamp = 0) => {
       if (document.visibilityState === 'hidden') {
         animationRef.current = requestAnimationFrame(animate)
         return
       }
+
+      if (frameInterval > 0 && timestamp - lastFrame < frameInterval) {
+        animationRef.current = requestAnimationFrame(animate)
+        return
+      }
+      lastFrame = timestamp
 
       context.clearRect(0, 0, window.innerWidth, window.innerHeight)
       particlesRef.current.forEach((particle) => particle.update())
