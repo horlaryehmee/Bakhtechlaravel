@@ -820,6 +820,9 @@ export function AdminDashboard() {
   const [projectSearch, setProjectSearch] = useState('')
   const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | Project['status']>('all')
   const [projectCategoryFilter, setProjectCategoryFilter] = useState('all')
+  const [projectPage, setProjectPage] = useState(1)
+  const [projectPerPage, setProjectPerPage] = useState(10)
+  const [mediaPickerVisibleCount, setMediaPickerVisibleCount] = useState(12)
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
@@ -914,6 +917,14 @@ export function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
   }, [activeInvoiceSubsection])
+
+  useEffect(() => {
+    setProjectPage(1)
+  }, [projectSearch, projectStatusFilter, projectCategoryFilter, projectPerPage])
+
+  useEffect(() => {
+    setMediaPickerVisibleCount(12)
+  }, [mediaPicker, mediaSearch])
 
   // Global search implementation
   const searchResults = useMemo(() => {
@@ -5167,6 +5178,9 @@ export function AdminDashboard() {
       const matchesCategory = projectCategoryFilter === 'all' || project.category === projectCategoryFilter
       return matchesSearch && matchesStatus && matchesCategory
     })
+    const totalProjectPages = Math.max(1, Math.ceil(filteredProjects.length / projectPerPage))
+    const activeProjectPage = Math.min(projectPage, totalProjectPages)
+    const visibleProjects = filteredProjects.slice((activeProjectPage - 1) * projectPerPage, activeProjectPage * projectPerPage)
     const openNewProjectForm = () => {
       setEditingProject(null)
       setProjectForm({
@@ -5224,11 +5238,27 @@ export function AdminDashboard() {
         setError(uploadErrorMessage(uploadError, 'Unable to upload and select this media.'))
       }
     }
+    const updateProjectStatus = async (project: Project, status: Project['status']) => {
+      if (project.status === status) return
+      setError('')
+      try {
+        const result = await api.updateProject(project.id, { ...toInput(project), status })
+        setProjects((current) => current.map((item) => (item.id === result.project.id ? result.project : item)))
+        if (editingProject?.id === result.project.id) {
+          setEditingProject(result.project)
+          setProjectForm(toInput(result.project))
+        }
+        notify(status === 'draft' ? 'Project moved to draft.' : 'Project published.')
+      } catch (statusError) {
+        setError(statusError instanceof Error ? statusError.message : 'Unable to update project status.')
+      }
+    }
     const pickerItems = (cms?.media ?? []).filter((media) => media.mimeType.startsWith(mediaPicker?.field === 'videoUrl' ? 'video/' : 'image/'))
     const filteredPickerItems = pickerItems.filter((media) => {
       const query = mediaSearch.trim().toLowerCase()
       return !query || media.originalName.toLowerCase().includes(query) || media.url.toLowerCase().includes(query)
     })
+    const visiblePickerItems = filteredPickerItems.slice(0, mediaPickerVisibleCount)
     const renderMediaInput = (
       title: string,
       text: string,
@@ -5419,7 +5449,7 @@ export function AdminDashboard() {
                 </div>
               </div>
               <div className="grid gap-4 overflow-y-auto p-5 sm:grid-cols-2 lg:grid-cols-4">
-                {filteredPickerItems.map((media) => (
+                {visiblePickerItems.map((media) => (
                   <button
                     key={`${media.id}-${media.url}`}
                     type="button"
@@ -5439,6 +5469,13 @@ export function AdminDashboard() {
                   </button>
                 ))}
                 {filteredPickerItems.length === 0 ? <p className="col-span-full py-12 text-center text-sm font-semibold text-gray-500">No matching media found.</p> : null}
+                {filteredPickerItems.length > visiblePickerItems.length ? (
+                  <div className="col-span-full flex justify-center pt-2">
+                    <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-5" onClick={() => setMediaPickerVisibleCount((count) => count + 12)}>
+                      Show more
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </section>
           </div>
@@ -5451,7 +5488,7 @@ export function AdminDashboard() {
               </div>
               <Button type="button" className="rounded-xl bg-blue-600 text-white" onClick={openNewProjectForm}><Plus className="h-4 w-4" />New Project</Button>
             </div>
-            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_170px_220px]">
+            <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_170px_220px_150px]">
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
@@ -5470,13 +5507,16 @@ export function AdminDashboard() {
                 <option value="all">All categories</option>
                 {projectCategories.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
+              <select className="theme-input min-h-11 rounded-xl border border-gray-200 px-3 outline-none focus:border-blue-500" value={projectPerPage} onChange={(event) => setProjectPerPage(Number(event.target.value))}>
+                {[10, 20, 50].map((size) => <option key={size} value={size}>{size} / page</option>)}
+              </select>
             </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
               <p className="text-sm font-bold text-gray-600">{filteredProjects.length} of {projects.length} projects</p>
-              <p className="text-xs font-black uppercase tracking-wide text-gray-400">List view</p>
+              <p className="text-xs font-black uppercase tracking-wide text-gray-400">Page {activeProjectPage} of {totalProjectPages}</p>
             </div>
             <div className="grid gap-4">
-              {filteredProjects.map((project) => {
+              {visibleProjects.map((project) => {
                 const globalIndex = orderedProjects.findIndex((item) => item.id === project.id)
                 return (
                 <article key={project.id} className="grid gap-4 rounded-xl border border-gray-100 bg-gray-50 p-4 md:grid-cols-[8rem_minmax(0,1fr)_auto] md:items-center">
@@ -5498,6 +5538,15 @@ export function AdminDashboard() {
                     {project.summary ? <p className="text-gray-500 mt-2 text-sm leading-relaxed">{project.summary}</p> : null}
                   </div>
                   <div className="flex flex-wrap gap-2 md:mt-4 md:flex-col">
+                    <select
+                      className="theme-input min-h-10 rounded-xl border border-gray-200 px-3 text-sm font-bold outline-none focus:border-blue-500"
+                      value={project.status}
+                      onChange={(event) => void updateProjectStatus(project, event.target.value as Project['status'])}
+                      title="Change project publish status"
+                    >
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
                     <div className="flex gap-2">
                       <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" disabled={globalIndex <= 0} onClick={() => void moveProject(project.id, -1)} title="Move project up">
                         <ChevronLeft className="h-4 w-4 rotate-90" />
@@ -5516,6 +5565,21 @@ export function AdminDashboard() {
                 <div className="rounded-xl bg-gray-50 p-8 text-center text-sm font-semibold text-gray-500">No projects match the current filters.</div>
               ) : null}
             </div>
+            {filteredProjects.length ? (
+              <div className="mt-5 flex flex-col justify-between gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center">
+                <p className="text-sm font-semibold text-gray-500">
+                  Showing {((activeProjectPage - 1) * projectPerPage) + 1}-{Math.min(filteredProjects.length, activeProjectPage * projectPerPage)} of {filteredProjects.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeProjectPage <= 1} onClick={() => setProjectPage((page) => Math.max(1, page - 1))}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                  </Button>
+                  <Button type="button" variant="ghost" className="rounded-xl border border-gray-200 px-4" disabled={activeProjectPage >= totalProjectPages} onClick={() => setProjectPage((page) => Math.min(totalProjectPages, page + 1))}>
+                    Next <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </section>
       </div>
     )
