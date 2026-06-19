@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
 
@@ -43,6 +44,7 @@ function App() {
 
   return (
     <>
+      <SmartsuppLiveChat />
       {enableVisitTracking ? <VisitTracker /> : null}
       <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
         <Routes>
