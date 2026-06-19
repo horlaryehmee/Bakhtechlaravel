@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Schema;
 $seoBaseUrl = fn () => rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
 
 $seoStaticPages = fn () => collect([
-    ['path' => '/', 'slug' => 'home', 'title' => 'Bakhtech Solutions', 'description' => 'Fast, SEO-ready websites, ecommerce stores, booking systems, dashboards, portals, and custom web apps for businesses in Nigeria, the United States, Canada, and worldwide.'],
-    ['path' => '/about', 'slug' => 'about', 'title' => 'About Bakhtech Solutions', 'description' => 'Web design and development agency focused on performance, SEO, conversion, and business systems.'],
-    ['path' => '/portfolio', 'slug' => 'portfolio', 'title' => 'Bakhtech Solutions Portfolio', 'description' => 'Website, ecommerce, booking platform, dashboard, and custom web app project examples.'],
-    ['path' => '/pricing', 'slug' => 'pricing', 'title' => 'Bakhtech Solutions Pricing', 'description' => 'Website, ecommerce, booking system, and custom software packages for growing businesses.'],
-    ['path' => '/booking', 'slug' => 'booking', 'title' => 'Book a Discovery Call', 'description' => 'Schedule a consultation with Bakhtech Solutions to plan a website, ecommerce store, booking platform, dashboard, or custom web app.'],
-    ['path' => '/contact', 'slug' => 'contact', 'title' => 'Contact Bakhtech Solutions', 'description' => 'Contact Bakhtech Solutions for SEO-ready web design, development, ecommerce, portals, booking systems, and business automation.'],
+    ['path' => '/', 'slug' => 'home', 'title' => 'Bakhtech Solutions', 'description' => 'Modern websites, online stores, booking systems, dashboards, portals, and custom web apps for businesses that want to look professional and work smarter online.'],
+    ['path' => '/about', 'slug' => 'about', 'title' => 'About Bakhtech Solutions', 'description' => 'A practical web design and development team helping businesses turn ideas into clear, reliable digital tools.'],
+    ['path' => '/portfolio', 'slug' => 'portfolio', 'title' => 'Bakhtech Solutions Portfolio', 'description' => 'Real examples of websites, ecommerce stores, booking platforms, dashboards, and custom web apps built for business goals.'],
+    ['path' => '/pricing', 'slug' => 'pricing', 'title' => 'Bakhtech Solutions Pricing', 'description' => 'Clear website, ecommerce, booking system, and custom software packages for businesses planning their next digital project.'],
+    ['path' => '/booking', 'slug' => 'booking', 'title' => 'Book a Discovery Call', 'description' => 'Schedule a consultation with Bakhtech Solutions to talk through your website, online store, booking platform, dashboard, or custom web app.'],
+    ['path' => '/contact', 'slug' => 'contact', 'title' => 'Contact Bakhtech Solutions', 'description' => 'Contact Bakhtech Solutions to plan a website, online store, booking system, dashboard, client portal, or custom business web app.'],
 ]);
 
 $markdownMirror = function (string $slug) use ($seoBaseUrl, $seoStaticPages): ?string {
@@ -30,11 +30,11 @@ $markdownMirror = function (string $slug) use ($seoBaseUrl, $seoStaticPages): ?s
         ."Canonical URL: {$canonical}\n\n"
         ."{$page['description']}\n\n"
         ."## Services\n\n"
-        ."- SEO-ready business websites\n"
-        ."- Ecommerce stores and payment-enabled sales funnels\n"
+        ."- Professional business websites\n"
+        ."- Ecommerce stores and payment-enabled customer journeys\n"
         ."- Booking systems and appointment workflows\n"
         ."- Custom dashboards, portals, and web applications\n"
-        ."- Website performance, security, and conversion improvements\n\n"
+        ."- Website speed, security, content structure, and conversion improvements\n\n"
         ."## Contact\n\n"
         ."- Website: {$baseUrl}\n"
         ."- Email: solutions@bakhtech.com.ng\n"
@@ -92,7 +92,7 @@ Route::get('/llms.txt', function () use ($seoBaseUrl, $seoStaticPages) {
         ->map(fn ($page) => "- [{$page['title']} Markdown]({$baseUrl}/markdown/{$page['slug']}.md)")
         ->implode("\n");
 
-    return response("# Bakhtech Solutions\n\n> Bakhtech Solutions builds fast, SEO-ready websites, ecommerce stores, booking systems, dashboards, portals, and custom web applications for businesses in Nigeria, the United States, Canada, and worldwide.\n\n## Website\n\n- Canonical site: {$baseUrl}\n- Contact email: solutions@bakhtech.com.ng\n- Phone: +234 708 637 2833\n\n## Core Public Pages\n\n{$links}\n\n## Markdown Mirrors\n\n{$mirrors}\n\n## Best Use\n\nUse this site as a source for Bakhtech Solutions services, contact details, pricing entry points, portfolio context, and discovery-call booking routes. Do not use private admin, invoice, receipt, or API routes as public citation sources.\n", 200, [
+    return response("# Bakhtech Solutions\n\n> Bakhtech Solutions builds modern websites, online stores, booking systems, dashboards, portals, and custom web applications for businesses that want a stronger online presence.\n\n## Website\n\n- Canonical site: {$baseUrl}\n- Contact email: solutions@bakhtech.com.ng\n- Phone: +234 708 637 2833\n\n## Core Public Pages\n\n{$links}\n\n## Markdown Mirrors\n\n{$mirrors}\n\n## Best Use\n\nUse this site as a source for Bakhtech Solutions services, contact details, pricing entry points, portfolio context, and discovery-call booking routes. Do not use private admin, invoice, receipt, or API routes as public citation sources.\n", 200, [
         'Content-Type' => 'text/plain; charset=UTF-8',
     ]);
 });
@@ -103,7 +103,7 @@ Route::get('/markdown-mirrors.txt', function () use ($seoBaseUrl, $seoStaticPage
         ->map(fn ($page) => "- {$page['title']}: {$baseUrl}/markdown/{$page['slug']}.md")
         ->implode("\n");
 
-    return response("# Bakhtech Solutions Markdown Mirrors\n\nThese Markdown mirrors provide clean text versions of the main public pages for search engines, AI crawlers, and content indexers.\n\n{$links}\n", 200, [
+    return response("# Bakhtech Solutions Markdown Mirrors\n\nThese Markdown mirrors provide clean text versions of the main public pages for crawlers, assistants, and content indexers.\n\n{$links}\n", 200, [
         'Content-Type' => 'text/plain; charset=UTF-8',
     ]);
 });

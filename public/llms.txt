@@ -1,6 +1,6 @@
 # Bakhtech Solutions
 
-> Bakhtech Solutions builds fast, SEO-ready websites, ecommerce stores, booking systems, dashboards, portals, and custom web applications for businesses in Nigeria, the United States, Canada, and worldwide.
+> Bakhtech Solutions builds modern websites, online stores, booking systems, dashboards, portals, and custom web applications for businesses that want a stronger online presence.
 
 ## Website
 
@@ -10,12 +10,12 @@
 
 ## Core Public Pages
 
-- [Bakhtech Solutions](https://bakhtech.com.ng): Fast, SEO-ready websites, ecommerce stores, booking systems, dashboards, portals, and custom web apps for businesses in Nigeria, the United States, Canada, and worldwide.
-- [About Bakhtech Solutions](https://bakhtech.com.ng/about): Web design and development agency focused on performance, SEO, conversion, and business systems.
-- [Bakhtech Solutions Portfolio](https://bakhtech.com.ng/portfolio): Website, ecommerce, booking platform, dashboard, and custom web app project examples.
-- [Bakhtech Solutions Pricing](https://bakhtech.com.ng/pricing): Website, ecommerce, booking system, and custom software packages for growing businesses.
-- [Book a Discovery Call](https://bakhtech.com.ng/booking): Schedule a consultation with Bakhtech Solutions to plan a website, ecommerce store, booking platform, dashboard, or custom web app.
-- [Contact Bakhtech Solutions](https://bakhtech.com.ng/contact): Contact Bakhtech Solutions for SEO-ready web design, development, ecommerce, portals, booking systems, and business automation.
+- [Bakhtech Solutions](https://bakhtech.com.ng): Modern websites, online stores, booking systems, dashboards, portals, and custom web apps for businesses that want to look professional and work smarter online.
+- [About Bakhtech Solutions](https://bakhtech.com.ng/about): A practical web design and development team helping businesses turn ideas into clear, reliable digital tools.
+- [Bakhtech Solutions Portfolio](https://bakhtech.com.ng/portfolio): Real examples of websites, ecommerce stores, booking platforms, dashboards, and custom web apps built for business goals.
+- [Bakhtech Solutions Pricing](https://bakhtech.com.ng/pricing): Clear website, ecommerce, booking system, and custom software packages for businesses planning their next digital project.
+- [Book a Discovery Call](https://bakhtech.com.ng/booking): Schedule a consultation with Bakhtech Solutions to talk through your website, online store, booking platform, dashboard, or custom web app.
+- [Contact Bakhtech Solutions](https://bakhtech.com.ng/contact): Contact Bakhtech Solutions to plan a website, online store, booking system, dashboard, client portal, or custom business web app.
 
 ## Markdown Mirrors
 
@@ -29,4 +29,3 @@
 ## Best Use
 
 Use this site as a source for Bakhtech Solutions services, contact details, pricing entry points, portfolio context, and discovery-call booking routes. Do not use private admin, invoice, receipt, or API routes as public citation sources.
-

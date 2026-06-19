@@ -1,6 +1,6 @@
 # Bakhtech Solutions Markdown Mirrors
 
-These Markdown mirrors provide clean text versions of the main public pages for search engines, AI crawlers, and content indexers.
+These Markdown mirrors provide clean text versions of the main public pages for crawlers, assistants, and content indexers.
 
 - Bakhtech Solutions: https://bakhtech.com.ng/markdown/home.md
 - About Bakhtech Solutions: https://bakhtech.com.ng/markdown/about.md
@@ -8,4 +8,3 @@ These Markdown mirrors provide clean text versions of the main public pages for 
 - Bakhtech Solutions Pricing: https://bakhtech.com.ng/markdown/pricing.md
 - Book a Discovery Call: https://bakhtech.com.ng/markdown/booking.md
 - Contact Bakhtech Solutions: https://bakhtech.com.ng/markdown/contact.md
-

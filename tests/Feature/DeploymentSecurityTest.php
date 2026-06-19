@@ -519,14 +519,16 @@ class DeploymentSecurityTest extends TestCase
 
     public function test_database_repair_adds_missing_baseline_without_overwriting_content(): void
     {
-        DB::table('pages')->insert([
-            'title' => 'About',
-            'slug' => 'about',
-            'content' => 'Keep this custom content.',
-            'status' => 'published',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::table('pages')->updateOrInsert(
+            ['slug' => 'about'],
+            [
+                'title' => 'About',
+                'content' => 'Keep this custom content.',
+                'status' => 'published',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
 
         $this->artisan('database:check', ['--repair' => true])->assertSuccessful();
 
