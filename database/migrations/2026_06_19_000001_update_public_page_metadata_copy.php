@@ -63,7 +63,7 @@ return new class extends Migration
             $previous = $oldCopy[$slug] ?? [];
             $updates = [];
 
-            foreach (['excerpt', 'seo_title', 'seo_description', 'focus_keyword'] as $field) {
+            foreach (['excerpt', 'seo_title', 'seo_description', 'focus_keyword', 'og_image', 'twitter_image'] as $field) {
                 $current = (string) ($existing->{$field} ?? '');
 
                 if ($current === '' || $current === ($previous[$field] ?? null)) {

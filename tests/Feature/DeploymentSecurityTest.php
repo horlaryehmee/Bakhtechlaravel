@@ -479,6 +479,17 @@ class DeploymentSecurityTest extends TestCase
         $this->assertArrayHasKey('siteName', $settings);
     }
 
+    public function test_public_index_includes_homepage_social_preview_image(): void
+    {
+        $html = file_get_contents(public_path('index.html'));
+
+        $this->assertFileExists(public_path('social-preview.png'));
+        $this->assertStringContainsString('property="og:image" content="https://bakhtech.com.ng/social-preview.png"', $html);
+        $this->assertStringContainsString('property="og:image:width" content="1200"', $html);
+        $this->assertStringContainsString('property="og:image:height" content="630"', $html);
+        $this->assertStringContainsString('name="twitter:image" content="https://bakhtech.com.ng/social-preview.png"', $html);
+    }
+
     public function test_health_endpoint_checks_the_database_connection(): void
     {
         $this->getJson('/api/health')

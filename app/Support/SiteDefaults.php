@@ -4,6 +4,8 @@ namespace App\Support;
 
 class SiteDefaults
 {
+    public const SOCIAL_PREVIEW_IMAGE = 'https://bakhtech.com.ng/social-preview.png';
+
     public static function pages(): array
     {
         return [
@@ -14,6 +16,8 @@ class SiteDefaults
                 'seo_title' => 'Bakhtech Solutions | Websites, Online Stores & Business Tools',
                 'seo_description' => 'Bakhtech Solutions builds modern websites, ecommerce stores, booking systems, and custom web apps for businesses that want a stronger online presence.',
                 'focus_keyword' => 'business website development',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
             [
                 'title' => 'About',
@@ -22,6 +26,8 @@ class SiteDefaults
                 'seo_title' => 'About Bakhtech Solutions | Practical Web Design & Development',
                 'seo_description' => 'Learn how Bakhtech Solutions helps businesses plan, design, and launch websites and digital tools that are easy to use and built for growth.',
                 'focus_keyword' => 'web design and development',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
             [
                 'title' => 'Portfolio',
@@ -30,6 +36,8 @@ class SiteDefaults
                 'seo_title' => 'Bakhtech Solutions Portfolio | Websites, Stores & Web Apps',
                 'seo_description' => 'View selected Bakhtech Solutions projects, including business websites, ecommerce stores, booking platforms, dashboards, and custom web apps.',
                 'focus_keyword' => 'website portfolio',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
             [
                 'title' => 'Ebook',
@@ -38,6 +46,8 @@ class SiteDefaults
                 'seo_title' => 'Website Strategy Ebook | Bakhtech Solutions',
                 'seo_description' => 'Download practical website planning resources from Bakhtech Solutions for improving your online presence, customer journey, and digital systems.',
                 'focus_keyword' => 'website strategy ebook',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
             [
                 'title' => 'Career',
@@ -46,6 +56,8 @@ class SiteDefaults
                 'seo_title' => 'Careers | Bakhtech Solutions',
                 'seo_description' => 'Explore career opportunities with Bakhtech Solutions across web design, frontend development, Laravel, content, and digital product work.',
                 'focus_keyword' => 'web development careers',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
             [
                 'title' => 'Contact',
@@ -54,6 +66,8 @@ class SiteDefaults
                 'seo_title' => 'Contact Bakhtech Solutions | Start Your Website or Web App',
                 'seo_description' => 'Contact Bakhtech Solutions to plan a website, ecommerce store, booking system, dashboard, client portal, or custom web application.',
                 'focus_keyword' => 'start website project',
+                'og_image' => self::SOCIAL_PREVIEW_IMAGE,
+                'twitter_image' => self::SOCIAL_PREVIEW_IMAGE,
             ],
         ];
     }
