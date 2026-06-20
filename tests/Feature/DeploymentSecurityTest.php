@@ -485,8 +485,8 @@ class DeploymentSecurityTest extends TestCase
 
         $this->assertFileExists(public_path('social-preview.png'));
         $this->assertStringContainsString('property="og:image" content="https://bakhtech.com.ng/social-preview.png"', $html);
-        $this->assertStringContainsString('property="og:image:width" content="1200"', $html);
-        $this->assertStringContainsString('property="og:image:height" content="630"', $html);
+        $this->assertStringContainsString('property="og:image:width" content="1910"', $html);
+        $this->assertStringContainsString('property="og:image:height" content="915"', $html);
         $this->assertStringContainsString('name="twitter:image" content="https://bakhtech.com.ng/social-preview.png"', $html);
     }
 

@@ -41,14 +41,14 @@ function applyPageMetadata(page: CmsPage) {
   setMeta('meta[property="og:image"]', 'property', 'og:image', absoluteUrl(socialImage))
   setMeta('meta[property="og:image:secure_url"]', 'property', 'og:image:secure_url', absoluteUrl(socialImage))
   setMeta('meta[property="og:image:type"]', 'property', 'og:image:type', usesDefaultSocialImage ? 'image/png' : '')
-  setMeta('meta[property="og:image:width"]', 'property', 'og:image:width', usesDefaultSocialImage ? '1200' : '')
-  setMeta('meta[property="og:image:height"]', 'property', 'og:image:height', usesDefaultSocialImage ? '630' : '')
-  setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', 'Bakhtech Solutions homepage preview')
+  setMeta('meta[property="og:image:width"]', 'property', 'og:image:width', usesDefaultSocialImage ? '1910' : '')
+  setMeta('meta[property="og:image:height"]', 'property', 'og:image:height', usesDefaultSocialImage ? '915' : '')
+  setMeta('meta[property="og:image:alt"]', 'property', 'og:image:alt', 'Bakhtech Solutions homepage showing its website design hero section')
   setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image')
   setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', page.twitterTitle || page.ogTitle || page.seoTitle || page.title)
   setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', page.twitterDescription || page.ogDescription || page.seoDescription || page.excerpt)
   setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', absoluteUrl(twitterImage))
-  setMeta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', 'Bakhtech Solutions homepage preview')
+  setMeta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', 'Bakhtech Solutions homepage showing its website design hero section')
 
   let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
   if (page.canonicalUrl) {
