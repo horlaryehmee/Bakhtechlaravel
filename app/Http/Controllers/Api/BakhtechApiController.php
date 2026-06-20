@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class BakhtechApiController extends Controller
 {
@@ -351,7 +352,7 @@ class BakhtechApiController extends Controller
 
         return [
             'pages' => DB::table('pages')->orderBy('id')->get()->map(fn ($row) => $this->pageShape($row)),
-            'posts' => DB::table('posts')->orderByDesc('updated_at')->get()->map(fn ($row) => $this->postShape($row)),
+            'posts' => collect(),
             'bookings' => DB::table('bookings')->orderByDesc('created_at')->get()->map(fn ($row) => $this->bookingShape($row)),
             'bookingEventTypes' => Schema::hasTable('booking_event_types') ? DB::table('booking_event_types')->orderBy('name')->get()->map(fn ($row) => $this->bookingEventTypeShape($row, true)) : collect(),
             'reviews' => Schema::hasTable('reviews') ? $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)) : collect(),
@@ -556,19 +557,26 @@ class BakhtechApiController extends Controller
 
     public function createPost(Request $request)
     {
-        $title = trim((string) $request->input('title'));
-        if ($title === '') {
-            return response()->json(['message' => 'Post title is required.'], 400);
-        }
+        $data = $this->validatedPost($request);
+        $publishedAt = $this->postPublishedAt($data['status'], $data['publishedAt'] ?? null);
 
         $id = DB::table('posts')->insertGetId([
-            'title' => $title,
-            'slug' => $this->uniqueSlug('posts', $request->input('slug', $title)),
-            'excerpt' => (string) $request->input('excerpt', ''),
-            'content' => (string) $request->input('content', ''),
-            'category' => (string) $request->input('category', ''),
-            'image' => (string) $request->input('image', ''),
-            'status' => (string) $request->input('status', 'draft'),
+            'title' => trim($data['title']),
+            'slug' => $this->uniqueSlug('posts', $data['slug'] ?? $data['title']),
+            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
+            'content' => (string) ($data['content'] ?? ''),
+            'category' => trim((string) ($data['category'] ?? '')),
+            'image' => trim((string) ($data['image'] ?? '')),
+            'status' => $data['status'],
+            'seo_title' => trim((string) ($data['seoTitle'] ?? '')),
+            'seo_description' => trim((string) ($data['seoDescription'] ?? '')),
+            'focus_keyword' => trim((string) ($data['focusKeyword'] ?? '')),
+            'canonical_url' => trim((string) ($data['canonicalUrl'] ?? '')),
+            'meta_robots' => $data['metaRobots'] ?? 'index,follow',
+            'og_title' => trim((string) ($data['ogTitle'] ?? '')),
+            'og_description' => trim((string) ($data['ogDescription'] ?? '')),
+            'og_image' => trim((string) ($data['ogImage'] ?? '')),
+            'published_at' => $publishedAt,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -578,20 +586,31 @@ class BakhtechApiController extends Controller
 
     public function updatePost(Request $request, int $id)
     {
-        $exists = DB::table('posts')->where('id', $id)->exists();
-        if (! $exists) {
+        $existing = DB::table('posts')->where('id', $id)->first();
+        if (! $existing) {
             return response()->json(['message' => 'Post not found.'], 404);
         }
 
-        $title = trim((string) $request->input('title'));
+        $data = $this->validatedPost($request);
+        $publishedAt = $this->postPublishedAt($data['status'], $data['publishedAt'] ?? ($existing->published_at ?? null));
+
         DB::table('posts')->where('id', $id)->update([
-            'title' => $title,
-            'slug' => $this->uniqueSlug('posts', $request->input('slug', $title), $id),
-            'excerpt' => (string) $request->input('excerpt', ''),
-            'content' => (string) $request->input('content', ''),
-            'category' => (string) $request->input('category', ''),
-            'image' => (string) $request->input('image', ''),
-            'status' => (string) $request->input('status', 'draft'),
+            'title' => trim($data['title']),
+            'slug' => $this->uniqueSlug('posts', $data['slug'] ?? $data['title'], $id),
+            'excerpt' => trim((string) ($data['excerpt'] ?? '')),
+            'content' => (string) ($data['content'] ?? ''),
+            'category' => trim((string) ($data['category'] ?? '')),
+            'image' => trim((string) ($data['image'] ?? '')),
+            'status' => $data['status'],
+            'seo_title' => trim((string) ($data['seoTitle'] ?? '')),
+            'seo_description' => trim((string) ($data['seoDescription'] ?? '')),
+            'focus_keyword' => trim((string) ($data['focusKeyword'] ?? '')),
+            'canonical_url' => trim((string) ($data['canonicalUrl'] ?? '')),
+            'meta_robots' => $data['metaRobots'] ?? 'index,follow',
+            'og_title' => trim((string) ($data['ogTitle'] ?? '')),
+            'og_description' => trim((string) ($data['ogDescription'] ?? '')),
+            'og_image' => trim((string) ($data['ogImage'] ?? '')),
+            'published_at' => $publishedAt,
             'updated_at' => now(),
         ]);
 
@@ -603,6 +622,70 @@ class BakhtechApiController extends Controller
         DB::table('posts')->where('id', $id)->delete();
 
         return response()->noContent();
+    }
+
+    public function adminPosts(Request $request)
+    {
+        $perPage = min(100, max(10, (int) $request->query('perPage', 25)));
+        $search = trim((string) $request->query('search', ''));
+        $status = trim((string) $request->query('status', ''));
+        $category = trim((string) $request->query('category', ''));
+        $sort = (string) $request->query('sort', 'updated_desc');
+
+        $query = DB::table('posts');
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $term = '%'.addcslashes($search, '%_').'%' ;
+                $builder->where('title', 'like', $term)
+                    ->orWhere('slug', 'like', $term)
+                    ->orWhere('excerpt', 'like', $term)
+                    ->orWhere('category', 'like', $term)
+                    ->orWhere('focus_keyword', 'like', $term);
+            });
+        }
+
+        if (in_array($status, ['draft', 'published', 'scheduled'], true)) {
+            $query->where('status', $status);
+        }
+
+        if ($category !== '') {
+            $query->where('category', $category);
+        }
+
+        match ($sort) {
+            'updated_asc' => $query->orderBy('updated_at'),
+            'title_asc' => $query->orderBy('title'),
+            'published_desc' => $query->orderByDesc('published_at')->orderByDesc('updated_at'),
+            default => $query->orderByDesc('updated_at'),
+        };
+
+        $posts = $query->paginate($perPage);
+        $summary = DB::table('posts')->selectRaw(
+            "COUNT(*) as total, SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as published, SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts, SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) as scheduled"
+        )->first();
+
+        return [
+            'data' => collect($posts->items())->map(fn ($row) => $this->postShape($row)),
+            'meta' => [
+                'currentPage' => $posts->currentPage(),
+                'perPage' => $posts->perPage(),
+                'total' => $posts->total(),
+                'lastPage' => $posts->lastPage(),
+            ],
+            'summary' => [
+                'total' => (int) ($summary->total ?? 0),
+                'published' => (int) ($summary->published ?? 0),
+                'drafts' => (int) ($summary->drafts ?? 0),
+                'scheduled' => (int) ($summary->scheduled ?? 0),
+            ],
+            'categories' => DB::table('posts')
+                ->whereNotNull('category')
+                ->where('category', '!=', '')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category'),
+        ];
     }
 
     public function createReview(Request $request)
@@ -1213,6 +1296,41 @@ class BakhtechApiController extends Controller
         }
 
         return array_intersect_key($payload, array_flip(Schema::getColumnListing('projects')));
+    }
+
+    private function validatedPost(Request $request): array
+    {
+        return $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'excerpt' => ['nullable', 'string', 'max:1000'],
+            'content' => ['nullable', 'string'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'image' => ['nullable', 'string', 'max:2048'],
+            'status' => ['required', 'in:draft,published,scheduled'],
+            'seoTitle' => ['nullable', 'string', 'max:255'],
+            'seoDescription' => ['nullable', 'string', 'max:1000'],
+            'focusKeyword' => ['nullable', 'string', 'max:255'],
+            'canonicalUrl' => ['nullable', 'url', 'max:2048'],
+            'metaRobots' => ['nullable', Rule::in(['index,follow', 'index,nofollow', 'noindex,follow', 'noindex,nofollow'])],
+            'ogTitle' => ['nullable', 'string', 'max:255'],
+            'ogDescription' => ['nullable', 'string', 'max:1000'],
+            'ogImage' => ['nullable', 'string', 'max:2048'],
+            'publishedAt' => ['nullable', 'required_if:status,scheduled', 'date'],
+        ]);
+    }
+
+    private function postPublishedAt(string $status, mixed $value): ?Carbon
+    {
+        if ($status === 'draft') {
+            return null;
+        }
+
+        if ($value !== null && trim((string) $value) !== '') {
+            return Carbon::parse((string) $value);
+        }
+
+        return now();
     }
 
     private function reviewPayload(Request $request, ?object $existing = null): array
@@ -2091,6 +2209,9 @@ class BakhtechApiController extends Controller
 
     private function postShape(object $row): array
     {
+        $plainContent = trim(strip_tags((string) ($row->content ?? '')));
+        $wordCount = $plainContent === '' ? 0 : str_word_count($plainContent);
+
         return [
             'id' => $row->id,
             'title' => $row->title,
@@ -2100,6 +2221,17 @@ class BakhtechApiController extends Controller
             'category' => $row->category ?: '',
             'image' => $row->image ?: '',
             'status' => $row->status,
+            'seoTitle' => $row->seo_title ?? '',
+            'seoDescription' => $row->seo_description ?? '',
+            'focusKeyword' => $row->focus_keyword ?? '',
+            'canonicalUrl' => $row->canonical_url ?? '',
+            'metaRobots' => $row->meta_robots ?? 'index,follow',
+            'ogTitle' => $row->og_title ?? '',
+            'ogDescription' => $row->og_description ?? '',
+            'ogImage' => $row->og_image ?? '',
+            'publishedAt' => (string) ($row->published_at ?? ''),
+            'wordCount' => $wordCount,
+            'readingTime' => max(1, (int) ceil($wordCount / 220)),
             'createdAt' => (string) $row->created_at,
             'updatedAt' => (string) $row->updated_at,
         ];

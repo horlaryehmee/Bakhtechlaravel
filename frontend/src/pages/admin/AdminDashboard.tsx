@@ -58,7 +58,6 @@ import {
   type CalendarSettings,
   type CmsData,
   type CmsPage,
-  type CmsPost,
   type DashboardData,
   type DeploymentCommandResult,
   type InvoiceClient,
@@ -80,6 +79,7 @@ import {
   type SiteEmailLog,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
 
 type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
@@ -118,6 +118,7 @@ function escapeHtml(value: string) {
     "'": '&#039;',
   })[character] ?? character)
 }
+
 
 const optimizedImageMaxBytes = 1_800_000
 const optimizedImageMaxSide = 1920
@@ -242,15 +243,6 @@ const emptyProject: ProjectInput = {
   status: 'published',
   isFeatured: true,
   sortOrder: 0,
-}
-
-const emptyPost = {
-  title: '',
-  excerpt: '',
-  content: '',
-  category: '',
-  image: '',
-  status: 'draft',
 }
 
 const emptyBookingCalendar: Partial<BookingCalendar> & {
@@ -827,7 +819,6 @@ export function AdminDashboard() {
   const [showProjectArrangeView, setShowProjectArrangeView] = useState(false)
   const [mediaPickerVisibleCount, setMediaPickerVisibleCount] = useState(12)
   const [showProjectForm, setShowProjectForm] = useState(false)
-  const [editingPost, setEditingPost] = useState<CmsPost | null>(null)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [reviewSearch, setReviewSearch] = useState('')
@@ -836,7 +827,6 @@ export function AdminDashboard() {
   const [reviewPage, setReviewPage] = useState(1)
   const [reviewPerPage, setReviewPerPage] = useState(10)
   const [projectForm, setProjectForm] = useState<ProjectInput>(emptyProject)
-  const [postForm, setPostForm] = useState(emptyPost)
   const [reviewForm, setReviewForm] = useState<ReviewInput>(emptyReview)
   const [bookingCalendarForm, setBookingCalendarForm] = useState(emptyBookingCalendar)
   const [editingCalendar, setEditingCalendar] = useState<BookingCalendar | null>(null)
@@ -945,22 +935,6 @@ export function AdminDashboard() {
           action: () => {
             setActiveSection('pages')
             setEditingPageId(page.id)
-            setSearchQuery('')
-          }
-        })
-      }
-    })
-
-    // Search Posts
-    cms?.posts.forEach(post => {
-      if (post.title.toLowerCase().includes(query) || post.category.toLowerCase().includes(query)) {
-        results.push({
-          type: 'Blog Post',
-          title: post.title,
-          subtitle: post.category,
-          action: () => {
-            setActiveSection('posts')
-            editPost(post)
             setSearchQuery('')
           }
         })
@@ -1469,19 +1443,6 @@ export function AdminDashboard() {
     )
   }
 
-  function editPost(post: CmsPost) {
-    setEditingPost(post)
-    setPostForm({
-      title: post.title,
-      excerpt: post.excerpt,
-      content: post.content,
-      category: post.category,
-      image: post.image,
-      status: post.status,
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   function editReview(review: Review) {
     setEditingReview(review)
     setShowReviewForm(true)
@@ -1503,36 +1464,6 @@ export function AdminDashboard() {
   function resetReviewForm() {
     setEditingReview(null)
     setReviewForm({ ...emptyReview, reviewedAt: new Date().toISOString().slice(0, 10) })
-  }
-
-  async function savePost(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaving(true)
-    try {
-      const result = editingPost ? await api.updatePost(editingPost.id, postForm) : await api.createPost(postForm)
-      setCms((current) => {
-        if (!current) return current
-        const exists = current.posts.some((post) => post.id === result.post.id)
-        return {
-          ...current,
-          posts: exists ? current.posts.map((post) => (post.id === result.post.id ? result.post : post)) : [result.post, ...current.posts],
-        }
-      })
-      setEditingPost(null)
-      setPostForm(emptyPost)
-      notify(editingPost ? 'Post updated.' : 'Post created.')
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Unable to save post.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function deletePost(id: number) {
-    if (!window.confirm('Delete this post?')) return
-    await api.deletePost(id)
-    setCms((current) => (current ? { ...current, posts: current.posts.filter((post) => post.id !== id) } : current))
-    notify('Post deleted.')
   }
 
   async function saveReview(event: FormEvent<HTMLFormElement>) {
@@ -5161,80 +5092,7 @@ export function AdminDashboard() {
   }
 
   function renderPosts() {
-    return (
-      <div>
-        <PanelHeader 
-          eyebrow="Posts" 
-          title="Blog & Content Posts" 
-          text="Create, edit, publish, and delete content posts directly in the database." 
-        />
-        <form className="bg-white mb-6 rounded-2xl border border-gray-100 p-6 shadow-sm" onSubmit={savePost}>
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <h3 className="text-xl font-black text-gray-900">{editingPost ? 'Edit post' : 'New post'}</h3>
-            {editingPost && <Button type="button" variant="ghost" onClick={() => { setEditingPost(null); setPostForm(emptyPost) }}>New</Button>}
-          </div>
-          <input 
-            className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
-            placeholder="Post title" 
-            value={postForm.title} 
-            onChange={(e) => setPostForm((current) => ({ ...current, title: e.target.value }))} 
-            required 
-          />
-          <input 
-            className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500 mb-4" 
-            placeholder="Category" 
-            value={postForm.category} 
-            onChange={(e) => setPostForm((current) => ({ ...current, category: e.target.value }))} 
-          />
-          <textarea 
-            className="theme-input min-h-20 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
-            placeholder="Excerpt" 
-            value={postForm.excerpt} 
-            onChange={(e) => setPostForm((current) => ({ ...current, excerpt: e.target.value }))} 
-          />
-          <textarea 
-            className="theme-input min-h-32 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 mb-4" 
-            placeholder="Content" 
-            value={postForm.content} 
-            onChange={(e) => setPostForm((current) => ({ ...current, content: e.target.value }))} 
-          />
-          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-            <input 
-              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-              placeholder="Image URL from library" 
-              value={postForm.image} 
-              onChange={(e) => setPostForm((current) => ({ ...current, image: e.target.value }))} 
-            />
-            <select 
-              className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500" 
-              value={postForm.status} 
-              onChange={(e) => setPostForm((current) => ({ ...current, status: e.target.value }))}
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
-          </div>
-          <div className="mt-6 flex gap-3">
-            <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>{editingPost ? 'Update Post' : 'Create Post'}</Button>
-            {editingPost && <Button type="button" variant="ghost" onClick={() => { setEditingPost(null); setPostForm(emptyPost) }}>Cancel</Button>}
-          </div>
-        </form>
-        <div className="grid gap-4">
-          {cms?.posts.map((post) => (
-            <article key={post.id} className="bg-white rounded-2xl border border-gray-100 p-5 md:grid-cols-[1fr_auto] md:items-center shadow-sm">
-              <div>
-                <h3 className="font-black text-lg text-gray-900">{post.title}</h3>
-                <p className="text-gray-500 mt-1 text-sm">{post.category || 'Uncategorized'} · {post.status}</p>
-              </div>
-              <div className="flex gap-2 mt-4 md:mt-0">
-                <Button type="button" variant="ghost" onClick={() => editPost(post)}><Pencil className="h-4 w-4 mr-2" />Edit</Button>
-                <Button type="button" variant="ghost" className="text-red-500" onClick={() => void deletePost(post.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    )
+    return <AdminPostsWorkspace />
   }
 
   function renderProjects() {
@@ -8933,8 +8791,6 @@ export function AdminDashboard() {
                       type="button"
                       onClick={() => {
                         setShowCreateNewDropdown(false)
-                        setEditingPost(null)
-                        setPostForm(emptyPost)
                         setActiveSection('posts')
                         window.scrollTo({ top: 0, behavior: 'smooth' })
                       }}

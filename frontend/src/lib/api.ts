@@ -116,9 +116,46 @@ export type CmsPost = {
   content: string
   category: string
   image: string
-  status: string
+  status: 'draft' | 'published' | 'scheduled'
+  seoTitle: string
+  seoDescription: string
+  focusKeyword: string
+  canonicalUrl: string
+  metaRobots: string
+  ogTitle: string
+  ogDescription: string
+  ogImage: string
+  publishedAt: string
+  wordCount: number
+  readingTime: number
   createdAt: string
   updatedAt: string
+}
+
+export type PostInput = Pick<CmsPost,
+  | 'title'
+  | 'slug'
+  | 'excerpt'
+  | 'content'
+  | 'category'
+  | 'image'
+  | 'status'
+  | 'seoTitle'
+  | 'seoDescription'
+  | 'focusKeyword'
+  | 'canonicalUrl'
+  | 'metaRobots'
+  | 'ogTitle'
+  | 'ogDescription'
+  | 'ogImage'
+  | 'publishedAt'
+>
+
+export type PostListResponse = {
+  data: CmsPost[]
+  meta: { currentPage: number; perPage: number; total: number; lastPage: number }
+  summary: { total: number; published: number; drafts: number; scheduled: number }
+  categories: string[]
 }
 
 export type Booking = {
@@ -803,13 +840,21 @@ export const api = {
   deletePage(id: number) {
     return request<void>(`/api/admin/pages/${id}`, { method: 'DELETE' })
   },
-  createPost(post: Partial<CmsPost>) {
+  adminPosts(params: { page?: number; perPage?: number; search?: string; status?: string; category?: string; sort?: string } = {}) {
+    const query = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') query.set(key, String(value))
+    })
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request<PostListResponse>(`/api/admin/posts${suffix}`)
+  },
+  createPost(post: PostInput) {
     return request<{ post: CmsPost }>('/api/admin/posts', {
       method: 'POST',
       body: JSON.stringify(post),
     })
   },
-  updatePost(id: number, post: Partial<CmsPost>) {
+  updatePost(id: number, post: PostInput) {
     return request<{ post: CmsPost }>(`/api/admin/posts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(post),
