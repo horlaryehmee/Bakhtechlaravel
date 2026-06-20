@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ImgHTMLAttributes } from 'react'
+import socialPreviewImage from '@/assets/social-preview.jpg'
 
 type SafeImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   src?: string
@@ -11,7 +12,7 @@ function normalizeImageSrc(src: string) {
   return /^https?:\/\//i.test(value) || value.startsWith('/') || value.startsWith('data:') ? value : `https://${value}`
 }
 
-export function SafeImage({ src, fallbackSrc = '/social-preview.png', alt, onError, ...props }: SafeImageProps) {
+export function SafeImage({ src, fallbackSrc = socialPreviewImage, alt, onError, ...props }: SafeImageProps) {
   const candidates = useMemo(() => {
     const normalized = normalizeImageSrc(src || '')
     const encoded = normalized ? encodeURI(normalized) : ''
