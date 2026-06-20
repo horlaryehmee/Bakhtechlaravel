@@ -32,7 +32,7 @@ class BakhtechSeeder extends Seeder
                     'category' => 'Ecommerce',
                     'summary' => 'A product-led online store experience for fast product discovery and ordering.',
                     'description' => 'Built for a retail brand that needed a clean catalogue, campaign-ready sections, and a responsive shopping journey.',
-                    'image' => '/showcase/showcase-01.jpg',
+                    'image' => '/social-preview.png',
                     'website_url' => 'https://bayara.ng',
                     'services_json' => json_encode(['Ecommerce', 'UI/UX', 'Performance']),
                     'metrics_json' => json_encode(['seo' => '92', 'performance' => '88', 'conversion' => 'Improved product discovery']),

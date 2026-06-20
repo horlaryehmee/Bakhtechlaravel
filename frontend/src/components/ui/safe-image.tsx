@@ -11,7 +11,7 @@ function normalizeImageSrc(src: string) {
   return /^https?:\/\//i.test(value) || value.startsWith('/') || value.startsWith('data:') ? value : `https://${value}`
 }
 
-export function SafeImage({ src, fallbackSrc = '/showcase/showcase-01.jpg', alt, onError, ...props }: SafeImageProps) {
+export function SafeImage({ src, fallbackSrc = '/social-preview.png', alt, onError, ...props }: SafeImageProps) {
   const candidates = useMemo(() => {
     const normalized = normalizeImageSrc(src || '')
     const encoded = normalized ? encodeURI(normalized) : ''
