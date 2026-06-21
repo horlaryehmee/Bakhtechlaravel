@@ -5645,6 +5645,7 @@ a {
 }
 
 .invoice-portal-richtext {
+  counter-reset: invoice-section;
   margin: 10px 0 0;
   color: #3f3f46;
   font-size: 15px;
@@ -5677,6 +5678,31 @@ a {
   list-style: decimal;
 }
 
+.invoice-portal-richtext > ol {
+  margin: 0.9rem 0 0.35rem;
+  padding-left: 2.25rem;
+  list-style: none;
+}
+
+.invoice-portal-richtext > ol:first-child {
+  margin-top: 0;
+}
+
+.invoice-portal-richtext > ol > li {
+  position: relative;
+  counter-increment: invoice-section;
+}
+
+.invoice-portal-richtext > ol > li::before {
+  position: absolute;
+  left: -2.25rem;
+  width: 1.75rem;
+  color: currentColor;
+  content: counter(invoice-section) ".";
+  font-weight: 700;
+  text-align: right;
+}
+
 .invoice-portal-richtext li {
   margin: 0;
   padding-left: 0.25rem;
@@ -5695,12 +5721,12 @@ a {
   font-weight: 700;
 }
 
-.invoice-portal-richtext ol > li::first-line {
+.invoice-portal-richtext > ol > li::first-line {
   font-weight: 700;
 }
 
-.invoice-portal-richtext ol > li > strong:first-child,
-.invoice-portal-richtext ol > li > b:first-child {
+.invoice-portal-richtext > ol > li > strong:first-child,
+.invoice-portal-richtext > ol > li > b:first-child {
   font-weight: 700;
 }
 
