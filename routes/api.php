@@ -66,7 +66,7 @@ Route::get('/invoices/{token}', [InvoiceController::class, 'publicDocument'])->m
 Route::post('/invoices/{token}/events', [InvoiceController::class, 'trackPublicEvent'])->middleware('throttle:120,1');
 Route::post('/invoices/{token}/quote-decision', [InvoiceController::class, 'decideQuote'])->middleware('throttle:20,1');
 Route::post('/invoices/{token}/generate-invoice', [InvoiceController::class, 'generateInvoiceFromQuote'])->middleware('throttle:20,1');
-Route::post('/invoices/{token}/payments/initialize', [InvoiceController::class, 'initializePublicPayment'])->middleware('throttle:10,1');
+Route::post('/invoices/{token}/payments/initialize', [InvoiceController::class, 'initializePublicPayment'])->middleware('throttle:invoice-payment');
 Route::post('/invoices/{token}/payments/verify', [InvoiceController::class, 'verifyPublicPayment'])->middleware('throttle:30,1');
 Route::get('/invoices/{token}/pdf', [InvoiceController::class, 'printablePdf'])->middleware('throttle:30,1');
 Route::get('/invoices/{token}/receipt', [InvoiceController::class, 'publicReceipt'])->middleware('throttle:60,1');

@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Services\MailConfigurationService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +27,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('invoice-payment', function (Request $request) {
+            return Limit::perMinute(20)
+                ->by(strtolower((string) $request->route('token')).'|'.$request->ip())
+                ->response(fn () => response()->json([
+                    'message' => 'Too many payment attempts for this invoice. Please wait a minute and try again.',
+                ], 429));
+        });
+
         app(MailConfigurationService::class)->apply();
 
         Event::listen(MessageSent::class, function (MessageSent $event) {

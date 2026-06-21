@@ -463,15 +463,7 @@ const invoicePaymentGateways = [
 ]
 
 function parseInvoiceGatewayList(settings: Record<string, string>, currency = '') {
-  const gateways = new Set<string>()
-  String(settings.invoiceEnabledPaymentGateways || '')
-    .split(',')
-    .map((gateway) => gateway.trim())
-    .filter(Boolean)
-    .forEach((gateway) => gateways.add(gateway))
-
-  const globalGateway = String(settings.gateway_active || settings.invoiceDefaultPaymentGateway || '').trim()
-  if (globalGateway && globalGateway !== 'none' && globalGateway !== 'manual') gateways.add(globalGateway)
+  const gateways = new Set(invoicePaymentGateways.map((gateway) => gateway.value))
 
   try {
     const accounts = JSON.parse(String(settings.bank_currency_accounts || '[]'))
@@ -1984,7 +1976,10 @@ export function AdminDashboard() {
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const result = await api.updateSettings(settingsForm)
+    const result = await api.updateSettings({
+      ...settingsForm,
+      invoiceEnabledPaymentGateways: 'paystack,flutterwave',
+    })
     setCms((current) => (current ? { ...current, settings: result.settings } : current))
     setSettingsForm(result.settings)
     notify('Settings saved.')
@@ -4023,10 +4018,9 @@ export function AdminDashboard() {
       },
       {
         title: 'Payment controls',
-        description: 'Matches the WordPress plugin gateway model: active gateway, mode, partial payments, and test/live keys.',
+        description: 'Configure test/live credentials. Paystack and Flutterwave are both available when creating an invoice.',
         fields: [
           { key: 'invoicePaymentEnabled', label: 'Payment button', options: ['true', 'false'] },
-          { key: 'gateway_active', label: 'Active gateway', options: ['none', 'paystack', 'flutterwave'] },
           { key: 'gateway_mode', label: 'Gateway mode', options: ['test', 'live'] },
           { key: 'enable_partial_payments', label: 'Partial online payments', options: ['1', '0'] },
           { key: 'paystack_public_test', label: 'Paystack test public key', placeholder: 'pk_test_...' },
@@ -4055,7 +4049,6 @@ export function AdminDashboard() {
       return typeof value === 'string' ? value : JSON.stringify(value)
     }
     const setField = (key: string, value: string) => setSettingsForm((current) => ({ ...current, [key]: value }))
-    const enabledPaymentGateways = parseInvoiceGatewayList(settingsForm)
     const currencyAccountRows = (() => {
       try {
         const parsed: unknown = JSON.parse(String(settingsForm.bank_currency_accounts || '[]'))
@@ -4090,19 +4083,6 @@ export function AdminDashboard() {
     const removeCurrencyAccount = (index: number) => {
       setCurrencyAccountRows(currencyAccountRows.filter((_, rowIndex) => rowIndex !== index))
     }
-    const setEnabledPaymentGateway = (gateway: string, enabled: boolean) => {
-      const next = new Set(enabledPaymentGateways)
-      if (enabled) next.add(gateway)
-      else next.delete(gateway)
-      const values = Array.from(next)
-      setSettingsForm((current) => ({
-        ...current,
-        invoiceEnabledPaymentGateways: values.join(','),
-        invoiceDefaultPaymentGateway: values[0] || '',
-        gateway_active: values[0] || 'none',
-      }))
-    }
-
     const renderField = (field: InvoiceSettingsField) => {
       if (field.options) {
         return (
@@ -4155,22 +4135,17 @@ export function AdminDashboard() {
 
         <section className="bkinv-settings-card bkinv-gateway-settings">
           <div className="bkinv-settings-card-head">
-            <h4>Enabled online payment gateways</h4>
-            <p>Manual/offline payment is always active on public invoices. Select only the online checkout gateways available on invoice and quote edit screens.</p>
+            <h4>Online payment gateways</h4>
+            <p>Paystack and Flutterwave are always available on invoice and quote edit screens. Configure credentials for the mode you use below.</p>
           </div>
           <div className="bkinv-gateway-grid">
             {invoicePaymentGateways.map((gateway) => (
-              <label key={gateway.value} className={cn('bkinv-gateway-card', enabledPaymentGateways.includes(gateway.value) && 'is-selected')}>
-                <input
-                  type="checkbox"
-                  checked={enabledPaymentGateways.includes(gateway.value)}
-                  onChange={(event) => setEnabledPaymentGateway(gateway.value, event.target.checked)}
-                />
+              <div key={gateway.value} className="bkinv-gateway-card is-selected">
                 <span>
                   <strong>{gateway.label}</strong>
                   <small>{gateway.description}</small>
                 </span>
-              </label>
+              </div>
             ))}
           </div>
         </section>

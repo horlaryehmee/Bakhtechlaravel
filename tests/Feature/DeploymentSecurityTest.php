@@ -14,6 +14,24 @@ class DeploymentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_payment_attempt_limit_is_isolated_per_invoice(): void
+    {
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $this->postJson('/api/invoices/rate-limit-invoice-a/payments/initialize', [
+                'amount' => 100,
+            ])->assertNotFound();
+        }
+
+        $this->postJson('/api/invoices/rate-limit-invoice-b/payments/initialize', [
+            'amount' => 100,
+        ])->assertNotFound();
+
+        $this->postJson('/api/invoices/rate-limit-invoice-a/payments/initialize', [
+            'amount' => 100,
+        ])->assertTooManyRequests()
+            ->assertJsonPath('message', 'Too many payment attempts for this invoice. Please wait a minute and try again.');
+    }
+
     public function test_apache_routes_legacy_invoice_links_through_laravel(): void
     {
         $legacyQueryRule = '(view_invoice|view_quote|view_receipt|bkinv_receipt_pdf)';
