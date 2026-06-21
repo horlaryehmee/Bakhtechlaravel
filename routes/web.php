@@ -1,11 +1,11 @@
 <?php
 
+use App\Support\SiteDefaults;
+use App\Support\SpaMetadataResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use App\Support\SiteDefaults;
-use App\Support\SpaMetadataResponse;
 
 $seoBaseUrl = fn () => rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
 
@@ -17,6 +17,56 @@ $seoStaticPages = fn () => collect([
     ['path' => '/booking', 'slug' => 'booking', 'title' => 'Book a Discovery Call', 'description' => 'Schedule a consultation with Bakhtech Solutions to talk through your website, online store, booking platform, dashboard, or custom web app.'],
     ['path' => '/contact', 'slug' => 'contact', 'title' => 'Contact Bakhtech Solutions', 'description' => 'Contact Bakhtech Solutions to plan a website, online store, booking system, dashboard, client portal, or custom business web app.'],
 ]);
+
+$cmsPageResponse = function (string $slug) use ($seoBaseUrl) {
+    if (! Schema::hasTable('pages')) {
+        return null;
+    }
+
+    $page = DB::table('pages')->where('slug', $slug)->where('status', 'published')->first();
+    if (! $page) {
+        return null;
+    }
+
+    $baseUrl = $seoBaseUrl();
+    $path = $page->slug === 'home' ? '' : '/'.trim((string) $page->slug, '/');
+    $canonical = trim((string) ($page->canonical_url ?? '')) ?: $baseUrl.$path;
+    $title = trim((string) ($page->seo_title ?: $page->title));
+    $description = trim((string) ($page->seo_description ?: $page->excerpt));
+    $image = trim((string) ($page->og_image ?? '')) ?: SiteDefaults::SOCIAL_PREVIEW_IMAGE;
+    if (str_starts_with($image, '/')) {
+        $image = $baseUrl.$image;
+    }
+    $twitterImage = trim((string) ($page->twitter_image ?? '')) ?: $image;
+    if (str_starts_with($twitterImage, '/')) {
+        $twitterImage = $baseUrl.$twitterImage;
+    }
+    $schema = json_decode((string) ($page->schema_json ?? ''), true);
+    if (! is_array($schema)) {
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => trim((string) ($page->schema_type ?? 'WebPage')) ?: 'WebPage',
+            'name' => $title,
+            'description' => $description,
+            'url' => $canonical,
+        ];
+    }
+
+    return SpaMetadataResponse::make([
+        'title' => $title,
+        'description' => $description,
+        'url' => $canonical,
+        'image' => $image,
+        'imageAlt' => $title,
+        'robots' => (string) ($page->meta_robots ?? 'index,follow'),
+        'ogTitle' => trim((string) ($page->og_title ?? '')) ?: $title,
+        'ogDescription' => trim((string) ($page->og_description ?? '')) ?: $description,
+        'twitterTitle' => trim((string) ($page->twitter_title ?? '')) ?: $title,
+        'twitterDescription' => trim((string) ($page->twitter_description ?? '')) ?: $description,
+        'twitterImage' => $twitterImage,
+        'schema' => $schema,
+    ]);
+};
 
 $markdownMirror = function (string $slug) use ($seoBaseUrl, $seoStaticPages): ?string {
     $page = $seoStaticPages()->firstWhere('slug', $slug);
@@ -59,9 +109,13 @@ $legacyInvoiceRedirect = function (Request $request) {
     return null;
 };
 
-Route::get('/', function (Request $request) use ($legacyInvoiceRedirect) {
+Route::get('/', function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse) {
     if ($redirect = $legacyInvoiceRedirect($request)) {
         return $redirect;
+    }
+
+    if ($response = $cmsPageResponse('home')) {
+        return $response;
     }
 
     $index = public_path('index.html');
@@ -222,13 +276,18 @@ Route::get('/{sitemapFile}', function () use ($seoBaseUrl, $seoStaticPages) {
     ]);
 })->where('sitemapFile', 'sitemaps?\.xml');
 
-Route::fallback(function (Request $request) use ($legacyInvoiceRedirect) {
+Route::fallback(function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse) {
     if ($request->isMethod('GET') && $redirect = $legacyInvoiceRedirect($request)) {
         return $redirect;
     }
 
     if (request()->is('api') || request()->is('api/*')) {
         return response()->json(['message' => 'API route not found. Clear Laravel route caches after deployment.'], 404);
+    }
+
+    $slug = trim($request->path(), '/');
+    if ($request->isMethod('GET') && ! str_contains($slug, '/') && ($response = $cmsPageResponse($slug))) {
+        return $response;
     }
 
     $index = public_path('index.html');

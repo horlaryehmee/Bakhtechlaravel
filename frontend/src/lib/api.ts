@@ -57,6 +57,39 @@ export type DashboardData = {
   }
 }
 
+export type SeoAudit = {
+  summary: {
+    score: number
+    audited: number
+    published: number
+    indexable: number
+    critical: number
+    warnings: number
+    passedChecks: number
+    totalChecks: number
+  }
+  documents: Array<{
+    id: number
+    type: string
+    title: string
+    path: string
+    status: string
+    indexable: boolean
+    score: number
+    wordCount: number
+    titleLength: number
+    descriptionLength: number
+    canonicalUrl: string
+    passedChecks: number
+    totalChecks: number
+    checks: Array<{ code: string; label: string; passed: boolean; weight: number; severity: 'critical' | 'warning'; message: string }>
+    issues: Array<{ code: string; label: string; message: string; severity: 'critical' | 'warning'; documentId: number; documentTitle: string }>
+  }>
+  recommendations: Array<{ code: string; label: string; message: string; severity: 'critical' | 'warning'; affected: number }>
+  technical: Array<{ label: string; url: string; status: string }>
+  generatedAt: string
+}
+
 export type MediaItem = {
   id: number
   filename: string
@@ -797,6 +830,9 @@ export const api = {
   },
   dashboard() {
     return request<DashboardData>('/api/admin/dashboard')
+  },
+  seoAudit() {
+    return request<SeoAudit>('/api/admin/seo/audit')
   },
   adminProjects() {
     return request<{ projects: Project[] }>('/api/admin/projects')

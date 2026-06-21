@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\BookingNotificationService;
 use App\Services\DatabaseSynchronizer;
+use App\Services\DeploymentMaintenanceService;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
-use App\Services\DeploymentMaintenanceService;
-use App\Services\BookingNotificationService;
+use App\Services\SeoAuditService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
 use App\Support\SiteDefaults;
@@ -139,9 +140,10 @@ class BakhtechApiController extends Controller
         return ['admin' => $this->adminShape($request->attributes->get('admin'))];
     }
 
-    public function dashboard()
+    public function dashboard(SeoAuditService $seoAudit)
     {
         $today = now()->toDateString();
+        $seo = $seoAudit->audit()['summary'];
 
         return [
             'totals' => [
@@ -154,7 +156,11 @@ class BakhtechApiController extends Controller
                 'visits' => DB::table('visits')->count(),
                 'todayVisits' => DB::table('visits')->whereDate('created_at', $today)->count(),
             ],
-            'seo' => ['score' => 92, 'indexedPages' => 18, 'issues' => 3],
+            'seo' => [
+                'score' => $seo['score'],
+                'indexedPages' => $seo['indexable'],
+                'issues' => $seo['critical'] + $seo['warnings'],
+            ],
             'performance' => ['score' => 88, 'loadTime' => '1.8s', 'mobileScore' => 84],
             'visits' => [
                 'topPages' => DB::table('visits')
@@ -165,6 +171,11 @@ class BakhtechApiController extends Controller
                     ->get(),
             ],
         ];
+    }
+
+    public function seoAudit(SeoAuditService $seoAudit)
+    {
+        return $seoAudit->audit();
     }
 
     public function adminProjects()

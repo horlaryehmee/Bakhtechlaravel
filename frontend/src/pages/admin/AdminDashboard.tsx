@@ -76,6 +76,7 @@ import {
   type GoogleReviewConnection,
   type Review,
   type ReviewInput,
+  type SeoAudit,
   type SiteEmailLog,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -750,6 +751,7 @@ export function AdminDashboard() {
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData | null>(initialAdminCache?.dashboard ?? null)
+  const [seoAudit, setSeoAudit] = useState<SeoAudit | null>(initialAdminCache?.seoAudit ?? null)
   const [cms, setCms] = useState<CmsData | null>(initialAdminCache?.cms ?? null)
   const [mediaPicker, setMediaPicker] = useState<MediaPickerState>(null)
   const [mediaSearch, setMediaSearch] = useState('')
@@ -1080,6 +1082,7 @@ export function AdminDashboard() {
     try {
       const [
         dashboardResult,
+        seoAuditResult,
         projectResult,
         cmsResult,
         invoiceOverviewResult,
@@ -1088,6 +1091,7 @@ export function AdminDashboard() {
         invoiceEmailLogsResult
       ] = await Promise.all([
         api.dashboard(),
+        api.seoAudit(),
         api.adminProjects(),
         api.cms(),
         api.invoiceOverview().catch(() => null),
@@ -1096,6 +1100,7 @@ export function AdminDashboard() {
         api.invoiceEmailLogs().catch(() => null)
       ])
       setDashboard(dashboardResult)
+      setSeoAudit(seoAuditResult)
       setProjects(projectResult.projects)
       setCms(cmsResult)
       setEditingPageId((current) => current ?? cmsResult.pages[0]?.id ?? null)
@@ -1109,6 +1114,7 @@ export function AdminDashboard() {
       if (invoiceEmailLogsResult?.meta) setInvoiceEmailLogsMeta(invoiceEmailLogsResult.meta)
       writeAdminDataCache({
         dashboard: dashboardResult,
+        seoAudit: seoAuditResult,
         projects: projectResult.projects,
         cms: cmsResult,
         invoiceOverview: invoiceOverviewResult,
@@ -1405,6 +1411,7 @@ export function AdminDashboard() {
   async function savePage(page: CmsPage) {
     const result = await api.updatePage(page.id, page)
     setCms((current) => (current ? { ...current, pages: current.pages.map((item) => (item.id === page.id ? result.page : item)) } : current))
+    setSeoAudit(await api.seoAudit())
     notify('Page saved.')
   }
 
@@ -1419,6 +1426,7 @@ export function AdminDashboard() {
     })
     setCms((current) => (current ? { ...current, pages: [...current.pages, result.page] } : current))
     setEditingPageId(result.page.id)
+    setSeoAudit(await api.seoAudit())
     notify('Page created.')
   }
 
@@ -1427,6 +1435,7 @@ export function AdminDashboard() {
     await api.deletePage(page.id)
     setCms((current) => (current ? { ...current, pages: current.pages.filter((item) => item.id !== page.id) } : current))
     setEditingPageId((current) => (current === page.id ? null : current))
+    setSeoAudit(await api.seoAudit())
     notify('Page deleted.')
   }
 
@@ -6302,27 +6311,105 @@ export function AdminDashboard() {
   }
 
   function renderSeo() {
+    const summary = seoAudit?.summary
+    const editSeoDocument = (documentId: number) => {
+      setEditingPageId(documentId)
+      setActiveSection('pages')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
     return (
-      <div>
+      <div className="grid gap-6">
         <PanelHeader 
           eyebrow="SEO" 
-          title="SEO Controls" 
-          text="SEO fields are saved per page in the Pages section. This view summarizes current SEO health." 
+          title="SEO Command Center"
+          text="Live technical and on-page checks for every CMS page. Scores update from the metadata and content actually saved on your website."
         />
-        <div className="grid gap-5 md:grid-cols-3">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <p className="text-gray-500 text-sm font-bold">SEO Score</p>
-            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.score ?? 0}%</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <p className="text-gray-500 text-sm font-bold">Indexed Pages</p>
-            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.indexedPages ?? 0}</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <p className="text-gray-500 text-sm font-bold">Open Issues</p>
-            <p className="mt-2 text-3xl font-black text-gray-900">{dashboard?.seo.issues ?? 0}</p>
-          </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => void api.seoAudit().then(setSeoAudit)}>
+            <RotateCcw className="mr-2 h-4 w-4" />Run fresh audit
+          </Button>
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Site SEO score', value: `${summary?.score ?? 0}%`, detail: `${summary?.passedChecks ?? 0} of ${summary?.totalChecks ?? 0} checks passed`, tone: (summary?.score ?? 0) >= 80 ? 'text-emerald-600' : 'text-amber-600' },
+            { label: 'Indexable pages', value: summary?.indexable ?? 0, detail: `${summary?.published ?? 0} published pages`, tone: 'text-blue-600' },
+            { label: 'Critical issues', value: summary?.critical ?? 0, detail: 'Missing or invalid essentials', tone: 'text-red-600' },
+            { label: 'Improvements', value: summary?.warnings ?? 0, detail: 'Content and sharing opportunities', tone: 'text-amber-600' },
+          ].map((card) => (
+            <article key={card.label} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <p className="text-gray-500 text-xs font-black uppercase tracking-[0.12em]">{card.label}</p>
+              <p className={cn('mt-2 text-3xl font-black', card.tone)}>{card.value}</p>
+              <p className="mt-2 text-xs font-semibold text-gray-500">{card.detail}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[0.85fr_1.4fr]">
+          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div className="mb-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Priority queue</p>
+              <h3 className="mt-1 text-xl font-black text-gray-900">What to fix next</h3>
+            </div>
+            <div className="grid gap-3">
+              {(seoAudit?.recommendations ?? []).map((item) => (
+                <article key={item.code} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-gray-900">{item.label}</p>
+                      <p className="mt-1 text-sm leading-6 text-gray-600">{item.message}</p>
+                    </div>
+                    <span className={cn('shrink-0 rounded-full px-3 py-1 text-[0.65rem] font-black uppercase', item.severity === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}>
+                      {item.affected} page{item.affected === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                </article>
+              ))}
+              {seoAudit?.recommendations.length === 0 ? <div className="rounded-xl bg-emerald-50 p-5 text-sm font-bold text-emerald-700">No open on-page SEO issues.</div> : null}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Page audit</p><h3 className="mt-1 text-xl font-black text-gray-900">Search readiness</h3></div>
+              <span className="text-xs font-bold text-gray-500">{seoAudit?.documents.length ?? 0} pages audited</span>
+            </div>
+            <div className="grid gap-3">
+              {(seoAudit?.documents ?? []).map((document) => (
+                <article key={document.id} className="rounded-xl border border-gray-100 p-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-black text-gray-900">{document.title}</p>
+                        <span className={cn('rounded-full px-2.5 py-1 text-[0.65rem] font-black uppercase', document.indexable ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')}>{document.indexable ? 'Indexable' : document.status}</span>
+                      </div>
+                      <p className="mt-1 truncate text-xs font-semibold text-gray-500">{document.path} | {document.wordCount} words | {document.passedChecks}/{document.totalChecks} checks</p>
+                      {document.issues[0] ? <p className="mt-2 text-xs font-bold text-amber-700">Next: {document.issues[0].message}</p> : <p className="mt-2 text-xs font-bold text-emerald-700">All checks passed</p>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 text-sm font-black', document.score >= 80 ? 'border-emerald-100 text-emerald-600' : document.score >= 55 ? 'border-amber-100 text-amber-600' : 'border-red-100 text-red-600')}>{document.score}%</div>
+                      <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => editSeoDocument(document.id)}><Pencil className="mr-2 h-4 w-4" />Optimize</Button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div className="mb-5"><p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Technical SEO</p><h3 className="mt-1 text-xl font-black text-gray-900">Crawler endpoints</h3></div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {(seoAudit?.technical ?? []).map((item) => (
+              <a key={item.label} href={item.url} target="_blank" rel="noreferrer" className="rounded-xl border border-gray-100 bg-gray-50 p-4 transition hover:border-blue-300">
+                <div className="flex items-center justify-between gap-3"><Link2 className="h-4 w-4 text-blue-600" /><span className="rounded-full bg-emerald-100 px-2 py-1 text-[0.62rem] font-black uppercase text-emerald-700">{item.status}</span></div>
+                <p className="mt-3 font-black text-gray-900">{item.label}</p><p className="mt-1 truncate text-xs text-gray-500">{item.url}</p>
+              </a>
+            ))}
+          </div>
+          <p className="mt-4 text-xs font-semibold text-gray-500">Last audit: {seoAudit?.generatedAt ? new Date(seoAudit.generatedAt).toLocaleString() : 'Not run yet'}</p>
+        </section>
       </div>
     )
   }
