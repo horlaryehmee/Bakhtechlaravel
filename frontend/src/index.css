@@ -5665,8 +5665,8 @@ a {
 
 .invoice-portal-richtext ul,
 .invoice-portal-richtext ol {
-  margin: 10px 0 14px 20px;
-  padding: 0;
+  margin: 8px 0;
+  padding-left: 1.7rem;
 }
 
 .invoice-portal-richtext ul {
@@ -5678,8 +5678,30 @@ a {
 }
 
 .invoice-portal-richtext li {
-  margin: 5px 0;
-  padding-left: 3px;
+  margin: 0;
+  padding-left: 0.25rem;
+}
+
+.invoice-portal-richtext li + li {
+  margin-top: 0.75rem;
+}
+
+.invoice-portal-richtext li > p {
+  margin: 0;
+}
+
+.invoice-portal-richtext ol > li::marker {
+  color: currentColor;
+  font-weight: 700;
+}
+
+.invoice-portal-richtext ol > li::first-line {
+  font-weight: 700;
+}
+
+.invoice-portal-richtext ol > li > strong:first-child,
+.invoice-portal-richtext ol > li > b:first-child {
+  font-weight: 700;
 }
 
 .invoice-portal-richtext strong,

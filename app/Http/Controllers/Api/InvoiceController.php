@@ -171,6 +171,7 @@ class InvoiceController extends Controller
                 'invoice_clients.name as client_name'
             )
             ->when($request->input('status'), fn ($query, $status) => $query->where('invoice_email_logs.status', $status))
+            ->when($request->integer('documentId'), fn ($query, $documentId) => $query->where('invoice_email_logs.document_id', $documentId))
             ->when($request->input('search'), function ($query, $search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('invoice_email_logs.recipient_email', 'like', "%{$search}%")
@@ -180,14 +181,22 @@ class InvoiceController extends Controller
                 });
             })
             ->when($request->input('type'), fn ($query, $type) => $query->where('invoice_documents.type', $type));
+        if (Schema::hasTable('invoice_email_open_events')) {
+            $query->selectSub(function ($inner) {
+                $inner->from('invoice_email_open_events')
+                    ->selectRaw('count(*)')
+                    ->whereColumn('invoice_email_open_events.email_log_id', 'invoice_email_logs.id');
+            }, 'open_count');
+        }
         $total = (clone $query)->count();
         $rows = $query
             ->orderByDesc('invoice_email_logs.created_at')
             ->forPage($page, $perPage)
             ->get();
+        $includeOpens = $request->boolean('includeOpens');
 
         return [
-            'logs' => $rows->map(fn ($row) => $this->emailLogShape($row, false)),
+            'logs' => $rows->map(fn ($row) => $this->emailLogShape($row, false, $includeOpens)),
             'meta' => $this->paginationMeta($page, $perPage, $total),
         ];
     }
@@ -248,22 +257,48 @@ class InvoiceController extends Controller
             }
         }
 
-        return ['log' => $this->emailLogShape($row, true)];
+        return ['log' => $this->emailLogShape($row, true, true)];
     }
 
     public function trackEmailOpen(Request $request, string $token)
     {
         $log = DB::table('invoice_email_logs')->where('open_token', $token)->first();
-        if ($log && !$log->opened_at) {
-            DB::table('invoice_email_logs')->where('id', $log->id)->update([
-                'opened_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if ($log) {
+            $openedAt = now();
+            $userAgent = (string) $request->userAgent();
+            $location = $this->requestLocation($request);
 
-            $this->trackEvent((int) $log->document_id, 'email.opened', $request, [
-                'emailLogId' => $log->id,
-                'recipient' => $log->recipient_email,
-            ], null, 'recipient');
+            if (Schema::hasTable('invoice_email_open_events')) {
+                DB::table('invoice_email_open_events')->insert([
+                    'email_log_id' => $log->id,
+                    'document_id' => $log->document_id,
+                    'ip_address' => (string) $request->ip(),
+                    'user_agent' => Str::limit($userAgent, 2000, ''),
+                    'device_type' => $this->deviceType($userAgent),
+                    'browser' => $this->browserName($userAgent),
+                    'operating_system' => $this->operatingSystem($userAgent),
+                    'country' => $location['country'],
+                    'city' => $location['city'],
+                    'opened_at' => $openedAt,
+                    'created_at' => $openedAt,
+                    'updated_at' => $openedAt,
+                ]);
+            }
+
+            if (!$log->opened_at) {
+                DB::table('invoice_email_logs')->where('id', $log->id)->update([
+                    'opened_at' => $openedAt,
+                    'updated_at' => $openedAt,
+                ]);
+
+                $this->trackEvent((int) $log->document_id, 'email.opened', $request, [
+                    'emailLogId' => $log->id,
+                    'recipient' => $log->recipient_email,
+                    'deviceType' => $this->deviceType($userAgent),
+                    'country' => $location['country'],
+                    'city' => $location['city'],
+                ], null, 'recipient');
+            }
         }
 
         $pixel = base64_decode('R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==');
@@ -2158,8 +2193,28 @@ class InvoiceController extends Controller
         ];
     }
 
-    private function emailLogShape(object $row, bool $includeBody): array
+    private function emailLogShape(object $row, bool $includeBody, bool $includeOpens = false): array
     {
+        $opens = [];
+        if ($includeOpens && Schema::hasTable('invoice_email_open_events')) {
+            $opens = DB::table('invoice_email_open_events')
+                ->where('email_log_id', $row->id)
+                ->orderByDesc('opened_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($open) => [
+                    'id' => $open->id,
+                    'openedAt' => (string) $open->opened_at,
+                    'ipAddress' => (string) ($open->ip_address ?? ''),
+                    'deviceType' => (string) ($open->device_type ?? ''),
+                    'browser' => (string) ($open->browser ?? ''),
+                    'operatingSystem' => (string) ($open->operating_system ?? ''),
+                    'country' => (string) ($open->country ?? ''),
+                    'city' => (string) ($open->city ?? ''),
+                    'userAgent' => (string) ($open->user_agent ?? ''),
+                ])->all();
+        }
+
         return [
             'id' => $row->id,
             'documentId' => $row->document_id,
@@ -2171,9 +2226,11 @@ class InvoiceController extends Controller
             'subject' => $row->subject,
             'templateKey' => $row->template_key,
             'status' => $row->status,
-            'bodyHtml' => $includeBody ? (string) ($row->body_html ?? '') : '',
+            'bodyHtml' => $includeBody ? $this->emailPreviewHtml((string) ($row->body_html ?? '')) : '',
             'sentAt' => (string) ($row->sent_at ?? ''),
             'openedAt' => (string) ($row->opened_at ?? ''),
+            'openCount' => isset($row->open_count) ? (int) $row->open_count : count($opens),
+            'opens' => $opens,
             'clickedAt' => (string) ($row->clicked_at ?? ''),
             'errorMessage' => (string) ($row->error_message ?? ''),
             'createdAt' => (string) $row->created_at,
@@ -2243,6 +2300,15 @@ class InvoiceController extends Controller
 
             DB::table('invoice_email_logs')->where('id', $logId)->update($update);
         }
+    }
+
+    private function emailPreviewHtml(string $html): string
+    {
+        return preg_replace(
+            '~<img\b(?=[^>]*\bsrc=("|\')[^"\']*/api/invoices/email/open/[^"\']*\1)[^>]*>~i',
+            '',
+            $html
+        ) ?: $html;
     }
 
     private function invoiceEmailSubject(object $document, string $templateKey): string
@@ -2487,6 +2553,48 @@ HTML;
 
     private function deviceType(string $userAgent): string
     {
-        return preg_match('/Mobile|Android|iPhone|iPad/i', $userAgent) ? 'mobile' : 'desktop';
+        if (preg_match('/iPad|Tablet|Android(?!.*Mobile)/i', $userAgent)) {
+            return 'tablet';
+        }
+
+        return preg_match('/Mobile|Android|iPhone/i', $userAgent) ? 'mobile' : 'desktop';
+    }
+
+    private function browserName(string $userAgent): string
+    {
+        return match (true) {
+            preg_match('/Edg\//i', $userAgent) === 1 => 'Edge',
+            preg_match('/OPR\//i', $userAgent) === 1 => 'Opera',
+            preg_match('/Chrome\//i', $userAgent) === 1 => 'Chrome',
+            preg_match('/Firefox\//i', $userAgent) === 1 => 'Firefox',
+            preg_match('/Safari\//i', $userAgent) === 1 => 'Safari',
+            default => 'Unknown',
+        };
+    }
+
+    private function operatingSystem(string $userAgent): string
+    {
+        return match (true) {
+            preg_match('/Windows/i', $userAgent) === 1 => 'Windows',
+            preg_match('/iPhone|iPad|iPod/i', $userAgent) === 1 => 'iOS',
+            preg_match('/Android/i', $userAgent) === 1 => 'Android',
+            preg_match('/Mac OS X|Macintosh/i', $userAgent) === 1 => 'macOS',
+            preg_match('/Linux/i', $userAgent) === 1 => 'Linux',
+            default => 'Unknown',
+        };
+    }
+
+    private function requestLocation(Request $request): array
+    {
+        $country = $request->header('CF-IPCountry')
+            ?: $request->header('CloudFront-Viewer-Country')
+            ?: $request->header('X-Vercel-IP-Country');
+        $city = $request->header('CloudFront-Viewer-City')
+            ?: $request->header('X-Vercel-IP-City');
+
+        return [
+            'country' => $country ? Str::limit(urldecode((string) $country), 100, '') : null,
+            'city' => $city ? Str::limit(urldecode((string) $city), 100, '') : null,
+        ];
     }
 }

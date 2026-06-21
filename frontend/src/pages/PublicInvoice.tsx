@@ -96,7 +96,35 @@ function sanitizeRichText(value: string) {
   }
 
   cleanNode(parsed.body)
+  mergeAdjacentLists(parsed.body)
   return parsed.body.innerHTML
+}
+
+function mergeAdjacentLists(container: Element) {
+  Array.from(container.children).forEach((child) => mergeAdjacentLists(child))
+
+  Array.from(container.children).forEach((list) => {
+    if (list.tagName !== 'OL' && list.tagName !== 'UL') return
+
+    let sibling = list.nextSibling
+    const spacers: Node[] = []
+    while (sibling) {
+      const isWhitespace = sibling.nodeType === Node.TEXT_NODE && !sibling.textContent?.trim()
+      const isEmptyElement = sibling.nodeType === Node.ELEMENT_NODE
+        && ((sibling as Element).tagName === 'BR'
+          || ((sibling as Element).tagName === 'P' && !(sibling.textContent || '').trim()))
+      if (!isWhitespace && !isEmptyElement) break
+      spacers.push(sibling)
+      sibling = sibling.nextSibling
+    }
+
+    if (sibling instanceof HTMLElement && sibling.tagName === list.tagName) {
+      spacers.forEach((spacer) => spacer.parentNode?.removeChild(spacer))
+      while (sibling.firstChild) list.appendChild(sibling.firstChild)
+      sibling.remove()
+      mergeAdjacentLists(container)
+    }
+  })
 }
 
 function RichTextBlock({ value }: { value: string }) {

@@ -519,6 +519,18 @@ export type InvoiceEmailLog = {
   bodyHtml: string
   sentAt: string
   openedAt: string
+  openCount: number
+  opens: Array<{
+    id: number
+    openedAt: string
+    ipAddress: string
+    deviceType: string
+    browser: string
+    operatingSystem: string
+    country: string
+    city: string
+    userAgent: string
+  }>
   clickedAt: string
   errorMessage: string
   createdAt: string

@@ -773,6 +773,7 @@ export function AdminDashboard() {
   const [invoiceDocuments, setInvoiceDocuments] = useState<InvoiceDocument[]>(initialAdminCache?.invoiceDocuments ?? [])
   const [invoiceClients, setInvoiceClients] = useState<InvoiceClient[]>(initialAdminCache?.invoiceClients ?? [])
   const [invoiceEmailLogs, setInvoiceEmailLogs] = useState<InvoiceEmailLog[]>(initialAdminCache?.invoiceEmailLogs ?? [])
+  const [documentEmailLogs, setDocumentEmailLogs] = useState<InvoiceEmailLog[]>([])
   const [selectedEmailLog, setSelectedEmailLog] = useState<InvoiceEmailLog | null>(null)
   const [invoiceDocumentsMeta, setInvoiceDocumentsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceDocumentsMeta ?? defaultInvoiceListMeta)
   const [invoiceClientsMeta, setInvoiceClientsMeta] = useState<InvoiceListMeta>(initialAdminCache?.invoiceClientsMeta ?? defaultInvoiceListMeta)
@@ -2291,6 +2292,11 @@ export function AdminDashboard() {
 
   async function editInvoice(document: InvoiceDocument) {
     const fullDocument = document.id ? (await api.invoiceDocument(document.id)).document : document
+    if (fullDocument.id) {
+      void loadDocumentEmailLogs(fullDocument.id)
+    } else {
+      setDocumentEmailLogs([])
+    }
     setEditingInvoice(fullDocument)
     setActiveInvoiceSubsection('create')
     setInvoiceForm({
@@ -2307,6 +2313,7 @@ export function AdminDashboard() {
 
   function resetInvoiceForm() {
     setEditingInvoice(null)
+    setDocumentEmailLogs([])
     setInvoiceForm(invoiceFormFromSettings(invoiceForm.type === 'quote' ? 'quote' : 'invoice'))
     setActiveInvoiceSubsection(invoiceForm.type === 'quote' ? 'quotes' : 'invoices')
   }
@@ -2341,8 +2348,18 @@ export function AdminDashboard() {
   async function sendInvoiceDocument(document: InvoiceDocument) {
     if (document.id === null || document.id === undefined) return
     await api.sendInvoiceDocument(document.id)
+    await loadDocumentEmailLogs(document.id)
     void loadInvoiceData()
     notify('Document sent.')
+  }
+
+  async function loadDocumentEmailLogs(documentId: number) {
+    try {
+      const result = await api.invoiceEmailLogs({ documentId, perPage: 100, includeOpens: 1 })
+      setDocumentEmailLogs(result.logs)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load this document email log.')
+    }
   }
 
   async function copyInvoiceLink(document: InvoiceDocument) {
@@ -3768,28 +3785,63 @@ export function AdminDashboard() {
                       <div className="bkinv-card-header">
                         <Send className="h-5 w-5" />
                         <h2>Email Logs</h2>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto"
+                          onClick={() => editingInvoice.id && void loadDocumentEmailLogs(editingInvoice.id)}
+                        >
+                          Refresh
+                        </Button>
                       </div>
                       <div className="bkinv-card-body grid gap-3">
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          <div className="text-xs border-l-2 border-green-500 bg-green-50 rounded p-2">
-                            <div className="font-semibold">Email Sent</div>
-                            <div className="text-gray-600">Sent to: client@example.com</div>
-                            <div className="text-gray-500">Sent: 3 hours ago</div>
-                          </div>
-                          <div className="text-xs border-l-2 border-blue-500 bg-blue-50 rounded p-2">
-                            <div className="font-semibold">Email Opened</div>
-                            <div className="text-gray-600">Opened by recipient</div>
-                            <div className="text-gray-500">Opened: 2 hours ago</div>
-                          </div>
+                        <p className="text-xs text-gray-500">
+                          Opens are detected by a tracking image. Privacy tools and email image proxies can hide or pre-load device and location data.
+                        </p>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {documentEmailLogs.map((log) => (
+                            <div key={log.id} className={cn('rounded border-l-4 p-3 text-xs', log.status === 'failed' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50')}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="font-bold">{log.subject}</div>
+                                  <div className="text-gray-600">To: {log.recipientEmail}</div>
+                                </div>
+                                <span className={cn('bkinv-email-status', `is-${log.status}`)}>{log.status}</span>
+                              </div>
+                              <div className="mt-2 text-gray-500">
+                                Sent: {log.sentAt ? new Date(log.sentAt).toLocaleString() : 'Not sent'}
+                              </div>
+                              {log.errorMessage ? <div className="mt-1 text-red-700">{log.errorMessage}</div> : null}
+                              <div className="mt-3 border-t border-black/10 pt-2 font-semibold">
+                                {log.openCount || log.opens.length} open{(log.openCount || log.opens.length) === 1 ? '' : 's'}
+                              </div>
+                              {log.opens.map((open) => {
+                                const device = [open.browser, open.operatingSystem, open.deviceType].filter((value) => value && value !== 'Unknown').join(' on ')
+                                const location = [open.city, open.country].filter(Boolean).join(', ')
+                                return (
+                                  <div key={open.id} className="mt-2 rounded bg-white/80 p-2 text-gray-600">
+                                    <div className="font-semibold text-gray-800">{device || 'Device unavailable'}</div>
+                                    <div>{location || 'Location unavailable'}</div>
+                                    <div>{new Date(open.openedAt).toLocaleString()}</div>
+                                    <div className="break-all text-[10px] text-gray-400">IP: {open.ipAddress || 'Unavailable'}</div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ))}
+                          {!documentEmailLogs.length ? (
+                            <div className="rounded bg-gray-50 p-4 text-center text-xs text-gray-500">No emails have been sent for this document.</div>
+                          ) : null}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t">
+                        <div className="grid grid-cols-2 gap-2 border-t pt-2 text-xs">
                           <div>
                             <div className="text-gray-600">Sent</div>
-                            <div className="font-semibold">1</div>
+                            <div className="font-semibold">{documentEmailLogs.filter((log) => log.status === 'sent').length}</div>
                           </div>
                           <div>
                             <div className="text-gray-600">Opened</div>
-                            <div className="font-semibold">1</div>
+                            <div className="font-semibold">{documentEmailLogs.reduce((count, log) => count + (log.openCount || log.opens.length), 0)}</div>
                           </div>
                         </div>
                       </div>
