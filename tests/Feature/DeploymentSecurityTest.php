@@ -32,6 +32,60 @@ class DeploymentSecurityTest extends TestCase
             ->assertJsonPath('message', 'Too many payment attempts for this invoice. Please wait a minute and try again.');
     }
 
+    public function test_flutterwave_payment_uses_secret_saved_by_invoice_settings(): void
+    {
+        DB::table('settings')->insert([
+            ['key' => 'gateway_mode', 'value' => 'test', 'created_at' => now(), 'updated_at' => now()],
+            ['key' => 'flutter_secret_test', 'value' => 'FLWSECK_TEST_configured', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $clientId = DB::table('invoice_clients')->insertGetId([
+            'name' => 'Flutterwave Client',
+            'email' => 'flutterwave@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('invoice_documents')->insert([
+            'client_id' => $clientId,
+            'type' => 'invoice',
+            'number' => 'INV-FLUTTERWAVE-001',
+            'title' => 'Flutterwave Invoice',
+            'public_token' => 'flutterwave-payment-token',
+            'status' => 'sent',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 1000,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'total' => 1000,
+            'amount_paid' => 0,
+            'balance_due' => 1000,
+            'issue_date' => now()->toDateString(),
+            'payment_gateway' => 'flutterwave',
+            'payment_enabled' => true,
+            'partial_payment_enabled' => true,
+            'branding_json' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'api.flutterwave.com/v3/payments' => Http::response([
+                'status' => 'success',
+                'data' => ['link' => 'https://checkout.flutterwave.test/pay'],
+            ]),
+        ]);
+
+        $this->postJson('/api/invoices/flutterwave-payment-token/payments/initialize', [
+            'amount' => 1000,
+        ])->assertOk()
+            ->assertJsonPath('payment.gateway', 'flutterwave')
+            ->assertJsonPath('payment.authorizationUrl', 'https://checkout.flutterwave.test/pay');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.flutterwave.com/v3/payments'
+            && $request->hasHeader('Authorization', 'Bearer FLWSECK_TEST_configured'));
+    }
+
     public function test_apache_routes_legacy_invoice_links_through_laravel(): void
     {
         $legacyQueryRule = '(view_invoice|view_quote|view_receipt|bkinv_receipt_pdf)';

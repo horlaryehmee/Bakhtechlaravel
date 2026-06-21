@@ -320,14 +320,25 @@ class InvoicePaymentService
     {
         $settings = DB::table('settings')->pluck('value', 'key');
         $mode = ($settings['gateway_mode'] ?? 'test') === 'live' ? 'live' : 'test';
-        $key = (string) ($settings["{$gateway}_secret_{$mode}"] ?? '');
+        $settingPrefix = $gateway === 'flutterwave' ? 'flutter' : $gateway;
+        $key = trim((string) ($settings["{$settingPrefix}_secret_{$mode}"] ?? ''));
+
+        if ($key === '' && $gateway === 'flutterwave') {
+            $key = trim((string) ($settings["flutterwave_secret_{$mode}"] ?? $settings['flutterwave_secret_key'] ?? ''));
+        }
 
         if ($key === '' && $gateway === 'paystack') {
             $key = (string) config('services.paystack.secret_key');
         }
 
+        if ($key === '' && $gateway === 'flutterwave') {
+            $key = (string) config('services.flutterwave.secret_key');
+        }
+
         if ($key === '') {
-            throw new HttpResponseException(response()->json(['message' => ucfirst($gateway).' secret key is not configured.'], 422));
+            throw new HttpResponseException(response()->json([
+                'message' => ucfirst($gateway).' '.$mode.' secret key is not configured.',
+            ], 422));
         }
 
         return $key;
