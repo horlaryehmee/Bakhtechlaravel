@@ -5701,6 +5701,95 @@ a {
   font-size: 20px;
 }
 
+.wp-classic-editor {
+  position: relative;
+  padding-top: 34px;
+}
+
+.wp-editor-tabs {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 35px;
+}
+
+.wp-editor-tabs button {
+  height: 30px;
+  border: 1px solid #c3c4c7;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: #f0f0f1;
+  padding: 0 12px;
+  color: #50575e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wp-editor-tabs button.is-active {
+  position: relative;
+  z-index: 1;
+  height: 35px;
+  background: #fff;
+  color: #1d2327;
+}
+
+.wp-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-height: 50px;
+  border: 1px solid #c3c4c7;
+  border-bottom: 0;
+  background: #f6f7f7;
+  padding: 8px;
+}
+
+.wp-editor-toolbar button {
+  border-radius: 2px;
+  color: #2c3338;
+}
+
+.wp-editor-toolbar button:hover {
+  border-color: #8c8f94;
+  background: #fff;
+}
+
+.rich-text-editor-content,
+.wp-editor-source {
+  display: block;
+  width: 100%;
+  border: 1px solid #c3c4c7;
+  border-radius: 0 0 3px 3px;
+  background: #fff;
+  color: #1d2327;
+  line-height: 1.6;
+}
+
+.rich-text-editor-content:focus,
+.wp-editor-source:focus {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+}
+
+.rich-text-editor-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  list-style: disc outside;
+}
+
+.rich-text-editor-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  list-style: decimal outside;
+}
+
+.rich-text-editor-content li {
+  margin: 0.25rem 0;
+}
+
 .invoice-portal-richtext h3 {
   font-size: 17px;
 }
