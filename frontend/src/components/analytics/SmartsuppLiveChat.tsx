@@ -9,8 +9,16 @@ type SmartsuppWindow = Window & {
   smartsupp?: ((...args: unknown[]) => void) & { _?: unknown[] }
 }
 
-function isBackendPath(pathname: string) {
-  return pathname === '/admin' || pathname.startsWith('/admin/')
+function shouldHideLiveChat(pathname: string) {
+  return pathname === '/admin'
+    || pathname.startsWith('/admin/')
+    || pathname.startsWith('/invoice/')
+    || pathname.startsWith('/quote/')
+    || pathname.startsWith('/receipt/')
+    || pathname === '/booking'
+    || pathname.startsWith('/booking/')
+    || pathname === '/book'
+    || pathname.startsWith('/book/')
 }
 
 function hideSmartsupp() {
@@ -35,10 +43,10 @@ function showSmartsupp() {
 
 export function SmartsuppLiveChat() {
   const { pathname } = useLocation()
-  const backendPath = isBackendPath(pathname)
+  const hideLiveChat = shouldHideLiveChat(pathname)
 
   useEffect(() => {
-    if (backendPath) {
+    if (hideLiveChat) {
       hideSmartsupp()
       return
     }
@@ -59,7 +67,7 @@ export function SmartsuppLiveChat() {
     let timeoutId: number | undefined
 
     const loadSmartsupp = () => {
-      if (loaded || isBackendPath(window.location.pathname)) return
+      if (loaded || shouldHideLiveChat(window.location.pathname)) return
 
       loaded = true
       const script = document.createElement('script')
@@ -84,7 +92,7 @@ export function SmartsuppLiveChat() {
       window.removeEventListener('scroll', loadSmartsupp)
       window.removeEventListener('pointerdown', loadSmartsupp)
     }
-  }, [backendPath])
+  }, [hideLiveChat])
 
   return null
 }
