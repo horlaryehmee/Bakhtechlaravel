@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { api, type InvoiceDocument } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { updatePageMetadata } from '@/lib/page-metadata'
 
 function sessionId() {
   const key = 'bakhtech-invoice-session'
@@ -151,6 +152,17 @@ export function PublicInvoice() {
   const [selectedPaymentPercent, setSelectedPaymentPercent] = useState(100)
   const [startingPayment, setStartingPayment] = useState(false)
   const [expandedInvoiceSections, setExpandedInvoiceSections] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!document) return
+    const label = document.type === 'quote' ? 'Quote' : document.type === 'receipt' ? 'Receipt' : 'Invoice'
+    const business = document.branding.businessName || 'Bakhtech Solutions'
+    const amount = document.type === 'invoice' ? document.balanceDue : document.total
+    updatePageMetadata({
+      title: `${label} ${document.number} from ${business}`,
+      description: `Preview ${label} ${document.number} from ${business}. ${money(amount, document.currency)}. Status: ${invoiceStatusLabel(document.status)}.`,
+    })
+  }, [document])
   const [error, setError] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
   const sid = useMemo(() => sessionId(), [])

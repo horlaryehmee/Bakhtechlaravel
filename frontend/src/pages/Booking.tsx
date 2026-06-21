@@ -6,6 +6,7 @@ import "react-international-phone/style.css";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { api, ApiError, type Booking, type BookingAvailabilityDay, type BookingEventType, type BookingCalendar, type BookingSlot } from "@/lib/api";
+import { updatePageMetadata } from "@/lib/page-metadata";
 import { cn } from "@/lib/utils";
 
 type FormState = {
@@ -171,6 +172,15 @@ export function Booking() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
+
+  useEffect(() => {
+    const name = selectedType?.name || calendar?.name || "Appointment";
+    const description = selectedType?.description || calendar?.description || `Choose a service and reserve an available time for ${name} with Bakhtech Solutions.`;
+    updatePageMetadata({
+      title: `Book ${name} | Bakhtech Solutions`,
+      description,
+    });
+  }, [calendar, selectedType]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Support\SiteDefaults;
+use App\Support\SpaMetadataResponse;
 
 $seoBaseUrl = fn () => rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
 
@@ -117,6 +119,77 @@ Route::get('/markdown/{slug}.md', function (string $slug) use ($markdownMirror) 
 
     return response($content, 200, [
         'Content-Type' => 'text/markdown; charset=UTF-8',
+    ]);
+})->where('slug', '[A-Za-z0-9_-]+');
+
+Route::get('/invoice/{token}', function (string $token) use ($seoBaseUrl) {
+    $document = Schema::hasTable('invoice_documents')
+        ? DB::table('invoice_documents')->where('public_token', $token)->first()
+        : null;
+
+    if (! $document) {
+        return SpaMetadataResponse::make([
+            'title' => 'Secure Document | Bakhtech Solutions',
+            'description' => 'View your secure invoice, quote, or receipt from Bakhtech Solutions.',
+            'url' => $seoBaseUrl().'/invoice/'.rawurlencode($token),
+            'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        ], true);
+    }
+
+    $branding = json_decode((string) ($document->branding_json ?? '{}'), true) ?: [];
+    $business = trim((string) ($branding['businessName'] ?? 'Bakhtech Solutions')) ?: 'Bakhtech Solutions';
+    $label = match ((string) $document->type) {
+        'quote' => 'Quote',
+        'receipt' => 'Receipt',
+        default => 'Invoice',
+    };
+    $amount = number_format((float) ($document->type === 'invoice' ? $document->balance_due : $document->total), 2);
+    $status = ucfirst(str_replace('_', ' ', (string) $document->status));
+    $title = "{$label} {$document->number} from {$business}";
+    $description = "Preview {$label} {$document->number} from {$business}. {$document->currency} {$amount}. Status: {$status}.";
+
+    return SpaMetadataResponse::make([
+        'title' => $title,
+        'description' => $description,
+        'url' => $seoBaseUrl().'/invoice/'.rawurlencode($token),
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        'imageAlt' => $title,
+    ], true);
+})->where('token', '[A-Za-z0-9_-]+');
+
+Route::get('/receipt/{token}', function (string $token) use ($seoBaseUrl) {
+    return SpaMetadataResponse::make([
+        'title' => 'Payment Receipt | Bakhtech Solutions',
+        'description' => 'View your secure Bakhtech Solutions payment receipt and transaction details.',
+        'url' => $seoBaseUrl().'/receipt/'.rawurlencode($token),
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+    ], true);
+})->where('token', '[A-Za-z0-9_-]+');
+
+Route::get('/booking', function () use ($seoBaseUrl) {
+    return SpaMetadataResponse::make([
+        'title' => 'Book an Appointment | Bakhtech Solutions',
+        'description' => 'Choose a service and reserve an available time with Bakhtech Solutions.',
+        'url' => $seoBaseUrl().'/booking',
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        'imageAlt' => 'Book an appointment with Bakhtech Solutions',
+    ]);
+});
+
+Route::get('/book/{slug}', function (string $slug) use ($seoBaseUrl) {
+    $calendar = Schema::hasTable('booking_calendars')
+        ? DB::table('booking_calendars')->where('slug', $slug)->where('is_active', true)->first()
+        : null;
+    $name = trim((string) ($calendar->name ?? 'Appointment')) ?: 'Appointment';
+    $description = trim(strip_tags((string) ($calendar->description ?? '')))
+        ?: "Choose a service and reserve an available time for {$name} with Bakhtech Solutions.";
+
+    return SpaMetadataResponse::make([
+        'title' => "Book {$name} | Bakhtech Solutions",
+        'description' => str($description)->limit(160, ''),
+        'url' => $seoBaseUrl().'/book/'.rawurlencode($slug),
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        'imageAlt' => "Book {$name} with Bakhtech Solutions",
     ]);
 })->where('slug', '[A-Za-z0-9_-]+');
 
