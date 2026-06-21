@@ -188,7 +188,9 @@ class InvoicePaymentService
 
     private function initializeFlutterwave(object $document, string $reference, float $amount): array
     {
-        $response = Http::withToken($this->gatewaySecret('flutterwave'))
+        $mode = $this->gatewayMode();
+        $response = Http::timeout(20)
+            ->withToken($this->gatewaySecret('flutterwave'))
             ->acceptJson()
             ->post('https://api.flutterwave.com/v3/payments', [
                 'tx_ref' => $reference,
@@ -208,13 +210,23 @@ class InvoicePaymentService
             ]);
 
         if (!$response->successful() || $response->json('status') !== 'success') {
+            $gatewayMessage = trim((string) $response->json('message', ''));
+
             throw new HttpResponseException(response()->json([
-                'message' => $response->json('message') ?: 'Unable to initialize Flutterwave payment.',
-            ], 502));
+                'message' => 'Flutterwave rejected the '.$mode.' payment request: '
+                    .($gatewayMessage ?: 'HTTP '.$response->status().'. Check the '.$mode.' API key and Flutterwave account status.'),
+            ], 422));
+        }
+
+        $authorizationUrl = trim((string) $response->json('data.link', ''));
+        if ($authorizationUrl === '') {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Flutterwave accepted the request but did not return a checkout link.',
+            ], 422));
         }
 
         return [
-            'authorizationUrl' => (string) $response->json('data.link', ''),
+            'authorizationUrl' => $authorizationUrl,
             'gatewayResponse' => $response->json('data', []),
         ];
     }
@@ -319,7 +331,7 @@ class InvoicePaymentService
     private function gatewaySecret(string $gateway): string
     {
         $settings = DB::table('settings')->pluck('value', 'key');
-        $mode = ($settings['gateway_mode'] ?? 'test') === 'live' ? 'live' : 'test';
+        $mode = $this->gatewayMode($settings);
         $settingPrefix = $gateway === 'flutterwave' ? 'flutter' : $gateway;
         $key = trim((string) ($settings["{$settingPrefix}_secret_{$mode}"] ?? ''));
 
@@ -342,6 +354,13 @@ class InvoicePaymentService
         }
 
         return $key;
+    }
+
+    private function gatewayMode(?object $settings = null): string
+    {
+        $settings ??= DB::table('settings')->pluck('value', 'key');
+
+        return ($settings['gateway_mode'] ?? 'test') === 'live' ? 'live' : 'test';
     }
 
     private function callbackUrl(object $document, string $reference): string

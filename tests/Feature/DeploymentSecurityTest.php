@@ -70,10 +70,15 @@ class DeploymentSecurityTest extends TestCase
         ]);
 
         Http::fake([
-            'api.flutterwave.com/v3/payments' => Http::response([
-                'status' => 'success',
-                'data' => ['link' => 'https://checkout.flutterwave.test/pay'],
-            ]),
+            'api.flutterwave.com/v3/payments' => Http::sequence()
+                ->push([
+                    'status' => 'success',
+                    'data' => ['link' => 'https://checkout.flutterwave.test/pay'],
+                ])
+                ->push([
+                    'status' => 'error',
+                    'message' => 'Live account is not activated',
+                ], 401),
         ]);
 
         $this->postJson('/api/invoices/flutterwave-payment-token/payments/initialize', [
@@ -84,6 +89,21 @@ class DeploymentSecurityTest extends TestCase
 
         Http::assertSent(fn ($request) => $request->url() === 'https://api.flutterwave.com/v3/payments'
             && $request->hasHeader('Authorization', 'Bearer FLWSECK_TEST_configured'));
+
+        DB::table('settings')->where('key', 'gateway_mode')->update(['value' => 'live']);
+        DB::table('settings')->insert([
+            'key' => 'flutter_secret_live',
+            'value' => 'FLWSECK_LIVE_configured',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->postJson('/api/invoices/flutterwave-payment-token/payments/initialize', [
+            'amount' => 1000,
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Flutterwave rejected the live payment request: Live account is not activated');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.flutterwave.com/v3/payments'
+            && $request->hasHeader('Authorization', 'Bearer FLWSECK_LIVE_configured'));
     }
 
     public function test_apache_routes_legacy_invoice_links_through_laravel(): void

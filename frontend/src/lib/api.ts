@@ -691,7 +691,7 @@ async function parseJsonResponse<T>(response: Response, fallbackMessage: string)
     const isHtml = body.trimStart().startsWith('<')
     const message = isHtml
       ? 'The API returned an HTML page instead of JSON. Check that /api routes are forwarded to Laravel on the live server.'
-      : fallbackMessage
+      : body.trim().slice(0, 300) || `${fallbackMessage} (${response.status || 'network error'})`
 
     throw new ApiError(message, response.status)
   }
