@@ -4665,6 +4665,9 @@ export function AdminDashboard() {
                   <label className="grid gap-1 text-xs font-semibold text-slate-500">End date<input type="date" className="theme-input rounded-lg px-3 py-2" value={analyticsEndDate} min={analyticsStartDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setAnalyticsEndDate(event.target.value)} /></label>
                 </div>
               ) : null}
+              {dashboard.analytics?.migrationRequired ? (
+                <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">Visitor analytics database migration is pending. Run <code>php artisan migrate --force</code> to enable live data.</div>
+              ) : null}
               {dashboard.analytics ? (
                 <div className="mb-5 grid gap-3 sm:grid-cols-3">
                   {[['Last 7 days', dashboard.analytics.visitorTotals.week], ['Last 30 days', dashboard.analytics.visitorTotals.month], ['Last 12 months', dashboard.analytics.visitorTotals.year]].map(([label, value]) => (

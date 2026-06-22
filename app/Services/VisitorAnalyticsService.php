@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -19,6 +20,20 @@ class VisitorAnalyticsService
         $sessionId = (string) ($data['sessionId'] ?? '');
         $path = Str::limit((string) ($data['path'] ?? '/'), 500, '');
         $now = now();
+
+        if (!$this->analyticsSchemaReady()) {
+            if (($data['eventType'] ?? 'pageview') === 'pageview') {
+                DB::table('visits')->insert([
+                    'path' => $path,
+                    'referrer' => Str::limit((string) ($data['referrer'] ?? ''), 2000, ''),
+                    'user_agent' => Str::limit((string) $request->userAgent(), 2000, ''),
+                    'ip' => (string) $request->ip(),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+            return;
+        }
 
         if (($data['eventType'] ?? 'pageview') === 'heartbeat') {
             $visit = DB::table('visits')->where('session_id', $sessionId)->where('path', $path)->latest('id')->first();
@@ -63,6 +78,11 @@ class VisitorAnalyticsService
     public function dashboard(string $range = 'month', ?string $startDate = null, ?string $endDate = null): array
     {
         [$start, $end, $periodLabel] = $this->period($range, $startDate, $endDate);
+
+        if (!$this->analyticsSchemaReady()) {
+            return $this->legacyDashboard($range, $periodLabel, $start, $end);
+        }
+
         $rows = DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get();
         $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '');
         $sessions = $trackedRows->groupBy('session_id');
@@ -107,6 +127,45 @@ class VisitorAnalyticsService
                 'durationSeconds' => (int) $row->duration_seconds,
                 'lastSeenAt' => (string) $row->last_seen_at,
             ])->all(),
+        ];
+    }
+
+    private function analyticsSchemaReady(): bool
+    {
+        return Schema::hasTable('visits') && Schema::hasColumns('visits', [
+            'visitor_id', 'session_id', 'source', 'country', 'device_type', 'duration_seconds', 'last_seen_at',
+        ]);
+    }
+
+    private function legacyDashboard(string $range, string $periodLabel, Carbon $start, Carbon $end): array
+    {
+        $rows = Schema::hasTable('visits')
+            ? DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get()
+            : collect();
+        $visitors = $rows->pluck('ip')->filter()->unique()->count();
+
+        return [
+            'range' => $range,
+            'periodLabel' => $periodLabel,
+            'startDate' => $start->toDateString(),
+            'endDate' => $end->toDateString(),
+            'visitorTotals' => ['week' => 0, 'month' => 0, 'year' => 0],
+            'liveVisitors' => 0,
+            'visitors' => $visitors,
+            'sessions' => $visitors,
+            'pageViews' => $rows->count(),
+            'averageDurationSeconds' => 0,
+            'bounceRate' => 0,
+            'pagesPerSession' => $visitors ? round($rows->count() / $visitors, 2) : 0,
+            'topPages' => $this->breakdown($rows, 'path', 'Unknown', 8),
+            'countries' => [],
+            'sources' => [],
+            'devices' => [],
+            'browsers' => [],
+            'trendInterval' => $start->diffInDays($end) > 90 ? 'month' : 'day',
+            'trend' => [],
+            'liveSessions' => [],
+            'migrationRequired' => true,
         ];
     }
 

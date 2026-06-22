@@ -59,6 +59,7 @@ export type DashboardData = {
 }
 
 export type VisitorAnalytics = {
+  migrationRequired?: boolean
   range: 'week' | 'month' | 'year' | 'custom'
   periodLabel: string
   startDate: string
