@@ -34,7 +34,7 @@ class VisitorAnalyticsService
 
         $userAgent = (string) $request->userAgent();
         $location = $this->location($request);
-        $source = $this->source((string) ($data['referrer'] ?? ''));
+        $source = $this->source((string) ($data['referrer'] ?? ''), $path, $userAgent);
 
         DB::table('visits')->insert([
             'visitor_id' => (string) ($data['visitorId'] ?? ''),
@@ -172,9 +172,28 @@ class VisitorAnalyticsService
         ];
     }
 
-    private function source(string $referrer): array
+    private function source(string $referrer, string $path, string $userAgent): array
     {
-        if ($referrer === '') return ['name' => 'Direct', 'type' => 'direct'];
+        parse_str((string) parse_url($path, PHP_URL_QUERY), $query);
+        $campaignSource = strtolower(trim((string) ($query['utm_source'] ?? $query['source'] ?? '')));
+        if ($campaignSource !== '') {
+            $campaigns = [
+                'ig' => 'Instagram', 'instagram' => 'Instagram', 'fb' => 'Facebook', 'facebook' => 'Facebook',
+                'tiktok' => 'TikTok', 'linkedin' => 'LinkedIn', 'whatsapp' => 'WhatsApp',
+                'twitter' => 'X / Twitter', 'x' => 'X / Twitter', 'youtube' => 'YouTube',
+            ];
+            return ['name' => $campaigns[$campaignSource] ?? Str::headline($campaignSource), 'type' => 'campaign'];
+        }
+
+        if ($referrer === '') {
+            return match (true) {
+                preg_match('/Instagram/i', $userAgent) === 1 => ['name' => 'Instagram', 'type' => 'social'],
+                preg_match('/FBAN|FBAV|\[FB/i', $userAgent) === 1 => ['name' => 'Facebook', 'type' => 'social'],
+                preg_match('/TikTok/i', $userAgent) === 1 => ['name' => 'TikTok', 'type' => 'social'],
+                preg_match('/WhatsApp/i', $userAgent) === 1 => ['name' => 'WhatsApp', 'type' => 'social'],
+                default => ['name' => 'Direct', 'type' => 'direct'],
+            };
+        }
         $host = strtolower((string) parse_url($referrer, PHP_URL_HOST));
         $siteHost = strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
         if ($host === '' || $host === $siteHost) return ['name' => 'Direct', 'type' => 'direct'];

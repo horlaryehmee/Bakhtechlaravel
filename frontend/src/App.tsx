@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
@@ -19,33 +19,10 @@ const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) =
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 
 function App() {
-  const [enableVisitTracking, setEnableVisitTracking] = useState(false)
-
-  useEffect(() => {
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
-      cancelIdleCallback?: (id: number) => void
-    }
-
-    if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(() => {
-        setEnableVisitTracking(true)
-      }, { timeout: 2500 })
-
-      return () => idleWindow.cancelIdleCallback?.(idleId)
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setEnableVisitTracking(true)
-    }, 1800)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [])
-
   return (
     <>
       <SmartsuppLiveChat />
-      {enableVisitTracking ? <VisitTracker /> : null}
+      <VisitTracker />
       <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
         <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />

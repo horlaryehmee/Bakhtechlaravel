@@ -76,4 +76,46 @@ class VisitorAnalyticsTest extends TestCase
         $this->assertSame('month', $year['trendInterval']);
         $this->assertCount(12, $year['trend']);
     }
+
+    public function test_instagram_in_app_visits_are_live_even_without_a_referrer(): void
+    {
+        config()->set('services.ip_geolocation.enabled', false);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '8.8.4.4'])
+            ->withHeader('User-Agent', 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Instagram 330.0.0.0')
+            ->postJson('/api/visits', [
+                'visitorId' => 'instagram-visitor',
+                'sessionId' => 'instagram-session',
+                'eventType' => 'pageview',
+                'path' => '/?igsh=abc123',
+                'referrer' => '',
+            ])
+            ->assertNoContent();
+
+        $this->assertDatabaseHas('visits', [
+            'visitor_id' => 'instagram-visitor',
+            'session_id' => 'instagram-session',
+            'source' => 'Instagram',
+            'source_type' => 'social',
+        ]);
+
+        $analytics = app(VisitorAnalyticsService::class)->dashboard('week');
+        $this->assertSame(1, $analytics['liveVisitors']);
+        $this->assertSame('Instagram', $analytics['liveSessions'][0]['source']);
+    }
+
+    public function test_utm_source_attributes_instagram_campaign_links(): void
+    {
+        config()->set('services.ip_geolocation.enabled', false);
+
+        $this->postJson('/api/visits', [
+            'visitorId' => 'campaign-visitor',
+            'sessionId' => 'campaign-session',
+            'eventType' => 'pageview',
+            'path' => '/pricing?utm_source=instagram&utm_campaign=bio',
+            'referrer' => '',
+        ])->assertNoContent();
+
+        $this->assertDatabaseHas('visits', ['source' => 'Instagram', 'source_type' => 'campaign']);
+    }
 }
