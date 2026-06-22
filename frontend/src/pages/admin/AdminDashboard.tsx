@@ -510,14 +510,21 @@ const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDas
 ]
 
 function metricCards(data: DashboardData) {
+  const analytics = data.analytics
   return [
-    { label: 'Total Visits', value: data.totals.visits, icon: Eye },
-    { label: 'Visits Today', value: data.totals.todayVisits, icon: BarChart3 },
-    { label: 'Published Projects', value: data.totals.publishedProjects, icon: FolderKanban },
-    { label: 'Upcoming Bookings', value: data.totals.upcomingBookings, icon: CalendarDays },
-    { label: 'SEO Score', value: `${data.seo.score}%`, icon: SearchCheck },
-    { label: 'Performance', value: `${data.performance.score}%`, icon: Gauge },
+    { label: 'Live Visitors', value: analytics?.liveVisitors ?? 0, icon: Eye },
+    { label: 'Visitors (30d)', value: analytics?.visitors ?? data.totals.todayVisits, icon: Users },
+    { label: 'Sessions (30d)', value: analytics?.sessions ?? 0, icon: BarChart3 },
+    { label: 'Page Views (30d)', value: analytics?.pageViews ?? data.totals.visits, icon: FileText },
+    { label: 'Avg. Duration', value: formatAnalyticsDuration(analytics?.averageDurationSeconds ?? 0), icon: Gauge },
+    { label: 'Bounce Rate', value: `${analytics?.bounceRate ?? 0}%`, icon: TrendingUp },
   ]
+}
+
+function formatAnalyticsDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  const remainder = Math.max(0, seconds % 60)
+  return minutes ? `${minutes}m ${remainder}s` : `${remainder}s`
 }
 
 function toInput(project: Project): ProjectInput {
@@ -950,6 +957,16 @@ export function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
   }, [activeInvoiceSubsection])
+
+  useEffect(() => {
+    if (!token || activeSection !== 'dashboard') return
+    const refresh = () => void api.visitorAnalytics(30).then(({ analytics }) => {
+      setDashboard((current) => current ? { ...current, analytics } : current)
+    }).catch(() => undefined)
+    refresh()
+    const interval = window.setInterval(refresh, 15000)
+    return () => window.clearInterval(interval)
+  }, [token, activeSection])
 
   useEffect(() => {
     setProjectPage(1)
@@ -4621,20 +4638,78 @@ export function AdminDashboard() {
 
         {/* Website Performance Indicators (Original cards, styled beautifully) */}
         {dashboard && (
-          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4">Website Activity & Traffic</h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-              {cards.map((card) => (
-                <div key={card.label} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
-                    <card.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{card.value}</p>
+          <div className="space-y-6">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-950 dark:text-white">Website Analytics</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for the last 30 days</p>
                 </div>
-              ))}
-            </div>
-          </section>
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live
+                </span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                {cards.map((card) => (
+                  <div key={card.label} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
+                      <card.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {dashboard.analytics ? (
+              <section className="grid gap-6 xl:grid-cols-3">
+                <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-950 dark:text-white">Live Visitors</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Active within the last two minutes</p>
+                    </div>
+                    <span className="text-2xl font-bold text-emerald-600">{dashboard.analytics.liveVisitors}</span>
+                  </div>
+                  <div className="overflow-x-auto admin-scrollbar">
+                    <table className="w-full text-left text-xs">
+                      <thead><tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase"><th className="py-3">Page</th><th>Location</th><th>Source</th><th>Device</th><th>Duration</th></tr></thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                        {dashboard.analytics.liveSessions.map((session) => (
+                          <tr key={session.sessionId}>
+                            <td className="py-3 pr-3 font-semibold text-slate-800 dark:text-slate-200">{session.path}</td>
+                            <td className="pr-3"><MapPin className="inline h-3 w-3 mr-1" />{[session.city, session.country].filter(Boolean).join(', ')}</td>
+                            <td className="pr-3">{session.source}</td>
+                            <td className="pr-3 capitalize">{session.browser} / {session.deviceType}</td>
+                            <td>{formatAnalyticsDuration(session.durationSeconds)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {!dashboard.analytics.liveSessions.length ? <p className="py-8 text-center text-sm text-slate-500">No visitors are active right now.</p> : null}
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-950 dark:text-white">Engagement</h3>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-4"><span className="text-[10px] uppercase text-slate-400">Pages / session</span><b className="block mt-1">{dashboard.analytics.pagesPerSession}</b></div>
+                    <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 p-4"><span className="text-[10px] uppercase text-slate-400">Avg. duration</span><b className="block mt-1">{formatAnalyticsDuration(dashboard.analytics.averageDurationSeconds)}</b></div>
+                  </div>
+                  <h4 className="mt-6 text-xs font-bold uppercase text-slate-400">Top Countries</h4>
+                  <div className="mt-3 space-y-3">{dashboard.analytics.countries.map((item) => <div key={item.name} className="flex justify-between text-sm"><span>{item.name}</span><b>{item.count}</b></div>)}</div>
+                </div>
+
+                {[['Traffic Sources', dashboard.analytics.sources], ['Top Pages', dashboard.analytics.topPages], ['Devices', dashboard.analytics.devices]].map(([title, items]) => (
+                  <div key={title as string} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+                    <h3 className="text-base font-bold text-slate-950 dark:text-white">{title as string}</h3>
+                    <div className="mt-4 space-y-3">{(items as Array<{ name: string; count: number }>).map((item) => <div key={item.name} className="flex items-center justify-between text-sm"><span className="truncate pr-4 capitalize">{item.name}</span><b>{item.count}</b></div>)}</div>
+                  </div>
+                ))}
+              </section>
+            ) : null}
+          </div>
         )}
 
         {/* Bottom Panel: Recent Activity & Quick Actions */}

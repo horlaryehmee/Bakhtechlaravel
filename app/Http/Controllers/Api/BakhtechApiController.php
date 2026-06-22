@@ -9,6 +9,7 @@ use App\Services\DeploymentMaintenanceService;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
 use App\Services\SeoAuditService;
+use App\Services\VisitorAnalyticsService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
 use App\Support\SiteDefaults;
@@ -140,7 +141,7 @@ class BakhtechApiController extends Controller
         return ['admin' => $this->adminShape($request->attributes->get('admin'))];
     }
 
-    public function dashboard(SeoAuditService $seoAudit)
+    public function dashboard(SeoAuditService $seoAudit, VisitorAnalyticsService $analytics)
     {
         $today = now()->toDateString();
         $seo = $seoAudit->audit()['summary'];
@@ -170,7 +171,13 @@ class BakhtechApiController extends Controller
                     ->limit(6)
                     ->get(),
             ],
+            'analytics' => $analytics->dashboard(30),
         ];
+    }
+
+    public function visitorAnalytics(Request $request, VisitorAnalyticsService $analytics)
+    {
+        return ['analytics' => $analytics->dashboard((int) $request->input('days', 30))];
     }
 
     public function seoAudit(SeoAuditService $seoAudit)
@@ -1229,16 +1236,21 @@ class BakhtechApiController extends Controller
         return response()->noContent();
     }
 
-    public function trackVisit(Request $request)
+    public function trackVisit(Request $request, VisitorAnalyticsService $analytics)
     {
-        DB::table('visits')->insert([
-            'path' => (string) $request->input('path', '/'),
-            'referrer' => (string) $request->input('referrer', ''),
-            'user_agent' => (string) $request->userAgent(),
-            'ip' => (string) $request->ip(),
-            'created_at' => now(),
-            'updated_at' => now(),
+        $data = $request->validate([
+            'eventType' => ['nullable', 'in:pageview,heartbeat'],
+            'visitorId' => ['nullable', 'string', 'max:80'],
+            'sessionId' => ['nullable', 'string', 'max:80'],
+            'path' => ['required', 'string', 'max:500'],
+            'referrer' => ['nullable', 'string', 'max:2000'],
+            'language' => ['nullable', 'string', 'max:20'],
+            'screenWidth' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'screenHeight' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'durationSeconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
         ]);
+
+        $analytics->track($request, $data);
 
         return response()->noContent();
     }

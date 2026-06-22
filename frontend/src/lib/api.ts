@@ -55,6 +55,34 @@ export type DashboardData = {
   visits: {
     topPages: Array<{ path: string; visits: number }>
   }
+  analytics: VisitorAnalytics
+}
+
+export type VisitorAnalytics = {
+  periodDays: number
+  liveVisitors: number
+  visitors: number
+  sessions: number
+  pageViews: number
+  averageDurationSeconds: number
+  bounceRate: number
+  pagesPerSession: number
+  topPages: Array<{ name: string; count: number }>
+  countries: Array<{ name: string; count: number }>
+  sources: Array<{ name: string; count: number }>
+  devices: Array<{ name: string; count: number }>
+  browsers: Array<{ name: string; count: number }>
+  liveSessions: Array<{
+    sessionId: string
+    path: string
+    country: string
+    city: string
+    source: string
+    deviceType: string
+    browser: string
+    durationSeconds: number
+    lastSeenAt: string
+  }>
 }
 
 export type SeoAudit = {
@@ -1294,12 +1322,25 @@ export const api = {
   deleteProject(id: number) {
     return request<void>(`/api/admin/projects/${id}`, { method: 'DELETE' })
   },
-  trackVisit(path: string) {
+  trackVisit(path: string, analytics: {
+    eventType?: 'pageview' | 'heartbeat'
+    visitorId?: string
+    sessionId?: string
+    referrer?: string
+    language?: string
+    screenWidth?: number
+    screenHeight?: number
+    durationSeconds?: number
+  } = {}) {
     return fetch(apiUrl('/api/visits'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, referrer: document.referrer }),
+      body: JSON.stringify({ path, referrer: document.referrer, ...analytics }),
+      keepalive: analytics.eventType === 'heartbeat',
     }).catch(() => undefined)
+  },
+  visitorAnalytics(days = 30) {
+    return request<{ analytics: VisitorAnalytics }>(`/api/admin/analytics?days=${days}`)
   },
   invoiceOverview() {
     return request<InvoiceOverview>('/api/admin/invoices/overview')

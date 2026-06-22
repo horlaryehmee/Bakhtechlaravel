@@ -79,6 +79,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
 
     Route::get('/admin/me', [BakhtechApiController::class, 'me']);
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
+    Route::get('/admin/analytics', [BakhtechApiController::class, 'visitorAnalytics']);
     Route::get('/admin/seo/audit', [BakhtechApiController::class, 'seoAudit']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
