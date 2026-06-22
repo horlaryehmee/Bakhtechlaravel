@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\InvoicePaymentService;
+use App\Services\IpGeolocationService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -2556,7 +2557,7 @@ HTML;
             return;
         }
 
-        $location = $this->requestLocation($request);
+        $location = $this->requestLocation($request, $eventType === 'document.viewed');
 
         DB::table('invoice_events')->insert([
             'document_id' => $documentId,
@@ -2608,7 +2609,7 @@ HTML;
         };
     }
 
-    private function requestLocation(Request $request): array
+    private function requestLocation(Request $request, bool $lookupIp = false): array
     {
         $country = $request->header('CF-IPCountry')
             ?: $request->header('CloudFront-Viewer-Country')
@@ -2616,9 +2617,17 @@ HTML;
         $city = $request->header('CloudFront-Viewer-City')
             ?: $request->header('X-Vercel-IP-City');
 
-        return [
+        $location = [
             'country' => $country ? Str::limit(urldecode((string) $country), 100, '') : null,
             'city' => $city ? Str::limit(urldecode((string) $city), 100, '') : null,
         ];
+
+        if ($lookupIp && (!$location['country'] || !$location['city'])) {
+            $resolved = app(IpGeolocationService::class)->locate($request->ip());
+            $location['country'] ??= $resolved['country'];
+            $location['city'] ??= $resolved['city'];
+        }
+
+        return $location;
     }
 }

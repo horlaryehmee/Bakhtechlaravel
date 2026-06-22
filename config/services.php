@@ -60,4 +60,9 @@ return [
         'public_key' => env('FLUTTERWAVE_PUBLIC_KEY', ''),
     ],
 
+    'ip_geolocation' => [
+        'enabled' => env('IP_GEOLOCATION_ENABLED', true),
+        'url' => env('IP_GEOLOCATION_URL', 'https://ipwho.is/{ip}'),
+    ],
+
 ];
