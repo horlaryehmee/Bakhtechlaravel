@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
@@ -18,6 +18,40 @@ const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 
+class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Application render failed', error, info)
+  }
+
+  private recover = () => {
+    localStorage.removeItem('bakhtech-admin-data-cache-v1')
+    localStorage.removeItem('bakhtech-admin-data-cache-v2')
+    localStorage.removeItem('bakhtech-read-notifications')
+    window.location.reload()
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50 p-6 text-slate-900">
+        <section className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-6 shadow-xl">
+          <h1 className="text-xl font-bold">Admin dashboard failed to load</h1>
+          <p className="mt-2 text-sm text-slate-600">Stored dashboard data may be incompatible with this update. Clear it and reload to recover.</p>
+          <pre className="mt-4 max-h-32 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-red-300">{this.state.error.message}</pre>
+          <button type="button" onClick={this.recover} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Clear dashboard cache and reload</button>
+        </section>
+      </main>
+    )
+  }
+}
+
 function App() {
   const location = useLocation()
 
@@ -25,8 +59,9 @@ function App() {
     <>
       <SmartsuppLiveChat />
       {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
-      <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
-        <Routes>
+      <AppErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+          <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="admin/forgot-password" element={<AdminForgotPassword />} />
@@ -47,8 +82,9 @@ function App() {
             <Route path="contact" element={<Contact />} />
             <Route path=":pageSlug" element={<CmsPage />} />
           </Route>
-        </Routes>
-      </Suspense>
+          </Routes>
+        </Suspense>
+      </AppErrorBoundary>
     </>
   )
 }

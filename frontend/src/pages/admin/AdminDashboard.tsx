@@ -730,12 +730,13 @@ function storedAdminView<T extends string>(key: string, fallback: T, allowed: re
   return value && allowed.includes(value) ? value : fallback
 }
 
-const adminDataCacheKey = 'bakhtech-admin-data-cache-v1'
+const adminDataCacheKey = 'bakhtech-admin-data-cache-v2'
 
 function readAdminDataCache() {
   if (typeof window === 'undefined') return null
   try {
-    return JSON.parse(window.localStorage.getItem(adminDataCacheKey) || 'null')
+    const parsed = JSON.parse(window.localStorage.getItem(adminDataCacheKey) || 'null')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
   } catch {
     return null
   }
@@ -876,7 +877,10 @@ export function AdminDashboard() {
   const [analyticsEndDate, setAnalyticsEndDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
-    try { return JSON.parse(localStorage.getItem('bakhtech-read-notifications') || '[]') } catch { return [] }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('bakhtech-read-notifications') || '[]')
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : []
+    } catch { return [] }
   })
   const notifications = useMemo(() => {
     const eventLabels: Record<string, string> = {
