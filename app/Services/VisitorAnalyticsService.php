@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class VisitorAnalyticsService
 {
@@ -59,10 +60,10 @@ class VisitorAnalyticsService
         ]);
     }
 
-    public function dashboard(int $days = 30): array
+    public function dashboard(string $range = 'month', ?string $startDate = null, ?string $endDate = null): array
     {
-        $days = min(365, max(1, $days));
-        $rows = DB::table('visits')->where('created_at', '>=', now()->subDays($days))->orderByDesc('created_at')->get();
+        [$start, $end, $periodLabel] = $this->period($range, $startDate, $endDate);
+        $rows = DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get();
         $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '');
         $sessions = $trackedRows->groupBy('session_id');
         $sessionEntrances = $sessions->map(fn (Collection $visits) => $visits->last())->values();
@@ -72,7 +73,15 @@ class VisitorAnalyticsService
         $bounces = $sessions->filter(fn (Collection $visits) => $visits->count() === 1 && (int) $visits->sum('duration_seconds') < 10)->count();
 
         return [
-            'periodDays' => $days,
+            'range' => $range,
+            'periodLabel' => $periodLabel,
+            'startDate' => $start->toDateString(),
+            'endDate' => $end->toDateString(),
+            'visitorTotals' => [
+                'week' => $this->uniqueVisitorsSince(now()->subDays(6)->startOfDay()),
+                'month' => $this->uniqueVisitorsSince(now()->subDays(29)->startOfDay()),
+                'year' => $this->uniqueVisitorsSince(now()->subDays(364)->startOfDay()),
+            ],
             'liveVisitors' => $liveSessions->count(),
             'visitors' => $trackedRows->pluck('visitor_id')->filter()->unique()->count(),
             'sessions' => $sessions->count(),
@@ -85,6 +94,8 @@ class VisitorAnalyticsService
             'sources' => $this->breakdown($sessionEntrances, 'source', 'Direct', 8),
             'devices' => $this->breakdown($sessionEntrances, 'device_type', 'Unknown', 5),
             'browsers' => $this->breakdown($sessionEntrances, 'browser', 'Unknown', 6),
+            'trendInterval' => $start->diffInDays($end) > 90 ? 'month' : 'day',
+            'trend' => $this->visitorTrend($trackedRows, $start, $end),
             'liveSessions' => $liveSessions->take(20)->map(fn ($row) => [
                 'sessionId' => $row->session_id,
                 'path' => $row->path,
@@ -97,6 +108,49 @@ class VisitorAnalyticsService
                 'lastSeenAt' => (string) $row->last_seen_at,
             ])->all(),
         ];
+    }
+
+    private function period(string $range, ?string $startDate, ?string $endDate): array
+    {
+        $end = now()->endOfDay();
+
+        return match ($range) {
+            'week' => [now()->subDays(6)->startOfDay(), $end, 'Last 7 days'],
+            'year' => [now()->subMonths(11)->startOfMonth(), $end, 'Last 12 months'],
+            'custom' => [
+                Carbon::parse((string) $startDate)->startOfDay(),
+                Carbon::parse((string) $endDate)->endOfDay(),
+                Carbon::parse((string) $startDate)->format('M j, Y').' - '.Carbon::parse((string) $endDate)->format('M j, Y'),
+            ],
+            default => [now()->subDays(29)->startOfDay(), $end, 'Last 30 days'],
+        };
+    }
+
+    private function uniqueVisitorsSince(Carbon $start): int
+    {
+        return DB::table('visits')->where('created_at', '>=', $start)->whereNotNull('visitor_id')->where('visitor_id', '!=', '')->distinct()->count('visitor_id');
+    }
+
+    private function visitorTrend(Collection $rows, Carbon $start, Carbon $end): array
+    {
+        $monthly = $start->diffInDays($end) > 90;
+        $grouped = $rows->groupBy(fn ($row) => Carbon::parse($row->created_at)->format($monthly ? 'Y-m' : 'Y-m-d'));
+        $cursor = $start->copy();
+        $trend = [];
+
+        while ($cursor->lessThanOrEqualTo($end)) {
+            $key = $cursor->format($monthly ? 'Y-m' : 'Y-m-d');
+            $items = $grouped->get($key, collect());
+            $trend[] = [
+                'date' => $key,
+                'label' => $cursor->format($monthly ? 'M Y' : 'M j'),
+                'visitors' => $items->pluck('visitor_id')->filter()->unique()->count(),
+                'pageViews' => $items->count(),
+            ];
+            $cursor = $monthly ? $cursor->addMonth()->startOfMonth() : $cursor->addDay();
+        }
+
+        return $trend;
     }
 
     private function breakdown(Collection $rows, string $field, string $fallback, int $limit): array

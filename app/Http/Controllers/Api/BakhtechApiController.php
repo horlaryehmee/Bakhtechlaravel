@@ -171,13 +171,27 @@ class BakhtechApiController extends Controller
                     ->limit(6)
                     ->get(),
             ],
-            'analytics' => $analytics->dashboard(30),
+            'analytics' => $analytics->dashboard('month'),
         ];
     }
 
     public function visitorAnalytics(Request $request, VisitorAnalyticsService $analytics)
     {
-        return ['analytics' => $analytics->dashboard((int) $request->input('days', 30))];
+        $data = $request->validate([
+            'range' => ['nullable', Rule::in(['week', 'month', 'year', 'custom'])],
+            'startDate' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d'],
+            'endDate' => ['required_if:range,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:startDate', 'before_or_equal:today'],
+        ]);
+
+        if (($data['range'] ?? 'month') === 'custom') {
+            $start = Carbon::parse($data['startDate']);
+            $end = Carbon::parse($data['endDate']);
+            if ($start->diffInDays($end) > 1825) {
+                return response()->json(['message' => 'Custom analytics ranges cannot exceed five years.'], 422);
+            }
+        }
+
+        return ['analytics' => $analytics->dashboard($data['range'] ?? 'month', $data['startDate'] ?? null, $data['endDate'] ?? null)];
     }
 
     public function seoAudit(SeoAuditService $seoAudit)

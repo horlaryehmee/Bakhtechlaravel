@@ -59,7 +59,11 @@ export type DashboardData = {
 }
 
 export type VisitorAnalytics = {
-  periodDays: number
+  range: 'week' | 'month' | 'year' | 'custom'
+  periodLabel: string
+  startDate: string
+  endDate: string
+  visitorTotals: { week: number; month: number; year: number }
   liveVisitors: number
   visitors: number
   sessions: number
@@ -72,6 +76,8 @@ export type VisitorAnalytics = {
   sources: Array<{ name: string; count: number }>
   devices: Array<{ name: string; count: number }>
   browsers: Array<{ name: string; count: number }>
+  trendInterval: 'day' | 'month'
+  trend: Array<{ date: string; label: string; visitors: number; pageViews: number }>
   liveSessions: Array<{
     sessionId: string
     path: string
@@ -1339,8 +1345,9 @@ export const api = {
       keepalive: analytics.eventType === 'heartbeat',
     }).catch(() => undefined)
   },
-  visitorAnalytics(days = 30) {
-    return request<{ analytics: VisitorAnalytics }>(`/api/admin/analytics?days=${days}`)
+  visitorAnalytics(filters: { range?: 'week' | 'month' | 'year' | 'custom'; startDate?: string; endDate?: string } = {}) {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value).map(([key, value]) => [key, String(value)])).toString()
+    return request<{ analytics: VisitorAnalytics }>(`/api/admin/analytics${query ? `?${query}` : ''}`)
   },
   invoiceOverview() {
     return request<InvoiceOverview>('/api/admin/invoices/overview')

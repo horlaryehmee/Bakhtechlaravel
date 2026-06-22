@@ -513,9 +513,9 @@ function metricCards(data: DashboardData) {
   const analytics = data.analytics
   return [
     { label: 'Live Visitors', value: analytics?.liveVisitors ?? 0, icon: Eye },
-    { label: 'Visitors (30d)', value: analytics?.visitors ?? data.totals.todayVisits, icon: Users },
-    { label: 'Sessions (30d)', value: analytics?.sessions ?? 0, icon: BarChart3 },
-    { label: 'Page Views (30d)', value: analytics?.pageViews ?? data.totals.visits, icon: FileText },
+    { label: `Visitors (${analytics?.periodLabel ?? '30 days'})`, value: analytics?.visitors ?? data.totals.todayVisits, icon: Users },
+    { label: 'Sessions', value: analytics?.sessions ?? 0, icon: BarChart3 },
+    { label: 'Page Views', value: analytics?.pageViews ?? data.totals.visits, icon: FileText },
     { label: 'Avg. Duration', value: formatAnalyticsDuration(analytics?.averageDurationSeconds ?? 0), icon: Gauge },
     { label: 'Bounce Rate', value: `${analytics?.bounceRate ?? 0}%`, icon: TrendingUp },
   ]
@@ -871,6 +871,9 @@ export function AdminDashboard() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showCreateNewDropdown, setShowCreateNewDropdown] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '12m'>('30d')
+  const [analyticsRange, setAnalyticsRange] = useState<'week' | 'month' | 'year' | 'custom'>('month')
+  const [analyticsStartDate, setAnalyticsStartDate] = useState(() => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10))
+  const [analyticsEndDate, setAnalyticsEndDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try { return JSON.parse(localStorage.getItem('bakhtech-read-notifications') || '[]') } catch { return [] }
@@ -960,13 +963,16 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!token || activeSection !== 'dashboard') return
-    const refresh = () => void api.visitorAnalytics(30).then(({ analytics }) => {
+    const refresh = () => void api.visitorAnalytics({
+      range: analyticsRange,
+      ...(analyticsRange === 'custom' ? { startDate: analyticsStartDate, endDate: analyticsEndDate } : {}),
+    }).then(({ analytics }) => {
       setDashboard((current) => current ? { ...current, analytics } : current)
     }).catch(() => undefined)
     refresh()
     const interval = window.setInterval(refresh, 15000)
     return () => window.clearInterval(interval)
-  }, [token, activeSection])
+  }, [token, activeSection, analyticsRange, analyticsStartDate, analyticsEndDate])
 
   useEffect(() => {
     setProjectPage(1)
@@ -4400,6 +4406,7 @@ export function AdminDashboard() {
     const totalCount = totals.invoices || 1
     const paidPercent = Math.round(((totals.paid || 0) / totalCount) * 100)
     const unpaidPercent = Math.round(((totals.unpaid || 0) / totalCount) * 100)
+    const analyticsTrendMax = Math.max(1, ...(dashboard?.analytics?.trend ?? []).map((item) => item.visitors))
 
     // Recent invoices
     const recentInvoices = invoiceDocuments.slice(0, 5)
@@ -4640,15 +4647,31 @@ export function AdminDashboard() {
         {dashboard && (
           <div className="space-y-6">
             <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-5">
                 <div>
                   <h3 className="text-lg font-bold text-slate-950 dark:text-white">Website Analytics</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for the last 30 days</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for {dashboard.analytics?.periodLabel?.toLowerCase() || 'the selected period'}</p>
                 </div>
-                <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['week', 'month', 'year', 'custom'] as const).map((range) => (
+                    <button key={range} type="button" onClick={() => setAnalyticsRange(range)} className={cn('rounded-lg px-3 py-2 text-xs font-semibold capitalize transition', analyticsRange === range ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')}>{range}</button>
+                  ))}
+                  <span className="ml-2 inline-flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live</span>
+                </div>
               </div>
+              {analyticsRange === 'custom' ? (
+                <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                  <label className="grid gap-1 text-xs font-semibold text-slate-500">Start date<input type="date" className="theme-input rounded-lg px-3 py-2" value={analyticsStartDate} max={analyticsEndDate} onChange={(event) => setAnalyticsStartDate(event.target.value)} /></label>
+                  <label className="grid gap-1 text-xs font-semibold text-slate-500">End date<input type="date" className="theme-input rounded-lg px-3 py-2" value={analyticsEndDate} min={analyticsStartDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setAnalyticsEndDate(event.target.value)} /></label>
+                </div>
+              ) : null}
+              {dashboard.analytics ? (
+                <div className="mb-5 grid gap-3 sm:grid-cols-3">
+                  {[['Last 7 days', dashboard.analytics.visitorTotals.week], ['Last 30 days', dashboard.analytics.visitorTotals.month], ['Last 12 months', dashboard.analytics.visitorTotals.year]].map(([label, value]) => (
+                    <div key={label as string} className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/40 dark:bg-blue-950/20"><span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">{label as string}</span><b className="mt-1 block text-2xl text-slate-950 dark:text-white">{value as number}</b><span className="text-xs text-slate-500">unique visitors</span></div>
+                  ))}
+                </div>
+              ) : null}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {cards.map((card) => (
                   <div key={card.label} className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60">
@@ -4664,6 +4687,20 @@ export function AdminDashboard() {
 
             {dashboard.analytics ? (
               <section className="grid gap-6 xl:grid-cols-3">
+                <div className="xl:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
+                  <div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-950 dark:text-white">Visitor Trend</h3><p className="text-xs text-slate-500">Unique visitors by {dashboard.analytics.trendInterval}</p></div><b className="text-sm text-blue-600">{dashboard.analytics.startDate} to {dashboard.analytics.endDate}</b></div>
+                  <div className="mt-6 overflow-x-auto admin-scrollbar">
+                    <div className="flex h-52 min-w-full items-end gap-2 border-b border-slate-200 dark:border-slate-800" style={{ width: `${Math.max(100, dashboard.analytics.trend.length * 34)}%` }}>
+                      {dashboard.analytics.trend.map((item) => (
+                        <div key={item.date} className="group flex h-full min-w-6 flex-1 flex-col justify-end" title={`${item.label}: ${item.visitors} visitors, ${item.pageViews} page views`}>
+                          <span className="mb-1 text-center text-[9px] font-bold text-slate-500 opacity-0 group-hover:opacity-100">{item.visitors}</span>
+                          <div className="min-h-1 rounded-t bg-blue-500 transition-colors group-hover:bg-blue-600" style={{ height: `${Math.max(3, (item.visitors / analyticsTrendMax) * 85)}%` }} />
+                          <span className="mt-2 truncate text-center text-[9px] text-slate-400">{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div>

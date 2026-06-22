@@ -53,7 +53,7 @@ class VisitorAnalyticsTest extends TestCase
             'duration_seconds' => 45,
         ]);
 
-        $analytics = app(VisitorAnalyticsService::class)->dashboard(30);
+        $analytics = app(VisitorAnalyticsService::class)->dashboard('month');
         $this->assertSame(1, $analytics['liveVisitors']);
         $this->assertSame(1, $analytics['visitors']);
         $this->assertSame(1, $analytics['sessions']);
@@ -61,5 +61,19 @@ class VisitorAnalyticsTest extends TestCase
         $this->assertSame(45, $analytics['averageDurationSeconds']);
         $this->assertSame(0.0, $analytics['bounceRate']);
         $this->assertSame('Facebook', $analytics['sources'][0]['name']);
+        $this->assertSame('day', $analytics['trendInterval']);
+        $this->assertCount(30, $analytics['trend']);
+        $this->assertSame(1, $analytics['visitorTotals']['week']);
+        $this->assertSame(1, $analytics['visitorTotals']['month']);
+        $this->assertSame(1, $analytics['visitorTotals']['year']);
+
+        $custom = app(VisitorAnalyticsService::class)->dashboard('custom', now()->toDateString(), now()->toDateString());
+        $this->assertSame('custom', $custom['range']);
+        $this->assertSame(1, $custom['visitors']);
+        $this->assertCount(1, $custom['trend']);
+
+        $year = app(VisitorAnalyticsService::class)->dashboard('year');
+        $this->assertSame('month', $year['trendInterval']);
+        $this->assertCount(12, $year['trend']);
     }
 }
