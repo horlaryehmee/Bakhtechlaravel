@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
@@ -19,10 +19,12 @@ const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) =
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 
 function App() {
+  const location = useLocation()
+
   return (
     <>
       <SmartsuppLiveChat />
-      <VisitTracker />
+      {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
       <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
         <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />

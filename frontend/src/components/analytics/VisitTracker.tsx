@@ -27,7 +27,7 @@ export function VisitTracker() {
       storage.setItem(key, value)
       return value
     } catch {
-      fallback.current ||= createId()
+      if (!fallback.current) fallback.current = createId()
       return fallback.current
     }
   }
