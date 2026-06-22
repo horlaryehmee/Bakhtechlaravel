@@ -86,10 +86,13 @@ class VisitorAnalyticsService
         $this->backfillKnownSources();
 
         $rows = DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get();
-        $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '');
+        $botPageViews = $rows->filter(fn ($row) => strtolower((string) $row->device_type) === 'bot')->count();
+        $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '' && strtolower((string) $row->device_type) !== 'bot');
         $sessions = $trackedRows->groupBy('session_id');
         $sessionEntrances = $sessions->map(fn (Collection $visits) => $visits->last())->values();
-        $liveRows = DB::table('visits')->where('last_seen_at', '>=', now()->subMinutes(2))->orderByDesc('last_seen_at')->limit(200)->get();
+        $liveRows = DB::table('visits')->where('last_seen_at', '>=', now()->subMinutes(2))->where(function ($query) {
+            $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
+        })->orderByDesc('last_seen_at')->limit(200)->get();
         $liveSessions = $liveRows->filter(fn ($row) => (string) $row->session_id !== '')->unique('session_id')->values();
         $sessionDurations = $sessions->map(fn (Collection $visits) => (int) $visits->sum('duration_seconds'));
         $bounces = $sessions->filter(fn (Collection $visits) => $visits->count() === 1 && (int) $visits->sum('duration_seconds') < 10)->count();
@@ -108,6 +111,7 @@ class VisitorAnalyticsService
             'visitors' => $trackedRows->pluck('visitor_id')->filter()->unique()->count(),
             'sessions' => $sessions->count(),
             'pageViews' => $trackedRows->count(),
+            'excludedBotPageViews' => $botPageViews,
             'averageDurationSeconds' => $sessionDurations->count() ? (int) round($sessionDurations->average()) : 0,
             'bounceRate' => $sessions->count() ? round(($bounces / $sessions->count()) * 100, 1) : 0,
             'pagesPerSession' => $sessions->count() ? round($trackedRows->count() / $sessions->count(), 2) : 0,
@@ -156,6 +160,7 @@ class VisitorAnalyticsService
             'visitors' => $visitors,
             'sessions' => $visitors,
             'pageViews' => $rows->count(),
+            'excludedBotPageViews' => 0,
             'averageDurationSeconds' => 0,
             'bounceRate' => 0,
             'pagesPerSession' => $visitors ? round($rows->count() / $visitors, 2) : 0,
@@ -189,7 +194,11 @@ class VisitorAnalyticsService
 
     private function uniqueVisitorsSince(Carbon $start): int
     {
-        return DB::table('visits')->where('created_at', '>=', $start)->whereNotNull('visitor_id')->where('visitor_id', '!=', '')->distinct()->count('visitor_id');
+        return DB::table('visits')->where('created_at', '>=', $start)
+            ->whereNotNull('visitor_id')->where('visitor_id', '!=', '')
+            ->where(function ($query) {
+                $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
+            })->distinct()->count('visitor_id');
     }
 
     private function visitorTrend(Collection $rows, Carbon $start, Carbon $end): array

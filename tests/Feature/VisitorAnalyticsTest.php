@@ -157,4 +157,33 @@ class VisitorAnalyticsTest extends TestCase
 
         $this->assertDatabaseHas('visits', ['session_id' => 'old-instagram-session', 'source' => 'Instagram', 'source_type' => 'social']);
     }
+
+    public function test_bots_are_excluded_from_live_and_human_analytics(): void
+    {
+        DB::table('visits')->insert([
+            'visitor_id' => 'scanner',
+            'session_id' => 'scanner-session',
+            'path' => '/items/Y153422056/',
+            'referrer' => '',
+            'source' => 'Direct',
+            'source_type' => 'direct',
+            'user_agent' => 'Mozilla/5.0 Chrome/125.0 crawler bot',
+            'ip' => '8.8.8.8',
+            'device_type' => 'bot',
+            'browser' => 'Chrome',
+            'duration_seconds' => 0,
+            'last_seen_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $analytics = app(VisitorAnalyticsService::class)->dashboard('week');
+
+        $this->assertSame(0, $analytics['liveVisitors']);
+        $this->assertSame(0, $analytics['visitors']);
+        $this->assertSame(0, $analytics['sessions']);
+        $this->assertSame(0, $analytics['pageViews']);
+        $this->assertSame(1, $analytics['excludedBotPageViews']);
+        $this->assertSame([], $analytics['liveSessions']);
+    }
 }

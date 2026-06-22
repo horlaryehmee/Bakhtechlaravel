@@ -69,6 +69,7 @@ export type VisitorAnalytics = {
   visitors: number
   sessions: number
   pageViews: number
+  excludedBotPageViews: number
   averageDurationSeconds: number
   bounceRate: number
   pagesPerSession: number

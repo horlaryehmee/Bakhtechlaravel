@@ -4654,7 +4654,7 @@ export function AdminDashboard() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-5">
                 <div>
                   <h3 className="text-lg font-bold text-slate-950 dark:text-white">Website Analytics</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for {dashboard.analytics?.periodLabel?.toLowerCase() || 'the selected period'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for {dashboard.analytics?.periodLabel?.toLowerCase() || 'the selected period'}{dashboard.analytics?.excludedBotPageViews ? ` · ${dashboard.analytics.excludedBotPageViews} bot page views excluded` : ''}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {(['week', 'month', 'year', 'custom'] as const).map((range) => (
