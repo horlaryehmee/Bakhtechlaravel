@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\VisitorAnalyticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -117,5 +118,43 @@ class VisitorAnalyticsTest extends TestCase
         ])->assertNoContent();
 
         $this->assertDatabaseHas('visits', ['source' => 'Instagram', 'source_type' => 'campaign']);
+    }
+
+    public function test_persisted_source_hint_survives_a_stripped_referrer(): void
+    {
+        config()->set('services.ip_geolocation.enabled', false);
+
+        $this->postJson('/api/visits', [
+            'visitorId' => 'google-visitor',
+            'sessionId' => 'google-session',
+            'eventType' => 'pageview',
+            'path' => '/contact',
+            'sourceHint' => 'Google',
+            'referrer' => '',
+        ])->assertNoContent();
+
+        $this->assertDatabaseHas('visits', ['source' => 'Google', 'source_type' => 'search']);
+    }
+
+    public function test_existing_direct_rows_are_reclassified_when_evidence_exists(): void
+    {
+        DB::table('visits')->insert([
+            'visitor_id' => 'old-instagram-visitor',
+            'session_id' => 'old-instagram-session',
+            'path' => '/',
+            'referrer' => '',
+            'source' => 'Direct',
+            'source_type' => 'direct',
+            'user_agent' => 'Mozilla/5.0 Mobile Instagram 330.0.0.0',
+            'ip' => '8.8.8.8',
+            'duration_seconds' => 0,
+            'last_seen_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(VisitorAnalyticsService::class)->dashboard('month');
+
+        $this->assertDatabaseHas('visits', ['session_id' => 'old-instagram-session', 'source' => 'Instagram', 'source_type' => 'social']);
     }
 }

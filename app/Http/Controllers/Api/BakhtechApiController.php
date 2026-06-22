@@ -1256,6 +1256,7 @@ class BakhtechApiController extends Controller
             'eventType' => ['nullable', 'in:pageview,heartbeat'],
             'visitorId' => ['nullable', 'string', 'max:80'],
             'sessionId' => ['nullable', 'string', 'max:80'],
+            'sourceHint' => ['nullable', 'string', 'max:160'],
             'path' => ['required', 'string', 'max:500'],
             'referrer' => ['nullable', 'string', 'max:2000'],
             'language' => ['nullable', 'string', 'max:20'],

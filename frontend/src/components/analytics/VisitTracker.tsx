@@ -32,6 +32,51 @@ export function VisitTracker() {
     }
   }
 
+  function detectSourceHint() {
+    const params = new URLSearchParams(window.location.search)
+    const campaign = (params.get('utm_source') || params.get('source') || '').toLowerCase()
+    const campaigns: Record<string, string> = {
+      ig: 'Instagram', instagram: 'Instagram', fb: 'Facebook', facebook: 'Facebook',
+      google: 'Google', tiktok: 'TikTok', linkedin: 'LinkedIn', whatsapp: 'WhatsApp',
+      youtube: 'YouTube', twitter: 'X / Twitter', x: 'X / Twitter', bing: 'Bing',
+    }
+    if (campaign) return campaigns[campaign] || campaign
+    if (params.has('gclid') || params.has('gbraid') || params.has('wbraid')) return 'Google Ads'
+    if (params.has('fbclid')) return 'Meta Ads'
+    if (params.has('ttclid')) return 'TikTok'
+    if (params.has('msclkid')) return 'Bing'
+    if (params.has('li_fat_id')) return 'LinkedIn'
+
+    const referrerHost = (() => { try { return new URL(document.referrer).hostname.toLowerCase() } catch { return '' } })()
+    const knownHosts: Array<[string, string]> = [
+      ['instagram.com', 'Instagram'], ['facebook.com', 'Facebook'], ['google.', 'Google'],
+      ['bing.com', 'Bing'], ['tiktok.com', 'TikTok'], ['linkedin.com', 'LinkedIn'],
+      ['youtube.com', 'YouTube'], ['whatsapp.com', 'WhatsApp'], ['twitter.com', 'X / Twitter'], ['x.com', 'X / Twitter'],
+    ]
+    const hostMatch = knownHosts.find(([host]) => referrerHost.includes(host))
+    if (hostMatch) return hostMatch[1]
+
+    const userAgent = navigator.userAgent
+    if (/Instagram/i.test(userAgent)) return 'Instagram'
+    if (/FBAN|FBAV|\[FB/i.test(userAgent)) return 'Facebook'
+    if (/TikTok/i.test(userAgent)) return 'TikTok'
+    if (/WhatsApp/i.test(userAgent)) return 'WhatsApp'
+    if (/GSA\//i.test(userAgent)) return 'Google'
+    return ''
+  }
+
+  function sessionSourceHint() {
+    const detected = detectSourceHint()
+    try {
+      const existing = sessionStorage.getItem('bakhtech-analytics-source')
+      if (existing) return existing
+      if (detected) sessionStorage.setItem('bakhtech-analytics-source', detected)
+    } catch {
+      // Restricted in-app browsers may block session storage.
+    }
+    return detected
+  }
+
   const sendHeartbeat = () => {
     if (!pathRef.current) return
     void api.trackVisit(pathRef.current, {
@@ -54,6 +99,7 @@ export function VisitTracker() {
       eventType: 'pageview',
       visitorId: anonymousId('local', 'bakhtech-analytics-visitor', visitorIdRef),
       sessionId: anonymousId('session', 'bakhtech-analytics-session', sessionIdRef),
+      sourceHint: sessionSourceHint(),
       referrer: document.referrer,
       language: navigator.language,
       screenWidth: window.screen.width,

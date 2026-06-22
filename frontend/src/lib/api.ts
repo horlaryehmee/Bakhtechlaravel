@@ -1333,6 +1333,7 @@ export const api = {
     eventType?: 'pageview' | 'heartbeat'
     visitorId?: string
     sessionId?: string
+    sourceHint?: string
     referrer?: string
     language?: string
     screenWidth?: number

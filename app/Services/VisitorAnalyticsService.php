@@ -49,7 +49,7 @@ class VisitorAnalyticsService
 
         $userAgent = (string) $request->userAgent();
         $location = $this->location($request);
-        $source = $this->source((string) ($data['referrer'] ?? ''), $path, $userAgent);
+        $source = $this->source((string) ($data['referrer'] ?? ''), $path, $userAgent, (string) ($data['sourceHint'] ?? ''));
 
         DB::table('visits')->insert([
             'visitor_id' => (string) ($data['visitorId'] ?? ''),
@@ -82,6 +82,8 @@ class VisitorAnalyticsService
         if (!$this->analyticsSchemaReady()) {
             return $this->legacyDashboard($range, $periodLabel, $start, $end);
         }
+
+        $this->backfillKnownSources();
 
         $rows = DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get();
         $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '');
@@ -231,7 +233,7 @@ class VisitorAnalyticsService
         ];
     }
 
-    private function source(string $referrer, string $path, string $userAgent): array
+    private function source(string $referrer, string $path, string $userAgent, string $sourceHint = ''): array
     {
         parse_str((string) parse_url($path, PHP_URL_QUERY), $query);
         $campaignSource = strtolower(trim((string) ($query['utm_source'] ?? $query['source'] ?? '')));
@@ -244,12 +246,34 @@ class VisitorAnalyticsService
             return ['name' => $campaigns[$campaignSource] ?? Str::headline($campaignSource), 'type' => 'campaign'];
         }
 
+        if (isset($query['gclid']) || isset($query['gbraid']) || isset($query['wbraid'])) return ['name' => 'Google Ads', 'type' => 'campaign'];
+        if (isset($query['fbclid'])) return ['name' => 'Meta Ads', 'type' => 'campaign'];
+        if (isset($query['ttclid'])) return ['name' => 'TikTok Ads', 'type' => 'campaign'];
+        if (isset($query['msclkid'])) return ['name' => 'Microsoft Ads', 'type' => 'campaign'];
+        if (isset($query['li_fat_id'])) return ['name' => 'LinkedIn Ads', 'type' => 'campaign'];
+
+        $sourceHint = trim($sourceHint);
+        if ($sourceHint !== '') {
+            $knownHints = [
+                'instagram' => 'Instagram', 'facebook' => 'Facebook', 'google' => 'Google',
+                'google ads' => 'Google Ads', 'meta ads' => 'Meta Ads', 'tiktok' => 'TikTok',
+                'linkedin' => 'LinkedIn', 'whatsapp' => 'WhatsApp', 'youtube' => 'YouTube',
+                'x / twitter' => 'X / Twitter', 'bing' => 'Bing',
+            ];
+            $normalized = strtolower($sourceHint);
+            if (isset($knownHints[$normalized])) {
+                $type = str_contains($normalized, 'ads') ? 'campaign' : (in_array($normalized, ['google', 'bing'], true) ? 'search' : 'social');
+                return ['name' => $knownHints[$normalized], 'type' => $type];
+            }
+        }
+
         if ($referrer === '') {
             return match (true) {
                 preg_match('/Instagram/i', $userAgent) === 1 => ['name' => 'Instagram', 'type' => 'social'],
                 preg_match('/FBAN|FBAV|\[FB/i', $userAgent) === 1 => ['name' => 'Facebook', 'type' => 'social'],
                 preg_match('/TikTok/i', $userAgent) === 1 => ['name' => 'TikTok', 'type' => 'social'],
                 preg_match('/WhatsApp/i', $userAgent) === 1 => ['name' => 'WhatsApp', 'type' => 'social'],
+                preg_match('/GSA\//i', $userAgent) === 1 => ['name' => 'Google', 'type' => 'search'],
                 default => ['name' => 'Direct', 'type' => 'direct'],
             };
         }
@@ -268,6 +292,30 @@ class VisitorAnalyticsService
             if (str_contains($host, $needle)) return ['name' => $name, 'type' => $type];
         }
         return ['name' => preg_replace('/^www\./', '', $host), 'type' => 'referral'];
+    }
+
+    private function backfillKnownSources(): void
+    {
+        DB::table('visits')->where(function ($query) {
+            $query->whereNull('source')->orWhere('source', '')->orWhere('source', 'Direct');
+        })->where(function ($query) {
+            $query->whereNotNull('referrer')->where('referrer', '!=', '')
+                ->orWhere('user_agent', 'like', '%Instagram%')
+                ->orWhere('user_agent', 'like', '%FBAN%')
+                ->orWhere('user_agent', 'like', '%FBAV%')
+                ->orWhere('user_agent', 'like', '%TikTok%')
+                ->orWhere('user_agent', 'like', '%WhatsApp%')
+                ->orWhere('user_agent', 'like', '%GSA/%')
+                ->orWhere('path', 'like', '%utm_source=%')
+                ->orWhere('path', 'like', '%gclid=%')
+                ->orWhere('path', 'like', '%fbclid=%')
+                ->orWhere('path', 'like', '%ttclid=%');
+        })->orderByDesc('id')->limit(1000)->get()->each(function ($visit) {
+            $source = $this->source((string) $visit->referrer, (string) $visit->path, (string) $visit->user_agent);
+            if ($source['name'] !== 'Direct') {
+                DB::table('visits')->where('id', $visit->id)->update(['source' => $source['name'], 'source_type' => $source['type']]);
+            }
+        });
     }
 
     private function device(string $ua): string
