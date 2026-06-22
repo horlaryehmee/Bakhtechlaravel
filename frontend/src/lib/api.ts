@@ -449,6 +449,7 @@ export type InvoiceDocument = {
     paymentClicks: number
     conversionRate: number
   }
+  viewEvents: InvoiceEvent[]
   generatedInvoice?: {
     number: string
     publicUrl: string
@@ -457,6 +458,23 @@ export type InvoiceDocument = {
   } | null
   createdAt: string
   updatedAt: string
+}
+
+export type InvoiceEvent = {
+  id: number
+  documentId: number
+  documentNumber: string
+  documentType: string
+  eventType: string
+  deviceType: string
+  browser: string
+  operatingSystem: string
+  ipAddress: string
+  country: string
+  city: string
+  sessionId: string
+  metadata: Record<string, unknown>
+  createdAt: string
 }
 
 export type PublicReceiptData = {
@@ -528,7 +546,7 @@ export type InvoiceOverview = {
   totals: { documents: number; invoices: number; quotes: number; receipts: number; paid: number; unpaid: number }
   revenue: { paid: number; outstanding: number; currency: string }
   conversion: { uniqueViews: number; paymentClicks: number; viewToPaymentClickRate: number }
-  recentEvents: Array<{ id: number; documentId: number; documentNumber: string; documentType: string; eventType: string; deviceType: string; metadata: Record<string, unknown>; createdAt: string }>
+  recentEvents: InvoiceEvent[]
 }
 
 export type InvoiceListMeta = {

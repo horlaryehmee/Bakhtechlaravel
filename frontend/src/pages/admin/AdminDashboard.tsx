@@ -864,11 +864,56 @@ export function AdminDashboard() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showCreateNewDropdown, setShowCreateNewDropdown] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '12m'>('30d')
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: 'New booking scheduled by John Doe', time: '10 mins ago', unread: true },
-    { id: 2, text: 'Invoice #INV-2026-001 has been paid', time: '1 hour ago', unread: true },
-    { id: 3, text: 'SEO score improved to 92%', time: 'Yesterday', unread: false },
-  ])
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { return JSON.parse(localStorage.getItem('bakhtech-read-notifications') || '[]') } catch { return [] }
+  })
+  const notifications = useMemo(() => {
+    const eventLabels: Record<string, string> = {
+      'document.viewed': 'was viewed', 'document.sent': 'was sent', 'email.opened': 'email was opened',
+      'payment.clicked': 'payment button was clicked', 'payment.completed': 'was paid',
+      'quote.accepted': 'was accepted', 'quote.rejected': 'was rejected', 'pdf.downloaded': 'PDF was downloaded',
+    }
+    const items = [
+      ...(invoiceOverview?.recentEvents ?? []).map((event) => ({
+        id: `invoice-event-${event.id}`,
+        text: `${event.documentType === 'quote' ? 'Quote' : 'Invoice'} ${event.documentNumber || `#${event.documentId}`} ${eventLabels[event.eventType] || event.eventType.replaceAll('.', ' ')}`,
+        createdAt: event.createdAt,
+      })),
+      ...invoiceEmailLogs.map((log) => ({
+        id: `invoice-email-${log.id}-${log.status}`,
+        text: `${log.documentType === 'quote' ? 'Quote' : 'Invoice'} ${log.documentNumber}: email ${log.status} to ${log.recipientEmail}`,
+        createdAt: log.sentAt || log.createdAt,
+      })),
+      ...bookingCmsBookings.map((booking) => ({
+        id: `booking-${booking.id}-${booking.status}`,
+        text: `${booking.status === 'cancelled' ? 'Booking cancelled' : 'New booking'}: ${booking.customer.name} for ${booking.eventTypeName || booking.serviceType}`,
+        createdAt: booking.updatedAt || booking.createdAt,
+      })),
+    ]
+    return items.filter((item) => item.createdAt)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 20)
+      .map((item) => ({ ...item, time: new Date(item.createdAt).toLocaleString(), unread: !readNotificationIds.includes(item.id) }))
+  }, [bookingCmsBookings, invoiceEmailLogs, invoiceOverview, readNotificationIds])
+
+  function markAllNotificationsRead() {
+    const ids = notifications.map((notification) => notification.id)
+    setReadNotificationIds(ids)
+    localStorage.setItem('bakhtech-read-notifications', JSON.stringify(ids))
+  }
+
+  async function toggleNotifications() {
+    const opening = !showNotifications
+    setShowNotifications(opening)
+    if (!opening) return
+
+    const [overviewResult, emailResult] = await Promise.all([
+      api.invoiceOverview().catch(() => null),
+      api.invoiceEmailLogs({ perPage: 25 }).catch(() => null),
+    ])
+    if (overviewResult) setInvoiceOverview(overviewResult)
+    if (emailResult) setInvoiceEmailLogs(emailResult.logs)
+  }
 
   useEffect(() => {
     if (activeSection !== 'settings') return
@@ -3750,36 +3795,20 @@ export function AdminDashboard() {
                       <div className="bkinv-card-body grid gap-3">
                         <div>
                           <h4 className="font-semibold text-sm mb-2">Device Views</h4>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            <div className="text-xs bg-blue-50 rounded p-2">
-                              <div className="font-semibold flex items-center gap-1">
-                                <span>🇳🇬</span>
-                                <span>Safari on iPhone</span>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {(editingInvoice.viewEvents ?? []).map((view) => (
+                              <div key={view.id} className="text-xs bg-blue-50 rounded p-2">
+                                <div className="font-semibold capitalize">{view.browser} on {view.operatingSystem} ({view.deviceType || 'unknown device'})</div>
+                                <div className="text-gray-600">{[view.city, view.country].filter(Boolean).join(', ') || 'Location unavailable'}</div>
+                                <div className="text-gray-500">Viewed {new Date(view.createdAt).toLocaleString()}</div>
+                                <div className="text-gray-400 text-xs">{view.ipAddress || 'IP unavailable'}</div>
                               </div>
-                              <div className="text-gray-600">Lagos, Nigeria</div>
-                              <div className="text-gray-500">Viewed 2 hours ago</div>
-                              <div className="text-gray-400 text-xs">192.168.1.100</div>
-                            </div>
-                            <div className="text-xs bg-blue-50 rounded p-2">
-                              <div className="font-semibold flex items-center gap-1">
-                                <span>🇺🇸</span>
-                                <span>Chrome on Windows</span>
-                              </div>
-                              <div className="text-gray-600">New York, United States</div>
-                              <div className="text-gray-500">Viewed 5 hours ago</div>
-                              <div className="text-gray-400 text-xs">203.0.113.45</div>
-                            </div>
-                            <div className="text-xs bg-blue-50 rounded p-2">
-                              <div className="font-semibold flex items-center gap-1">
-                                <span>🇬🇧</span>
-                                <span>Firefox on Mac</span>
-                              </div>
-                              <div className="text-gray-600">London, United Kingdom</div>
-                              <div className="text-gray-500">Viewed 1 day ago</div>
-                              <div className="text-gray-400 text-xs">198.51.100.89</div>
-                            </div>
+                            ))}
+                            {!editingInvoice.viewEvents?.length ? (
+                              <div className="text-xs text-gray-500 rounded border border-dashed p-3">No views have been recorded for this {editingInvoice.type} yet.</div>
+                            ) : null}
                           </div>
-                          <p className="text-xs text-gray-500 mt-2">Total unique views: <b>3</b></p>
+                          <p className="text-xs text-gray-500 mt-2">Total views: <b>{editingInvoice.analytics?.totalViews ?? 0}</b> | Unique views: <b>{editingInvoice.analytics?.uniqueViews ?? 0}</b></p>
                         </div>
                       </div>
                     </div>
@@ -8922,7 +8951,7 @@ export function AdminDashboard() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={() => void toggleNotifications()}
                 className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative flex items-center justify-center"
               >
                 <Bell className="w-5 h-5" />
@@ -8940,7 +8969,7 @@ export function AdminDashboard() {
                       <span className="text-xs font-bold text-slate-950 dark:text-white">Notifications</span>
                       <button
                         type="button"
-                        onClick={() => setNotifications(prev => prev.map(n => ({ ...n, unread: false })))}
+                        onClick={markAllNotificationsRead}
                         className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Mark all read
@@ -8953,6 +8982,7 @@ export function AdminDashboard() {
                           <span className="block text-[10px] text-slate-400 mt-1">{n.time}</span>
                         </div>
                       ))}
+                      {!notifications.length ? <div className="p-4 text-xs text-slate-500">No notifications yet.</div> : null}
                     </div>
                   </div>
                 </>

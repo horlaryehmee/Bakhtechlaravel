@@ -2058,6 +2058,17 @@ class InvoiceController extends Controller
         $views = DB::table('invoice_events')->where('document_id', $row->id)->where('event_type', 'document.viewed');
         $paymentClicks = DB::table('invoice_events')->where('document_id', $row->id)->where('event_type', 'payment.clicked')->count();
         $documentText = $this->normalizedDocumentText($row);
+        $viewEvents = [];
+        if (!$public && $includeItems) {
+            $viewEvents = DB::table('invoice_events')
+                ->where('document_id', $row->id)
+                ->where('event_type', 'document.viewed')
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($event) => $this->eventShape($event))
+                ->all();
+        }
 
         return [
             'id' => $public ? null : $row->id,
@@ -2108,6 +2119,7 @@ class InvoiceController extends Controller
                 'paymentClicks' => $paymentClicks,
                 'conversionRate' => (clone $views)->count() > 0 ? round(($paymentClicks / max(1, (clone $views)->count())) * 100, 1) : 0,
             ],
+            'viewEvents' => $viewEvents,
             'generatedInvoice' => $row->type === 'quote' ? $this->generatedInvoiceShape((int) $row->id) : null,
             'createdAt' => (string) $row->created_at,
             'updatedAt' => (string) $row->updated_at,
@@ -2166,6 +2178,8 @@ class InvoiceController extends Controller
 
     private function eventShape(object $row): array
     {
+        $userAgent = (string) ($row->user_agent ?? '');
+
         return [
             'id' => $row->id,
             'documentId' => $row->document_id,
@@ -2173,6 +2187,12 @@ class InvoiceController extends Controller
             'documentType' => $row->document_type ?? '',
             'eventType' => $row->event_type,
             'deviceType' => $row->device_type ?: '',
+            'browser' => $this->browserName($userAgent),
+            'operatingSystem' => $this->operatingSystem($userAgent),
+            'ipAddress' => (string) ($row->ip_address ?? ''),
+            'country' => (string) ($row->country ?? ''),
+            'city' => (string) ($row->city ?? ''),
+            'sessionId' => (string) ($row->session_id ?? ''),
             'metadata' => json_decode($row->metadata_json ?: '{}', true),
             'createdAt' => (string) $row->created_at,
         ];
@@ -2536,6 +2556,8 @@ HTML;
             return;
         }
 
+        $location = $this->requestLocation($request);
+
         DB::table('invoice_events')->insert([
             'document_id' => $documentId,
             'event_type' => $eventType,
@@ -2545,6 +2567,8 @@ HTML;
             'ip_address' => (string) $request->ip(),
             'user_agent' => (string) $request->userAgent(),
             'device_type' => $this->deviceType((string) $request->userAgent()),
+            'country' => $location['country'],
+            'city' => $location['city'],
             'metadata_json' => json_encode(array_filter($metadata, fn ($value) => $value !== null)),
             'created_at' => now(),
             'updated_at' => now(),
