@@ -13,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { navigation } from '@/data/site'
+import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -360,27 +361,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             </article>
             <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4">
               <h3 className="relative z-10 text-lg font-black">Hosting, Deployment & Maintenance</h3>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_74%_48%,rgba(255,255,255,0.12),transparent_18%)]" />
-              <div className="absolute inset-x-8 bottom-6 top-16 opacity-32 [background-image:radial-gradient(circle,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:7px_7px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_68%)]" />
-              {[
-                ['left-[15%] top-[29%]', 'bg-[#e15f75]'],
-                ['left-[47%] top-[50%]', 'bg-white'],
-                ['right-[27%] top-[32%]', 'bg-[#2463eb]'],
-                ['right-[14%] bottom-[23%]', 'bg-[#e5e7eb]'],
-                ['left-[54%] top-[30%]', 'bg-[#f7f7f7]'],
-              ].map(([position, color], index) => (
-                <span key={index} className={`absolute ${position} h-7 w-7 rounded-full border border-white/25 ${color} shadow-[0_0_28px_rgba(255,255,255,0.28)]`} />
-              ))}
-              {[
-                'left-[25%] top-[36%]',
-                'left-[61%] top-[25%]',
-                'right-[19%] top-[39%]',
-                'right-[11%] top-[29%]',
-              ].map((position) => (
-                <span key={position} className={`absolute ${position} grid h-9 w-9 place-items-center rounded-full border border-white/18 text-white/40`}>
-                  <span className="h-3 w-4 rounded border border-current" />
-                </span>
-              ))}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_72%_52%,rgba(255,255,255,0.18),transparent_28%),linear-gradient(180deg,#050505,#080808)]" />
+              <div className="absolute inset-x-0 bottom-0 top-10 z-0 flex items-center justify-center overflow-hidden">
+                <GlobeCdn className="w-[21rem] max-w-none opacity-85 invert md:w-[24rem]" speed={0.0025} />
+              </div>
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.12)_34%,rgba(5,5,5,0.65)_100%)]" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#050505] to-transparent" />
             </article>
 
             <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">

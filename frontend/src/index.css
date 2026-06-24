@@ -3109,6 +3109,20 @@ a {
   }
 }
 
+@keyframes pyramid-spin {
+  0% {
+    transform: rotateX(20deg) rotateY(0deg);
+  }
+
+  100% {
+    transform: rotateX(20deg) rotateY(360deg);
+  }
+}
+
+.globe-cdn-pyramid {
+  animation: pyramid-spin 4s linear infinite;
+}
+
 .about-stats-marquee {
   position: relative;
   left: 50%;
