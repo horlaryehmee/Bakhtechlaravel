@@ -21,15 +21,15 @@ type AgencyHomeTemplateProps = {
 }
 
 const clientLogos = [
-  { name: 'Think Canada Education Fair', src: '/assets/client-logos-original/tcf.png', width: 'w-[18rem]' },
+  { name: 'Think Canada Education Fair', src: '/assets/client-logos-original/tcf.png', width: 'w-[14.5rem]' },
   { name: 'Maple Education Canada', src: '/assets/client-logos-original/mec.png', width: 'w-[14rem]' },
   { name: '5th Perfumery', src: '/assets/client-logos-original/5th-perfumery.png', width: 'w-[8rem]' },
   { name: 'Bayara Nigeria', src: '/assets/client-logos-original/bayara.png', width: 'w-[7.5rem]' },
   { name: 'Celeb Beauty Clinic', src: '/assets/client-logos-original/celeb.png', width: 'w-[8.5rem]' },
   { name: 'Spazio', src: '/assets/client-logos-original/spazio.png', width: 'w-[7.5rem]' },
   { name: 'Island Supermarket', src: '/assets/client-logos-original/island.png', width: 'w-[9.5rem]' },
-  { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/sanctuary.png', width: 'w-[15.5rem]' },
-  { name: "Kiehl's", src: '/assets/client-logos-original/kiehls.png', width: 'w-[13.5rem]' },
+  { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/sanctuary.png', width: 'w-[18rem]' },
+  { name: "Kiehl's", src: '/assets/client-logos-original/kiehls.png', width: 'w-[15.5rem]' },
 ]
 
 const services = [
