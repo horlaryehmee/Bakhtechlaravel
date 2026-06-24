@@ -115,20 +115,36 @@ function HeroOrbitArc() {
         <defs>
           <linearGradient id="bakhtech-orbit-stroke" x1="259" y1="845" x2="1687" y2="846" gradientUnits="userSpaceOnUse">
             <stop stopColor="#7a461f" stopOpacity="0" />
-            <stop offset="0.31" stopColor="#9c5c29" stopOpacity="0.34" />
+            <stop offset="0.25" stopColor="#9c5c29" stopOpacity="0.18" />
+            <stop offset="0.37" stopColor="#d38140" stopOpacity="0.72" />
             <stop offset="0.49" stopColor="#f3a35f" />
-            <stop offset="0.66" stopColor="#aa642f" stopOpacity="0.48" />
+            <stop offset="0.61" stopColor="#d07b3b" stopOpacity="0.76" />
+            <stop offset="0.74" stopColor="#aa642f" stopOpacity="0.2" />
             <stop offset="1" stopColor="#7a461f" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="bakhtech-orbit-soft-stroke" x1="200" y1="955" x2="1751" y2="955" gradientUnits="userSpaceOnUse">
             <stop stopColor="#8d5527" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#f59b50" stopOpacity="0.42" />
+            <stop offset="0.22" stopColor="#9e5f2f" stopOpacity="0.14" />
+            <stop offset="0.5" stopColor="#f59b50" stopOpacity="0.34" />
+            <stop offset="0.78" stopColor="#9e5f2f" stopOpacity="0.14" />
             <stop offset="1" stopColor="#8d5527" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="bakhtech-orbit-hot-arc" x1="520" y1="312" x2="1430" y2="312" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#f2a15d" stopOpacity="0" />
+            <stop offset="0.18" stopColor="#e98d47" stopOpacity="0.52" />
+            <stop offset="0.5" stopColor="#ffb068" />
+            <stop offset="0.82" stopColor="#e98d47" stopOpacity="0.52" />
+            <stop offset="1" stopColor="#f2a15d" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="bakhtech-orbit-fill" cx="0" cy="0" r="1" gradientTransform="matrix(0 -384 761 0 975 265)" gradientUnits="userSpaceOnUse">
             <stop stopColor="#ffb265" stopOpacity="0.34" />
             <stop offset="0.36" stopColor="#a7632f" stopOpacity="0.12" />
             <stop offset="1" stopColor="#030302" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="bakhtech-orbit-side-glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 92 -178 0 0 0)" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#f5a15c" stopOpacity="0.46" />
+            <stop offset="0.5" stopColor="#b56a31" stopOpacity="0.16" />
+            <stop offset="1" stopColor="#080604" stopOpacity="0" />
           </radialGradient>
           <filter id="bakhtech-orbit-glow" x="94" y="147" width="1763" height="1618" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
             <feGaussianBlur stdDeviation="44" />
@@ -139,6 +155,8 @@ function HeroOrbitArc() {
           fill="url(#bakhtech-orbit-fill)"
           opacity="0.84"
         />
+        <ellipse cx="620" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
+        <ellipse cx="1330" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
           stroke="url(#bakhtech-orbit-stroke)"
@@ -149,13 +167,27 @@ function HeroOrbitArc() {
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
           stroke="url(#bakhtech-orbit-stroke)"
-          strokeWidth="4"
+          strokeWidth="3.2"
+        />
+        <path
+          d="M560 424C676 312 819 255 975.5 255C1132 255 1275 312 1391 424"
+          stroke="url(#bakhtech-orbit-hot-arc)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          filter="url(#bakhtech-orbit-glow)"
+          opacity="0.92"
+        />
+        <path
+          d="M560 424C676 312 819 255 975.5 255C1132 255 1275 312 1391 424"
+          stroke="url(#bakhtech-orbit-hot-arc)"
+          strokeWidth="3"
+          strokeLinecap="round"
         />
         <path
           d="M975.5 253.5C1403.57 253.5 1750.5 568.065 1750.5 956C1750.5 1343.94 1403.57 1658.5 975.5 1658.5C547.433 1658.5 200.5 1343.94 200.5 956C200.5 568.065 547.433 253.5 975.5 253.5Z"
           stroke="url(#bakhtech-orbit-soft-stroke)"
-          strokeWidth="1.5"
-          opacity="0.42"
+          strokeWidth="1.15"
+          opacity="0.34"
         />
       </svg>
     </div>
@@ -168,7 +200,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       <section className="relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 pt-0 text-white md:m-3 md:px-8">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
-          <div className="absolute left-1/2 top-0 h-[31rem] w-[44rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(180,126,50,0.24),rgba(42,28,15,0.14)_34%,transparent_72%)]" />
+          <div className="absolute left-1/2 top-0 h-[38rem] w-[54rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(190,132,57,0.34),rgba(82,52,25,0.22)_38%,transparent_74%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px)]" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
