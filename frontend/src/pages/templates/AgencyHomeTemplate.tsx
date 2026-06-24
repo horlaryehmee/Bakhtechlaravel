@@ -328,7 +328,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4">
+            <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4 md:min-h-0">
               <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-7 text-black">Regular updates and progress tracking</h3>
               <div className="absolute right-4 top-4 h-28 w-36 opacity-65 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:10px_10px]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-[#eee9d9]" />
@@ -359,17 +359,17 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 </div>
               </div>
             </article>
-            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4">
-              <h3 className="relative z-10 text-lg font-black">Hosting, Deployment & Maintenance</h3>
+            <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4 md:min-h-0">
+              <h3 className="relative z-20 max-w-[19rem] text-lg font-black drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">Hosting, Deployment & Maintenance</h3>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_72%_52%,rgba(255,255,255,0.18),transparent_28%),linear-gradient(180deg,#050505,#080808)]" />
-              <div className="absolute inset-x-0 bottom-0 top-10 z-0 flex items-center justify-center overflow-hidden">
-                <GlobeCdn className="w-[21rem] max-w-none opacity-85 invert md:w-[24rem]" speed={0.0025} />
+              <div className="absolute inset-x-0 bottom-0 top-16 z-0 flex items-center justify-center overflow-hidden md:top-14">
+                <GlobeCdn className="w-[20.5rem] max-w-none opacity-85 invert md:w-[23rem]" speed={0.0025} />
               </div>
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.12)_34%,rgba(5,5,5,0.65)_100%)]" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#050505] to-transparent" />
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">
+            <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5 md:min-h-0">
               <h3 className="relative z-10 text-lg font-semibold text-black">Get found on Google</h3>
               <div className="absolute -right-3 -top-16 h-36 w-36 rounded-2xl border border-black/6" />
               <div className="absolute right-20 -top-6 h-28 w-28 rounded-2xl border border-black/6" />
