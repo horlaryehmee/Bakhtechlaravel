@@ -248,19 +248,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section className="border-y border-black/5 bg-[#efeee8] px-4 py-10">
+      <section className="-mt-4 border-y border-black/5 bg-[#efeee8] px-4 py-6 md:mt-0 md:py-10">
         <div className="mx-auto max-w-6xl overflow-hidden">
           <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Trusted by fast-growing brands</p>
-          <div className="relative mt-8 overflow-hidden">
+          <div className="relative mt-5 overflow-hidden md:mt-8">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#efeee8] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#efeee8] to-transparent" />
-            <div className="marquee-track flex w-max items-center gap-12 [--marquee-duration:42s]">
+            <div className="marquee-track flex w-max items-center gap-8 [--marquee-duration:42s] md:gap-12">
               {[...clientLogos, ...clientLogos].map((logo, index) => (
-                <div key={`${logo.name}-${index}`} className="flex h-16 w-[11.25rem] shrink-0 items-center justify-center overflow-visible">
+                <div key={`${logo.name}-${index}`} className="flex h-11 w-32 shrink-0 items-center justify-center overflow-visible md:h-16 md:w-[11.25rem]">
                   <img
                     src={logo.src}
                     alt={logo.name}
-                    className="block h-auto max-h-[3.75rem] w-full object-contain grayscale opacity-55 contrast-125 transition hover:grayscale-0 hover:opacity-90"
+                    className="block h-auto max-h-10 w-full object-contain grayscale opacity-55 contrast-125 transition hover:grayscale-0 hover:opacity-90 md:max-h-[3.75rem]"
                     loading="lazy"
                     decoding="async"
                   />
