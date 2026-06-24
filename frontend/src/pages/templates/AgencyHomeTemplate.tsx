@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
@@ -10,9 +10,9 @@ import {
   Rocket,
   ShieldCheck,
   Star,
+  X,
   Zap,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -67,11 +67,21 @@ const pricingCards: Array<{ title: string; text: string; price: string; features
 ]
 
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
+  const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] [font-family:Inter,ui-sans-serif,system-ui,sans-serif] antialiased">
-      {preview ? (
-        <div className="fixed inset-x-0 top-0 z-[180] border-b border-amber-300/20 bg-amber-300 px-4 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
-          Admin preview only
+      {showPreviewBanner ? (
+        <div className="fixed inset-x-0 top-0 z-[180] flex min-h-8 items-center justify-center border-b border-amber-300/20 bg-amber-300 px-12 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
+          <span>Admin preview only</span>
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-[#111827] transition hover:bg-black/10"
+            aria-label="Close admin preview notice"
+            onClick={() => setShowPreviewBanner(false)}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       ) : null}
       {children}
@@ -92,7 +102,7 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
 
 function HeroOrbitArc() {
   return (
-    <div className="absolute -bottom-[19.2rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center md:-bottom-[18.75rem]">
+    <div className="absolute -bottom-[18.75rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center">
       <svg
         className="h-[68rem] w-[74rem] max-w-none md:h-[112.875rem] md:w-[121.9375rem]"
         width="1951"
@@ -105,9 +115,9 @@ function HeroOrbitArc() {
         <defs>
           <linearGradient id="bakhtech-orbit-stroke" x1="259" y1="845" x2="1687" y2="846" gradientUnits="userSpaceOnUse">
             <stop stopColor="#7a461f" stopOpacity="0" />
-            <stop offset="0.32" stopColor="#9c5c29" stopOpacity="0.28" />
-            <stop offset="0.48" stopColor="#f2a160" />
-            <stop offset="0.64" stopColor="#a96530" stopOpacity="0.45" />
+            <stop offset="0.31" stopColor="#9c5c29" stopOpacity="0.34" />
+            <stop offset="0.49" stopColor="#f3a35f" />
+            <stop offset="0.66" stopColor="#aa642f" stopOpacity="0.48" />
             <stop offset="1" stopColor="#7a461f" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="bakhtech-orbit-soft-stroke" x1="200" y1="955" x2="1751" y2="955" gradientUnits="userSpaceOnUse">
@@ -121,20 +131,20 @@ function HeroOrbitArc() {
             <stop offset="1" stopColor="#030302" stopOpacity="0" />
           </radialGradient>
           <filter id="bakhtech-orbit-glow" x="94" y="147" width="1763" height="1618" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
-            <feGaussianBlur stdDeviation="36" />
+            <feGaussianBlur stdDeviation="44" />
           </filter>
         </defs>
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
           fill="url(#bakhtech-orbit-fill)"
-          opacity="0.72"
+          opacity="0.84"
         />
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
           stroke="url(#bakhtech-orbit-stroke)"
-          strokeWidth="5"
+          strokeWidth="7"
           filter="url(#bakhtech-orbit-glow)"
-          opacity="0.72"
+          opacity="0.9"
         />
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
@@ -155,17 +165,17 @@ function HeroOrbitArc() {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   return (
     <TemplateShell preview={preview}>
-      <section className={cn('relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 text-white md:m-3 md:px-8', preview ? 'pt-12' : 'pt-0')}>
+      <section className="relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 pt-0 text-white md:m-3 md:px-8">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
           <div className="absolute left-1/2 top-0 h-[31rem] w-[44rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(180,126,50,0.24),rgba(42,28,15,0.14)_34%,transparent_72%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px)]" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
           <HeroOrbitArc />
           <div className="absolute bottom-[-5.8rem] left-1/2 -translate-x-1/2 select-none text-[clamp(8rem,22vw,20rem)] font-black leading-none tracking-normal text-white/[0.055]">
             Bakhtech
           </div>
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
         </div>
 
         <nav className="relative z-10 mx-auto flex max-w-[86rem] items-center justify-between py-7">
@@ -181,20 +191,20 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <ChatPill label="Chat with us" />
         </nav>
 
-        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[12rem] md:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.9fr)] md:items-start md:pb-36 md:pt-[12.5rem]">
+        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[12rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start md:pb-36 md:pt-[12.5rem]">
           <div>
             <Link to="/pricing" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-xs font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
               New digital products every month
             </Link>
-            <h1 className="mt-10 max-w-[48rem] text-[clamp(3.35rem,5vw,5.8rem)] font-semibold leading-[0.96] tracking-normal text-white">
-              The best design and development agency for growing brands.
+            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-bold leading-[0.98] tracking-normal text-white [font-family:Inter,ui-sans-serif,system-ui,sans-serif]">
+              The best design and development agency in the world.
             </h1>
           </div>
 
           <div className="pt-16 md:pt-20">
-            <p className="max-w-[24rem] text-xl font-bold leading-8 text-white/88">
-              We design and build websites that drive results and help your business grow. No calls. No confusion. Just results.
+            <p className="max-w-[24rem] text-xl font-semibold leading-8 text-white">
+              We design and build websites that drive results and help your business grow. No Calls. No BS. Just Results.
             </p>
             <div className="mt-9">
               <ChatPill label="Chat with us" />
