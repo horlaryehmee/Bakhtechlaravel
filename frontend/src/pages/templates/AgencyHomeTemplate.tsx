@@ -70,7 +70,7 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
   const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] [font-family:Inter,ui-sans-serif,system-ui,sans-serif] antialiased">
+    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] [font-family:'Plus_Jakarta_Sans',ui-sans-serif,system-ui,sans-serif] antialiased">
       {showPreviewBanner ? (
         <div className="fixed inset-x-0 top-0 z-[180] flex min-h-8 items-center justify-center border-b border-amber-300/20 bg-amber-300 px-12 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
           <span>Admin preview only</span>
@@ -229,7 +229,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
               New digital products every month
             </Link>
-            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-bold leading-[0.98] tracking-normal text-white [font-family:Inter,ui-sans-serif,system-ui,sans-serif]">
+            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-extrabold leading-[0.98] tracking-normal text-white [font-family:'Plus_Jakarta_Sans',ui-sans-serif,system-ui,sans-serif]">
               The best design and development agency in the world.
             </h1>
           </div>
