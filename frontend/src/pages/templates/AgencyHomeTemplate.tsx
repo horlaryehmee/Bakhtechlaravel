@@ -13,6 +13,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import { navigation } from '@/data/site'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -154,11 +155,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
     <TemplateShell preview={preview}>
       <section className="relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 pt-0 text-white md:m-3 md:px-8">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:70px_70px] opacity-60" />
+          <div className="absolute inset-x-0 top-0 h-[24rem] bg-[linear-gradient(rgba(255,255,255,0.075)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.075)_1px,transparent_1px)] bg-[size:70px_70px] opacity-70" />
           <div className="absolute left-1/2 top-0 h-[38rem] w-[54rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(190,132,57,0.34),rgba(82,52,25,0.22)_38%,transparent_74%)]" />
           <div className="absolute inset-x-0 top-0 h-[18rem] bg-[radial-gradient(circle_at_3%_24%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_7%_14%,rgba(255,255,255,0.92)_0_1px,transparent_1.5px),radial-gradient(circle_at_13%_8%,rgba(255,255,255,0.42)_0_1px,transparent_1.5px),radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.38)_0_1px,transparent_1.5px),radial-gradient(circle_at_31%_5%,rgba(255,255,255,0.56)_0_1px,transparent_1.5px),radial-gradient(circle_at_43%_27%,rgba(255,255,255,0.76)_0_1px,transparent_1.5px),radial-gradient(circle_at_56%_14%,rgba(255,255,255,0.34)_0_1px,transparent_1.5px),radial-gradient(circle_at_69%_28%,rgba(255,255,255,0.82)_0_1px,transparent_1.5px),radial-gradient(circle_at_81%_15%,rgba(255,255,255,0.44)_0_1px,transparent_1.5px),radial-gradient(circle_at_91%_7%,rgba(255,255,255,0.96)_0_1px,transparent_1.5px),radial-gradient(circle_at_98%_2%,rgba(255,255,255,0.74)_0_1px,transparent_1.5px)] opacity-95" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.18)_28%,rgba(2,3,2,0.12)_64%,#020302_100%)]" />
           <HeroOrbitArc />
           <div className="absolute bottom-[-5.8rem] left-1/2 -translate-x-1/2 select-none text-[clamp(8rem,22vw,20rem)] font-black leading-none tracking-normal text-white/[0.055]">
             Bakhtech
@@ -166,16 +168,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
 
         <nav className="relative z-10 mx-auto flex max-w-[86rem] items-center justify-between py-7">
-          <Link to="/" className="grid h-10 w-10 place-items-center rounded-md bg-white/[0.06] p-1.5 ring-1 ring-white/8" aria-label="Bakhtech home">
-            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-full w-full object-contain" />
+          <Link to="/" className="flex items-center" aria-label="Bakhtech home">
+            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-10 w-auto object-contain" width="160" height="40" decoding="async" />
           </Link>
           <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
-            <a href="#work" className="hover:text-white">Work</a>
-            <a href="#services" className="hover:text-white">Products</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
-            <a href="#faq" className="hover:text-white">Blog</a>
+            {navigation.map((item) => (
+              <Link key={`${item.label}-${item.href}`} to={item.href} className="hover:text-white">
+                {item.label}
+              </Link>
+            ))}
           </div>
-          <ChatPill label="Chat with us" />
+          <Link to="/booking" className="hidden min-h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-black text-[#06070b] transition hover:bg-white/88 md:inline-flex">
+            Book now
+          </Link>
         </nav>
 
         <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[12rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start md:pb-36 md:pt-[12.5rem]">
