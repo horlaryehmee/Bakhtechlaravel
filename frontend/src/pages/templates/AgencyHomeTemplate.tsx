@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
@@ -6,6 +6,7 @@ import {
   Globe2,
   Menu,
   MessageCircle,
+  Mic,
   ShieldCheck,
   Star,
   X,
@@ -384,20 +385,35 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
             <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">
               <h3 className="relative z-10 text-lg font-semibold text-black">Get found on Google</h3>
-              <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:72px_72px]" />
-              <div className="relative z-10 mt-10 max-w-[22rem] rounded-full bg-white px-5 py-3 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
+              <div className="absolute -right-3 -top-16 h-36 w-36 rounded-2xl border border-black/6" />
+              <div className="absolute right-20 -top-6 h-28 w-28 rounded-2xl border border-black/6" />
+              <div className="absolute right-44 -top-2 h-24 w-32 rounded-2xl border border-black/6" />
+              <div className="absolute right-4 top-16 h-28 w-28 rounded-2xl border border-black/6" />
+              <div className="absolute right-32 top-[4.4rem] h-36 w-24 rounded-2xl border border-black/6" />
+              <div className="absolute bottom-5 left-12 h-16 w-52 rounded-2xl border border-black/6" />
+              <div className="absolute bottom-10 left-24 h-40 w-52 rounded-2xl border border-black/6" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_72%,rgba(0,0,0,0.06),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.24),rgba(255,255,255,0.86)_82%)]" />
+              <div className="relative z-10 mt-10 max-w-[24rem] rounded-full bg-white px-5 py-3 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
                 <div className="flex items-center gap-3 text-sm font-semibold text-black/42">
-                  <span className="text-xl font-black text-[#4285f4]">G</span>
-                  Best GTM tools for business operations
+                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.24 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23Z" />
+                    <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84Z" />
+                    <path fill="#EA4335" d="M12 5.37c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.37 12 5.37Z" />
+                  </svg>
+                  <span className="min-w-0 flex-1 truncate">Best Web Design Agency Near Me</span>
+                  <Mic className="h-4 w-4 shrink-0 text-black/36" />
                 </div>
               </div>
-              <div className="relative z-10 mt-3 max-w-[22rem] rounded-xl bg-white p-4 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
+              <div className="relative z-10 mt-3 max-w-[24rem] rounded-xl bg-white p-4 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
                 <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#2563eb] text-white">↯</span>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#2563eb] text-white">
+                    <Zap className="h-5 w-5 fill-current" />
+                  </span>
                   <div>
-                    <p className="font-semibold text-black/76">Bakhtech.io</p>
-                    <p className="text-xs font-semibold text-black/34">www.bakhtech.com.ng › growth › sales</p>
-                    <p className="mt-2 text-sm font-semibold text-black/64">All in one outbound platform</p>
+                    <p className="font-semibold text-black/76">Bakhtech Solutions</p>
+                    <p className="text-xs font-semibold text-black/34">www.bakhtech.com.ng / web-design / lagos</p>
+                    <p className="mt-2 text-sm font-semibold text-black/64">Website design, development and digital tools for growing brands.</p>
                   </div>
                 </div>
                 <div className="mt-4 h-2 w-64 max-w-full rounded-full bg-black/5" />
