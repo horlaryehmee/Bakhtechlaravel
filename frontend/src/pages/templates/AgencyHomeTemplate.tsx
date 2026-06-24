@@ -3,12 +3,9 @@ import { useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
-  Code2,
   Globe2,
-  Layers3,
   Menu,
   MessageCircle,
-  Rocket,
   ShieldCheck,
   Star,
   X,
@@ -31,24 +28,6 @@ const clientLogos = [
   { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/logo-8.png' },
   { name: 'Bruh', src: '/assets/client-logos-original/logo-9.png' },
   { name: 'Mobility Options', src: '/assets/client-logos-original/logo-10.png' },
-]
-
-const services = [
-  {
-    title: 'Websites that explain fast',
-    text: 'Clear positioning, sharp sections, and responsive pages built for visitors who scan before they decide.',
-    icon: Layers3,
-  },
-  {
-    title: 'Ecommerce and booking flows',
-    text: 'Product pages, checkout journeys, appointment systems, payments, confirmations, and reminders.',
-    icon: Rocket,
-  },
-  {
-    title: 'Custom portals and dashboards',
-    text: 'Internal tools, admin panels, client portals, automations, and reporting screens that support daily work.',
-    icon: Code2,
-  },
 ]
 
 const projectCards = [
@@ -271,28 +250,118 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="services" className="px-4 py-24">
+      <section id="services" className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#60a5fa]">What we build</p>
-              <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Replace scattered vendors with one digital build team.</h2>
-            </div>
-            <p className="text-lg font-semibold leading-8 text-black/58">From first impression to payment, booking, onboarding, and operations, the goal is a business system that looks polished and works cleanly.</p>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {services.map((service) => {
-              const Icon = service.icon
-              return (
-                <article key={service.title} className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#111111] text-white">
-                    <Icon className="h-5 w-5" />
+          <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
+
+          <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
+            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-4 text-white shadow-sm md:col-span-4 md:row-span-2">
+              <div className="overflow-hidden rounded-xl bg-[#f2f2f0] p-4">
+                <div className="rounded-lg bg-white p-3 shadow-[0_14px_45px_rgba(0,0,0,0.08)]">
+                  <div className="mb-3 flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
+                    <span className="ml-14 h-3 w-32 rounded-full bg-[#e8e8e5]" />
                   </div>
-                  <h3 className="mt-8 text-2xl font-black">{service.title}</h3>
-                  <p className="mt-3 text-sm font-semibold leading-7 text-black/58">{service.text}</p>
-                </article>
-              )
-            })}
+                  <div className="rounded-md border border-black/5 bg-[#f8f8f7] p-3">
+                    <div className="mb-4 flex justify-between">
+                      <span className="h-2 w-20 rounded-full bg-[#e5e5e2]" />
+                      <span className="h-2 w-16 rounded-full bg-[#e5e5e2]" />
+                    </div>
+                    <div className="mx-auto h-2 w-28 rounded-full bg-[#dededb]" />
+                    <div className="mx-auto mt-3 flex justify-center gap-2">
+                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
+                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
+                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
+                    </div>
+                    <div className="mx-auto mt-5 grid aspect-[1.28] w-[74%] place-items-center bg-[#efefed]">
+                      <span className="grid h-8 w-8 place-items-center rounded-full border border-black/10 text-black/25">⌁</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute inset-x-0 bottom-0 bg-[radial-gradient(circle_at_70%_0%,rgba(255,255,255,0.16),transparent_35%),linear-gradient(180deg,rgba(5,5,5,0.72),#050505_38%)] p-6 pt-20">
+                <h3 className="text-lg font-black">Design and Development</h3>
+                <p className="mt-4 text-base font-semibold leading-7 text-white/58">
+                  Designed to perfection, Bakhtech helps you take your dream idea to reality through expert design and development services.
+                </p>
+                <Link to="/pricing" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
+                  <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
+                    <Check className="h-4 w-4" />
+                  </span>
+                  View pricing
+                </Link>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4">
+              <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-7 text-black">Regular updates and progress tracking</h3>
+              <div className="absolute right-8 top-16 h-28 w-28 rounded-full border-[1.8rem] border-[#ece8dc]" />
+              <div className="absolute right-6 top-16 h-28 w-28 rounded-full border-[1.8rem] border-transparent border-r-[#f6f6f5] border-t-[#f6f6f5]" />
+              <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:12px_12px]" />
+              <div className="absolute bottom-9 left-5 right-5 z-10 rounded-lg border border-black/8 bg-white p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]">
+                <p className="font-mono text-xs text-black/34">notification</p>
+                <p className="mt-3 font-mono text-sm text-black/74">HOTFIX: update design</p>
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4">
+              <h3 className="relative z-10 text-lg font-black">Hosting, Deployment & Maintenance</h3>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_74%_48%,rgba(255,255,255,0.12),transparent_18%)]" />
+              <div className="absolute inset-x-8 bottom-6 top-16 opacity-32 [background-image:radial-gradient(circle,rgba(255,255,255,0.75)_1px,transparent_1px)] [background-size:7px_7px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_68%)]" />
+              {[
+                ['left-[15%] top-[29%]', 'bg-[#e15f75]'],
+                ['left-[47%] top-[50%]', 'bg-white'],
+                ['right-[27%] top-[32%]', 'bg-[#2463eb]'],
+                ['right-[14%] bottom-[23%]', 'bg-[#e5e7eb]'],
+                ['left-[54%] top-[30%]', 'bg-[#f7f7f7]'],
+              ].map(([position, color], index) => (
+                <span key={index} className={`absolute ${position} h-7 w-7 rounded-full border border-white/25 ${color} shadow-[0_0_28px_rgba(255,255,255,0.28)]`} />
+              ))}
+              {[
+                'left-[25%] top-[36%]',
+                'left-[61%] top-[25%]',
+                'right-[19%] top-[39%]',
+                'right-[11%] top-[29%]',
+              ].map((position) => (
+                <span key={position} className={`absolute ${position} grid h-9 w-9 place-items-center rounded-full border border-white/18 text-white/40`}>
+                  <span className="h-3 w-4 rounded border border-current" />
+                </span>
+              ))}
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">
+              <h3 className="relative z-10 text-lg font-semibold text-black">Get found on Google</h3>
+              <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:72px_72px]" />
+              <div className="relative z-10 mt-10 max-w-[22rem] rounded-full bg-white px-5 py-3 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
+                <div className="flex items-center gap-3 text-sm font-semibold text-black/42">
+                  <span className="text-xl font-black text-[#4285f4]">G</span>
+                  Best GTM tools for business operations
+                </div>
+              </div>
+              <div className="relative z-10 mt-3 max-w-[22rem] rounded-xl bg-white p-4 shadow-[0_10px_32px_rgba(0,0,0,0.10)]">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#2563eb] text-white">↯</span>
+                  <div>
+                    <p className="font-semibold text-black/76">Bakhtech.io</p>
+                    <p className="text-xs font-semibold text-black/34">www.bakhtech.com.ng › growth › sales</p>
+                    <p className="mt-2 text-sm font-semibold text-black/64">All in one outbound platform</p>
+                  </div>
+                </div>
+                <div className="mt-4 h-2 w-64 max-w-full rounded-full bg-black/5" />
+                <div className="mt-2 h-2 w-44 rounded-full bg-black/5" />
+              </div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3">
+              <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
+              <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:42px_42px]" />
+              <div className="absolute right-6 top-24 h-28 w-28 rounded-3xl bg-[linear-gradient(135deg,#ffbd7b,#ff8f55)] shadow-[0_24px_70px_rgba(255,142,79,0.35)]" />
+              <div className="absolute bottom-24 left-16 h-0.5 w-20 bg-[#f2a66b]" />
+              <div className="absolute bottom-20 left-20 h-0.5 w-24 bg-[#f2a66b]" />
+              <div className="absolute bottom-16 left-14 h-0.5 w-16 bg-[#f2a66b]" />
+            </article>
           </div>
         </div>
       </section>
