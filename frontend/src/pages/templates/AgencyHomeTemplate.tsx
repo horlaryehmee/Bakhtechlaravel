@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
@@ -28,6 +28,13 @@ const clientLogos = [
   { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/logo-8.png' },
   { name: 'Bruh', src: '/assets/client-logos-original/logo-9.png' },
   { name: 'Mobility Options', src: '/assets/client-logos-original/logo-10.png' },
+]
+
+const updateNotifications = [
+  { label: 'Revision Completed', icon: 'slack' },
+  { label: 'HOTFIX: update design', icon: 'github' },
+  { label: 'Homepage approved', icon: 'slack' },
+  { label: 'New milestone shipped', icon: 'github' },
 ]
 
 const projectCards = [
@@ -143,6 +150,16 @@ function HeroOrbitArc() {
 
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notificationIndex, setNotificationIndex] = useState(0)
+  const activeNotification = updateNotifications[notificationIndex]
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNotificationIndex((index) => (index + 1) % updateNotifications.length)
+    }, 2600)
+
+    return () => window.clearInterval(timer)
+  }, [])
 
   return (
     <TemplateShell preview={preview}>
@@ -255,38 +272,52 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
-            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-4 text-white shadow-sm md:col-span-4 md:row-span-2">
-              <div className="overflow-hidden rounded-xl bg-[#f2f2f0] p-4">
-                <div className="rounded-lg bg-white p-3 shadow-[0_14px_45px_rgba(0,0,0,0.08)]">
+            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2">
+              <div className="relative overflow-hidden rounded-xl bg-[#f4f4f2] px-4 pb-1 pt-4">
+                <div className="rounded-t-xl bg-[#ededeb] p-3 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
                   <div className="mb-3 flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
-                    <span className="ml-14 h-3 w-32 rounded-full bg-[#e8e8e5]" />
+                    <span className="mx-auto h-2.5 w-32 rounded-full bg-white" />
                   </div>
-                  <div className="rounded-md border border-black/5 bg-[#f8f8f7] p-3">
-                    <div className="mb-4 flex justify-between">
-                      <span className="h-2 w-20 rounded-full bg-[#e5e5e2]" />
-                      <span className="h-2 w-16 rounded-full bg-[#e5e5e2]" />
+                  <div className="rounded-t-lg border border-black/4 bg-white p-3">
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="h-3 w-3 rounded-full bg-[#dededb]" />
+                      <div className="flex gap-2">
+                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                        <span className="h-2.5 w-5 rounded-full bg-[#dededb]" />
+                      </div>
                     </div>
-                    <div className="mx-auto h-2 w-28 rounded-full bg-[#dededb]" />
-                    <div className="mx-auto mt-3 flex justify-center gap-2">
-                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
-                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
-                      <span className="h-3 w-3 rounded-full bg-[#d6d6d3]" />
+                    <div className="mx-auto h-1.5 w-36 rounded-full bg-[#d8d8d5]" />
+                    <div className="mx-auto mt-4 flex justify-center gap-2">
+                      <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
+                      <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
                     </div>
-                    <div className="mx-auto mt-5 grid aspect-[1.28] w-[74%] place-items-center bg-[#efefed]">
-                      <span className="grid h-8 w-8 place-items-center rounded-full border border-black/10 text-black/25">⌁</span>
+                    <div className="mx-auto mt-2 flex justify-center gap-2">
+                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                    </div>
+                    <div className="mx-auto mt-5 grid aspect-[1.18] w-[66%] place-items-center bg-[#f0f0ee]">
+                      <span className="relative h-7 w-7 text-black/24 before:absolute before:left-1 before:top-1 before:h-2 before:w-2 before:border-l before:border-t before:border-current after:absolute after:right-1 after:top-1 after:h-2 after:w-2 after:border-r after:border-t after:border-current">
+                        <span className="absolute bottom-1 left-1 h-2 w-2 border-b border-l border-current" />
+                        <span className="absolute bottom-1 right-1 h-2 w-2 border-b border-r border-current" />
+                      </span>
                     </div>
                   </div>
                 </div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,rgba(244,244,242,0),rgba(255,255,255,0.88)_52%,rgba(5,5,5,0.82))]" />
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-[radial-gradient(circle_at_70%_0%,rgba(255,255,255,0.16),transparent_35%),linear-gradient(180deg,rgba(5,5,5,0.72),#050505_38%)] p-6 pt-20">
+              <div className="absolute inset-x-0 bottom-0 bg-[radial-gradient(circle_at_66%_5%,rgba(255,255,255,0.20),transparent_27%),radial-gradient(circle,rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.32),#050505_34%)] bg-[length:auto,8px_8px,auto] p-7 pt-20">
                 <h3 className="text-lg font-black">Design and Development</h3>
                 <p className="mt-4 text-base font-semibold leading-7 text-white/58">
                   Designed to perfection, Bakhtech helps you take your dream idea to reality through expert design and development services.
                 </p>
-                <Link to="/pricing" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
+                <Link to="/pricing" className="mt-9 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
                   <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
                     <Check className="h-4 w-4" />
                   </span>
@@ -297,15 +328,35 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
             <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4">
               <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-7 text-black">Regular updates and progress tracking</h3>
-              <div className="absolute right-8 top-16 h-28 w-28 rounded-full border-[1.8rem] border-[#ece8dc]" />
-              <div className="absolute right-6 top-16 h-28 w-28 rounded-full border-[1.8rem] border-transparent border-r-[#f6f6f5] border-t-[#f6f6f5]" />
-              <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:12px_12px]" />
-              <div className="absolute bottom-9 left-5 right-5 z-10 rounded-lg border border-black/8 bg-white p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]">
-                <p className="font-mono text-xs text-black/34">notification</p>
-                <p className="mt-3 font-mono text-sm text-black/74">HOTFIX: update design</p>
+              <div className="absolute right-4 top-4 h-28 w-36 opacity-65 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:10px_10px]" />
+              <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-[#eee9d9]" />
+              <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-transparent border-r-[#f8f8f7] border-t-[#f8f8f7]" />
+              <div className="absolute bottom-[5.85rem] left-8 right-8 h-14 rounded-lg border border-black/8 bg-white/82" />
+              <div className="absolute bottom-[5.15rem] left-6 right-6 h-14 rounded-lg border border-black/8 bg-white/90" />
+              <div
+                key={activeNotification.label}
+                className="absolute bottom-9 left-5 right-5 z-10 animate-[notification-card_480ms_ease-out] rounded-lg border border-black/8 bg-white p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-mono text-xs text-black/34">notification</p>
+                    <p className="mt-3 font-mono text-base text-black/74">{activeNotification.label}</p>
+                  </div>
+                  {activeNotification.icon === 'slack' ? (
+                    <span className="relative mt-1 h-5 w-5 shrink-0">
+                      <span className="absolute left-2 top-0 h-2 w-1.5 rounded-full bg-[#36c5f0]" />
+                      <span className="absolute right-0 top-2 h-1.5 w-2 rounded-full bg-[#2eb67d]" />
+                      <span className="absolute bottom-0 left-2 h-2 w-1.5 rounded-full bg-[#ecb22e]" />
+                      <span className="absolute left-0 top-2 h-1.5 w-2 rounded-full bg-[#e01e5a]" />
+                    </span>
+                  ) : (
+                    <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-black">
+                      <span className="h-2.5 w-3 rounded-b-full rounded-t-sm bg-white" />
+                    </span>
+                  )}
+                </div>
               </div>
             </article>
-
             <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4">
               <h3 className="relative z-10 text-lg font-black">Hosting, Deployment & Maintenance</h3>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_74%_48%,rgba(255,255,255,0.12),transparent_18%)]" />
