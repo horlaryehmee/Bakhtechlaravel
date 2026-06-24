@@ -68,7 +68,7 @@ const pricingCards: Array<{ title: string; text: string; price: string; features
 
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111]">
+    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] [font-family:Inter,ui-sans-serif,system-ui,sans-serif] antialiased">
       {preview ? (
         <div className="fixed inset-x-0 top-0 z-[180] border-b border-amber-300/20 bg-amber-300 px-4 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
           Admin preview only
@@ -90,6 +90,68 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
   )
 }
 
+function HeroOrbitArc() {
+  return (
+    <div className="absolute -bottom-[19.2rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center md:-bottom-[18.75rem]">
+      <svg
+        className="h-[68rem] w-[74rem] max-w-none md:h-[112.875rem] md:w-[121.9375rem]"
+        width="1951"
+        height="1806"
+        viewBox="0 0 1951 1806"
+        fill="none"
+        overflow="visible"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="bakhtech-orbit-stroke" x1="259" y1="845" x2="1687" y2="846" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#7a461f" stopOpacity="0" />
+            <stop offset="0.32" stopColor="#9c5c29" stopOpacity="0.28" />
+            <stop offset="0.48" stopColor="#f2a160" />
+            <stop offset="0.64" stopColor="#a96530" stopOpacity="0.45" />
+            <stop offset="1" stopColor="#7a461f" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="bakhtech-orbit-soft-stroke" x1="200" y1="955" x2="1751" y2="955" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#8d5527" stopOpacity="0" />
+            <stop offset="0.5" stopColor="#f59b50" stopOpacity="0.42" />
+            <stop offset="1" stopColor="#8d5527" stopOpacity="0" />
+          </linearGradient>
+          <radialGradient id="bakhtech-orbit-fill" cx="0" cy="0" r="1" gradientTransform="matrix(0 -384 761 0 975 265)" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#ffb265" stopOpacity="0.34" />
+            <stop offset="0.36" stopColor="#a7632f" stopOpacity="0.12" />
+            <stop offset="1" stopColor="#030302" stopOpacity="0" />
+          </radialGradient>
+          <filter id="bakhtech-orbit-glow" x="94" y="147" width="1763" height="1618" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
+            <feGaussianBlur stdDeviation="36" />
+          </filter>
+        </defs>
+        <path
+          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
+          fill="url(#bakhtech-orbit-fill)"
+          opacity="0.72"
+        />
+        <path
+          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
+          stroke="url(#bakhtech-orbit-stroke)"
+          strokeWidth="5"
+          filter="url(#bakhtech-orbit-glow)"
+          opacity="0.72"
+        />
+        <path
+          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
+          stroke="url(#bakhtech-orbit-stroke)"
+          strokeWidth="4"
+        />
+        <path
+          d="M975.5 253.5C1403.57 253.5 1750.5 568.065 1750.5 956C1750.5 1343.94 1403.57 1658.5 975.5 1658.5C547.433 1658.5 200.5 1343.94 200.5 956C200.5 568.065 547.433 253.5 975.5 253.5Z"
+          stroke="url(#bakhtech-orbit-soft-stroke)"
+          strokeWidth="1.5"
+          opacity="0.42"
+        />
+      </svg>
+    </div>
+  )
+}
+
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   return (
     <TemplateShell preview={preview}>
@@ -99,8 +161,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="absolute left-1/2 top-0 h-[31rem] w-[44rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(180,126,50,0.24),rgba(42,28,15,0.14)_34%,transparent_72%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px)]" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
-          <div className="absolute inset-x-0 bottom-[-14rem] mx-auto h-[31rem] max-w-[88rem] rounded-[50%_50%_0_0] border-t border-[#b77734]/48 bg-[radial-gradient(ellipse_at_top,rgba(223,148,70,0.33),rgba(108,64,25,0.09)_28%,rgba(0,0,0,0)_60%)] shadow-[0_-18px_80px_rgba(240,157,72,0.38)]" />
-          <div className="absolute inset-x-0 bottom-[-18rem] mx-auto h-[37rem] max-w-[94rem] rounded-[50%_50%_0_0] border-t border-[#b77734]/28" />
+          <HeroOrbitArc />
           <div className="absolute bottom-[-5.8rem] left-1/2 -translate-x-1/2 select-none text-[clamp(8rem,22vw,20rem)] font-black leading-none tracking-normal text-white/[0.055]">
             Bakhtech
           </div>
@@ -126,7 +187,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
               New digital products every month
             </Link>
-            <h1 className="mt-10 max-w-[48rem] text-[clamp(3.35rem,5vw,5.8rem)] font-black leading-[0.96] tracking-normal text-white">
+            <h1 className="mt-10 max-w-[48rem] text-[clamp(3.35rem,5vw,5.8rem)] font-semibold leading-[0.96] tracking-normal text-white">
               The best design and development agency for growing brands.
             </h1>
           </div>
