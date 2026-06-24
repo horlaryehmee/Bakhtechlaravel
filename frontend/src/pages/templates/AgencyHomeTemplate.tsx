@@ -21,15 +21,16 @@ type AgencyHomeTemplateProps = {
 }
 
 const clientLogos = [
-  { name: 'Think Canada Education Fair', src: '/assets/client-logos-original/tcf.png', width: 'w-[14.5rem]' },
-  { name: 'Maple Education Canada', src: '/assets/client-logos-original/mec.png', width: 'w-[14rem]' },
-  { name: '5th Perfumery', src: '/assets/client-logos-original/5th-perfumery.png', width: 'w-[8rem]' },
-  { name: 'Bayara Nigeria', src: '/assets/client-logos-original/bayara.png', width: 'w-[7.5rem]' },
-  { name: 'Celeb Beauty Clinic', src: '/assets/client-logos-original/celeb.png', width: 'w-[8.5rem]' },
-  { name: 'Spazio', src: '/assets/client-logos-original/spazio.png', width: 'w-[7.5rem]' },
-  { name: 'Island Supermarket', src: '/assets/client-logos-original/island.png', width: 'w-[9.5rem]' },
-  { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/sanctuary.png', width: 'w-[18rem]' },
-  { name: "Kiehl's", src: '/assets/client-logos-original/kiehls.png', width: 'w-[15.5rem]' },
+  { name: '5th Perfumery', src: '/assets/client-logos-original/logo-1.png' },
+  { name: 'Maple Education Canada', src: '/assets/client-logos-original/logo-2.png' },
+  { name: 'Maple Education Canada Inc.', src: '/assets/client-logos-original/logo-3.png' },
+  { name: 'Spazio', src: '/assets/client-logos-original/logo-4.png' },
+  { name: 'Bayara Nigeria', src: '/assets/client-logos-original/logo-5.png' },
+  { name: 'Celeb Beauty Clinic', src: '/assets/client-logos-original/logo-6.png' },
+  { name: "Kiehl's", src: '/assets/client-logos-original/logo-7.png' },
+  { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos-original/logo-8.png' },
+  { name: 'Bruh', src: '/assets/client-logos-original/logo-9.png' },
+  { name: 'Mobility Options', src: '/assets/client-logos-original/logo-10.png' },
 ]
 
 const services = [
@@ -253,13 +254,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="relative mt-8 overflow-hidden">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#efeee8] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#efeee8] to-transparent" />
-            <div className="marquee-track flex w-max items-center gap-12 [--marquee-duration:44s]">
+            <div className="marquee-track flex w-max items-center gap-12 [--marquee-duration:42s]">
               {[...clientLogos, ...clientLogos].map((logo, index) => (
-                <div key={`${logo.name}-${index}`} className={`${logo.width} flex h-20 shrink-0 items-center justify-center overflow-visible`}>
+                <div key={`${logo.name}-${index}`} className="flex h-16 w-[11.25rem] shrink-0 items-center justify-center overflow-visible">
                   <img
                     src={logo.src}
                     alt={logo.name}
-                    className="block h-auto max-h-16 w-full object-contain grayscale opacity-55 contrast-125 transition hover:grayscale-0 hover:opacity-90"
+                    className="block h-auto max-h-[3.75rem] w-full object-contain grayscale opacity-55 contrast-125 transition hover:grayscale-0 hover:opacity-90"
                     loading="lazy"
                     decoding="async"
                   />
