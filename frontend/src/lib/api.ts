@@ -1146,6 +1146,7 @@ export const api = {
     })
   },
   updateSettings(settings: Record<string, string>) {
+    publicSettingsPromise = null
     return request<{ settings: Record<string, string> }>('/api/admin/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),

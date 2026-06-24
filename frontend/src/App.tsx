@@ -1,8 +1,10 @@
-import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react'
+import { Component, lazy, Suspense, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
+import { SVGFollower } from '@/components/ui/svg-follower'
+import { api } from '@/lib/api'
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
 const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
@@ -52,6 +54,36 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error
   }
 }
 
+const cursorEffectColors = ['#ff4d6d', '#ffd60a', '#38bdf8', '#34d399', '#ffffff']
+
+function PublicCursorEffect() {
+  const location = useLocation()
+  const [enabled, setEnabled] = useState(false)
+  const isPrivateSurface = location.pathname.startsWith('/admin')
+    || location.pathname.startsWith('/invoice/')
+    || location.pathname.startsWith('/receipt/')
+
+  useEffect(() => {
+    let cancelled = false
+
+    api.publicSettings()
+      .then((result) => {
+        if (!cancelled) setEnabled(result.settings.cursorEffectEnabled === 'true')
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (!enabled || isPrivateSurface) return null
+
+  return <SVGFollower colors={cursorEffectColors} />
+}
+
 function App() {
   const location = useLocation()
 
@@ -59,6 +91,7 @@ function App() {
     <>
       <SmartsuppLiveChat />
       {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
+      <PublicCursorEffect />
       <AppErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
           <Routes>

@@ -614,6 +614,7 @@ const settingLabels: Record<string, string> = {
   googleReviewUrl: 'Google review link',
   google_business_client_id: 'Google Business Client ID',
   google_business_client_secret: 'Google Business Client Secret',
+  cursorEffectEnabled: 'Cursor trail effect',
   homePortfolioShowDescriptions: 'Show public project summaries',
   homepageVideoUrl: 'Homepage video URL',
   instagramUrl: 'Instagram link',
@@ -7919,7 +7920,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'cursorEffectEnabled']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
@@ -8052,6 +8053,20 @@ export function AdminDashboard() {
                   </span>
                 </div>
                 <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library.</span>
+              </>
+            ) : key === 'cursorEffectEnabled' || key === 'homePortfolioShowDescriptions' ? (
+              <>
+                <div className="inline-flex min-h-11 w-fit items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={(settingsForm[key] ?? 'false') === 'true'}
+                    onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: String(event.target.checked) }))}
+                  />
+                  Enabled
+                </div>
+                {key === 'cursorEffectEnabled' ? (
+                  <span className="text-xs font-medium text-gray-500">Shows a colorful cursor trail on public website pages. Admin, invoice, and receipt pages stay clean.</span>
+                ) : null}
               </>
             ) : (
               <input
