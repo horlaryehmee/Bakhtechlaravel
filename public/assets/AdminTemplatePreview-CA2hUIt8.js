@@ -1,0 +1,1 @@
+import{t as e}from"./AgencyHomeTemplate-BOHo5lV6.js";import{C as t,E as n,b as r,h as i}from"./index-BLCgjmm2.js";var a=i();function o(){let{template:i=``}=n();return r()?i===`agency-v2`?(0,a.jsx)(e,{preview:!0}):(0,a.jsx)(t,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(t,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};

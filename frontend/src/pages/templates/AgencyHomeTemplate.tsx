@@ -156,7 +156,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
           <div className="absolute left-1/2 top-0 h-[38rem] w-[54rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(190,132,57,0.34),rgba(82,52,25,0.22)_38%,transparent_74%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px),radial-gradient(circle_at_31%_10%,rgba(255,255,255,0.44)_0_1px,transparent_1.5px),radial-gradient(circle_at_39%_8%,rgba(255,255,255,0.56)_0_1px,transparent_1.5px),radial-gradient(circle_at_47%_11%,rgba(255,255,255,0.48)_0_1px,transparent_1.5px),radial-gradient(circle_at_58%_9%,rgba(255,255,255,0.52)_0_1px,transparent_1.5px),radial-gradient(circle_at_69%_15%,rgba(255,255,255,0.45)_0_1px,transparent_1.5px),radial-gradient(circle_at_83%_11%,rgba(255,255,255,0.5)_0_1px,transparent_1.5px),radial-gradient(circle_at_34%_22%,rgba(255,255,255,0.42)_0_1px,transparent_1.5px),radial-gradient(circle_at_52%_24%,rgba(255,255,255,0.38)_0_1px,transparent_1.5px),radial-gradient(circle_at_76%_24%,rgba(255,255,255,0.4)_0_1px,transparent_1.5px)]" />
+          <div className="absolute inset-x-0 top-0 h-[18rem] bg-[radial-gradient(circle_at_3%_24%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_7%_14%,rgba(255,255,255,0.92)_0_1px,transparent_1.5px),radial-gradient(circle_at_13%_8%,rgba(255,255,255,0.42)_0_1px,transparent_1.5px),radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.38)_0_1px,transparent_1.5px),radial-gradient(circle_at_31%_5%,rgba(255,255,255,0.56)_0_1px,transparent_1.5px),radial-gradient(circle_at_43%_27%,rgba(255,255,255,0.76)_0_1px,transparent_1.5px),radial-gradient(circle_at_56%_14%,rgba(255,255,255,0.34)_0_1px,transparent_1.5px),radial-gradient(circle_at_69%_28%,rgba(255,255,255,0.82)_0_1px,transparent_1.5px),radial-gradient(circle_at_81%_15%,rgba(255,255,255,0.44)_0_1px,transparent_1.5px),radial-gradient(circle_at_91%_7%,rgba(255,255,255,0.96)_0_1px,transparent_1.5px),radial-gradient(circle_at_98%_2%,rgba(255,255,255,0.74)_0_1px,transparent_1.5px)] opacity-95" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
           <HeroOrbitArc />
@@ -166,8 +166,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
 
         <nav className="relative z-10 mx-auto flex max-w-[86rem] items-center justify-between py-7">
-          <Link to="/" className="grid h-9 w-9 place-items-center rounded-md bg-white/[0.06] text-xl font-black text-white ring-1 ring-white/8" aria-label="Bakhtech home">
-            B
+          <Link to="/" className="grid h-10 w-10 place-items-center rounded-md bg-white/[0.06] p-1.5 ring-1 ring-white/8" aria-label="Bakhtech home">
+            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-full w-full object-contain" />
           </Link>
           <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
             <a href="#work" className="hover:text-white">Work</a>
