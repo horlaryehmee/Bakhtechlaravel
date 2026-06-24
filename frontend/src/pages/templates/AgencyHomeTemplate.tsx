@@ -9,7 +9,6 @@ import {
   MessageCircle,
   Rocket,
   ShieldCheck,
-  Sparkles,
   Star,
   Zap,
 } from 'lucide-react'
@@ -82,8 +81,8 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
 
 function ChatPill({ label = 'Chat with us' }: { label?: string }) {
   return (
-    <Link to="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl transition hover:bg-white/12">
-      <span className="grid h-8 w-8 place-items-center rounded-full bg-[#ef4444]">
+    <Link to="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl transition hover:bg-white/10">
+      <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
         <MessageCircle className="h-4 w-4" />
       </span>
       {label}
@@ -94,72 +93,50 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   return (
     <TemplateShell preview={preview}>
-      <section className={cn('relative min-h-screen px-4 pb-20', preview ? 'pt-24' : 'pt-6')}>
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-1/2 top-0 h-[36rem] w-[58rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(18,97,255,0.24),transparent_62%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
+      <section className={cn('relative min-h-[100svh] overflow-hidden rounded-b-[1.35rem] bg-[#020302] px-5 pb-0 text-white md:px-8', preview ? 'pt-12' : 'pt-0')}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
+          <div className="absolute left-1/2 top-0 h-[31rem] w-[44rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(180,126,50,0.24),rgba(42,28,15,0.14)_34%,transparent_72%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px)]" />
+          <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
+          <div className="absolute inset-x-0 bottom-[-14rem] mx-auto h-[31rem] max-w-[88rem] rounded-[50%_50%_0_0] border-t border-[#b77734]/48 bg-[radial-gradient(ellipse_at_top,rgba(223,148,70,0.33),rgba(108,64,25,0.09)_28%,rgba(0,0,0,0)_60%)] shadow-[0_-18px_80px_rgba(240,157,72,0.38)]" />
+          <div className="absolute inset-x-0 bottom-[-18rem] mx-auto h-[37rem] max-w-[94rem] rounded-[50%_50%_0_0] border-t border-[#b77734]/28" />
+          <div className="absolute bottom-[-5.8rem] left-1/2 -translate-x-1/2 select-none text-[clamp(8rem,22vw,20rem)] font-black leading-none tracking-normal text-white/[0.055]">
+            Bakhtech
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
         </div>
 
-        <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-2xl">
-          <Link to="/" className="flex items-center gap-3">
-            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-9 w-auto" />
+        <nav className="relative z-10 mx-auto flex max-w-[86rem] items-center justify-between py-7">
+          <Link to="/" className="grid h-9 w-9 place-items-center rounded-md bg-white/[0.06] text-xl font-black text-white ring-1 ring-white/8" aria-label="Bakhtech home">
+            B
           </Link>
-          <div className="hidden items-center gap-6 text-sm font-bold text-white/70 md:flex">
+          <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
             <a href="#work" className="hover:text-white">Work</a>
-            <a href="#services" className="hover:text-white">Services</a>
+            <a href="#services" className="hover:text-white">Products</a>
             <a href="#pricing" className="hover:text-white">Pricing</a>
-            <a href="#faq" className="hover:text-white">FAQ</a>
+            <a href="#faq" className="hover:text-white">Blog</a>
           </div>
-          <ChatPill label="Start a project" />
+          <ChatPill label="Chat with us" />
         </nav>
 
-        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center pt-20 text-center md:pt-28">
-          <a href="#services" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-sm font-black text-white/82">
-            <Sparkles className="h-4 w-4 text-[#facc15]" />
-            Productized web design and development
-          </a>
-          <h1 className="mt-8 max-w-5xl text-5xl font-black leading-[0.94] tracking-normal text-white md:text-7xl lg:text-8xl">
-            Make your website a sales machine.
-          </h1>
-          <p className="mt-7 max-w-2xl text-lg font-semibold leading-8 text-white/68 md:text-xl">
-            Bakhtech designs and builds websites, booking flows, stores, dashboards, and portals that help customers understand, trust, and choose your business.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/booking" className="inline-flex min-h-13 items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-black text-[#06070b] transition hover:bg-[#f4f4f5]">
-              Book a discovery call
-              <ArrowRight className="h-4 w-4" />
+        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[14rem] md:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.9fr)] md:items-start md:pb-40 md:pt-[13.5rem]">
+          <div>
+            <Link to="/pricing" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-xs font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+              <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
+              New digital products every month
             </Link>
-            <Link to="/portfolio" className="inline-flex min-h-13 items-center gap-2 rounded-full border border-white/12 bg-white/7 px-6 py-3 text-sm font-black text-white transition hover:bg-white/12">
-              View work
-            </Link>
+            <h1 className="mt-10 max-w-[54rem] text-[clamp(4rem,7.25vw,7.4rem)] font-black leading-[0.96] tracking-normal text-white">
+              The best design and development agency for growing brands.
+            </h1>
           </div>
-          <div className="mt-16 w-full rounded-[2rem] border border-white/10 bg-white/[0.06] p-3 shadow-[0_40px_140px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-            <div className="grid min-h-[22rem] gap-3 rounded-[1.45rem] border border-white/8 bg-[#0b0d13] p-4 md:grid-cols-[1.2fr_0.8fr]">
-              <div className="relative overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#111827,#0f172a_42%,#1d4ed8)] p-6 text-left">
-                <p className="text-sm font-black uppercase tracking-[0.18em] text-white/50">Live project pipeline</p>
-                <h2 className="mt-4 max-w-lg text-3xl font-black tracking-normal md:text-5xl">Strategy, design, build, launch.</h2>
-                <div className="mt-10 grid gap-3">
-                  {['Website strategy approved', 'Homepage wireframe reviewed', 'Booking workflow integrated'].map((item) => (
-                    <div key={item} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
-                      <span className="font-bold text-white/82">{item}</span>
-                      <Check className="h-5 w-5 text-emerald-300" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-3">
-                {[
-                  ['Launch-ready', 'Modern stack, clean UI, conversion-focused copy.'],
-                  ['SEO-aware', 'Metadata, page structure, and performance handled early.'],
-                  ['Built to scale', 'Admin tools and workflows that can grow with the business.'],
-                ].map(([title, text], index) => (
-                  <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.07] p-5 text-left">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-[#06070b] text-sm font-black">0{index + 1}</span>
-                    <h3 className="mt-5 text-xl font-black">{title}</h3>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-white/58">{text}</p>
-                  </div>
-                ))}
-              </div>
+
+          <div className="pt-16 md:pt-20">
+            <p className="max-w-[24rem] text-xl font-bold leading-8 text-white/88">
+              We design and build websites that drive results and help your business grow. No calls. No confusion. Just results.
+            </p>
+            <div className="mt-9">
+              <ChatPill label="Chat with us" />
             </div>
           </div>
         </div>
