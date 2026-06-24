@@ -6,6 +6,7 @@ import {
   Code2,
   Globe2,
   Layers3,
+  Menu,
   MessageCircle,
   Rocket,
   ShieldCheck,
@@ -151,9 +152,11 @@ function HeroOrbitArc() {
 }
 
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <TemplateShell preview={preview}>
-      <section className="relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 pt-0 text-white md:m-3 md:px-8">
+      <section className="relative mx-auto my-2 min-h-[min(41rem,calc(100svh-1rem))] w-[calc(100%-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 pt-0 text-white md:my-3 md:min-h-[min(56rem,calc(100svh-1.5rem))] md:w-[calc(100%-1.5rem)] md:max-w-none md:px-8">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:70px_70px] opacity-60" />
           <div className="absolute inset-x-0 top-0 h-[24rem] bg-[linear-gradient(rgba(255,255,255,0.075)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.075)_1px,transparent_1px)] bg-[size:70px_70px] opacity-70" />
@@ -167,9 +170,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
         </div>
 
-        <nav className="relative z-10 mx-auto flex max-w-[86rem] items-center justify-between py-7">
-          <Link to="/" className="flex items-center" aria-label="Bakhtech home">
-            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-10 w-auto object-contain" width="160" height="40" decoding="async" />
+        <nav className="relative z-20 mx-auto flex max-w-[86rem] items-center justify-between py-6 md:py-7">
+          <Link to="/" className="flex items-center" aria-label="Bakhtech home" onClick={() => setMobileMenuOpen(false)}>
+            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-8 w-auto object-contain md:h-10" width="160" height="40" decoding="async" />
           </Link>
           <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
             {navigation.map((item) => (
@@ -181,24 +184,53 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <Link to="/booking" className="hidden min-h-10 items-center justify-center rounded-xl bg-white px-4 text-sm font-black text-[#06070b] transition hover:bg-white/88 md:inline-flex">
             Book now
           </Link>
+          <button
+            type="button"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            className="grid h-10 w-10 place-items-center rounded-xl text-white transition hover:bg-white/10 md:hidden"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+          {mobileMenuOpen ? (
+            <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-white/10 bg-black/82 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:hidden">
+              {navigation.map((item) => (
+                <Link
+                  key={`${item.label}-${item.href}`}
+                  to={item.href}
+                  className="flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-white/86 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <Link
+                to="/booking"
+                className="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-white px-3 text-sm font-black text-[#06070b]"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Book now
+              </Link>
+            </div>
+          ) : null}
         </nav>
 
-        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[12rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start md:pb-36 md:pt-[12.5rem]">
+        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-6 pb-20 pt-14 md:gap-12 md:pb-36 md:pt-[12.5rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start">
           <div>
-            <Link to="/pricing" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-xs font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+            <Link to="/pricing" className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-[0.7rem] font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl sm:text-xs">
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
-              New digital products every month
+              <span className="truncate">New digital products every month</span>
             </Link>
-            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-semibold leading-[0.98] tracking-normal text-white">
+            <h1 className="mt-8 max-w-[46rem] text-[clamp(2.45rem,9vw,3.45rem)] font-semibold leading-[0.98] tracking-normal text-white md:mt-10 md:text-[clamp(3.2rem,3.9vw,4.9rem)]">
               The best design and development agency in the world.
             </h1>
           </div>
 
-          <div className="pt-16 md:pt-20">
-            <p className="max-w-[24rem] text-xl font-semibold leading-8 text-white">
+          <div className="pt-0 md:pt-20">
+            <p className="max-w-[24rem] text-base font-semibold leading-7 text-white md:text-xl md:leading-8">
               We design and build websites that drive results and help your business grow. No Calls. No BS. Just Results.
             </p>
-            <div className="mt-9">
+            <div className="mt-6 md:mt-9">
               <ChatPill label="Chat with us" />
             </div>
           </div>
