@@ -68,7 +68,7 @@ const pricingCards: Array<{ title: string; text: string; price: string; features
 
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#06070b] text-white">
+    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111]">
       {preview ? (
         <div className="fixed inset-x-0 top-0 z-[180] border-b border-amber-300/20 bg-amber-300 px-4 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
           Admin preview only
@@ -93,7 +93,7 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   return (
     <TemplateShell preview={preview}>
-      <section className={cn('relative min-h-[100svh] overflow-hidden rounded-b-[1.35rem] bg-[#020302] px-5 pb-0 text-white md:px-8', preview ? 'pt-12' : 'pt-0')}>
+      <section className={cn('relative m-2 min-h-[min(56rem,calc(100svh-1rem))] overflow-hidden rounded-[1.45rem] bg-[#020302] px-5 pb-0 text-white md:m-3 md:px-8', preview ? 'pt-12' : 'pt-0')}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
           <div className="absolute left-1/2 top-0 h-[31rem] w-[44rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(180,126,50,0.24),rgba(42,28,15,0.14)_34%,transparent_72%)]" />
@@ -120,13 +120,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <ChatPill label="Chat with us" />
         </nav>
 
-        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[14rem] md:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.9fr)] md:items-start md:pb-40 md:pt-[13.5rem]">
+        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-12 pb-28 pt-[12rem] md:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.9fr)] md:items-start md:pb-36 md:pt-[12.5rem]">
           <div>
             <Link to="/pricing" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-xs font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
               New digital products every month
             </Link>
-            <h1 className="mt-10 max-w-[54rem] text-[clamp(4rem,7.25vw,7.4rem)] font-black leading-[0.96] tracking-normal text-white">
+            <h1 className="mt-10 max-w-[48rem] text-[clamp(3.35rem,5vw,5.8rem)] font-black leading-[0.96] tracking-normal text-white">
               The best design and development agency for growing brands.
             </h1>
           </div>
@@ -142,12 +142,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section className="border-y border-white/10 bg-white/[0.03] px-4 py-10">
+      <section className="border-y border-black/5 bg-[#efeee8] px-4 py-10">
         <div className="mx-auto max-w-6xl">
-          <p className="text-center text-sm font-black uppercase tracking-[0.18em] text-white/42">Trusted by growing teams and practical business owners</p>
+          <p className="text-center text-sm font-black uppercase tracking-[0.18em] text-black/38">Trusted by growing teams and practical business owners</p>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
             {companyLogos.map((logo) => (
-              <div key={logo} className="grid min-h-16 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-sm font-black text-white/50">
+              <div key={logo} className="grid min-h-16 place-items-center rounded-2xl border border-black/5 bg-white text-sm font-black text-black/38 shadow-sm">
                 {logo}
               </div>
             ))}
@@ -162,18 +162,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#60a5fa]">What we build</p>
               <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Replace scattered vendors with one digital build team.</h2>
             </div>
-            <p className="text-lg font-semibold leading-8 text-white/60">From first impression to payment, booking, onboarding, and operations, the goal is a business system that looks polished and works cleanly.</p>
+            <p className="text-lg font-semibold leading-8 text-black/58">From first impression to payment, booking, onboarding, and operations, the goal is a business system that looks polished and works cleanly.</p>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {services.map((service) => {
               const Icon = service.icon
               return (
-                <article key={service.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#06070b]">
+                <article key={service.title} className="rounded-[1.5rem] border border-black/5 bg-white p-6 shadow-sm">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#111111] text-white">
                     <Icon className="h-5 w-5" />
                   </div>
                   <h3 className="mt-8 text-2xl font-black">{service.title}</h3>
-                  <p className="mt-3 text-sm font-semibold leading-7 text-white/58">{service.text}</p>
+                  <p className="mt-3 text-sm font-semibold leading-7 text-black/58">{service.text}</p>
                 </article>
               )
             })}
@@ -188,19 +188,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#34d399]">Projects</p>
               <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Built around outcomes.</h2>
             </div>
-            <Link to="/portfolio" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 px-5 text-sm font-black text-white hover:bg-white/10">
+            <Link to="/portfolio" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-black/10 px-5 text-sm font-black text-black hover:bg-white">
               See portfolio <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {projectCards.map(([title, text, tags]) => (
-              <article key={title} className="group rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5 transition hover:-translate-y-1 hover:bg-white/[0.085]">
+              <article key={title} className="group rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                 <div className="grid aspect-[1.45] place-items-center rounded-2xl bg-[radial-gradient(circle_at_30%_20%,rgba(239,68,68,0.3),transparent_34%),linear-gradient(135deg,#111827,#0f172a)]">
                   <Globe2 className="h-12 w-12 text-white/42" />
                 </div>
                 <h3 className="mt-5 text-xl font-black">{title}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/58">{text}</p>
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-white/38">{tags}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-black/58">{text}</p>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-black/36">{tags}</p>
               </article>
             ))}
           </div>
@@ -209,10 +209,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
       <section className="px-4 pb-24">
         <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-          <article className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-8">
+          <article className="rounded-[2rem] border border-black/5 bg-white p-8 shadow-sm">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-[#facc15]">Scaling successful companies</p>
             <h2 className="mt-4 text-5xl font-black tracking-normal">50+</h2>
-            <p className="mt-4 text-lg font-semibold leading-8 text-white/62">Projects, workflows, and digital experiences delivered across websites, ecommerce, bookings, portals, and custom software.</p>
+            <p className="mt-4 text-lg font-semibold leading-8 text-black/58">Projects, workflows, and digital experiences delivered across websites, ecommerce, bookings, portals, and custom software.</p>
             <div className="mt-8 flex -space-x-3">
               {[1, 2, 3, 4].map((item) => (
                 <span key={item} className="grid h-12 w-12 place-items-center rounded-full border-2 border-[#06070b] bg-white text-sm font-black text-[#06070b]">B{item}</span>
@@ -221,11 +221,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </article>
           <div className="grid gap-4 md:grid-cols-3">
             {testimonials.map(([quote, name, role]) => (
-              <article key={name} className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6">
+              <article key={name} className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
                 <div className="flex gap-1 text-[#facc15]">{[1, 2, 3, 4, 5].map((star) => <Star key={star} className="h-4 w-4 fill-current" />)}</div>
-                <p className="mt-5 text-sm font-semibold leading-7 text-white/68">"{quote}"</p>
+                <p className="mt-5 text-sm font-semibold leading-7 text-black/62">"{quote}"</p>
                 <p className="mt-6 font-black">{name}</p>
-                <p className="text-sm font-semibold text-white/42">{role}</p>
+                <p className="text-sm font-semibold text-black/42">{role}</p>
               </article>
             ))}
           </div>
@@ -233,7 +233,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <section className="px-4 pb-24">
-        <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 md:p-8">
+        <div className="mx-auto max-w-6xl rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm md:p-8">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.18em] text-[#60a5fa]">Bakhtech vs traditional providers</p>
@@ -243,10 +243,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
           <div className="grid gap-3">
             {comparisonRows.map(([label, bakhtech, traditional]) => (
-              <div key={label} className="grid gap-3 rounded-2xl border border-white/10 bg-[#0b0d13] p-4 md:grid-cols-[0.6fr_1fr_1fr]">
-                <p className="font-black text-white/55">{label}</p>
-                <p className="font-semibold text-white">{bakhtech}</p>
-                <p className="font-semibold text-white/42">{traditional}</p>
+              <div key={label} className="grid gap-3 rounded-2xl border border-black/5 bg-[#f6f5f0] p-4 md:grid-cols-[0.6fr_1fr_1fr]">
+                <p className="font-black text-black/50">{label}</p>
+                <p className="font-semibold text-black">{bakhtech}</p>
+                <p className="font-semibold text-black/42">{traditional}</p>
               </div>
             ))}
           </div>
@@ -258,19 +258,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="mb-10 text-center">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-[#34d399]">Pricing paths</p>
             <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Choose the right starting point.</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg font-semibold leading-8 text-white/58">Every project is scoped around outcomes, not generic pages. Start lean or build a full operating system for your business.</p>
+            <p className="mx-auto mt-4 max-w-2xl text-lg font-semibold leading-8 text-black/58">Every project is scoped around outcomes, not generic pages. Start lean or build a full operating system for your business.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
             {pricingCards.map(({ title, text, price, features }) => {
               return (
-                <article key={title} className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-6">
+                <article key={title} className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
                   <h3 className="text-2xl font-black">{title}</h3>
-                  <p className="mt-3 min-h-14 text-sm font-semibold leading-7 text-white/58">{text}</p>
+                  <p className="mt-3 min-h-14 text-sm font-semibold leading-7 text-black/58">{text}</p>
                   <p className="mt-7 text-3xl font-black">{price}</p>
-                  <Link to="/booking" className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-white text-sm font-black text-[#06070b] hover:bg-[#f4f4f5]">Start here</Link>
+                  <Link to="/booking" className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#111111] text-sm font-black text-white hover:bg-black">Start here</Link>
                   <div className="mt-6 grid gap-3">
                     {features.map((feature) => (
-                      <p key={feature} className="flex items-center gap-3 text-sm font-semibold text-white/68"><Check className="h-4 w-4 text-emerald-300" />{feature}</p>
+                      <p key={feature} className="flex items-center gap-3 text-sm font-semibold text-black/62"><Check className="h-4 w-4 text-emerald-600" />{feature}</p>
                     ))}
                   </div>
                 </article>
@@ -294,16 +294,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               ['Do you build the backend too?', 'Yes. Laravel, React, payments, bookings, dashboards, portals, and admin tools are all within scope.'],
               ['Can I manage content myself?', 'Yes. CMS and admin controls can be included so you can update pages without touching code.'],
             ].map(([question, answer]) => (
-              <article key={question} className="rounded-2xl border border-white/10 bg-white/[0.06] p-5">
+              <article key={question} className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-black">{question}</h3>
-                <p className="mt-2 text-sm font-semibold leading-7 text-white/58">{answer}</p>
+                <p className="mt-2 text-sm font-semibold leading-7 text-black/58">{answer}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-white/10 px-4 py-10">
+      <footer className="border-t border-black/5 bg-[#080807] px-4 py-10 text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-9 w-auto" />
