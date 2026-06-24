@@ -3056,18 +3056,18 @@ a {
   0%,
   18% {
     opacity: 0;
-    transform: translateX(-18px);
+    transform: translateX(-10px);
   }
 
   38%,
   72% {
     opacity: 1;
-    transform: translateX(42px);
+    transform: translateX(34px);
   }
 
   100% {
     opacity: 0;
-    transform: translateX(84px);
+    transform: translateX(70px);
   }
 }
 
@@ -3075,18 +3075,18 @@ a {
   0%,
   28% {
     opacity: 0;
-    transform: translateX(-22px);
+    transform: translateX(-12px);
   }
 
   48%,
   78% {
     opacity: 1;
-    transform: translateX(36px);
+    transform: translateX(30px);
   }
 
   100% {
     opacity: 0;
-    transform: translateX(78px);
+    transform: translateX(66px);
   }
 }
 
@@ -3094,18 +3094,18 @@ a {
   0%,
   10% {
     opacity: 0;
-    transform: translateX(-14px);
+    transform: translateX(-8px);
   }
 
   34%,
   64% {
     opacity: 1;
-    transform: translateX(52px);
+    transform: translateX(38px);
   }
 
   100% {
     opacity: 0;
-    transform: translateX(96px);
+    transform: translateX(76px);
   }
 }
 

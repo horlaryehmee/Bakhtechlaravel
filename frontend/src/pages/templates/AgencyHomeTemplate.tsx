@@ -269,7 +269,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <section id="services" className="px-4 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[78rem]">
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
@@ -383,7 +383,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               ))}
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">
+            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4">
               <h3 className="relative z-10 text-lg font-semibold text-black">Get found on Google</h3>
               <div className="absolute -right-3 -top-16 h-36 w-36 rounded-2xl border border-black/6" />
               <div className="absolute right-20 -top-6 h-28 w-28 rounded-2xl border border-black/6" />
@@ -421,26 +421,28 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0">
-              <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
-              <svg className="absolute inset-0 h-full w-full text-[#e8e8e4]" viewBox="0 0 320 292" fill="none" aria-hidden="true" preserveAspectRatio="none">
-                <path d="M0 105H45L72 130H172" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M0 145H176" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M0 186H44L71 164H176" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M202 0V48L230 75V132" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M232 0V42L260 70V132" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M262 0V38L292 68V132" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M230 254V292" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M256 254V292" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M282 254V292" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M0 254H18V292" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M0 286C10 286 18 278 18 268" stroke="currentColor" strokeWidth="1.4" />
+            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4 md:min-h-0">
+              <h3 className="relative z-10 max-w-[16rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
+              <svg className="absolute inset-0 h-full w-full text-[#e9e9e5]" viewBox="0 0 420 292" fill="none" aria-hidden="true" preserveAspectRatio="none">
+                <path d="M0 104H60L86 126H240" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M0 144H246" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M0 188H58L86 164H240" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M0 222H80L108 204H240" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M258 0V42L292 72V138" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M290 0V38L326 70V138" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M322 0V34L360 68V138" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M290 252V292" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M320 252V292" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M350 252V292" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M380 252V292" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M0 256H22V292" stroke="currentColor" strokeWidth="1.35" />
+                <path d="M0 286C12 286 22 276 22 264" stroke="currentColor" strokeWidth="1.35" />
               </svg>
               <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
-              <span className="absolute left-[16%] top-[49%] h-[2px] w-16 animate-[circuit-signal-a_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
-              <span className="absolute left-[25%] top-[57%] h-[2px] w-20 animate-[circuit-signal-b_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
-              <span className="absolute left-[18%] top-[70%] h-[2px] w-14 animate-[circuit-signal-c_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
-              <span className="absolute right-7 top-[45%] h-28 w-28 rounded-[1.45rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_46px_rgba(255,142,79,0.28)]" />
+              <span className="absolute left-[13%] top-[49%] h-[2px] w-20 animate-[circuit-signal-a_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
+              <span className="absolute left-[23%] top-[58%] h-[2px] w-24 animate-[circuit-signal-b_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
+              <span className="absolute left-[15%] top-[71%] h-[2px] w-20 animate-[circuit-signal-c_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
+              <span className="absolute right-7 top-[44%] h-28 w-28 rounded-[1.45rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_44px_rgba(255,142,79,0.26)]" />
             </article>
           </div>
         </div>
