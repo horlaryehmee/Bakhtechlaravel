@@ -3,18 +3,23 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
-  Globe2,
   Menu,
   MessageCircle,
   Mic,
+  Play,
   ShieldCheck,
   Star,
   X,
   Zap,
 } from 'lucide-react'
 import { navigation } from '@/data/site'
+import { Boxes } from '@/components/ui/background-boxes'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
 import { CpuArchitecture } from '@/components/ui/cpu-architecture'
+import { SafeImage } from '@/components/ui/safe-image'
+import { api, type Project } from '@/lib/api'
+import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -38,15 +43,6 @@ const updateNotifications = [
   { label: 'HOTFIX: update design', icon: 'github' },
   { label: 'Homepage approved', icon: 'slack' },
   { label: 'New milestone shipped', icon: 'github' },
-]
-
-const projectCards = [
-  ['AI service landing page', 'A conversion-focused page that makes a technical offer easy to understand.', 'Strategy, UI, React'],
-  ['Booking platform build', 'A calendar-led workflow with payment options and client notifications.', 'Laravel, Payments'],
-  ['Business website refresh', 'A clearer homepage structure for a service company with stronger calls to action.', 'Copy, Design'],
-  ['Client portal dashboard', 'A secure workspace for managing requests, files, status, and messages.', 'Portal, Admin'],
-  ['Ecommerce storefront', 'A polished product journey with faster browsing and payment-ready checkout.', 'Shop, Checkout'],
-  ['SEO content system', 'CMS pages with metadata, structured content, and admin publishing controls.', 'CMS, SEO'],
 ]
 
 const testimonials = [
@@ -102,6 +98,112 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
   )
 }
 
+function cleanProjectUrl(url?: string) {
+  const value = url?.trim()
+  if (!value || value === '#') return undefined
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`
+}
+
+function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (media: ProjectVideoMedia) => void }) {
+  const videoUrl = getProjectVideoUrl(project)
+  const displayImage = getProjectPrimaryImage(project)
+  const videoCoverImage = getProjectVideoCoverImage(project)
+  const fallbackSrc = projectImageFallbackSrc(project)
+
+  if (getYoutubeEmbedUrl(videoUrl)) {
+    return (
+      <>
+        <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  if (isVideoUrl(videoUrl)) {
+    return (
+      <>
+        {videoCoverImage ? (
+          <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        ) : (
+          <video className="h-full w-full object-cover" muted preload="metadata" playsInline>
+            <source src={videoUrl} />
+          </video>
+        )}
+        <button type="button" onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </span>
+        </button>
+      </>
+    )
+  }
+
+  return <SafeImage src={displayImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+}
+
+function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project: Project; showDescription: boolean; onPlayMedia: (media: ProjectVideoMedia) => void }) {
+  const projectUrl = cleanProjectUrl(project.websiteUrl)
+  const videoMedia = getProjectVideoMedia(project)
+
+  return (
+    <article className="portfolio-glass-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
+      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#ef4444" colorTo="#fca5a5" delay={project.id % 4} />
+      <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
+        <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
+      </div>
+
+      <div className="mt-6 flex flex-1 flex-col">
+        <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#d6dde5]">{project.category}</span>
+        <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">{project.title}</h3>
+        {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-white/72">{project.summary}</p> : null}
+
+        <div className={showDescription && project.summary ? 'mt-5 flex flex-wrap items-center gap-2' : 'mt-4 flex flex-wrap items-center gap-2'}>
+          {projectUrl ? (
+            <a href={projectUrl} target="_blank" rel="noreferrer" className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
+              View live project
+              <ArrowRight className="h-3 w-3" />
+            </a>
+          ) : null}
+          {videoMedia ? (
+            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
+              Play presentation
+              <Play className="h-3 w-3 fill-current" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClose: () => void }) {
+  const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
+
+  return (
+    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
+      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+          <h3 className="truncate text-sm font-bold text-white">{media.title}</h3>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="aspect-video bg-black">
+          {youtubeEmbedUrl ? (
+            <iframe className="h-full w-full" src={youtubeEmbedUrl} title={media.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+          ) : (
+            <video className="h-full w-full" src={media.url} controls autoPlay playsInline />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function HeroOrbitArc() {
   return (
     <div className="absolute -bottom-[25rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center md:-bottom-[20.15rem]">
@@ -154,6 +256,9 @@ function HeroOrbitArc() {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
+  const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
+  const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
+  const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
 
   useEffect(() => {
@@ -162,6 +267,25 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
     }, 2600)
 
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.allSettled([api.publicProjects(), api.publicSettings()])
+      .then(([projectResult, settingsResult]) => {
+        if (cancelled) return
+
+        setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
+        if (settingsResult.status === 'fulfilled') {
+          setShowPortfolioDescriptions(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (
@@ -421,29 +545,34 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="work" className="px-4 pb-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#34d399]">Projects</p>
-              <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Built around outcomes.</h2>
-            </div>
-            <Link to="/portfolio" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-black/10 px-5 text-sm font-black text-black hover:bg-white">
-              See portfolio <ArrowRight className="h-4 w-4" />
-            </Link>
+      <section id="work" className="home-portfolio-section relative overflow-hidden bg-[#151a20] py-20 md:py-28">
+        <Boxes className="portfolio-bg-effect opacity-95" />
+        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
+        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
+        <div className="relative z-30 mx-auto max-w-6xl px-4">
+          <div className="mx-auto mb-12 max-w-3xl text-center">
+            <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Portfolio</p>
+            <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">Projects built for real businesses.</h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projectCards.map(([title, text, tags]) => (
-              <article key={title} className="group rounded-[1.5rem] border border-black/5 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                <div className="grid aspect-[1.45] place-items-center rounded-2xl bg-[radial-gradient(circle_at_30%_20%,rgba(239,68,68,0.3),transparent_34%),linear-gradient(135deg,#111827,#0f172a)]">
-                  <Globe2 className="h-12 w-12 text-white/42" />
-                </div>
-                <h3 className="mt-5 text-xl font-black">{title}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-black/58">{text}</p>
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-black/36">{tags}</p>
-              </article>
-            ))}
-          </div>
+
+          {portfolioProjects.length ? (
+            <>
+              <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {portfolioProjects.map((project) => (
+                  <AgencyProjectCard key={project.id} project={project} showDescription={showPortfolioDescriptions} onPlayMedia={setActiveVideo} />
+                ))}
+              </div>
+
+              <div className="mt-10 flex justify-center">
+                <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/10 px-5 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/16">
+                  Show all projects
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="portfolio-glass-card mx-auto max-w-xl rounded-3xl p-8 text-center text-white/70">Published backend projects will appear here.</div>
+          )}
         </div>
       </section>
 
@@ -554,6 +683,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </Link>
         </div>
       </footer>
+      {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
     </TemplateShell>
   )
 }
