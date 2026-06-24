@@ -70,7 +70,7 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
   const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] [font-family:'Plus_Jakarta_Sans',ui-sans-serif,system-ui,sans-serif] antialiased">
+    <main className="agency-template min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] antialiased">
       {showPreviewBanner ? (
         <div className="fixed inset-x-0 top-0 z-[180] flex min-h-8 items-center justify-center border-b border-amber-300/20 bg-amber-300 px-12 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
           <span>Admin preview only</span>
@@ -158,18 +158,6 @@ function HeroOrbitArc() {
         <ellipse cx="620" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
         <ellipse cx="1330" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
         <path
-          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
-          stroke="url(#bakhtech-orbit-stroke)"
-          strokeWidth="7"
-          filter="url(#bakhtech-orbit-glow)"
-          opacity="0.9"
-        />
-        <path
-          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
-          stroke="url(#bakhtech-orbit-stroke)"
-          strokeWidth="3.2"
-        />
-        <path
           d="M560 424C676 312 819 255 975.5 255C1132 255 1275 312 1391 424"
           stroke="url(#bakhtech-orbit-hot-arc)"
           strokeWidth="7"
@@ -182,12 +170,6 @@ function HeroOrbitArc() {
           stroke="url(#bakhtech-orbit-hot-arc)"
           strokeWidth="3"
           strokeLinecap="round"
-        />
-        <path
-          d="M975.5 253.5C1403.57 253.5 1750.5 568.065 1750.5 956C1750.5 1343.94 1403.57 1658.5 975.5 1658.5C547.433 1658.5 200.5 1343.94 200.5 956C200.5 568.065 547.433 253.5 975.5 253.5Z"
-          stroke="url(#bakhtech-orbit-soft-stroke)"
-          strokeWidth="1.15"
-          opacity="0.34"
         />
       </svg>
     </div>
@@ -229,7 +211,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
               New digital products every month
             </Link>
-            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-extrabold leading-[0.98] tracking-normal text-white [font-family:'Plus_Jakarta_Sans',ui-sans-serif,system-ui,sans-serif]">
+            <h1 className="mt-10 max-w-[46rem] text-[clamp(3.2rem,3.9vw,4.9rem)] font-semibold leading-[0.98] tracking-normal text-white">
               The best design and development agency in the world.
             </h1>
           </div>
