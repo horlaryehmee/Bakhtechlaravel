@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { navigation } from '@/data/site'
 import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
+import { CpuArchitecture } from '@/components/ui/cpu-architecture'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -409,26 +410,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
             <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0">
               <h3 className="relative z-10 max-w-[16rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
-              <svg className="absolute inset-0 h-full w-full text-[#e9e9e5]" viewBox="0 0 420 292" fill="none" aria-hidden="true" preserveAspectRatio="none">
-                <path d="M0 104H60L86 126H240" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M0 144H246" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M0 188H58L86 164H240" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M0 222H80L108 204H240" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M258 0V42L292 72V138" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M290 0V38L326 70V138" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M322 0V34L360 68V138" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M290 252V292" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M320 252V292" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M350 252V292" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M380 252V292" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M0 256H22V292" stroke="currentColor" strokeWidth="1.35" />
-                <path d="M0 286C12 286 22 276 22 264" stroke="currentColor" strokeWidth="1.35" />
-              </svg>
+              <CpuArchitecture
+                className="absolute inset-x-[-2.5rem] bottom-[-1.9rem] h-[15.5rem] w-[calc(100%+5rem)] text-[#e5e5df] md:inset-x-[-2.25rem] md:bottom-[-2.2rem] md:h-[15.2rem]"
+                showText={false}
+                lineMarkerSize={10}
+              />
               <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
-              <span className="absolute left-[13%] top-[49%] h-[2px] w-20 animate-[circuit-signal-a_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
-              <span className="absolute left-[23%] top-[58%] h-[2px] w-24 animate-[circuit-signal-b_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
-              <span className="absolute left-[15%] top-[71%] h-[2px] w-20 animate-[circuit-signal-c_3.4s_ease-in-out_infinite] rounded-full bg-[#ef9d6a] shadow-[0_0_16px_rgba(240,160,110,0.4)]" />
-              <span className="absolute right-7 top-[44%] h-28 w-28 rounded-[1.45rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_44px_rgba(255,142,79,0.26)]" />
+              <span className="absolute right-8 top-[43%] h-28 w-28 rounded-[1.55rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_44px_rgba(255,142,79,0.26)]" />
             </article>
           </div>
         </div>
