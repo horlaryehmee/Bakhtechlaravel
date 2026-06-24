@@ -102,7 +102,7 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
 
 function HeroOrbitArc() {
   return (
-    <div className="absolute -bottom-[18.75rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center">
+    <div className="absolute -bottom-[20.15rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center">
       <svg
         className="h-[68rem] w-[74rem] max-w-none md:h-[112.875rem] md:w-[121.9375rem]"
         width="1951"
@@ -114,40 +114,22 @@ function HeroOrbitArc() {
       >
         <defs>
           <linearGradient id="bakhtech-orbit-stroke" x1="259" y1="845" x2="1687" y2="846" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#7a461f" stopOpacity="0" />
-            <stop offset="0.25" stopColor="#9c5c29" stopOpacity="0.18" />
-            <stop offset="0.37" stopColor="#d38140" stopOpacity="0.72" />
-            <stop offset="0.49" stopColor="#f3a35f" />
-            <stop offset="0.61" stopColor="#d07b3b" stopOpacity="0.76" />
-            <stop offset="0.74" stopColor="#aa642f" stopOpacity="0.2" />
-            <stop offset="1" stopColor="#7a461f" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="bakhtech-orbit-soft-stroke" x1="200" y1="955" x2="1751" y2="955" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#8d5527" stopOpacity="0" />
-            <stop offset="0.22" stopColor="#9e5f2f" stopOpacity="0.14" />
-            <stop offset="0.5" stopColor="#f59b50" stopOpacity="0.34" />
-            <stop offset="0.78" stopColor="#9e5f2f" stopOpacity="0.14" />
-            <stop offset="1" stopColor="#8d5527" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="bakhtech-orbit-hot-arc" x1="520" y1="312" x2="1430" y2="312" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#f2a15d" stopOpacity="0" />
-            <stop offset="0.18" stopColor="#e98d47" stopOpacity="0.52" />
-            <stop offset="0.5" stopColor="#ffb068" />
-            <stop offset="0.82" stopColor="#e98d47" stopOpacity="0.52" />
-            <stop offset="1" stopColor="#f2a15d" stopOpacity="0" />
+            <stop stopColor="#6f3f1c" stopOpacity="0" />
+            <stop offset="0.21" stopColor="#8f5428" stopOpacity="0.12" />
+            <stop offset="0.35" stopColor="#d78343" stopOpacity="0.52" />
+            <stop offset="0.48" stopColor="#ffad67" />
+            <stop offset="0.58" stopColor="#f6a05d" stopOpacity="0.86" />
+            <stop offset="0.72" stopColor="#a66331" stopOpacity="0.18" />
+            <stop offset="1" stopColor="#6f3f1c" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="bakhtech-orbit-fill" cx="0" cy="0" r="1" gradientTransform="matrix(0 -384 761 0 975 265)" gradientUnits="userSpaceOnUse">
             <stop stopColor="#ffb265" stopOpacity="0.34" />
             <stop offset="0.36" stopColor="#a7632f" stopOpacity="0.12" />
             <stop offset="1" stopColor="#030302" stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="bakhtech-orbit-side-glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 92 -178 0 0 0)" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#f5a15c" stopOpacity="0.46" />
-            <stop offset="0.5" stopColor="#b56a31" stopOpacity="0.16" />
-            <stop offset="1" stopColor="#080604" stopOpacity="0" />
-          </radialGradient>
           <filter id="bakhtech-orbit-glow" x="94" y="147" width="1763" height="1618" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse">
-            <feGaussianBlur stdDeviation="44" />
+            <feDropShadow dx="0" dy="-9" stdDeviation="24" floodColor="#e58a42" floodOpacity="0.58" />
+            <feDropShadow dx="0" dy="-2" stdDeviation="8" floodColor="#ffbd75" floodOpacity="0.5" />
           </filter>
         </defs>
         <path
@@ -155,21 +137,12 @@ function HeroOrbitArc() {
           fill="url(#bakhtech-orbit-fill)"
           opacity="0.84"
         />
-        <ellipse cx="620" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
-        <ellipse cx="1330" cy="520" rx="230" ry="96" fill="url(#bakhtech-orbit-side-glow)" opacity="0.78" />
         <path
-          d="M560 424C676 312 819 255 975.5 255C1132 255 1275 312 1391 424"
-          stroke="url(#bakhtech-orbit-hot-arc)"
-          strokeWidth="7"
+          d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
+          stroke="url(#bakhtech-orbit-stroke)"
+          strokeWidth="4"
           strokeLinecap="round"
           filter="url(#bakhtech-orbit-glow)"
-          opacity="0.92"
-        />
-        <path
-          d="M560 424C676 312 819 255 975.5 255C1132 255 1275 312 1391 424"
-          stroke="url(#bakhtech-orbit-hot-arc)"
-          strokeWidth="3"
-          strokeLinecap="round"
         />
       </svg>
     </div>
