@@ -149,26 +149,26 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   const videoMedia = getProjectVideoMedia(project)
 
   return (
-    <article className="portfolio-glass-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-white">
-      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#ef4444" colorTo="#fca5a5" delay={project.id % 4} />
-      <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
+    <article className="relative flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 text-[#202328] shadow-[0_18px_55px_rgba(15,23,42,0.07)] backdrop-blur-sm">
+      <BorderBeam size={220} duration={8} borderWidth={1.25} colorFrom="#d6d2c8" colorTo="#f6f3ec" delay={project.id % 4} />
+      <div className="relative h-44 overflow-hidden rounded-xl border border-black/5 bg-white/30 sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
       </div>
 
       <div className="mt-6 flex flex-1 flex-col">
-        <span className="portfolio-glass-pill mb-4 w-fit rounded-full px-3.5 py-1 text-xs font-medium text-[#d6dde5]">{project.category}</span>
-        <h3 className="text-lg font-semibold leading-tight text-white sm:text-xl">{project.title}</h3>
-        {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-white/72">{project.summary}</p> : null}
+        <span className="mb-4 w-fit rounded-full border border-black/5 bg-white/50 px-3.5 py-1 text-xs font-semibold text-black/46">{project.category}</span>
+        <h3 className="text-lg font-semibold leading-tight text-[#202328] sm:text-xl">{project.title}</h3>
+        {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-black/58">{project.summary}</p> : null}
 
         <div className={showDescription && project.summary ? 'mt-5 flex flex-wrap items-center gap-2' : 'mt-4 flex flex-wrap items-center gap-2'}>
           {projectUrl ? (
-            <a href={projectUrl} target="_blank" rel="noreferrer" className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
+            <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-black/8 bg-white/60 px-3 text-[0.7rem] font-semibold text-black/62 transition hover:bg-white hover:text-black sm:text-xs">
               View live project
               <ArrowRight className="h-3 w-3" />
             </a>
           ) : null}
           {videoMedia ? (
-            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
+            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-black/8 bg-white/60 px-3 text-[0.7rem] font-semibold text-black/62 transition hover:bg-white hover:text-black sm:text-xs">
               Play presentation
               <Play className="h-3 w-3 fill-current" />
             </button>
@@ -544,11 +544,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="work" className="px-4 pb-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="mx-auto mb-12 max-w-3xl text-center">
-            <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Portfolio</p>
-            <h2 className="text-balance text-3xl font-black tracking-tight text-[#202328] md:text-5xl">Projects built for real businesses.</h2>
+      <section id="work" className="relative overflow-hidden px-4 pb-24 pt-14 md:pt-20">
+        <div className="pointer-events-none absolute left-1/2 top-0 w-full max-w-6xl -translate-x-1/2 select-none text-center text-[clamp(5rem,17vw,13.5rem)] font-black leading-none tracking-normal text-black/[0.045]">
+          Projects
+        </div>
+        <div className="relative mx-auto max-w-6xl">
+          <div className="mb-8 pt-12 md:mb-10 md:pt-20">
+            <h2 className="sr-only">Projects</h2>
           </div>
 
           {portfolioProjects.length ? (
