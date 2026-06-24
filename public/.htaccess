@@ -5,7 +5,7 @@
 
     RewriteEngine On
 
-    RewriteRule ^(api|admin|invoice|receipt)(/.*)?$ - [E=Cache-Control:no-cache]
+    RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ - [E=Cache-Control:no-cache]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ - [E=Cache-Control:no-cache]
 
     RewriteCond %{HTTP:Authorization} .
@@ -18,7 +18,7 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    RewriteRule ^api(/.*)?$ index.php [L]
+    RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ index.php [L]
     RewriteRule ^up$ index.php [L]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ index.php [L]
 

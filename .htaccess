@@ -1,13 +1,13 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    RewriteRule ^(api|admin|invoice|receipt)(/.*)?$ - [E=Cache-Control:no-cache]
+    RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ - [E=Cache-Control:no-cache]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ - [E=Cache-Control:no-cache]
 
     RewriteRule ^$ public/index.html [L]
     RewriteRule ^index\.html$ public/index.html [L]
 
-    RewriteRule ^api(/.*)?$ public/index.php [L]
+    RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ public/index.php [L]
     RewriteRule ^up$ public/index.php [L]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt)$ public/$1 [L]
     RewriteRule ^markdown/([^/]+\.md)$ public/markdown/$1 [L]
