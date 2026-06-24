@@ -269,7 +269,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <section id="services" className="px-4 py-16 md:py-24">
-        <div className="mx-auto max-w-[78rem]">
+        <div className="mx-auto max-w-6xl">
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
@@ -383,7 +383,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               ))}
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4">
+            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-5">
               <h3 className="relative z-10 text-lg font-semibold text-black">Get found on Google</h3>
               <div className="absolute -right-3 -top-16 h-36 w-36 rounded-2xl border border-black/6" />
               <div className="absolute right-20 -top-6 h-28 w-28 rounded-2xl border border-black/6" />
@@ -421,7 +421,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4 md:min-h-0">
+            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0">
               <h3 className="relative z-10 max-w-[16rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
               <svg className="absolute inset-0 h-full w-full text-[#e9e9e5]" viewBox="0 0 420 292" fill="none" aria-hidden="true" preserveAspectRatio="none">
                 <path d="M0 104H60L86 126H240" stroke="currentColor" strokeWidth="1.35" />
