@@ -104,9 +104,9 @@ function ChatPill({ label = 'Chat with us' }: { label?: string }) {
 
 function HeroOrbitArc() {
   return (
-    <div className="absolute -bottom-[20.15rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center">
+    <div className="absolute -bottom-[25rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center md:-bottom-[20.15rem]">
       <svg
-        className="h-[68rem] w-[74rem] max-w-none md:h-[112.875rem] md:w-[121.9375rem]"
+        className="h-[62rem] w-[68rem] max-w-none md:h-[112.875rem] md:w-[121.9375rem]"
         width="1951"
         height="1806"
         viewBox="0 0 1951 1806"
@@ -165,7 +165,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.18)_28%,rgba(2,3,2,0.12)_64%,#020302_100%)]" />
           <HeroOrbitArc />
-          <div className="absolute bottom-[-5.8rem] left-1/2 -translate-x-1/2 select-none text-[clamp(8rem,22vw,20rem)] font-black leading-none tracking-normal text-white/[0.055]">
+          <div className="absolute bottom-[-1.9rem] left-1/2 -translate-x-1/2 select-none text-[clamp(5.8rem,27vw,8rem)] font-black leading-none tracking-normal text-white/[0.055] md:bottom-[-5.8rem] md:text-[clamp(8rem,22vw,20rem)]">
             Bakhtech
           </div>
         </div>
