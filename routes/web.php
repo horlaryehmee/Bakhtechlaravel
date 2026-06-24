@@ -197,10 +197,12 @@ Route::get('/invoice/{token}', function (string $token) use ($seoBaseUrl) {
         'receipt' => 'Receipt',
         default => 'Invoice',
     };
-    $amount = number_format((float) ($document->type === 'invoice' ? $document->balance_due : $document->total), 2);
-    $status = ucfirst(str_replace('_', ' ', (string) $document->status));
     $title = trim((string) $document->number) ?: "{$label} from {$business}";
-    $description = "Preview {$label} {$document->number} from {$business}. {$document->currency} {$amount}. Status: {$status}.";
+    $description = match ((string) $document->type) {
+        'quote' => 'Your quote is ready. Kindly review it and approve it to continue.',
+        'receipt' => 'Your payment receipt is ready. Kindly review it for your records.',
+        default => 'Your invoice is ready. Kindly review it and complete your payment securely.',
+    };
 
     return SpaMetadataResponse::make([
         'title' => $title,

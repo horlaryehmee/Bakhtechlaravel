@@ -44,6 +44,12 @@ function invoiceStatusLabel(status: string) {
   return status === 'partial' ? 'Partially Paid' : titleCase(status)
 }
 
+function publicDocumentDescription(type: InvoiceDocument['type']) {
+  if (type === 'quote') return 'Your quote is ready. Kindly review it and approve it to continue.'
+  if (type === 'receipt') return 'Your payment receipt is ready. Kindly review it for your records.'
+  return 'Your invoice is ready. Kindly review it and complete your payment securely.'
+}
+
 function decodeEntities(value: string) {
   if (typeof window === 'undefined') return value
   let decoded = value
@@ -157,10 +163,9 @@ export function PublicInvoice() {
     if (!document) return
     const label = document.type === 'quote' ? 'Quote' : document.type === 'receipt' ? 'Receipt' : 'Invoice'
     const business = document.branding.businessName || 'Bakhtech Solutions'
-    const amount = document.type === 'invoice' ? document.balanceDue : document.total
     updatePageMetadata({
       title: document.number || `${label} from ${business}`,
-      description: `Preview ${label} ${document.number} from ${business}. ${money(amount, document.currency)}. Status: ${invoiceStatusLabel(document.status)}.`,
+      description: publicDocumentDescription(document.type),
     })
   }, [document])
   const [error, setError] = useState('')
