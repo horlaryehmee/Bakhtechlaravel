@@ -199,7 +199,7 @@ Route::get('/invoice/{token}', function (string $token) use ($seoBaseUrl) {
     };
     $amount = number_format((float) ($document->type === 'invoice' ? $document->balance_due : $document->total), 2);
     $status = ucfirst(str_replace('_', ' ', (string) $document->status));
-    $title = "{$label} {$document->number} from {$business}";
+    $title = trim((string) $document->number) ?: "{$label} from {$business}";
     $description = "Preview {$label} {$document->number} from {$business}. {$document->currency} {$amount}. Status: {$status}.";
 
     return SpaMetadataResponse::make([
@@ -207,7 +207,7 @@ Route::get('/invoice/{token}', function (string $token) use ($seoBaseUrl) {
         'description' => $description,
         'url' => $seoBaseUrl().'/invoice/'.rawurlencode($token),
         'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
-        'imageAlt' => $title,
+        'imageAlt' => "{$label} {$title} from {$business}",
     ], true);
 })->where('token', '[A-Za-z0-9_-]+');
 
@@ -239,7 +239,7 @@ Route::get('/book/{slug}', function (string $slug) use ($seoBaseUrl) {
         ?: "Choose a service and reserve an available time for {$name} with Bakhtech Solutions.";
 
     return SpaMetadataResponse::make([
-        'title' => "Book {$name} | Bakhtech Solutions",
+        'title' => $name,
         'description' => str($description)->limit(160, ''),
         'url' => $seoBaseUrl().'/book/'.rawurlencode($slug),
         'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,

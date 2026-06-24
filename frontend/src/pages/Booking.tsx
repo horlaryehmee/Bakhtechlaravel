@@ -177,7 +177,7 @@ export function Booking() {
     const name = selectedType?.name || calendar?.name || "Appointment";
     const description = selectedType?.description || calendar?.description || `Choose a service and reserve an available time for ${name} with Bakhtech Solutions.`;
     updatePageMetadata({
-      title: `Book ${name} | Bakhtech Solutions`,
+      title: name,
       description,
     });
   }, [calendar, selectedType]);

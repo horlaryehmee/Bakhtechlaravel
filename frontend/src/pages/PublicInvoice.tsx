@@ -159,7 +159,7 @@ export function PublicInvoice() {
     const business = document.branding.businessName || 'Bakhtech Solutions'
     const amount = document.type === 'invoice' ? document.balanceDue : document.total
     updatePageMetadata({
-      title: `${label} ${document.number} from ${business}`,
+      title: document.number || `${label} from ${business}`,
       description: `Preview ${label} ${document.number} from ${business}. ${money(amount, document.currency)}. Status: ${invoiceStatusLabel(document.status)}.`,
     })
   }, [document])
