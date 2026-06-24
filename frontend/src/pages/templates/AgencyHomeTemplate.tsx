@@ -272,16 +272,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
-            <article className="relative overflow-hidden rounded-2xl bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2">
-              <div className="relative overflow-hidden rounded-xl bg-[#f4f4f2] px-4 pb-1 pt-4">
-                <div className="rounded-t-xl bg-[#ededeb] p-3 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
+            <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
+              <div className="relative h-[21.2rem] overflow-hidden rounded-[0.9rem] bg-[#f4f4f2] px-4 pb-0 pt-4">
+                <div className="h-full rounded-t-xl bg-[#ededeb] p-3 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
                   <div className="mb-3 flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
                     <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
                     <span className="mx-auto h-2.5 w-32 rounded-full bg-white" />
                   </div>
-                  <div className="rounded-t-lg border border-black/4 bg-white p-3">
+                  <div className="h-[18.1rem] rounded-t-lg border border-black/4 bg-white p-3">
                     <div className="mb-4 flex items-center justify-between">
                       <span className="h-3 w-3 rounded-full bg-[#dededb]" />
                       <div className="flex gap-2">
@@ -302,7 +302,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                       <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
                       <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
                     </div>
-                    <div className="mx-auto mt-5 grid aspect-[1.18] w-[66%] place-items-center bg-[#f0f0ee]">
+                    <div className="mx-auto mt-5 grid aspect-[1.12] w-[70%] place-items-center bg-[#f0f0ee]">
                       <span className="relative h-7 w-7 text-black/24 before:absolute before:left-1 before:top-1 before:h-2 before:w-2 before:border-l before:border-t before:border-current after:absolute after:right-1 after:top-1 after:h-2 after:w-2 after:border-r after:border-t after:border-current">
                         <span className="absolute bottom-1 left-1 h-2 w-2 border-b border-l border-current" />
                         <span className="absolute bottom-1 right-1 h-2 w-2 border-b border-r border-current" />
@@ -310,14 +310,14 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                     </div>
                   </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,rgba(244,244,242,0),rgba(255,255,255,0.88)_52%,rgba(5,5,5,0.82))]" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(244,244,242,0),rgba(255,255,255,0.86)_40%,rgba(5,5,5,0.94))]" />
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-[radial-gradient(circle_at_66%_5%,rgba(255,255,255,0.20),transparent_27%),radial-gradient(circle,rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.32),#050505_34%)] bg-[length:auto,8px_8px,auto] p-7 pt-20">
+              <div className="absolute inset-x-0 bottom-0 top-[20.8rem] bg-[radial-gradient(circle_at_58%_0%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.74),#050505_32%)] bg-[length:auto,8px_8px,auto] p-8 pt-12">
                 <h3 className="text-lg font-black">Design and Development</h3>
                 <p className="mt-4 text-base font-semibold leading-7 text-white/58">
                   Designed to perfection, Bakhtech helps you take your dream idea to reality through expert design and development services.
                 </p>
-                <Link to="/pricing" className="mt-9 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
+                <Link to="/pricing" className="mt-10 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
                   <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
                     <Check className="h-4 w-4" />
                   </span>
