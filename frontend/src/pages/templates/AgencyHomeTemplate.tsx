@@ -20,7 +20,16 @@ type AgencyHomeTemplateProps = {
   preview?: boolean
 }
 
-const companyLogos = ['NOVA', 'KREST', 'LUMO', 'ARCA', 'VANTA', 'PRISM', 'ORBIT', 'FLUX']
+const clientLogos = [
+  { name: 'MEC', src: '/assets/client-logos/mec.png' },
+  { name: '5th Perfumery', src: '/assets/client-logos/5th-perfumery.png' },
+  { name: 'Bayara Nigeria', src: '/assets/client-logos/bayara.png' },
+  { name: 'Celeb Beauty Clinic', src: '/assets/client-logos/celeb.png' },
+  { name: 'Spazio', src: '/assets/client-logos/spazio.png' },
+  { name: 'Island Supermarket', src: '/assets/client-logos/island.png' },
+  { name: 'Sanctuary Aesthetics and Spa', src: '/assets/client-logos/sanctuary.png' },
+  { name: "Kiehl's", src: '/assets/client-logos/kiehls.png' },
+]
 
 const services = [
   {
@@ -238,14 +247,24 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <section className="border-y border-black/5 bg-[#efeee8] px-4 py-10">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-center text-sm font-black uppercase tracking-[0.18em] text-black/38">Trusted by growing teams and practical business owners</p>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            {companyLogos.map((logo) => (
-              <div key={logo} className="grid min-h-16 place-items-center rounded-2xl border border-black/5 bg-white text-sm font-black text-black/38 shadow-sm">
-                {logo}
-              </div>
-            ))}
+        <div className="mx-auto max-w-6xl overflow-hidden">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-black/40">Trusted by fast-growing brands</p>
+          <div className="relative mt-8 overflow-hidden">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#efeee8] to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#efeee8] to-transparent" />
+            <div className="marquee-track flex w-max items-center gap-14 [--marquee-duration:34s]">
+              {[...clientLogos, ...clientLogos].map((logo, index) => (
+                <div key={`${logo.name}-${index}`} className="flex h-16 min-w-[8rem] items-center justify-center">
+                  <img
+                    src={logo.src}
+                    alt={logo.name}
+                    className="max-h-11 w-auto max-w-[11rem] object-contain grayscale opacity-50 contrast-125 transition hover:grayscale-0 hover:opacity-90"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
