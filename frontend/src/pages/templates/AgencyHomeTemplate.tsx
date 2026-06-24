@@ -140,7 +140,7 @@ function HeroOrbitArc() {
         <path
           d="M975.5 255C1402.88 255 1749 569.029 1749 956C1749 1342.97 1402.88 1657 975.5 1657C548.119 1657 202 1342.97 202 956C202 569.029 548.119 255 975.5 255Z"
           stroke="url(#bakhtech-orbit-stroke)"
-          strokeWidth="4"
+          strokeWidth="2.4"
           strokeLinecap="round"
           filter="url(#bakhtech-orbit-glow)"
         />
@@ -156,7 +156,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:70px_70px] opacity-45" />
           <div className="absolute left-1/2 top-0 h-[38rem] w-[54rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(190,132,57,0.34),rgba(82,52,25,0.22)_38%,transparent_74%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_54%_13%,rgba(255,255,255,0.86)_0_1px,transparent_1.5px),radial-gradient(circle_at_44%_19%,rgba(255,255,255,0.62)_0_1px,transparent_1.5px),radial-gradient(circle_at_72%_9%,rgba(255,255,255,0.72)_0_1px,transparent_1.5px),radial-gradient(circle_at_36%_12%,rgba(255,255,255,0.50)_0_1px,transparent_1.5px),radial-gradient(circle_at_64%_21%,rgba(255,255,255,0.55)_0_1px,transparent_1.5px),radial-gradient(circle_at_79%_16%,rgba(255,255,255,0.58)_0_1px,transparent_1.5px),radial-gradient(circle_at_31%_10%,rgba(255,255,255,0.44)_0_1px,transparent_1.5px),radial-gradient(circle_at_39%_8%,rgba(255,255,255,0.56)_0_1px,transparent_1.5px),radial-gradient(circle_at_47%_11%,rgba(255,255,255,0.48)_0_1px,transparent_1.5px),radial-gradient(circle_at_58%_9%,rgba(255,255,255,0.52)_0_1px,transparent_1.5px),radial-gradient(circle_at_69%_15%,rgba(255,255,255,0.45)_0_1px,transparent_1.5px),radial-gradient(circle_at_83%_11%,rgba(255,255,255,0.5)_0_1px,transparent_1.5px),radial-gradient(circle_at_34%_22%,rgba(255,255,255,0.42)_0_1px,transparent_1.5px),radial-gradient(circle_at_52%_24%,rgba(255,255,255,0.38)_0_1px,transparent_1.5px),radial-gradient(circle_at_76%_24%,rgba(255,255,255,0.4)_0_1px,transparent_1.5px)]" />
           <div className="absolute left-[62%] top-[16.5%] h-[4.35rem] w-[4.35rem] bg-[#9d7422]/16" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,#020302_0%,rgba(2,3,2,0.28)_28%,rgba(2,3,2,0.18)_64%,#020302_100%)]" />
           <HeroOrbitArc />
