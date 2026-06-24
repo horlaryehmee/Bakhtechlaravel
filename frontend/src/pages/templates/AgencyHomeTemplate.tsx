@@ -421,13 +421,26 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3">
+            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0">
               <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
-              <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(0,0,0,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.05)_1px,transparent_1px)] [background-size:42px_42px]" />
-              <div className="absolute right-6 top-24 h-28 w-28 rounded-3xl bg-[linear-gradient(135deg,#ffbd7b,#ff8f55)] shadow-[0_24px_70px_rgba(255,142,79,0.35)]" />
-              <div className="absolute bottom-24 left-16 h-0.5 w-20 bg-[#f2a66b]" />
-              <div className="absolute bottom-20 left-20 h-0.5 w-24 bg-[#f2a66b]" />
-              <div className="absolute bottom-16 left-14 h-0.5 w-16 bg-[#f2a66b]" />
+              <svg className="absolute inset-0 h-full w-full text-[#e8e8e4]" viewBox="0 0 320 292" fill="none" aria-hidden="true" preserveAspectRatio="none">
+                <path d="M0 105H45L72 130H172" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M0 145H176" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M0 186H44L71 164H176" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M202 0V48L230 75V132" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M232 0V42L260 70V132" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M262 0V38L292 68V132" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M230 254V292" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M256 254V292" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M282 254V292" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M0 254H18V292" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M0 286C10 286 18 278 18 268" stroke="currentColor" strokeWidth="1.4" />
+              </svg>
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
+              <span className="absolute left-[16%] top-[49%] h-[2px] w-16 animate-[circuit-signal-a_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
+              <span className="absolute left-[25%] top-[57%] h-[2px] w-20 animate-[circuit-signal-b_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
+              <span className="absolute left-[18%] top-[70%] h-[2px] w-14 animate-[circuit-signal-c_3.4s_ease-in-out_infinite] rounded-full bg-[#f0a06e] shadow-[0_0_18px_rgba(240,160,110,0.42)]" />
+              <span className="absolute right-7 top-[45%] h-28 w-28 rounded-[1.45rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_46px_rgba(255,142,79,0.28)]" />
             </article>
           </div>
         </div>

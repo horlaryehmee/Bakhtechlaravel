@@ -3052,6 +3052,63 @@ a {
   }
 }
 
+@keyframes circuit-signal-a {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+
+  38%,
+  72% {
+    opacity: 1;
+    transform: translateX(42px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(84px);
+  }
+}
+
+@keyframes circuit-signal-b {
+  0%,
+  28% {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+
+  48%,
+  78% {
+    opacity: 1;
+    transform: translateX(36px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(78px);
+  }
+}
+
+@keyframes circuit-signal-c {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+
+  34%,
+  64% {
+    opacity: 1;
+    transform: translateX(52px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(96px);
+  }
+}
+
 .about-stats-marquee {
   position: relative;
   left: 50%;
