@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { usePublicCmsPage } from '@/hooks/usePublicCmsPage'
+import { AgencyHomeTemplate } from '@/pages/templates/AgencyHomeTemplate'
 
 export function CmsPage() {
   const { pageSlug } = useParams()
@@ -20,6 +21,10 @@ export function CmsPage() {
         </div>
       </main>
     )
+  }
+
+  if (page.template === 'agency-v2') {
+    return <AgencyHomeTemplate />
   }
 
   return (

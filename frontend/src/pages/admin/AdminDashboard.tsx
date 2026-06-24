@@ -5084,6 +5084,7 @@ export function AdminDashboard() {
                     >
                       <option value="default">Default</option>
                       <option value="home">Home</option>
+                      <option value="agency-v2">Agency Homepage V2</option>
                       <option value="landing">Landing</option>
                       <option value="portfolio">Portfolio</option>
                       <option value="contact">Contact</option>
@@ -6234,6 +6235,17 @@ export function AdminDashboard() {
                       {reviewProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
                     </select>
                   </label>
+                  <div className="grid gap-2 text-sm font-bold text-gray-700">
+                    Template Preview
+                    <a
+                      className="inline-flex min-h-11 w-fit items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700 transition hover:bg-gray-100"
+                      href="/admin/home-template-preview/agency-v2"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Preview Agency Homepage V2
+                    </a>
+                  </div>
                   <label className="grid gap-2 text-sm font-bold text-gray-700">
                     Rating
                     <select

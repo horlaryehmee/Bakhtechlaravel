@@ -10,11 +10,12 @@ const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((m
 const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
 const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin').then((module) => ({ default: module.AdminLogin })))
 const AdminResetPassword = lazy(() => import('@/pages/admin/AdminResetPassword').then((module) => ({ default: module.AdminResetPassword })))
+const AdminTemplatePreview = lazy(() => import('@/pages/admin/AdminTemplatePreview').then((module) => ({ default: module.AdminTemplatePreview })))
 const About = lazy(() => import('@/pages/About').then((module) => ({ default: module.About })))
 const Booking = lazy(() => import('@/pages/Booking').then((module) => ({ default: module.Booking })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const CmsPage = lazy(() => import('@/pages/CmsPage').then((module) => ({ default: module.CmsPage })))
-const Home2 = lazy(() => import('@/pages/Home2').then((module) => ({ default: module.Home2 })))
+const HomeRouter = lazy(() => import('@/pages/HomeRouter').then((module) => ({ default: module.HomeRouter })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
@@ -99,6 +100,7 @@ function App() {
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="admin/reset-password" element={<AdminResetPassword />} />
+          <Route path="admin/home-template-preview/:template" element={<AdminTemplatePreview />} />
           <Route path="admin/dashboard" element={<AdminDashboard />} />
           <Route path="admin/pricing-preview" element={<Pricing />} />
           <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />
@@ -107,7 +109,7 @@ function App() {
           <Route path="pricing" element={<Pricing />} />
           <Route path="pricing/:categorySlug" element={<Pricing />} />
           <Route element={<SiteLayout />}>
-            <Route index element={<Home2 />} />
+            <Route index element={<HomeRouter />} />
             <Route path="about" element={<About />} />
             <Route path="portfolio" element={<Portfolio />} />
             <Route path="booking" element={<Booking />} />
