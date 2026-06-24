@@ -13,7 +13,6 @@ import {
   Zap,
 } from 'lucide-react'
 import { navigation } from '@/data/site'
-import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
 import { CpuArchitecture } from '@/components/ui/cpu-architecture'
@@ -545,33 +544,30 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="work" className="home-portfolio-section relative overflow-hidden bg-[#151a20] py-20 md:py-28">
-        <Boxes className="portfolio-bg-effect opacity-95" />
-        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 h-full w-full bg-[#151a20]/42 [mask-image:radial-gradient(transparent_12%,white_88%)]" />
-        <div className="portfolio-bg-effect pointer-events-none absolute inset-0 z-20 bg-[radial-gradient(circle_at_50%_18%,rgba(96,111,126,0.12),transparent_46%),linear-gradient(180deg,rgba(21,26,32,0.02),rgba(21,26,32,0.34)_90%)]" />
-        <div className="relative z-30 mx-auto max-w-6xl px-4">
+      <section id="work" className="px-4 pb-24">
+        <div className="mx-auto max-w-6xl">
           <div className="mx-auto mb-12 max-w-3xl text-center">
             <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Portfolio</p>
-            <h2 className="text-balance text-3xl font-black tracking-tight text-white md:text-5xl">Projects built for real businesses.</h2>
+            <h2 className="text-balance text-3xl font-black tracking-tight text-[#202328] md:text-5xl">Projects built for real businesses.</h2>
           </div>
 
           {portfolioProjects.length ? (
             <>
-              <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {portfolioProjects.map((project) => (
                   <AgencyProjectCard key={project.id} project={project} showDescription={showPortfolioDescriptions} onPlayMedia={setActiveVideo} />
                 ))}
               </div>
 
               <div className="mt-10 flex justify-center">
-                <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/10 px-5 text-sm font-black text-white backdrop-blur-md transition hover:bg-white/16">
+                <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 text-sm font-black text-black shadow-sm transition hover:bg-black hover:text-white">
                   Show all projects
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </>
           ) : (
-            <div className="portfolio-glass-card mx-auto max-w-xl rounded-3xl p-8 text-center text-white/70">Published backend projects will appear here.</div>
+            <div className="mx-auto max-w-xl rounded-3xl border border-black/5 bg-white p-8 text-center font-semibold text-black/60 shadow-sm">Published backend projects will appear here.</div>
           )}
         </div>
       </section>
