@@ -416,7 +416,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 lineMarkerSize={10}
               />
               <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
-              <span className="absolute right-8 top-[43%] h-28 w-28 rounded-[1.55rem] bg-[linear-gradient(135deg,#ffbd82,#ff9058)] shadow-[0_18px_44px_rgba(255,142,79,0.26)]" />
             </article>
           </div>
         </div>
