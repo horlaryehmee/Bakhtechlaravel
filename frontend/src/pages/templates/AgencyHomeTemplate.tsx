@@ -8,6 +8,7 @@ import {
   Cpu,
   Gem,
   GitBranch,
+  Globe2,
   Handshake,
   Menu,
   MessageCircle,
@@ -15,18 +16,19 @@ import {
   PhoneCall,
   Play,
   Send,
-  Star,
   X,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
 import {
   siCloudflare,
+  siFacebook,
   siFigma,
   siFirebase,
   siGithub,
   siGoogle,
   siGoogleanalytics,
+  siInstagram,
   siLaravel,
   siLinear,
   siMysql,
@@ -39,6 +41,7 @@ import {
   siStripe,
   siSupabase,
   siTailwindcss,
+  siTrustpilot,
   siTypescript,
   siVite,
 } from 'simple-icons'
@@ -73,15 +76,6 @@ const updateNotifications = [
   { label: 'Homepage approved', icon: 'slack' },
   { label: 'New milestone shipped', icon: 'github' },
 ]
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || 'R'
-}
 
 type ComparisonRow = {
   label: string
@@ -141,6 +135,9 @@ const technologyMarqueeItems = [
 
 const simpleIconMap = {
   google: siGoogle,
+  facebook: siFacebook,
+  instagram: siInstagram,
+  trustpilot: siTrustpilot,
   raycast: siRaycast,
   stripe: siStripe,
   shopify: siShopify,
@@ -382,33 +379,32 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   )
 }
 
-function AgencyReviewCard({ review }: { review: Review }) {
+function ReviewPlatformIcon({ review }: { review: Review }) {
+  if (review.provider === 'manual' || review.provider === 'website') {
+    return <Globe2 className="h-7 w-7" />
+  }
+
+  return <BrandIcon icon={review.provider} className="h-7 w-7" />
+}
+
+function TestimonialCard({ review }: { review: Review }) {
+  const role = review.providerLabel || 'Verified review'
+
   return (
-    <article className="flex h-[13.75rem] w-[min(36rem,calc(100vw-3rem))] shrink-0 flex-col justify-between rounded-[1.35rem] border border-black/5 bg-white/72 p-6 text-[#151515] shadow-[0_16px_45px_rgba(15,23,42,0.10)] backdrop-blur-sm md:h-[14.5rem] md:w-[32rem] md:p-7">
-      <div className="flex items-start justify-between gap-5">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-black/34">{review.providerLabel || 'Bakhtech'}</p>
-          <div className="mt-3 flex gap-1 text-[#f6b500]" aria-label={`${review.rating} star review`}>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} className={`h-3.5 w-3.5 ${index < review.rating ? 'fill-current' : 'opacity-20'}`} />
-            ))}
-          </div>
-        </div>
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/10 text-lg font-black leading-none text-black/54">"</span>
+    <article className="relative flex h-[18rem] w-[min(36rem,calc(100vw-2rem))] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:44px_44px] opacity-55" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_8%,rgba(255,255,255,0.24),transparent_22%),linear-gradient(90deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72))]" />
+
+      <div className="relative text-white">
+        <ReviewPlatformIcon review={review} />
       </div>
 
-      <p className="mt-5 line-clamp-3 text-base font-semibold leading-7 text-black md:text-lg md:leading-7">{review.content}</p>
-
-      <div className="mt-5 flex items-center gap-3">
-        {review.authorImage ? (
-          <img src={review.authorImage} alt={review.authorName} className="h-11 w-11 rounded-full object-cover" loading="lazy" decoding="async" />
-        ) : (
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-black/8 text-sm font-black text-black/64">{initials(review.authorName)}</span>
-        )}
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-black">{review.authorName}</p>
-          <p className="truncate text-sm font-semibold text-black/42">{review.providerLabel || 'Verified customer'}</p>
-        </div>
+      <div className="relative">
+        <p className="line-clamp-4 text-base font-medium leading-7 text-white md:text-lg md:leading-8">"{review.content}"</p>
+        <p className="mt-7 text-sm font-medium text-white">
+          {review.authorName}
+          <span className="ml-2 text-white/45">{role}</span>
+        </p>
       </div>
     </article>
   )
@@ -856,37 +852,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      {reviews.length ? (
-        <section id="reviews" className="overflow-hidden px-4 pb-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
-              <h2 className="max-w-[46rem] text-4xl font-black leading-tight tracking-normal text-[#202328] md:text-5xl">
-                See Insights straight from our users
-              </h2>
-              <ChatPill label="Chat with us" />
-            </div>
-          </div>
-
-          <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#efeee8] to-transparent md:w-36" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#efeee8] to-transparent md:w-36" />
-            <div className="marquee-track flex w-max items-stretch gap-6 px-4 [--marquee-duration:54s] md:gap-8">
-              {[...reviews, ...reviews].map((review, index) => (
-                <AgencyReviewCard key={`${review.id}-${index}`} review={review} />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-8 flex justify-center">
-            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
-              {reviews.slice(0, 5).map((review, index) => (
-                <span key={review.id} className={`h-2.5 w-2.5 rounded-full ${index === 1 ? 'bg-black/65' : 'bg-black/12'}`} />
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       <section className="px-4 pb-24">
         <div className="mx-auto max-w-6xl">
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Scaling Successful Companies</h2>
@@ -1169,6 +1134,37 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
         </div>
       </section>
+
+      {reviews.length ? (
+        <section id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
+              <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
+                What people have been saying
+              </h2>
+              <ChatPill label="Chat with us" />
+            </div>
+          </div>
+
+          <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#efeee8] to-transparent md:w-28" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#efeee8] to-transparent md:w-28" />
+            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden">
+              {reviews.map((review) => (
+                <TestimonialCard key={review.id} review={review} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
+              {reviews.slice(0, 5).map((review, index) => (
+                <span key={review.id} className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-black/65' : 'bg-black/12'}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <footer className="border-t border-black/5 bg-[#080807] px-4 py-10 text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
