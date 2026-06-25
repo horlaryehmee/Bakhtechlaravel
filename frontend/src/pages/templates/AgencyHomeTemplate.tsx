@@ -1,5 +1,5 @@
 ﻿import { Link } from 'react-router-dom'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   ChevronDown,
@@ -380,6 +380,17 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
 }
 
 function ReviewPlatformIcon({ review }: { review: Review }) {
+  if (review.provider === 'google') {
+    return (
+      <svg className="h-8 w-8" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.24 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+        <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
+        <path fill="#EA4335" d="M12 5.37c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.37 12 5.37z" />
+      </svg>
+    )
+  }
+
   if (review.provider === 'manual' || review.provider === 'website') {
     return <Globe2 className="h-7 w-7" />
   }
@@ -401,10 +412,22 @@ function TestimonialCard({ review }: { review: Review }) {
 
       <div className="relative">
         <p className="line-clamp-4 text-base font-medium leading-7 text-white md:text-lg md:leading-8">"{review.content}"</p>
-        <p className="mt-7 text-sm font-medium text-white">
-          {review.authorName}
-          <span className="ml-2 text-white/45">{role}</span>
-        </p>
+        <div className="mt-7 flex items-center gap-3">
+          {review.authorImage ? (
+            <SafeImage
+              src={review.authorImage}
+              fallbackSrc="/favicon.png"
+              alt={review.authorName}
+              className="h-9 w-9 rounded-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : null}
+          <p className="min-w-0 text-sm font-medium text-white">
+            <span className="block truncate">{review.authorName}</span>
+            <span className="block truncate text-white/45">{role}</span>
+          </p>
+        </div>
       </div>
     </article>
   )
@@ -494,6 +517,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
+  const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0)
+  const [testimonialsInView, setTestimonialsInView] = useState(false)
+  const testimonialsSectionRef = useRef<HTMLElement | null>(null)
+  const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
 
@@ -533,6 +560,46 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
     return () => window.clearInterval(timer)
   }, [projectImageProjects.length])
+
+  useEffect(() => {
+    const section = testimonialsSectionRef.current
+    if (!section) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setTestimonialsInView(entry.isIntersecting),
+      { threshold: 0.35 },
+    )
+    observer.observe(section)
+
+    return () => observer.disconnect()
+  }, [reviews.length])
+
+  useEffect(() => {
+    if (!testimonialsInView || reviews.length <= 1) return
+
+    const timer = window.setInterval(() => {
+      setActiveTestimonialIndex((index) => (index + 1) % reviews.length)
+    }, 3600)
+
+    return () => window.clearInterval(timer)
+  }, [reviews.length, testimonialsInView])
+
+  useEffect(() => {
+    const track = testimonialsTrackRef.current
+    const target = track?.children.item(activeTestimonialIndex) as HTMLElement | null
+    if (!track || !target) return
+
+    track.scrollTo({
+      left: target.offsetLeft - track.clientWidth / 2 + target.clientWidth / 2,
+      behavior: 'smooth',
+    })
+  }, [activeTestimonialIndex])
+
+  useEffect(() => {
+    if (activeTestimonialIndex >= reviews.length) {
+      setActiveTestimonialIndex(0)
+    }
+  }, [activeTestimonialIndex, reviews.length])
 
   useEffect(() => {
     let cancelled = false
@@ -1136,7 +1203,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       {reviews.length ? (
-        <section id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
+        <section ref={testimonialsSectionRef} id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
               <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
@@ -1149,17 +1216,34 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#efeee8] to-transparent md:w-28" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#efeee8] to-transparent md:w-28" />
-            <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden">
-              {reviews.map((review) => (
-                <TestimonialCard key={review.id} review={review} />
+            <div
+              ref={testimonialsTrackRef}
+              className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden"
+            >
+              {reviews.map((review, index) => (
+                <button
+                  key={review.id}
+                  type="button"
+                  className="block shrink-0 text-left"
+                  aria-label={`Show testimonial ${index + 1}`}
+                  onClick={() => setActiveTestimonialIndex(index)}
+                >
+                  <TestimonialCard review={review} />
+                </button>
               ))}
             </div>
           </div>
 
           <div className="mt-8 flex justify-center">
             <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
-              {reviews.slice(0, 5).map((review, index) => (
-                <span key={review.id} className={`h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-black/65' : 'bg-black/12'}`} />
+              {reviews.map((review, index) => (
+                <button
+                  key={review.id}
+                  type="button"
+                  aria-label={`Go to testimonial ${index + 1}`}
+                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
+                  onClick={() => setActiveTestimonialIndex(index)}
+                />
               ))}
             </div>
           </div>
