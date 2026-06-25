@@ -44,12 +44,6 @@ const updateNotifications = [
   { label: 'New milestone shipped', icon: 'github' },
 ]
 
-const testimonials = [
-  ['Excellent communication and a polished delivery. The site finally explains what we do without needing a call first.', 'Amina Yusuf', 'Founder, Retail Brand'],
-  ['Bakhtech turned our booking process into a clean online flow. Clients understand the offer and our team saves time.', 'Daniel Okafor', 'Operations Lead'],
-  ['The dashboard was practical from day one. It matched how our team works and removed a lot of manual tracking.', 'Maya Johnson', 'Product Manager'],
-]
-
 function initials(name: string) {
   return name
     .split(' ')
@@ -649,26 +643,82 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       ) : null}
 
       <section className="px-4 pb-24">
-        <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-          <article className="rounded-[2rem] border border-black/5 bg-white p-8 shadow-sm">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#facc15]">Scaling successful companies</p>
-            <h2 className="mt-4 text-5xl font-black tracking-normal">50+</h2>
-            <p className="mt-4 text-lg font-semibold leading-8 text-black/58">Projects, workflows, and digital experiences delivered across websites, ecommerce, bookings, portals, and custom software.</p>
-            <div className="mt-8 flex -space-x-3">
-              {[1, 2, 3, 4].map((item) => (
-                <span key={item} className="grid h-12 w-12 place-items-center rounded-full border-2 border-[#06070b] bg-white text-sm font-black text-[#06070b]">B{item}</span>
-              ))}
-            </div>
-          </article>
-          <div className="grid gap-4 md:grid-cols-3">
-            {testimonials.map(([quote, name, role]) => (
-              <article key={name} className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
-                <div className="flex gap-1 text-[#facc15]">{[1, 2, 3, 4, 5].map((star) => <Star key={star} className="h-4 w-4 fill-current" />)}</div>
-                <p className="mt-5 text-sm font-semibold leading-7 text-black/62">"{quote}"</p>
-                <p className="mt-6 font-black">{name}</p>
-                <p className="text-sm font-semibold text-black/42">{role}</p>
-              </article>
-            ))}
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Scaling Successful Companies</h2>
+
+          <div className="mt-10 grid gap-3 lg:grid-cols-12">
+            <article className="relative min-h-[31rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-3">
+              <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(rgba(0,0,0,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.055)_1px,transparent_1px)] bg-[size:92px_92px]" />
+              <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
+              <div className="relative mx-auto grid h-[20rem] max-w-[22rem] grid-cols-4 grid-rows-4 gap-4">
+                {[
+                  ['AK', 'col-start-3 row-start-1 bg-[#d7d1c5]'],
+                  ['TO', 'col-start-2 row-start-2 bg-[#d8e0e2]'],
+                  ['MA', 'col-start-4 row-start-2 bg-[#cfcac2]'],
+                  ['IB', 'col-start-3 row-start-3 bg-[#e6ded0]'],
+                ].map(([label, className]) => (
+                  <span key={label} className={`grid place-items-center rounded-xl border border-black/8 text-lg font-black text-black/62 shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}>{label}</span>
+                ))}
+              </div>
+
+              <div className="relative mt-8">
+                <p className="text-xl font-semibold text-black">Get to know our dream team</p>
+                <div className="mt-5">
+                  <ChatPill label="Chat with Alex" />
+                </div>
+              </div>
+            </article>
+
+            <article className="relative min-h-[19rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-2">
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.045)_1px,transparent_1px)] bg-[size:84px_84px]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_28%,rgba(250,204,21,0.09),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.6),#fff_86%)]" />
+              <div className="relative">
+                <p className="text-[clamp(5rem,9vw,7.5rem)] font-light leading-none tracking-normal text-black">100+</p>
+                <p className="mt-4 text-lg font-semibold text-black/42">Companies served</p>
+              </div>
+              <p className="relative mt-20 max-w-[23rem] text-base font-semibold leading-7 text-black/42">
+                We design and build websites that drive results and help your business grow. No Calls. No BS. Just Results.
+              </p>
+            </article>
+
+            <article className="flex min-h-[8rem] items-center overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4">
+              <div className="flex w-max items-center gap-3">
+                {[
+                  ['Microsoft', 'M'],
+                  ['Google', 'G'],
+                  ['Adobe', 'A'],
+                  ['Raycast', 'R'],
+                ].map(([name, mark]) => (
+                  <span key={name} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-black/62 shadow-[0_8px_24px_rgba(15,23,42,0.10)]">
+                    <span className="font-black text-black">{mark}</span>
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </article>
+
+            <article className="relative min-h-[18rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4">
+              <div className="absolute right-0 top-0 h-full w-1/2 bg-[linear-gradient(rgba(245,183,104,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(245,183,104,0.12)_1px,transparent_1px)] bg-[size:56px_56px]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.88)_56%,rgba(255,255,255,0.38)_100%)]" />
+              <div className="relative">
+                <p className="text-xl font-black uppercase tracking-wide text-black/55">Cursor</p>
+                <p className="mt-8 max-w-[23rem] text-base font-semibold leading-7 text-black/46">
+                  "Since adding the AI assistant to our store, our support load has dropped by nearly 60%. Customers now get instant answers about supplements, dosages."
+                </p>
+                <p className="mt-8 text-base font-semibold text-black"><span className="text-black/70">-</span> James Finley <span className="ml-1 font-semibold text-black/42">Founder, Primer</span></p>
+              </div>
+            </article>
+
+            <article className="flex min-h-[8.5rem] flex-col gap-6 rounded-[1.35rem] bg-white p-8 shadow-sm md:flex-row md:items-center lg:col-span-8">
+              <p className="min-w-max text-xl font-semibold text-black">Technologies we use</p>
+              <div className="grid flex-1 grid-cols-3 gap-4 sm:grid-cols-6">
+                {['React', 'aws', 'Laravel', 'Analytics', 'AI', 'Vite'].map((tech) => (
+                  <span key={tech} className="grid h-14 place-items-center rounded-xl bg-white text-sm font-black text-black/62 shadow-[0_12px_26px_rgba(15,23,42,0.10)]">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </article>
           </div>
         </div>
       </section>
