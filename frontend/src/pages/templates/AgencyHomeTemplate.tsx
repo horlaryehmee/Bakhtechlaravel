@@ -136,6 +136,49 @@ const faqItems = [
   },
 ]
 
+const footerLinkColumns = [
+  {
+    title: 'Home',
+    links: [
+      { label: 'Overview', to: '/' },
+      { label: 'Projects', to: '/portfolio' },
+      { label: 'Pricing', to: '/pricing' },
+      { label: 'Testimonials', to: '/#reviews' },
+      { label: 'FAQs', to: '/#faq' },
+    ],
+  },
+  {
+    title: 'About',
+    links: [
+      { label: 'Our Story', to: '/about' },
+      { label: 'Services', to: '/#services' },
+      { label: 'Founder', to: '/#founder' },
+      { label: 'Portfolio', to: '/portfolio' },
+      { label: 'Contact', to: '/contact' },
+    ],
+  },
+  {
+    title: 'Contact',
+    links: [
+      { label: 'Contact Us', to: '/contact' },
+      { label: 'Book a Call', to: '/booking' },
+      { label: 'Support', to: 'mailto:contact@bakhtech.com.ng' },
+      { label: 'Live Chat', to: '/contact' },
+      { label: 'Report Issue', to: 'mailto:contact@bakhtech.com.ng' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Privacy Policy', to: '/privacy-policy' },
+      { label: 'Terms of Service', to: '/terms-of-service' },
+      { label: 'Cookie Policy', to: '/cookie-policy' },
+      { label: 'Licenses', to: '/licenses' },
+      { label: 'Security', to: '/security' },
+    ],
+  },
+]
+
 const companyMarqueeItems = [
   { name: 'Microsoft', icon: 'microsoft' },
   { name: 'Google', icon: 'google' },
@@ -1176,7 +1219,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#030303] px-4 py-20 text-white md:py-28">
+      <section id="founder" className="relative overflow-hidden bg-[#030303] px-4 py-20 text-white md:py-28">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_38%,rgba(255,255,255,0.08),transparent_34%),radial-gradient(circle_at_78%_48%,rgba(96,125,158,0.16),transparent_36%)]" />
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:48px_48px] opacity-35 md:block" />
         <div className="relative mx-auto max-w-6xl">
@@ -1340,15 +1383,74 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <footer className="border-t border-black/5 bg-[#080807] px-4 py-10 text-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-9 w-auto" />
-            <p className="mt-3 text-sm font-semibold text-white/42">Websites, stores, booking systems, dashboards, portals, and custom tools.</p>
-          </div>
-          <Link to="/booking" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-[#06070b]">
-            Get started <Zap className="h-4 w-4" />
+      <footer className="relative overflow-hidden bg-[#030303] px-4 py-16 text-white md:py-24">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_22%,rgba(255,255,255,0.12),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.05),transparent_34%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:50px_50px] opacity-[0.18]" />
+
+        <div className="relative mx-auto max-w-6xl">
+          <Link
+            to="/booking"
+            className="group relative block overflow-hidden rounded-[1.8rem] border border-white/6 bg-[#11110f] px-7 py-9 shadow-[0_34px_100px_rgba(0,0,0,0.48)] md:px-12 md:py-14"
+          >
+            <div className="relative z-10 flex items-start justify-between gap-6">
+              <h2 className="max-w-[34rem] text-4xl font-medium leading-[1.08] tracking-normal text-white md:text-6xl">
+                Make Your Website a Sales Machine
+              </h2>
+              <span className="grid h-11 w-14 shrink-0 place-items-center rounded-xl bg-white text-black transition group-hover:translate-x-1">
+                <ArrowRight className="h-5 w-5" />
+              </span>
+            </div>
+            <span className="pointer-events-none absolute -bottom-10 left-4 select-none text-[5rem] font-bold leading-none tracking-normal text-white/[0.08] sm:text-[8rem] md:-bottom-20 md:text-[12rem] lg:text-[14rem]">
+              Bakhtech
+            </span>
           </Link>
+
+          <div className="mt-16 grid gap-12 lg:grid-cols-[1.1fr_1.6fr] lg:gap-20">
+            <div>
+              <img src="/favicon.png" alt="Bakhtech Solutions" className="h-8 w-8 object-contain" decoding="async" />
+              <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
+                We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.
+              </p>
+              <Link to="/booking" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 bg-black px-2.5 pr-4 text-sm font-medium text-white">
+                <span className="grid h-7 w-7 place-items-center rounded-md bg-[#ffd21f] text-black"><CalendarIcon /></span>
+                Get started
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+              {footerLinkColumns.map((column) => (
+                <div key={column.title}>
+                  <h3 className="text-xs font-normal text-white/35">{column.title}</h3>
+                  <ul className="mt-5 grid gap-4">
+                    {column.links.map((link) => {
+                      const isExternal = link.to.startsWith('mailto:')
+                      const className = 'text-sm font-normal text-white/82 transition hover:text-white'
+                      return (
+                        <li key={link.label}>
+                          {isExternal ? (
+                            <a href={link.to} className={className}>{link.label}</a>
+                          ) : (
+                            <Link to={link.to} className={className}>{link.label}</Link>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-16 flex flex-col gap-6 border-t border-white/8 pt-8 md:flex-row md:items-center md:justify-between">
+            <p className="text-xs font-normal text-white/42">© 2026 Bakhtech Solutions - All Rights Reserved</p>
+            <div className="flex items-center gap-5 text-white/48">
+              <a href="https://x.com" aria-label="Bakhtech on X" className="text-sm font-normal transition hover:text-white">X</a>
+              <a href="https://www.linkedin.com" aria-label="Bakhtech on LinkedIn" className="text-sm font-normal transition hover:text-white">in</a>
+              <a href="https://www.instagram.com" aria-label="Bakhtech on Instagram" className="transition hover:text-white">
+                <BrandIcon icon="instagram" className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
       {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
