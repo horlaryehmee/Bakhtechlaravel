@@ -1183,12 +1183,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <h2 className="text-4xl font-black tracking-normal md:text-6xl">The Founder's Desk</h2>
 
           <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(20rem,30rem)_1fr] lg:items-center lg:gap-16">
-            <div className="min-h-[22rem] overflow-hidden rounded-lg bg-white/5">
+            <div className="mx-auto aspect-[4/5] w-full max-w-[24rem] overflow-hidden rounded-lg bg-white/5 sm:aspect-[3/4] lg:mx-0 lg:aspect-[1.05/1] lg:max-w-none lg:min-h-[22rem]">
               <SafeImage
                 src={founderDeskImage}
                 fallbackSrc="/founder-portrait.png"
                 alt="Bakare Olayemi, founder of Bakhtech Solutions"
-                className="aspect-[1.05/1] h-full min-h-[22rem] w-full object-cover object-center"
+                className="h-full w-full object-cover object-[center_18%] lg:object-center"
                 decoding="async"
                 loading="lazy"
               />
