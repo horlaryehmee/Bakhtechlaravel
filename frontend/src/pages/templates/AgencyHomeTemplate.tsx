@@ -986,11 +986,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
       <section className="px-4 pb-24">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-10 flex flex-col items-start gap-5 md:items-center md:text-center">
+          <div className="mb-10 flex flex-col items-start gap-5 text-left md:mb-12">
             <h2 className="max-w-4xl text-4xl font-black leading-tight tracking-normal text-[#202328] md:text-5xl">
               Bakhtech VS Traditional Service Providers
             </h2>
-            <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-black px-3 pr-5 text-sm font-black text-white shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
+            <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-black px-3 pr-5 text-sm font-black text-white shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:hidden">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ffd21f] text-black"><CalendarIcon /></span>
               Book a Free Call
             </Link>
