@@ -179,6 +179,14 @@ const footerLinkColumns = [
   },
 ]
 
+const defaultFooterSettings = {
+  footerCtaTitle: 'Make Your Website a Sales Machine',
+  footerWatermark: 'Bakhtech',
+  footerDescription: 'We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.',
+  footerCtaLabel: 'Get started',
+  footerCopyright: '© 2026 Bakhtech Solutions - All Rights Reserved',
+}
+
 const companyMarqueeItems = [
   { name: 'Microsoft', icon: 'microsoft' },
   { name: 'Google', icon: 'google' },
@@ -366,7 +374,7 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
 
 function ChatPill({ label = 'Chat with us' }: { label?: string }) {
   return (
-    <Link to="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl transition hover:bg-white/10">
+    <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl transition hover:bg-white/10">
       <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
         <MessageCircle className="h-4 w-4" />
       </span>
@@ -595,6 +603,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
+  const [footerSettings, setFooterSettings] = useState(defaultFooterSettings)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0)
   const [testimonialsInView, setTestimonialsInView] = useState(false)
@@ -702,6 +711,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           const publicSettings = settingsResult.value.settings
           setShowPortfolioDescriptions(publicSettings.homePortfolioShowDescriptions !== 'false')
           setFounderDeskImage(publicSettings.founder_desk_image || '/founder-portrait.png')
+          setFooterSettings({
+            footerCtaTitle: publicSettings.footerCtaTitle || defaultFooterSettings.footerCtaTitle,
+            footerWatermark: publicSettings.footerWatermark || defaultFooterSettings.footerWatermark,
+            footerDescription: publicSettings.footerDescription || defaultFooterSettings.footerDescription,
+            footerCtaLabel: publicSettings.footerCtaLabel || defaultFooterSettings.footerCtaLabel,
+            footerCopyright: publicSettings.footerCopyright || defaultFooterSettings.footerCopyright,
+          })
         }
       })
       .catch(() => undefined)
@@ -774,12 +790,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
         <div className="relative z-10 mx-auto grid max-w-[86rem] gap-6 pb-20 pt-14 md:gap-12 md:pb-36 md:pt-[12.5rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start">
           <div>
-            <Link to="/pricing" className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.075] p-1 pr-3 text-[0.7rem] font-black text-white shadow-[0_20px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl sm:text-xs">
-              <span className="rounded-full bg-black px-2.5 py-1.5 text-white">Bakhtech</span>
-              <span className="truncate">New digital products every month</span>
-            </Link>
-            <h1 className="mt-8 max-w-[46rem] text-[clamp(2.45rem,9vw,3.45rem)] font-semibold leading-[0.98] tracking-normal text-white md:mt-10 md:text-[clamp(3.2rem,3.9vw,4.9rem)]">
-              The best design and development agency in the world.
+            <h1 className="max-w-[46rem] text-[clamp(2.45rem,9vw,3.45rem)] font-semibold leading-[0.98] tracking-normal text-white md:text-[clamp(3.2rem,3.9vw,4.9rem)]">
+              Need a website that stands out?
             </h1>
           </div>
 
@@ -1397,14 +1409,14 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           >
             <div className="relative z-10 flex items-start justify-between gap-6">
               <h2 className="max-w-[34rem] text-4xl font-medium leading-[1.08] tracking-normal text-white md:text-6xl">
-                Make Your Website a Sales Machine
+                {footerSettings.footerCtaTitle}
               </h2>
               <span className="grid h-11 w-14 shrink-0 place-items-center rounded-xl bg-white text-black transition group-hover:translate-x-1">
                 <ArrowRight className="h-5 w-5" />
               </span>
             </div>
             <span className="pointer-events-none absolute -bottom-6 left-6 select-none text-[4.8rem] font-bold leading-none tracking-normal text-white/[0.07] sm:text-[7rem] md:-bottom-16 md:left-10 md:text-[11rem] lg:text-[13rem]">
-              Bakhtech
+              {footerSettings.footerWatermark}
             </span>
           </Link>
 
@@ -1412,11 +1424,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <div>
               <img src="/bakhtech-logo-dark.png" alt="Bakhtech Solutions" className="h-9 w-auto object-contain" decoding="async" />
               <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
-                We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.
+                {footerSettings.footerDescription}
               </p>
               <Link to="/booking" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 bg-black px-2.5 pr-4 text-sm font-medium text-white">
                 <span className="grid h-7 w-7 place-items-center rounded-md bg-[#ffd21f] text-black"><CalendarIcon /></span>
-                Get started
+                {footerSettings.footerCtaLabel}
               </Link>
             </div>
 
@@ -1445,7 +1457,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
 
           <div className="mt-16 flex flex-col gap-6 border-t border-white/8 pt-8 md:flex-row md:items-center md:justify-between">
-            <p className="text-xs font-normal text-white/42">© 2026 Bakhtech Solutions - All Rights Reserved</p>
+            <p className="text-xs font-normal text-white/42">{footerSettings.footerCopyright}</p>
             <div className="flex items-center gap-5 text-white/48">
               <a href="https://x.com" aria-label="Bakhtech on X" className="text-sm font-normal transition hover:text-white">X</a>
               <a href="https://www.linkedin.com" aria-label="Bakhtech on LinkedIn" className="text-sm font-normal transition hover:text-white">in</a>

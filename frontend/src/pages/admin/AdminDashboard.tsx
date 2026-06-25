@@ -617,6 +617,11 @@ const settingLabels: Record<string, string> = {
   google_business_client_secret: 'Google Business Client Secret',
   cursorEffectEnabled: 'Cursor trail effect',
   founder_desk_image: "Founder's Desk image",
+  footerCopyright: 'Footer copyright',
+  footerCtaLabel: 'Footer button label',
+  footerCtaTitle: 'Footer heading',
+  footerDescription: 'Footer description',
+  footerWatermark: 'Footer background text',
   homePortfolioShowDescriptions: 'Show public project summaries',
   homepageVideoUrl: 'Homepage video URL',
   instagramUrl: 'Instagram link',
@@ -8021,7 +8026,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'founder_desk_image', 'cursorEffectEnabled']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'founder_desk_image', 'footerCtaTitle', 'footerWatermark', 'footerDescription', 'footerCtaLabel', 'footerCopyright', 'cursorEffectEnabled']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
