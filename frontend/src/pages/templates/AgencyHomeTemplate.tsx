@@ -17,7 +17,7 @@ import { BorderBeam } from '@/components/ui/border-beam'
 import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
 import { CpuArchitecture } from '@/components/ui/cpu-architecture'
 import { SafeImage } from '@/components/ui/safe-image'
-import { api, type Project } from '@/lib/api'
+import { api, type Project, type Review } from '@/lib/api'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
@@ -49,6 +49,15 @@ const testimonials = [
   ['Bakhtech turned our booking process into a clean online flow. Clients understand the offer and our team saves time.', 'Daniel Okafor', 'Operations Lead'],
   ['The dashboard was practical from day one. It matched how our team works and removed a lot of manual tracking.', 'Maya Johnson', 'Product Manager'],
 ]
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'R'
+}
 
 const comparisonRows = [
   ['Approach', 'Design and engineering planned together', 'Disconnected vendors and handoffs'],
@@ -179,6 +188,38 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   )
 }
 
+function AgencyReviewCard({ review }: { review: Review }) {
+  return (
+    <article className="flex h-[13.75rem] w-[min(36rem,calc(100vw-3rem))] shrink-0 flex-col justify-between rounded-[1.35rem] border border-black/5 bg-white/72 p-6 text-[#151515] shadow-[0_16px_45px_rgba(15,23,42,0.10)] backdrop-blur-sm md:h-[14.5rem] md:w-[32rem] md:p-7">
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-black/34">{review.providerLabel || 'Bakhtech'}</p>
+          <div className="mt-3 flex gap-1 text-[#f6b500]" aria-label={`${review.rating} star review`}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Star key={index} className={`h-3.5 w-3.5 ${index < review.rating ? 'fill-current' : 'opacity-20'}`} />
+            ))}
+          </div>
+        </div>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/10 text-lg font-black leading-none text-black/54">"</span>
+      </div>
+
+      <p className="mt-5 line-clamp-3 text-base font-semibold leading-7 text-black md:text-lg md:leading-7">{review.content}</p>
+
+      <div className="mt-5 flex items-center gap-3">
+        {review.authorImage ? (
+          <img src={review.authorImage} alt={review.authorName} className="h-11 w-11 rounded-full object-cover" loading="lazy" decoding="async" />
+        ) : (
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-black/8 text-sm font-black text-black/64">{initials(review.authorName)}</span>
+        )}
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-black">{review.authorName}</p>
+          <p className="truncate text-sm font-semibold text-black/42">{review.providerLabel || 'Verified customer'}</p>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClose: () => void }) {
   const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
 
@@ -256,6 +297,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
@@ -271,11 +313,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   useEffect(() => {
     let cancelled = false
 
-    Promise.allSettled([api.publicProjects(), api.publicSettings()])
-      .then(([projectResult, settingsResult]) => {
+    Promise.allSettled([api.publicProjects(), api.publicSettings(), api.publicReviews()])
+      .then(([projectResult, settingsResult, reviewResult]) => {
         if (cancelled) return
 
         setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
+        setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
         if (settingsResult.status === 'fulfilled') {
           setShowPortfolioDescriptions(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
         }
@@ -573,6 +616,37 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           )}
         </div>
       </section>
+
+      {reviews.length ? (
+        <section id="reviews" className="overflow-hidden px-4 pb-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
+              <h2 className="max-w-[46rem] text-4xl font-black leading-tight tracking-normal text-[#202328] md:text-5xl">
+                See Insights straight from our users
+              </h2>
+              <ChatPill label="Chat with us" />
+            </div>
+          </div>
+
+          <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#efeee8] to-transparent md:w-36" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#efeee8] to-transparent md:w-36" />
+            <div className="marquee-track flex w-max items-stretch gap-6 px-4 [--marquee-duration:54s] md:gap-8">
+              {[...reviews, ...reviews].map((review, index) => (
+                <AgencyReviewCard key={`${review.id}-${index}`} review={review} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
+              {reviews.slice(0, 5).map((review, index) => (
+                <span key={review.id} className={`h-2.5 w-2.5 rounded-full ${index === 1 ? 'bg-black/65' : 'bg-black/12'}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="px-4 pb-24">
         <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[0.85fr_1.15fr]">
