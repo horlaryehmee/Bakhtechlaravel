@@ -26,6 +26,7 @@
     "react-international-phone": "^4.8.0",
     "react-router-dom": "^7.15.1",
     "react-use-measure": "^2.1.7",
+    "simple-icons": "^16.24.0",
     "tailwind-merge": "^3.6.0",
     "three": "^0.184.0"
   },

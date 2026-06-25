@@ -12,6 +12,28 @@ import {
   X,
   Zap,
 } from 'lucide-react'
+import {
+  siCloudflare,
+  siFigma,
+  siFirebase,
+  siGithub,
+  siGoogle,
+  siGoogleanalytics,
+  siLaravel,
+  siLinear,
+  siMysql,
+  siNodedotjs,
+  siNotion,
+  siPostgresql,
+  siRaycast,
+  siReact,
+  siShopify,
+  siStripe,
+  siSupabase,
+  siTailwindcss,
+  siTypescript,
+  siVite,
+} from 'simple-icons'
 import { navigation } from '@/data/site'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { GlobeCdn } from '@/components/ui/cobe-globe-cdn'
@@ -98,7 +120,40 @@ const technologyMarqueeItems = [
   { name: 'Paystack', icon: 'paystack' },
 ]
 
+const simpleIconMap = {
+  google: siGoogle,
+  raycast: siRaycast,
+  stripe: siStripe,
+  shopify: siShopify,
+  notion: siNotion,
+  figma: siFigma,
+  linear: siLinear,
+  react: siReact,
+  laravel: siLaravel,
+  vite: siVite,
+  supabase: siSupabase,
+  firebase: siFirebase,
+  tailwind: siTailwindcss,
+  mysql: siMysql,
+  postgres: siPostgresql,
+  node: siNodedotjs,
+  typescript: siTypescript,
+  github: siGithub,
+  cloudflare: siCloudflare,
+  analytics: siGoogleanalytics,
+} as const
+
 function BrandIcon({ icon, className = 'h-5 w-5' }: { icon: string; className?: string }) {
+  const simpleIcon = simpleIconMap[icon as keyof typeof simpleIconMap]
+
+  if (simpleIcon) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" aria-hidden="true" role="img">
+        <path fill={`#${simpleIcon.hex}`} d={simpleIcon.path} />
+      </svg>
+    )
+  }
+
   switch (icon) {
     case 'microsoft':
       return (
@@ -827,11 +882,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="relative min-w-0 flex-1 overflow-hidden">
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent" />
-                <div className="marquee-track flex w-max items-center gap-5 px-3 [--marquee-duration:46s]">
+                <div className="marquee-track flex w-max items-center gap-8 px-4 [--marquee-duration:46s]">
                   {[...technologyMarqueeItems, ...technologyMarqueeItems].map((item, index) => (
-                    <span key={`${item.name}-${index}`} className="inline-flex h-14 min-w-[5rem] items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-black/62 shadow-[0_12px_26px_rgba(15,23,42,0.10)]">
-                      <BrandIcon icon={item.icon} className="h-6 w-6 shrink-0" />
-                      {item.name}
+                    <span key={`${item.name}-${index}`} className="grid h-14 w-14 shrink-0 place-items-center opacity-75 transition hover:opacity-100" title={item.name} aria-label={item.name}>
+                      <BrandIcon icon={item.icon} className="h-8 w-8 shrink-0" />
                     </span>
                   ))}
                 </div>
