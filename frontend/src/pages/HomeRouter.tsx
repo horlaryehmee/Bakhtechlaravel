@@ -28,7 +28,11 @@ export function HomeRouter() {
     }
   }, [])
 
-  if (loaded && homePage?.template === 'agency-v2') {
+  if (!loaded) {
+    return <main className="min-h-screen bg-[var(--background)]" />
+  }
+
+  if (homePage?.template === 'agency-v2') {
     return <AgencyHomeTemplate />
   }
 
