@@ -2,15 +2,24 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
+  ChevronDown,
   Check,
+  Cuboid,
+  Cpu,
+  Gem,
+  GitBranch,
+  Handshake,
   Menu,
   MessageCircle,
   Mic,
+  PhoneCall,
   Play,
+  Send,
   ShieldCheck,
   Star,
   X,
   Zap,
+  type LucideIcon,
 } from 'lucide-react'
 import {
   siCloudflare,
@@ -75,11 +84,22 @@ function initials(name: string) {
     .toUpperCase() || 'R'
 }
 
-const comparisonRows = [
-  ['Approach', 'Design and engineering planned together', 'Disconnected vendors and handoffs'],
-  ['Process', 'Clear milestones and async updates', 'Endless meetings and vague timelines'],
-  ['Output', 'Production-ready pages and workflows', 'Static mockups that still need rebuilding'],
-  ['Support', 'Launch, maintenance, and iteration', 'One-off delivery with no system thinking'],
+type ComparisonRow = {
+  label: string
+  icon: LucideIcon
+  bakhtech: string
+  traditional: string
+}
+
+const comparisonRows: ComparisonRow[] = [
+  { label: 'Approach', icon: Gem, bakhtech: 'Design and engineering in sync', traditional: 'Disconnected teams' },
+  { label: 'Process', icon: Cpu, bakhtech: 'Streamlined, transparent, and async', traditional: 'Endless calls and vague timelines' },
+  { label: 'Design Philosophy', icon: GitBranch, bakhtech: 'Modern, minimal, and purposeful', traditional: 'Trend-based and cluttered' },
+  { label: 'Development Stack', icon: Cuboid, bakhtech: 'Built with modern frameworks', traditional: 'Outdated stacks' },
+  { label: 'Communication', icon: MessageCircle, bakhtech: 'Clear updates', traditional: 'Multiple middlemen' },
+  { label: 'Deliverables', icon: Send, bakhtech: 'Production-ready design systems', traditional: 'Static mockups' },
+  { label: 'Support', icon: Handshake, bakhtech: 'Long-term partnership mindset', traditional: 'One-and-done projects' },
+  { label: 'Always Free', icon: PhoneCall, bakhtech: 'Book a Free Call', traditional: 'Book a Paid Call' },
 ]
 
 const pricingCards: Array<{ title: string; text: string; price: string; features: string[] }> = [
@@ -142,6 +162,16 @@ const simpleIconMap = {
   cloudflare: siCloudflare,
   analytics: siGoogleanalytics,
 } as const
+
+function CalendarIcon() {
+  return (
+    <span className="grid h-4 w-4 grid-cols-3 gap-0.5" aria-hidden="true">
+      {Array.from({ length: 9 }).map((_, index) => (
+        <span key={index} className="rounded-[2px] bg-current opacity-70" />
+      ))}
+    </span>
+  )
+}
 
 function BrandIcon({ icon, className = 'h-5 w-5' }: { icon: string; className?: string }) {
   const simpleIcon = simpleIconMap[icon as keyof typeof simpleIconMap]
@@ -461,6 +491,7 @@ function HeroOrbitArc() {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
+  const [openComparisonIndex, setOpenComparisonIndex] = useState(0)
   const [projectTileRotation, setProjectTileRotation] = useState({ indexes: [0, 1, 2, 3], next: 4, active: 0 })
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
@@ -955,21 +986,121 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <section className="px-4 pb-24">
-        <div className="mx-auto max-w-6xl rounded-[2rem] border border-black/5 bg-white p-5 shadow-sm md:p-8">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-[#60a5fa]">Bakhtech vs traditional providers</p>
-              <h2 className="mt-4 text-4xl font-black tracking-normal">A cleaner way to ship digital work.</h2>
-            </div>
-            <ShieldCheck className="h-10 w-10 text-emerald-300" />
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 flex flex-col items-start gap-5 md:items-center md:text-center">
+            <h2 className="max-w-4xl text-4xl font-black leading-tight tracking-normal text-[#202328] md:text-5xl">
+              Bakhtech VS Traditional Service Providers
+            </h2>
+            <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-black px-3 pr-5 text-sm font-black text-white shadow-[0_12px_32px_rgba(0,0,0,0.12)]">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ffd21f] text-black"><CalendarIcon /></span>
+              Book a Free Call
+            </Link>
           </div>
-          <div className="grid gap-3">
-            {comparisonRows.map(([label, bakhtech, traditional]) => (
-              <div key={label} className="grid gap-3 rounded-2xl border border-black/5 bg-[#f6f5f0] p-4 md:grid-cols-[0.6fr_1fr_1fr]">
-                <p className="font-black text-black/50">{label}</p>
-                <p className="font-semibold text-black">{bakhtech}</p>
-                <p className="font-semibold text-black/42">{traditional}</p>
+
+          <div className="hidden overflow-hidden rounded-[1.8rem] border border-black/5 bg-white shadow-sm lg:block">
+            <div className="grid min-h-16 grid-cols-[18rem_1fr_1fr] border-b border-black/7">
+              <div className="rounded-tl-[1.45rem] bg-[#f7f7f7]" />
+              <div className="flex items-center gap-3 px-10 text-sm font-semibold text-black">
+                <span className="grid h-6 w-6 place-items-center rounded-md bg-black text-white"><ShieldCheck className="h-4 w-4" /></span>
+                Bakhtech Solutions
               </div>
+              <div className="flex items-center px-10 text-sm font-semibold text-black/38">Traditional Service Providers</div>
+            </div>
+            {comparisonRows.map((row) => {
+              const Icon = row.icon
+              return (
+                <div key={row.label} className="grid min-h-[4.65rem] grid-cols-[18rem_1fr_1fr] border-b border-black/7 last:border-b-0">
+                  <div className="flex items-center gap-4 bg-[#f7f7f7] px-10 text-sm font-semibold text-black">
+                    <Icon className="h-5 w-5" />
+                    {row.label}
+                  </div>
+                  <div className="flex items-center gap-4 px-10 text-sm font-semibold text-black">
+                    {row.label === 'Always Free' ? (
+                      <Link to="/booking" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-black px-2.5 pr-4 text-xs font-black text-white">
+                        <span className="grid h-7 w-7 place-items-center rounded-md bg-[#ffd21f] text-black"><CalendarIcon /></span>
+                        {row.bakhtech}
+                      </Link>
+                    ) : (
+                      <>
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-[#12b83f] text-white"><Check className="h-3.5 w-3.5 stroke-[4]" /></span>
+                        {row.bakhtech}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 px-10 text-sm font-semibold text-black">
+                    {row.label === 'Always Free' ? (
+                      <span className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-black px-2.5 pr-4 text-xs font-black text-white opacity-60">
+                        <span className="grid h-7 w-7 place-items-center rounded-md bg-slate-700 text-white"><CalendarIcon /></span>
+                        {row.traditional}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="grid h-5 w-5 place-items-center rounded-full bg-[#ffc928] text-white"><Zap className="h-3.5 w-3.5 fill-white stroke-[3]" /></span>
+                        {row.traditional}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="grid gap-4 lg:hidden">
+            {comparisonRows.map((row, index) => {
+              const Icon = row.icon
+              const isOpen = openComparisonIndex === index
+              return (
+                <article key={row.label} className="overflow-hidden rounded-[1.45rem] bg-white shadow-sm">
+                  <button
+                    type="button"
+                    className="flex min-h-20 w-full items-center justify-between gap-4 px-6 text-left"
+                    onClick={() => setOpenComparisonIndex(isOpen ? -1 : index)}
+                  >
+                    <span className="inline-flex items-center gap-4 text-xl font-semibold text-black">
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {row.label}
+                    </span>
+                    <ChevronDown className={`h-5 w-5 shrink-0 text-black/45 transition ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isOpen ? (
+                    <div className="grid gap-6 border-t border-black/8 px-6 py-6">
+                      <div className="grid gap-3">
+                        <p className="inline-flex items-center gap-3 text-lg font-semibold text-black">
+                          <span className="grid h-6 w-6 place-items-center rounded-md bg-black text-white"><ShieldCheck className="h-4 w-4" /></span>
+                          Bakhtech Solutions
+                        </p>
+                        <p className="inline-flex items-center gap-3 text-lg font-semibold text-black">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-[#12b83f] text-white"><Check className="h-3.5 w-3.5 stroke-[4]" /></span>
+                          {row.bakhtech}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 border-t border-black/8 pt-6">
+                        <p className="text-lg font-semibold text-black/38">Traditional Service Providers</p>
+                        <p className="inline-flex items-center gap-3 text-lg font-semibold text-black">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-[#ffc928] text-white"><Zap className="h-3.5 w-3.5 fill-white stroke-[3]" /></span>
+                          {row.traditional}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {[
+              ['Instant Onboarding', 'Start seeing useful progress faster with a focused project team.'],
+              ['High Impact, Low Overhead', 'Lean execution, senior decisions, and fewer handoffs.'],
+              ['Stress-Free Collaboration', 'Clear updates and practical delivery from brief to launch.'],
+            ].map(([title, text]) => (
+              <article key={title} className="rounded-[1.35rem] bg-white px-6 py-7 text-center shadow-sm">
+                <Handshake className="mx-auto h-5 w-5 text-[#b97a3a]" />
+                <h3 className="mt-4 text-lg font-semibold text-black">{title}</h3>
+                <p className="mx-auto mt-3 max-w-[18rem] text-sm font-semibold leading-6 text-black/38">{text}</p>
+              </article>
             ))}
           </div>
         </div>
