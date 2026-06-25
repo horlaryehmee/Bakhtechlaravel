@@ -352,6 +352,15 @@ function BrandIcon({ icon, className = 'h-5 w-5' }: { icon: string; className?: 
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
   const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
 
+  useEffect(() => {
+    const previousBackground = document.body.style.backgroundColor
+    document.body.style.backgroundColor = '#efeee8'
+
+    return () => {
+      document.body.style.backgroundColor = previousBackground
+    }
+  }, [])
+
   return (
     <main className="agency-template min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] antialiased">
       {showPreviewBanner ? (
@@ -642,10 +651,20 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0)
   const [testimonialsInView, setTestimonialsInView] = useState(false)
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 768px)')
+    const updateViewport = () => setIsDesktopViewport(mediaQuery.matches)
+    updateViewport()
+    mediaQuery.addEventListener('change', updateViewport)
+
+    return () => mediaQuery.removeEventListener('change', updateViewport)
+  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -965,7 +984,15 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <h3 className="relative z-20 max-w-[19rem] text-lg font-black drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">Hosting, Deployment & Maintenance</h3>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_72%_52%,rgba(255,255,255,0.18),transparent_28%),linear-gradient(180deg,#050505,#080808)]" />
               <div className="absolute inset-x-0 bottom-[-2rem] top-20 z-0 flex items-center justify-center overflow-visible md:bottom-[-2.5rem] md:top-20">
-                <GlobeCdn className="w-[15rem] max-w-none opacity-85 invert md:w-[16.25rem]" speed={0.0025} />
+                {isDesktopViewport ? (
+                  <GlobeCdn className="w-[16.25rem] max-w-none opacity-85 invert" speed={0.0025} />
+                ) : (
+                  <div className="relative h-48 w-48 rounded-full border border-white/14 bg-[radial-gradient(circle_at_34%_28%,rgba(255,255,255,0.35),transparent_16%),radial-gradient(circle_at_64%_62%,rgba(255,255,255,0.14),transparent_18%),linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[0_0_70px_rgba(255,255,255,0.16)]">
+                    <span className="absolute left-7 right-7 top-1/2 h-px bg-white/14" />
+                    <span className="absolute bottom-7 top-7 left-1/2 w-px bg-white/14" />
+                    <span className="absolute inset-8 rounded-full border border-white/10" />
+                  </div>
+                )}
               </div>
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.12)_34%,rgba(5,5,5,0.65)_100%)]" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#050505] to-transparent" />

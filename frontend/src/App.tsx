@@ -5,6 +5,7 @@ import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
 import { SVGFollower } from '@/components/ui/svg-follower'
 import { api } from '@/lib/api'
+import { HomeRouter } from '@/pages/HomeRouter'
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
 const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
@@ -15,7 +16,6 @@ const About = lazy(() => import('@/pages/About').then((module) => ({ default: mo
 const Booking = lazy(() => import('@/pages/Booking').then((module) => ({ default: module.Booking })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const CmsPage = lazy(() => import('@/pages/CmsPage').then((module) => ({ default: module.CmsPage })))
-const HomeRouter = lazy(() => import('@/pages/HomeRouter').then((module) => ({ default: module.HomeRouter })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
