@@ -1114,9 +1114,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(20rem,30rem)_1fr] lg:items-center lg:gap-16">
             <div className="min-h-[22rem] overflow-hidden rounded-lg bg-white/5">
               <img
-                src="/founder-desk.png?v=20260625"
-                alt="Bakhtech team reviewing website plans at a desk"
-                className="aspect-[1.05/1] h-full min-h-[22rem] w-full object-cover"
+                src="/founder-portrait.png?v=20260625"
+                alt="Bakare Olayemi, founder of Bakhtech Solutions"
+                className="aspect-[1.05/1] h-full min-h-[22rem] w-full object-cover object-center"
                 decoding="async"
                 loading="lazy"
               />
@@ -1130,7 +1130,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
               <div className="max-w-2xl text-sm font-normal leading-7 text-white md:text-base md:leading-8">
                 <p>
-                  Hi, I lead Bakhtech Solutions. I have been building websites, ecommerce stores, booking systems, dashboards, and custom web applications for over 7 years.
+                  Hi, I'm Bakare Olayemi, I've been building web applications for over 7 years. I've worked with startups, small businesses, and large enterprises to build and scale their web applications. People call me a "Full Stack" developer but I prefer to call myself a problem solver :).
                 </p>
                 <p className="mt-6">
                   I started Bakhtech to help businesses build a stronger web presence with tools that look professional, work smoothly, and scale with real operations.
