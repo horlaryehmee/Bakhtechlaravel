@@ -101,6 +101,41 @@ const founderNotes = [
   { name: 'Launch', role: 'After handoff', icon: Send, quote: 'Deployment, support, and iteration stay part of the work.' },
 ]
 
+const faqItems = [
+  {
+    question: 'What exactly does Bakhtech do?',
+    answer: 'We design, build, and support websites, ecommerce stores, booking systems, dashboards, client portals, and custom web applications for businesses that need practical digital tools.',
+  },
+  {
+    question: 'Do I need to be technical to work with you?',
+    answer: 'No. You can come with a rough idea, screenshots, notes, or a business problem. We translate that into a clear plan, then guide the build from design to launch.',
+  },
+  {
+    question: 'What is a typical project like?',
+    answer: 'Most projects start with a short discovery call, then we confirm the scope, design the key screens, build the product, test it, and launch with the right hosting and integrations.',
+  },
+  {
+    question: 'Can you connect this with my existing tools?',
+    answer: 'Yes. We can connect payments, forms, email tools, analytics, WhatsApp, booking systems, CRMs, databases, and other services when the project needs them.',
+  },
+  {
+    question: 'How long does a project usually take?',
+    answer: 'A focused website can take a few weeks, while ecommerce platforms, dashboards, and custom apps take longer depending on scope, integrations, and content readiness.',
+  },
+  {
+    question: 'Do you provide support after launch?',
+    answer: 'Yes. We can help with updates, fixes, hosting checks, performance improvements, new features, and general technical support after the project goes live.',
+  },
+  {
+    question: 'Can I update the website myself?',
+    answer: 'When the project needs it, we build admin sections so you can manage content, images, projects, testimonials, services, and other important website data yourself.',
+  },
+  {
+    question: 'How do we get started?',
+    answer: 'Book a free call or send a message with what you want to build. We will review the goal, ask the right questions, and suggest the most direct way to move forward.',
+  },
+]
+
 const companyMarqueeItems = [
   { name: 'Microsoft', icon: 'microsoft' },
   { name: 'Google', icon: 'google' },
@@ -510,6 +545,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [openComparisonIndex, setOpenComparisonIndex] = useState(0)
+  const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [projectTileRotation, setProjectTileRotation] = useState({ indexes: [0, 1, 2, 3], next: 4, active: 0 })
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
@@ -1249,6 +1285,60 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
         </section>
       ) : null}
+
+      <section id="faq" className="px-4 py-20 md:py-24">
+        <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.12fr] lg:gap-20">
+          <div>
+            <h2 className="max-w-[34rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-5 text-base font-normal text-black/78">
+              Have more doubts? Reach out to us at{' '}
+              <a href="mailto:contact@bakhtech.com.ng" className="text-[#4f6f5a] underline underline-offset-2">
+                contact@bakhtech.com.ng
+              </a>
+            </p>
+
+            <div className="mt-12 max-w-[32rem] rounded-[1.35rem] bg-white p-6 shadow-[0_12px_34px_rgba(15,23,42,0.10)] ring-1 ring-black/5 md:mt-16 md:p-8">
+              <h3 className="text-2xl font-medium leading-tight text-black md:text-3xl">
+                Need a fast moving team for your website or web app?
+              </h3>
+              <p className="mt-5 max-w-[27rem] text-base font-normal leading-7 text-black/50">
+                Bakhtech helps you plan, build, launch, and improve digital products without turning the process into a long technical headache.
+              </p>
+              <div className="mt-8">
+                <ChatPill label="Chat with us" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-black/14">
+            {faqItems.map((item, index) => {
+              const isOpen = openFaqIndex === index
+              return (
+                <article key={item.question} className="border-b border-black/14">
+                  <button
+                    type="button"
+                    className="flex min-h-[5.8rem] w-full items-center justify-between gap-6 py-5 text-left"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenFaqIndex(isOpen ? -1 : index)}
+                  >
+                    <span className="text-base font-normal leading-6 text-black md:text-lg">{item.question}</span>
+                    <ChevronDown className={`h-5 w-5 shrink-0 text-black/45 transition duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  <div className={`grid transition-all duration-300 ease-out ${isOpen ? 'grid-rows-[1fr] pb-7' : 'grid-rows-[0fr]'}`}>
+                    <div className="overflow-hidden">
+                      <p className="max-w-[38rem] text-sm font-normal leading-7 text-black/55 md:text-base">
+                        {item.answer}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
       <footer className="border-t border-black/5 bg-[#080807] px-4 py-10 text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
