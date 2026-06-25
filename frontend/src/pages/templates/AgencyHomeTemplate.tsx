@@ -101,10 +101,10 @@ const comparisonRows: ComparisonRow[] = [
   { label: 'Always Free', icon: PhoneCall, bakhtech: 'Book a Free Call', traditional: 'Book a Paid Call' },
 ]
 
-const pricingCards: Array<{ title: string; text: string; price: string; features: string[] }> = [
-  { title: 'Starter Website', text: 'For small teams that need a sharp online presence.', price: 'From NGN 450k', features: ['Strategy session', 'Up to 5 pages', 'Responsive design', 'Basic SEO setup'] },
-  { title: 'Growth Platform', text: 'For businesses that need bookings, payments, or content workflows.', price: 'From NGN 950k', features: ['UX planning', 'CMS/admin setup', 'Payment or booking flow', 'Launch support'] },
-  { title: 'Custom System', text: 'For portals, dashboards, ecommerce, and complex business tools.', price: 'Custom quote', features: ['Workflow mapping', 'Laravel + React build', 'Integrations', 'Ongoing improvements'] },
+const founderNotes = [
+  { name: 'Strategy', role: 'Before design', icon: 'analytics', quote: 'We turn unclear ideas into a practical website or product plan.' },
+  { name: 'Build', role: 'During execution', icon: 'react', quote: 'Every interface is shaped around speed, clarity, and real business use.' },
+  { name: 'Launch', role: 'After handoff', icon: 'cloudflare', quote: 'Deployment, support, and iteration stay part of the work.' },
 ]
 
 const companyMarqueeItems = [
@@ -1105,52 +1105,60 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="pricing" className="px-4 pb-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-10 text-center">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#34d399]">Pricing paths</p>
-            <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Choose the right starting point.</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg font-semibold leading-8 text-black/58">Every project is scoped around outcomes, not generic pages. Start lean or build a full operating system for your business.</p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {pricingCards.map(({ title, text, price, features }) => {
-              return (
-                <article key={title} className="rounded-[2rem] border border-black/5 bg-white p-6 shadow-sm">
-                  <h3 className="text-2xl font-black">{title}</h3>
-                  <p className="mt-3 min-h-14 text-sm font-semibold leading-7 text-black/58">{text}</p>
-                  <p className="mt-7 text-3xl font-black">{price}</p>
-                  <Link to="/booking" className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-[#111111] text-sm font-black text-white hover:bg-black">Start here</Link>
-                  <div className="mt-6 grid gap-3">
-                    {features.map((feature) => (
-                      <p key={feature} className="flex items-center gap-3 text-sm font-semibold text-black/62"><Check className="h-4 w-4 text-emerald-600" />{feature}</p>
-                    ))}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      <section className="relative overflow-hidden bg-[#030303] px-4 py-20 text-white md:py-28">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_38%,rgba(255,255,255,0.08),transparent_34%),radial-gradient(circle_at_78%_48%,rgba(96,125,158,0.16),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:48px_48px] opacity-35 md:block" />
+        <div className="relative mx-auto max-w-6xl">
+          <h2 className="text-4xl font-black tracking-normal md:text-6xl">The Founder's Desk</h2>
 
-      <section id="faq" className="px-4 pb-24">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-[#facc15]">FAQ</p>
-            <h2 className="mt-4 text-4xl font-black tracking-normal md:text-6xl">Clear answers before we start.</h2>
-            <ChatPill />
-          </div>
-          <div className="grid gap-3">
-            {[
-              ['How fast can we launch?', 'Simple websites can move quickly once content and direction are clear. Larger systems are scoped in phases.'],
-              ['Can you work with existing branding?', 'Yes. We can refine what you have or create a fresh digital direction that fits your business.'],
-              ['Do you build the backend too?', 'Yes. Laravel, React, payments, bookings, dashboards, portals, and admin tools are all within scope.'],
-              ['Can I manage content myself?', 'Yes. CMS and admin controls can be included so you can update pages without touching code.'],
-            ].map(([question, answer]) => (
-              <article key={question} className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-black">{question}</h3>
-                <p className="mt-2 text-sm font-semibold leading-7 text-black/58">{answer}</p>
-              </article>
-            ))}
+          <div className="mt-12 grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-16">
+            <div className="overflow-hidden rounded-lg bg-white/5">
+              <img
+                src="/founder/founder-desk.png"
+                alt="Bakhtech team reviewing website plans at a desk"
+                className="aspect-[1.05/1] h-full w-full object-cover"
+                decoding="async"
+                loading="lazy"
+              />
+            </div>
+
+            <div className="relative">
+              <div className="mb-5 flex justify-start gap-4 text-white/50 lg:justify-end">
+                <span className="text-sm font-semibold">X</span>
+                <span className="text-sm font-semibold">in</span>
+                <span className="text-sm font-semibold">◎</span>
+              </div>
+              <div className="max-w-2xl text-sm font-bold leading-7 text-white md:text-base md:leading-8">
+                <p>
+                  Hi, I lead Bakhtech Solutions. I have been building websites, ecommerce stores, booking systems, dashboards, and custom web applications for over 7 years.
+                </p>
+                <p className="mt-6">
+                  I started Bakhtech to help businesses build a stronger web presence with tools that look professional, work smoothly, and scale with real operations.
+                </p>
+                <p className="mt-2">
+                  The goal is simple: give every client a digital product that is clear, dependable, and ready for customers from day one.
+                </p>
+              </div>
+
+              <div className="mt-16 overflow-hidden">
+                <div className="flex w-max gap-4">
+                  {[...founderNotes, ...founderNotes].map((item, index) => (
+                    <article key={`${item.name}-${index}`} className="w-[16rem] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-white">
+                          <BrandIcon icon={item.icon} className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-semibold text-white">{item.name}</p>
+                          <p className="text-[0.68rem] font-semibold text-white/45">{item.role}</p>
+                        </div>
+                      </div>
+                      <p className="mt-4 text-xs font-bold leading-5 text-white">{item.quote}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
