@@ -64,7 +64,7 @@ class BakhtechApiController extends Controller
         }
 
         return [
-            'token' => AdminToken::make($admin),
+            'token' => AdminToken::make($admin, $request),
             'admin' => $this->adminShape($admin),
         ];
     }
@@ -139,6 +139,62 @@ class BakhtechApiController extends Controller
     public function me(Request $request)
     {
         return ['admin' => $this->adminShape($request->attributes->get('admin'))];
+    }
+
+    public function logout(Request $request)
+    {
+        $session = $request->attributes->get('admin_session');
+
+        if ($session) {
+            DB::table('admin_sessions')->where('id', $session->id)->update([
+                'revoked_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return response()->noContent();
+    }
+
+    public function adminSessions(Request $request)
+    {
+        return [
+            'sessions' => $this->adminSessionQuery()
+                ->where('admin_sessions.admin_id', $request->attributes->get('admin')->id)
+                ->get()
+                ->map(fn ($row) => $this->adminSessionShape($row, (int) ($request->attributes->get('admin_session')?->id ?? 0))),
+        ];
+    }
+
+    public function revokeAdminSession(Request $request, int $id)
+    {
+        $session = DB::table('admin_sessions')
+            ->where('id', $id)
+            ->where('admin_id', $request->attributes->get('admin')->id)
+            ->first();
+        if (! $session) {
+            return response()->json(['message' => 'Session not found.'], 404);
+        }
+
+        DB::table('admin_sessions')->where('id', $id)->update([
+            'revoked_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->noContent();
+    }
+
+    public function logoutAllAdminSessions(Request $request)
+    {
+        $deleted = DB::table('admin_sessions')
+            ->where('admin_id', $request->attributes->get('admin')->id)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->update([
+                'revoked_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        return ['revoked' => $deleted];
     }
 
     public function dashboard(SeoAuditService $seoAudit, VisitorAnalyticsService $analytics)
@@ -377,7 +433,7 @@ class BakhtechApiController extends Controller
         return ['reviews' => $reviews];
     }
 
-    public function cms()
+    public function cms(Request $request)
     {
         if (Schema::hasTable('pages') && DB::table('pages')->count() === 0) {
             app(DatabaseSynchronizer::class)->repair();
@@ -390,6 +446,10 @@ class BakhtechApiController extends Controller
             'bookingEventTypes' => Schema::hasTable('booking_event_types') ? DB::table('booking_event_types')->orderBy('name')->get()->map(fn ($row) => $this->bookingEventTypeShape($row, true)) : collect(),
             'reviews' => Schema::hasTable('reviews') ? $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)) : collect(),
             'users' => DB::table('admins')->orderBy('id')->get()->map(fn ($row) => $this->adminUserShape($row)),
+            'adminSessions' => $this->adminSessionQuery()
+                ->where('admin_sessions.admin_id', $request->attributes->get('admin')->id)
+                ->get()
+                ->map(fn ($row) => $this->adminSessionShape($row, (int) ($request->attributes->get('admin_session')?->id ?? 0))),
             'settings' => $this->settings(),
             'media' => $this->mediaList(),
         ];
@@ -1885,6 +1945,47 @@ class BakhtechApiController extends Controller
     private function adminUserShape(object $row): array
     {
         return ['id' => $row->id, 'email' => $row->email, 'name' => $row->name, 'role' => $row->role ?? 'admin', 'twoFactorEnabled' => (bool) ($row->two_factor_enabled ?? false), 'createdAt' => (string) $row->created_at];
+    }
+
+    private function adminSessionQuery()
+    {
+        return DB::table('admin_sessions')
+            ->join('admins', 'admins.id', '=', 'admin_sessions.admin_id')
+            ->select(
+                'admin_sessions.id',
+                'admin_sessions.admin_id',
+                'admin_sessions.device_name',
+                'admin_sessions.browser',
+                'admin_sessions.platform',
+                'admin_sessions.ip_address',
+                'admin_sessions.user_agent',
+                'admin_sessions.last_used_at',
+                'admin_sessions.expires_at',
+                'admin_sessions.created_at',
+                'admins.name as admin_name',
+                'admins.email as admin_email'
+            )
+            ->whereNull('admin_sessions.revoked_at')
+            ->where('admin_sessions.expires_at', '>', now())
+            ->orderByDesc('admin_sessions.last_used_at');
+    }
+
+    private function adminSessionShape(object $row, int $currentSessionId): array
+    {
+        return [
+            'id' => $row->id,
+            'adminId' => $row->admin_id,
+            'adminName' => $row->admin_name,
+            'adminEmail' => $row->admin_email,
+            'deviceName' => $row->device_name ?: 'Unknown device',
+            'browser' => $row->browser ?: 'Unknown browser',
+            'platform' => $row->platform ?: '',
+            'ipAddress' => $row->ip_address ?: '',
+            'lastUsedAt' => (string) $row->last_used_at,
+            'expiresAt' => (string) $row->expires_at,
+            'createdAt' => (string) $row->created_at,
+            'isCurrent' => (int) $row->id === $currentSessionId,
+        ];
     }
 
     private function generateTotpSecret(): string

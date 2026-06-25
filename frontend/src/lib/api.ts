@@ -740,6 +740,21 @@ export type AdminUser = {
   createdAt: string
 }
 
+export type AdminSession = {
+  id: number
+  adminId: number
+  adminName: string
+  adminEmail: string
+  deviceName: string
+  browser: string
+  platform: string
+  ipAddress: string
+  lastUsedAt: string
+  expiresAt: string
+  createdAt: string
+  isCurrent: boolean
+}
+
 export type CmsData = {
   pages: CmsPage[]
   posts: CmsPost[]
@@ -747,6 +762,7 @@ export type CmsData = {
   bookingEventTypes: BookingEventType[]
   reviews: Review[]
   users: AdminUser[]
+  adminSessions: AdminSession[]
   settings: Record<string, string>
   media: MediaItem[]
 }
@@ -803,15 +819,15 @@ async function parseErrorPayload(response: Response, fallbackMessage: string) {
 }
 
 export function getAdminToken() {
-  const token = sessionStorage.getItem(tokenKey)
-  localStorage.removeItem(tokenKey)
+  const token = localStorage.getItem(tokenKey) || sessionStorage.getItem(tokenKey)
+  if (token) sessionStorage.removeItem(tokenKey)
 
   return token
 }
 
 export function setAdminToken(token: string) {
-  localStorage.removeItem(tokenKey)
-  sessionStorage.setItem(tokenKey, token)
+  sessionStorage.removeItem(tokenKey)
+  localStorage.setItem(tokenKey, token)
 }
 
 export function clearAdminToken() {
@@ -881,6 +897,18 @@ export const api = {
   },
   me() {
     return request<{ admin: { id: number; email: string; name: string; twoFactorEnabled: boolean } }>('/api/admin/me')
+  },
+  logout() {
+    return request<void>('/api/auth/logout', { method: 'POST' })
+  },
+  adminSessions() {
+    return request<{ sessions: AdminSession[] }>('/api/admin/sessions')
+  },
+  revokeAdminSession(id: number) {
+    return request<void>(`/api/admin/sessions/${id}`, { method: 'DELETE' })
+  },
+  logoutAllAdminSessions() {
+    return request<{ revoked: number }>('/api/admin/sessions/logout-all', { method: 'POST' })
   },
   dashboard() {
     return request<DashboardData>('/api/admin/dashboard')

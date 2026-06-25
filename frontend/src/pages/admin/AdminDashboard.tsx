@@ -74,6 +74,7 @@ import {
   type Project,
   type ProjectInput,
   type GoogleReviewConnection,
+  type AdminSession,
   type Review,
   type ReviewInput,
   type SeoAudit,
@@ -1158,6 +1159,7 @@ export function AdminDashboard() {
         seoAuditResult,
         projectResult,
         cmsResult,
+        adminSessionsResult,
         invoiceOverviewResult,
         invoiceDocumentsResult,
         invoiceClientsResult,
@@ -1167,6 +1169,7 @@ export function AdminDashboard() {
         api.seoAudit(),
         api.adminProjects(),
         api.cms(),
+        api.adminSessions().catch(() => ({ sessions: [] })),
         api.invoiceOverview().catch(() => null),
         api.invoiceDocuments().catch(() => null),
         api.invoiceClients().catch(() => null),
@@ -1175,7 +1178,8 @@ export function AdminDashboard() {
       setDashboard(dashboardResult)
       setSeoAudit(seoAuditResult)
       setProjects(projectResult.projects)
-      setCms(cmsResult)
+      const cmsWithSessions = { ...cmsResult, adminSessions: adminSessionsResult.sessions }
+      setCms(cmsWithSessions)
       setEditingPageId((current) => current ?? cmsResult.pages[0]?.id ?? null)
       setSettingsForm(cmsResult.settings)
       if (invoiceOverviewResult) setInvoiceOverview(invoiceOverviewResult)
@@ -1189,7 +1193,7 @@ export function AdminDashboard() {
         dashboard: dashboardResult,
         seoAudit: seoAuditResult,
         projects: projectResult.projects,
-        cms: cmsResult,
+        cms: cmsWithSessions,
         invoiceOverview: invoiceOverviewResult,
         invoiceDocuments: invoiceDocumentsResult?.documents ?? [],
         invoiceDocumentsMeta: invoiceDocumentsResult?.meta ?? defaultInvoiceListMeta,
@@ -1355,8 +1359,51 @@ export function AdminDashboard() {
   }
 
   function logout() {
+    void api.logout().catch(() => undefined)
     clearAdminToken()
     navigate('/admin/login')
+  }
+
+  async function loadAdminSessions() {
+    const result = await api.adminSessions()
+    setCms((current) => current ? { ...current, adminSessions: result.sessions } : current)
+  }
+
+  async function revokeAdminSession(session: AdminSession) {
+    if (!window.confirm(`Log out ${session.deviceName}?`)) return
+    setSaving(true)
+    setError('')
+
+    try {
+      await api.revokeAdminSession(session.id)
+      if (session.isCurrent) {
+        clearAdminToken()
+        navigate('/admin/login', { replace: true })
+        return
+      }
+      await loadAdminSessions()
+      notify('Device logged out.')
+    } catch (revokeError) {
+      setError(revokeError instanceof Error ? revokeError.message : 'Unable to log out this device.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function logoutAllAdminSessions() {
+    if (!window.confirm('Log out all admin devices? This will also sign out this browser.')) return
+    setSaving(true)
+    setError('')
+
+    try {
+      await api.logoutAllAdminSessions()
+      clearAdminToken()
+      navigate('/admin/login', { replace: true })
+    } catch (logoutError) {
+      setError(logoutError instanceof Error ? logoutError.message : 'Unable to log out all devices.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function uploadFile(file: File, onDone?: (media: MediaItem) => void | Promise<void>) {
@@ -7721,6 +7768,8 @@ export function AdminDashboard() {
   }
 
   function renderUsers() {
+    const sessions = cms?.adminSessions ?? []
+
     return (
       <div>
         <PanelHeader 
@@ -7870,6 +7919,45 @@ export function AdminDashboard() {
             </article>
             )
           })}
+          <article className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-black text-gray-900">Signed-in devices</h3>
+                <p className="text-sm text-gray-500">Active admin sessions that can access the backend.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="ghost" className="min-h-10 px-4" disabled={saving} onClick={() => void loadAdminSessions()}>
+                  Refresh
+                </Button>
+                <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" disabled={saving || sessions.length === 0} onClick={() => void logoutAllAdminSessions()}>
+                  Log Out All Devices
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {sessions.length ? sessions.map((session) => (
+                <div key={session.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-black text-gray-900">{session.deviceName}</h4>
+                      {session.isCurrent ? <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black uppercase text-blue-700">Current</span> : null}
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-gray-600">{session.adminName} | {session.adminEmail}</p>
+                    <p className="mt-1 text-xs font-semibold text-gray-500">
+                      {session.ipAddress || 'Unknown IP'} | Last active {session.lastUsedAt ? new Date(session.lastUsedAt).toLocaleString() : 'unknown'}
+                    </p>
+                  </div>
+                  <Button type="button" variant="ghost" className="min-h-10 px-4 text-red-500" disabled={saving} onClick={() => void revokeAdminSession(session)}>
+                    Log Out
+                  </Button>
+                </div>
+              )) : (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm font-semibold text-gray-500">
+                  No active devices found.
+                </div>
+              )}
+            </div>
+          </article>
         </div>
       </div>
     )

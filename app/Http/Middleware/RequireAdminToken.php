@@ -12,15 +12,16 @@ class RequireAdminToken
     {
         $header = $request->header('Authorization', '');
         $token = preg_replace('/^Bearer\s+/i', '', $header);
-        $admin = $token ? AdminToken::admin($token) : null;
+        $session = $token ? AdminToken::resolve($token) : null;
+        $admin = $session['admin'] ?? null;
 
         if (!$admin) {
             return response()->json(['message' => 'Invalid or expired session.'], 401);
         }
 
         $request->attributes->set('admin', $admin);
+        $request->attributes->set('admin_session', $session['session'] ?? null);
 
         return $next($request);
     }
 }
-

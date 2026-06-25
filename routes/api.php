@@ -75,9 +75,12 @@ Route::post('/invoices/payments/{gateway}/webhook', [InvoiceController::class, '
 
 Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/auth/me', [BakhtechApiController::class, 'me']);
-    Route::post('/auth/logout', fn () => response()->noContent());
+    Route::post('/auth/logout', [BakhtechApiController::class, 'logout']);
 
     Route::get('/admin/me', [BakhtechApiController::class, 'me']);
+    Route::get('/admin/sessions', [BakhtechApiController::class, 'adminSessions']);
+    Route::post('/admin/sessions/logout-all', [BakhtechApiController::class, 'logoutAllAdminSessions']);
+    Route::delete('/admin/sessions/{id}', [BakhtechApiController::class, 'revokeAdminSession'])->whereNumber('id');
     Route::get('/admin/dashboard', [BakhtechApiController::class, 'dashboard']);
     Route::get('/admin/analytics', [BakhtechApiController::class, 'visitorAnalytics']);
     Route::get('/admin/seo/audit', [BakhtechApiController::class, 'seoAudit']);
