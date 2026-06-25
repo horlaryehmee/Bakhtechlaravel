@@ -873,7 +873,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
       <section id="services" className="px-4 py-16 md:py-24">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Replace your Engineering Team</h2>
+          <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Websites Built for Real Business Growth</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
             <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
