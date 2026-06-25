@@ -29,7 +29,7 @@ export function HomeRouter() {
   }, [])
 
   if (!loaded) {
-    return <main className="min-h-screen bg-[var(--background)]" />
+    return <AgencyHomeTemplate />
   }
 
   if (homePage?.template === 'agency-v2') {
