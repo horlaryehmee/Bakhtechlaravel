@@ -465,6 +465,19 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   )
 }
 
+function ProjectCardSkeleton() {
+  return (
+    <article className="relative flex h-full min-h-[27rem] flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.07)] backdrop-blur-sm">
+      <div className="h-44 rounded-xl bg-black/[0.045] sm:h-48" />
+      <div className="mt-6 h-6 w-24 rounded-full bg-black/[0.045]" />
+      <div className="mt-5 h-6 w-3/4 rounded-full bg-black/[0.055]" />
+      <div className="mt-3 h-4 w-full rounded-full bg-black/[0.04]" />
+      <div className="mt-2 h-4 w-4/5 rounded-full bg-black/[0.04]" />
+      <div className="mt-auto h-9 w-36 rounded-lg bg-black/[0.05]" />
+    </article>
+  )
+}
+
 function ReviewPlatformIcon({ review }: { review: Review }) {
   if (review.provider === 'google') {
     return (
@@ -513,6 +526,27 @@ function TestimonialCard({ review }: { review: Review }) {
             <span className="block truncate">{review.authorName}</span>
             <span className="block truncate text-white/45">{role}</span>
           </p>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function TestimonialCardSkeleton() {
+  return (
+    <article className="relative flex h-[18rem] w-[min(36rem,calc(100vw-2rem))] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:44px_44px] opacity-55" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_8%,rgba(255,255,255,0.24),transparent_22%),linear-gradient(90deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72))]" />
+      <div className="relative h-9 w-9 rounded-full bg-white/16" />
+      <div className="relative">
+        <div className="h-5 w-11/12 rounded-full bg-white/14" />
+        <div className="mt-3 h-5 w-4/5 rounded-full bg-white/12" />
+        <div className="mt-8 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-white/14" />
+          <div className="min-w-0 flex-1">
+            <div className="h-4 w-32 rounded-full bg-white/18" />
+            <div className="mt-2 h-3 w-44 rounded-full bg-white/10" />
+          </div>
         </div>
       </div>
     </article>
@@ -601,6 +635,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
+  const [homepageDataLoaded, setHomepageDataLoaded] = useState(false)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
   const [footerSettings, setFooterSettings] = useState(defaultFooterSettings)
@@ -660,7 +695,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
     observer.observe(section)
 
     return () => observer.disconnect()
-  }, [reviews.length])
+  }, [])
 
   useEffect(() => {
     if (!testimonialsInView || reviews.length <= 1) return
@@ -684,7 +719,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   }, [activeTestimonialIndex])
 
   useEffect(() => {
-    if (activeTestimonialIndex >= reviews.length) {
+    if (reviews.length && activeTestimonialIndex >= reviews.length) {
       setActiveTestimonialIndex(0)
     }
   }, [activeTestimonialIndex, reviews.length])
@@ -721,6 +756,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         }
       })
       .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setHomepageDataLoaded(true)
+        }
+      })
 
     return () => {
       cancelled = true
@@ -991,7 +1031,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <h2 className="sr-only">Projects</h2>
           </div>
 
-          {portfolioProjects.length ? (
+          {!homepageDataLoaded ? (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ProjectCardSkeleton key={`project-skeleton-${index}`} />
+              ))}
+            </div>
+          ) : portfolioProjects.length ? (
             <>
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {portfolioProjects.map((project) => (
@@ -1298,25 +1344,25 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      {reviews.length ? (
-        <section ref={testimonialsSectionRef} id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
-              <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
-                What people have been saying
-              </h2>
-              <ChatPill label="Chat with us" />
-            </div>
+      <section ref={testimonialsSectionRef} id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
+            <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
+              What people have been saying
+            </h2>
+            <ChatPill label="Chat with us" />
           </div>
+        </div>
 
-          <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#efeee8] to-transparent md:w-28" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#efeee8] to-transparent md:w-28" />
-            <div
-              ref={testimonialsTrackRef}
-              className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden"
-            >
-              {reviews.map((review, index) => (
+        <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#efeee8] to-transparent md:w-28" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#efeee8] to-transparent md:w-28" />
+          <div
+            ref={testimonialsTrackRef}
+            className="flex min-h-[18rem] snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:min-h-[20rem] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden"
+          >
+            {reviews.length ? (
+              reviews.map((review, index) => (
                 <button
                   key={review.id}
                   type="button"
@@ -1326,13 +1372,17 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 >
                   <TestimonialCard review={review} />
                 </button>
-              ))}
-            </div>
+              ))
+            ) : (
+              Array.from({ length: 4 }).map((_, index) => <TestimonialCardSkeleton key={`testimonial-skeleton-${index}`} />)
+            )}
           </div>
+        </div>
 
-          <div className="mt-8 flex justify-center">
-            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
-              {reviews.map((review, index) => (
+        <div className="mt-8 flex justify-center">
+          <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
+            {reviews.length ? (
+              reviews.map((review, index) => (
                 <button
                   key={review.id}
                   type="button"
@@ -1340,11 +1390,15 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
                   onClick={() => setActiveTestimonialIndex(index)}
                 />
-              ))}
-            </div>
+              ))
+            ) : (
+              Array.from({ length: 4 }).map((_, index) => (
+                <span key={`testimonial-dot-${index}`} className="h-2.5 w-2.5 rounded-full bg-black/12" />
+              ))
+            )}
           </div>
-        </section>
-      ) : null}
+        </div>
+      </section>
 
       <section id="faq" className="px-4 py-20 md:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.12fr] lg:gap-20">

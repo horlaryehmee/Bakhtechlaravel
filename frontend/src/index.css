@@ -3037,11 +3037,15 @@ a {
 .marquee-track {
   animation: marquee-x var(--marquee-duration, 42s) linear infinite;
   --marquee-distance: -50%;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .slider-track {
   gap: var(--slider-gap, 16px);
   animation: marquee-x var(--slider-duration, 25s) linear infinite;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .slider-track:hover {
