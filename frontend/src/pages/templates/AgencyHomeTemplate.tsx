@@ -466,6 +466,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
+  const projectImageTiles = portfolioProjects.slice(0, 4)
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -823,13 +824,31 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
               <div className="relative mx-auto grid h-[20rem] max-w-[22rem] grid-cols-4 grid-rows-4 gap-4">
                 {[
-                  ['AK', 'col-start-3 row-start-1 bg-[#d7d1c5]'],
-                  ['TO', 'col-start-2 row-start-2 bg-[#d8e0e2]'],
-                  ['MA', 'col-start-4 row-start-2 bg-[#cfcac2]'],
-                  ['IB', 'col-start-3 row-start-3 bg-[#e6ded0]'],
-                ].map(([label, className]) => (
-                  <span key={label} className={`grid place-items-center rounded-xl border border-black/8 text-lg font-black text-black/62 shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}>{label}</span>
-                ))}
+                  'col-start-3 row-start-1',
+                  'col-start-2 row-start-2',
+                  'col-start-4 row-start-2',
+                  'col-start-3 row-start-3',
+                ].map((className, index) => {
+                  const project = projectImageTiles[index % Math.max(projectImageTiles.length, 1)]
+                  return (
+                    <span
+                      key={`${project?.id ?? 'project'}-${index}`}
+                      className={`project-pop-tile overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}
+                      style={{ animationDelay: `${index * 560}ms` }}
+                    >
+                      {project ? (
+                        <SafeImage
+                          className="h-full w-full object-cover"
+                          src={getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)}
+                          fallbackSrc={projectImageFallbackSrc(project)}
+                          alt={project.title}
+                        />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center bg-[#e6ded0] text-xs font-black text-black/50">PR</span>
+                      )}
+                    </span>
+                  )
+                })}
               </div>
 
               <div className="relative mt-8">

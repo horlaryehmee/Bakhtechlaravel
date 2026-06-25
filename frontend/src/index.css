@@ -3040,6 +3040,12 @@ a {
   animation-direction: reverse;
 }
 
+.project-pop-tile {
+  animation: project-image-pop 3.2s ease-in-out infinite both;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
 @keyframes notification-card {
   from {
     opacity: 0;
@@ -3049,6 +3055,26 @@ a {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes project-image-pop {
+  0%,
+  18%,
+  100% {
+    opacity: 0.78;
+    transform: scale(0.88) translateY(8px);
+  }
+
+  34%,
+  64% {
+    opacity: 1;
+    transform: scale(1.06) translateY(-2px);
+  }
+
+  78% {
+    opacity: 0.92;
+    transform: scale(0.96) translateY(0);
   }
 }
 
@@ -3396,6 +3422,7 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .about-stats-track,
   .marquee-track,
+  .project-pop-tile,
   .slider-track {
     animation: none !important;
   }

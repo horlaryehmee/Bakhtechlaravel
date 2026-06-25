@@ -1,0 +1,1 @@
+import{t as e}from"./AgencyHomeTemplate-DI5GoJl6.js";import{D as t,g as n,w as r,x as i}from"./index-Twd4s1Ie.js";var a=n();function o(){let{template:n=``}=t();return i()?n===`agency-v2`?(0,a.jsx)(e,{preview:!0}):(0,a.jsx)(r,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(r,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
