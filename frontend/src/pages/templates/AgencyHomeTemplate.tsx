@@ -461,6 +461,7 @@ function HeroOrbitArc() {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
+  const [projectTileOffset, setProjectTileOffset] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
@@ -475,6 +476,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (portfolioProjects.length <= 1) return
+
+    const timer = window.setInterval(() => {
+      setProjectTileOffset((offset) => offset + 1)
+    }, 2600)
+
+    return () => window.clearInterval(timer)
+  }, [portfolioProjects.length])
 
   useEffect(() => {
     let cancelled = false
@@ -822,18 +833,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <article className="relative min-h-[31rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-3">
               <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(rgba(0,0,0,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.055)_1px,transparent_1px)] bg-[size:92px_92px]" />
               <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
-              <div className="relative mx-auto grid h-[20rem] max-w-[22rem] grid-cols-4 grid-rows-4 gap-4">
+              <div className="relative mx-auto grid h-[20rem] max-w-[22rem] grid-cols-5 grid-rows-4 gap-4">
                 {[
                   'col-start-3 row-start-1',
-                  'col-start-2 row-start-2',
+                  'col-start-1 row-start-2',
                   'col-start-4 row-start-2',
-                  'col-start-3 row-start-3',
+                  'col-start-2 row-start-3',
                 ].map((className, index) => {
-                  const project = projectImageTiles[index % Math.max(projectImageTiles.length, 1)]
+                  const project = projectImageTiles[(projectTileOffset + index) % Math.max(projectImageTiles.length, 1)]
                   return (
                     <span
                       key={`${project?.id ?? 'project'}-${index}`}
-                      className={`project-pop-tile overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}
+                      className={`project-pop-tile col-span-2 aspect-[16/10] overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}
                       style={{ animationDelay: `${index * 560}ms` }}
                     >
                       {project ? (
