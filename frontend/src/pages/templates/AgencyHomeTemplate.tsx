@@ -1000,9 +1000,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <div className="grid min-h-16 grid-cols-[18rem_1fr_1fr] border-b border-black/7">
               <div className="rounded-tl-[1.45rem] bg-[#f7f7f7]" />
               <div className="flex items-center gap-3 px-10 text-sm font-semibold text-black">
-                <span className="grid h-6 w-6 place-items-center rounded-md bg-black">
-                  <img src="/bakhtech-logo-dark.png" alt="" className="h-4 w-4 object-contain" decoding="async" />
-                </span>
+                <img src="/bakhtech-logo-dark.png" alt="" className="h-6 w-6 object-contain" decoding="async" />
                 Bakhtech Solutions
               </div>
               <div className="flex items-center px-10 text-sm font-semibold text-black/38">Traditional Service Providers</div>
@@ -1068,9 +1066,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                     <div className="grid gap-6 border-t border-black/8 px-6 py-6">
                       <div className="grid gap-3">
                         <p className="inline-flex items-center gap-3 text-lg font-semibold text-black">
-                          <span className="grid h-6 w-6 place-items-center rounded-md bg-black">
-                            <img src="/bakhtech-logo-dark.png" alt="" className="h-4 w-4 object-contain" decoding="async" />
-                          </span>
+                          <img src="/bakhtech-logo-dark.png" alt="" className="h-6 w-6 object-contain" decoding="async" />
                           Bakhtech Solutions
                         </p>
                         <p className="inline-flex items-center gap-3 text-lg font-semibold text-black">
