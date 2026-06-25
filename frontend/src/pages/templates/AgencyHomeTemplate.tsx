@@ -1390,7 +1390,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         <div className="relative mx-auto max-w-6xl">
           <Link
             to="/booking"
-            className="group relative block overflow-hidden rounded-[1.8rem] border border-white/6 bg-[#11110f] px-7 py-9 shadow-[0_34px_100px_rgba(0,0,0,0.48)] md:px-12 md:py-14"
+            className="group relative block min-h-[16rem] overflow-hidden rounded-[1.8rem] border border-white/6 bg-[#11110f] px-7 py-9 shadow-[0_34px_100px_rgba(0,0,0,0.48)] md:min-h-[19rem] md:px-12 md:py-14"
           >
             <div className="relative z-10 flex items-start justify-between gap-6">
               <h2 className="max-w-[34rem] text-4xl font-medium leading-[1.08] tracking-normal text-white md:text-6xl">
@@ -1400,14 +1400,14 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <ArrowRight className="h-5 w-5" />
               </span>
             </div>
-            <span className="pointer-events-none absolute -bottom-10 left-4 select-none text-[5rem] font-bold leading-none tracking-normal text-white/[0.08] sm:text-[8rem] md:-bottom-20 md:text-[12rem] lg:text-[14rem]">
+            <span className="pointer-events-none absolute -bottom-6 left-6 select-none text-[4.8rem] font-bold leading-none tracking-normal text-white/[0.07] sm:text-[7rem] md:-bottom-16 md:left-10 md:text-[11rem] lg:text-[13rem]">
               Bakhtech
             </span>
           </Link>
 
           <div className="mt-16 grid gap-12 lg:grid-cols-[1.1fr_1.6fr] lg:gap-20">
             <div>
-              <img src="/favicon.png" alt="Bakhtech Solutions" className="h-8 w-8 object-contain" decoding="async" />
+              <img src="/bakhtech-logo-dark.png" alt="Bakhtech Solutions" className="h-9 w-auto object-contain" decoding="async" />
               <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
                 We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.
               </p>
