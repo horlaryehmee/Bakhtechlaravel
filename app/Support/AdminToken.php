@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,10 @@ class AdminToken
         $payload = $admin->id . '|' . $sessionId . '|' . $expires . '|' . Str::random(32);
         $signature = hash_hmac('sha256', $payload, self::secret());
         $token = rtrim(strtr(base64_encode($payload . '|' . $signature), '+/', '-_'), '=');
+
+        if (! Schema::hasTable('admin_sessions')) {
+            return $token;
+        }
 
         DB::table('admin_sessions')->insert([
             'admin_id' => $admin->id,
@@ -57,6 +62,15 @@ class AdminToken
 
         if (!hash_equals($expected, $signature) || ((int) $expires) < now()->timestamp) {
             return null;
+        }
+
+        if (! Schema::hasTable('admin_sessions')) {
+            $admin = DB::table('admins')
+                ->select('id', 'email', 'name', 'role', 'two_factor_enabled', 'created_at')
+                ->where('id', $adminId)
+                ->first();
+
+            return $admin ? ['admin' => $admin, 'session' => null] : null;
         }
 
         $session = DB::table('admin_sessions')

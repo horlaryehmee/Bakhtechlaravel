@@ -157,6 +157,10 @@ class BakhtechApiController extends Controller
 
     public function adminSessions(Request $request)
     {
+        if (! Schema::hasTable('admin_sessions')) {
+            return ['sessions' => []];
+        }
+
         return [
             'sessions' => $this->adminSessionQuery()
                 ->where('admin_sessions.admin_id', $request->attributes->get('admin')->id)
@@ -167,6 +171,10 @@ class BakhtechApiController extends Controller
 
     public function revokeAdminSession(Request $request, int $id)
     {
+        if (! Schema::hasTable('admin_sessions')) {
+            return response()->json(['message' => 'Device session tracking has not been migrated yet.'], 404);
+        }
+
         $session = DB::table('admin_sessions')
             ->where('id', $id)
             ->where('admin_id', $request->attributes->get('admin')->id)
@@ -185,6 +193,10 @@ class BakhtechApiController extends Controller
 
     public function logoutAllAdminSessions(Request $request)
     {
+        if (! Schema::hasTable('admin_sessions')) {
+            return ['revoked' => 0];
+        }
+
         $deleted = DB::table('admin_sessions')
             ->where('admin_id', $request->attributes->get('admin')->id)
             ->whereNull('revoked_at')
@@ -446,10 +458,12 @@ class BakhtechApiController extends Controller
             'bookingEventTypes' => Schema::hasTable('booking_event_types') ? DB::table('booking_event_types')->orderBy('name')->get()->map(fn ($row) => $this->bookingEventTypeShape($row, true)) : collect(),
             'reviews' => Schema::hasTable('reviews') ? $this->reviewQuery(true)->get()->map(fn ($row) => $this->reviewShape($row)) : collect(),
             'users' => DB::table('admins')->orderBy('id')->get()->map(fn ($row) => $this->adminUserShape($row)),
-            'adminSessions' => $this->adminSessionQuery()
-                ->where('admin_sessions.admin_id', $request->attributes->get('admin')->id)
-                ->get()
-                ->map(fn ($row) => $this->adminSessionShape($row, (int) ($request->attributes->get('admin_session')?->id ?? 0))),
+            'adminSessions' => Schema::hasTable('admin_sessions')
+                ? $this->adminSessionQuery()
+                    ->where('admin_sessions.admin_id', $request->attributes->get('admin')->id)
+                    ->get()
+                    ->map(fn ($row) => $this->adminSessionShape($row, (int) ($request->attributes->get('admin_session')?->id ?? 0)))
+                : collect(),
             'settings' => $this->settings(),
             'media' => $this->mediaList(),
         ];
