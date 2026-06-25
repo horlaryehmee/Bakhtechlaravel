@@ -788,14 +788,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           ) : null}
         </nav>
 
-        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-6 pb-20 pt-14 md:gap-12 md:pb-36 md:pt-[12.5rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start">
+        <div className="relative z-10 mx-auto grid max-w-[86rem] gap-6 pb-20 pt-24 md:gap-12 md:pb-36 md:pt-[12.5rem] md:grid-cols-[minmax(0,1.65fr)_minmax(20rem,0.9fr)] md:items-start">
           <div>
             <h1 className="max-w-[46rem] text-[clamp(2.45rem,9vw,3.45rem)] font-semibold leading-[0.98] tracking-normal text-white md:text-[clamp(3.2rem,3.9vw,4.9rem)]">
-              Need a website that stands out?
+              <span className="block">Need a website</span>
+              <span className="block">that stands</span>
+              <span className="block">out?</span>
             </h1>
           </div>
 
-          <div className="pt-0 md:pt-20">
+          <div className="pt-0">
             <p className="max-w-[24rem] text-base font-semibold leading-7 text-white md:text-xl md:leading-8">
               We design and build websites that drive results and help your business grow. No Calls. No BS. Just Results.
             </p>

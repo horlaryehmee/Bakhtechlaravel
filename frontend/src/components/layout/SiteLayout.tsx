@@ -30,15 +30,55 @@ function visibleNavigationItems(items: unknown): HeaderNavItem[] {
 }
 
 export function SiteLayout() {
+  const location = useLocation()
   const [open, setOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isFooterVisible, setIsFooterVisible] = useState(false)
   const [shouldRenderFooter, setShouldRenderFooter] = useState(false)
+  const [isAgencyTemplatePage, setIsAgencyTemplatePage] = useState(() => location.pathname === '/' || location.pathname.split('/').filter(Boolean).length === 1)
   const [headerNavigation, setHeaderNavigation] = useState<HeaderNavItem[]>(navigation)
   const footerSentinelRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
-  const location = useLocation()
   const isBookingPage = location.pathname.startsWith('/booking') || location.pathname.startsWith('/book/')
+
+  useEffect(() => {
+    let cancelled = false
+    const path = location.pathname.replace(/^\/+|\/+$/g, '')
+    const knownPages = new Set(['about', 'portfolio', 'booking', 'book', 'contact'])
+
+    if (path === '') {
+      setIsAgencyTemplatePage(true)
+      api.publicSettings()
+        .then((settingsResult) => api.publicPage(settingsResult.settings.activeHome?.trim() || 'home'))
+        .then((pageResult) => {
+          if (!cancelled) setIsAgencyTemplatePage(pageResult.page.template === 'agency-v2')
+        })
+        .catch(() => {
+          if (!cancelled) setIsAgencyTemplatePage(false)
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const [firstSegment, secondSegment] = path.split('/')
+    if (!secondSegment && firstSegment && !knownPages.has(firstSegment)) {
+      setIsAgencyTemplatePage(true)
+      api.publicPage(firstSegment)
+        .then((pageResult) => {
+          if (!cancelled) setIsAgencyTemplatePage(pageResult.page.template === 'agency-v2')
+        })
+        .catch(() => {
+          if (!cancelled) setIsAgencyTemplatePage(false)
+        })
+    } else {
+      setIsAgencyTemplatePage(false)
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50)
@@ -72,7 +112,7 @@ export function SiteLayout() {
   }, [])
 
   useEffect(() => {
-    if (isBookingPage) return
+    if (isBookingPage || isAgencyTemplatePage) return
     const footerSentinel = footerSentinelRef.current
     if (!footerSentinel) return
 
@@ -87,10 +127,11 @@ export function SiteLayout() {
 
     observer.observe(footerSentinel)
     return () => observer.disconnect()
-  }, [isBookingPage])
+  }, [isBookingPage, isAgencyTemplatePage])
 
   return (
     <div className="site-bg min-h-screen">
+      {!isAgencyTemplatePage ? (
       <header>
         <nav data-state={open ? 'active' : undefined} className={cn('group fixed inset-x-0 top-0 z-[120] px-2 transition duration-300', isFooterVisible && 'pointer-events-none -translate-y-8 opacity-0')}>
           <div
@@ -248,11 +289,12 @@ export function SiteLayout() {
           </div>
         </nav>
       </header>
+      ) : null}
       <main>
         <Outlet />
       </main>
       <CmsPageSync />
-      {!isBookingPage && (
+      {!isBookingPage && !isAgencyTemplatePage && (
         <div ref={footerSentinelRef}>
           {shouldRenderFooter ? (
             <Suspense fallback={<div className="h-screen bg-[var(--background)]" />}>
