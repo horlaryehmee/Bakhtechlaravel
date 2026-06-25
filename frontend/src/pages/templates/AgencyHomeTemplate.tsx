@@ -1219,31 +1219,34 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="founder" className="relative overflow-hidden bg-[#030303] px-4 py-20 text-white md:py-28">
+      <section id="founder" className="relative max-w-full overflow-hidden bg-[#030303] px-4 py-16 text-white md:py-28">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_38%,rgba(255,255,255,0.08),transparent_34%),radial-gradient(circle_at_78%_48%,rgba(96,125,158,0.16),transparent_36%)]" />
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[size:48px_48px] opacity-35 md:block" />
-        <div className="relative mx-auto max-w-6xl">
-          <h2 className="text-4xl font-black tracking-normal md:text-6xl">The Founder's Desk</h2>
+        <div className="relative mx-auto w-full max-w-6xl min-w-0">
+          <h2 className="max-w-full text-4xl font-black leading-tight tracking-normal md:text-6xl">The Founder's Desk</h2>
 
-          <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(20rem,30rem)_1fr] lg:items-center lg:gap-16">
-            <div className="mx-auto aspect-[4/5] w-full max-w-[24rem] overflow-hidden rounded-lg bg-white/5 sm:aspect-[3/4] lg:mx-0 lg:aspect-[1.05/1] lg:max-w-none lg:min-h-[22rem]">
+          <div className="mt-10 grid min-w-0 gap-10 lg:mt-12 lg:grid-cols-[minmax(20rem,30rem)_minmax(0,1fr)] lg:items-center lg:gap-16">
+            <div
+              className="mx-auto h-[24rem] w-full max-w-[22rem] overflow-hidden rounded-lg bg-white/5 bg-cover bg-center ring-1 ring-white/10 sm:h-[28rem] sm:max-w-[24rem] lg:mx-0 lg:h-auto lg:max-w-none lg:aspect-[1.05/1] lg:min-h-[22rem]"
+              style={{ backgroundImage: "url('/founder-portrait.png')" }}
+            >
               <SafeImage
                 src={founderDeskImage}
                 fallbackSrc="/founder-portrait.png"
                 alt="Bakare Olayemi, founder of Bakhtech Solutions"
-                className="h-full w-full object-cover object-[center_18%] lg:object-center"
+                className="block h-full w-full max-w-full object-cover object-[center_18%] lg:object-center"
                 decoding="async"
                 loading="lazy"
               />
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0 max-w-full">
               <div className="mb-5 flex justify-start gap-4 text-white/50 lg:justify-end">
                 <span className="text-sm font-semibold">X</span>
                 <span className="text-sm font-semibold">in</span>
                 <span className="text-sm font-semibold">◎</span>
               </div>
-              <div className="max-w-2xl text-sm font-normal leading-7 text-white md:text-base md:leading-8">
+              <div className="max-w-full text-sm font-normal leading-7 text-white [overflow-wrap:anywhere] md:max-w-2xl md:text-base md:leading-8">
                 <p>
                   Hi, I'm Bakare Olayemi, I've been building web applications for over 7 years. I've worked with startups, small businesses, and large enterprises to build and scale their web applications. People call me a "Full Stack" developer but I prefer to call myself a problem solver :).
                 </p>
@@ -1255,12 +1258,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 </p>
               </div>
 
-              <div className="mt-16 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+              <div className="mt-12 max-w-full overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)] md:mt-16">
                 <div className="marquee-track flex w-max gap-4 [--marquee-duration:32s]">
                   {[...founderNotes, ...founderNotes, ...founderNotes].map((item, index) => {
                     const Icon = item.icon
                     return (
-                      <article key={`${item.name}-${index}`} className="w-[16rem] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
+                      <article key={`${item.name}-${index}`} className="w-[min(16rem,78vw)] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
                         <div className="flex items-center gap-3">
                           <span className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/8 text-white/72">
                             <Icon className="h-4 w-4" />
