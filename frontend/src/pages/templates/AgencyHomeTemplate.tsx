@@ -461,13 +461,14 @@ function HeroOrbitArc() {
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notificationIndex, setNotificationIndex] = useState(0)
-  const [projectTileOffset, setProjectTileOffset] = useState(0)
+  const [projectTileRotation, setProjectTileRotation] = useState({ indexes: [0, 1, 2, 3], next: 4, active: 0 })
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
+  const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
-  const projectImageTiles = portfolioProjects.slice(0, 4)
+  const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -478,14 +479,33 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   }, [])
 
   useEffect(() => {
-    if (portfolioProjects.length <= 1) return
+    const visibleCount = 4
+    setProjectTileRotation({
+      indexes: Array.from({ length: visibleCount }, (_, index) => projectImageProjects.length ? index % projectImageProjects.length : 0),
+      next: Math.min(visibleCount, projectImageProjects.length),
+      active: 0,
+    })
+  }, [projectImageProjects.length])
+
+  useEffect(() => {
+    if (projectImageProjects.length <= 4) return
 
     const timer = window.setInterval(() => {
-      setProjectTileOffset((offset) => offset + 1)
-    }, 2600)
+      setProjectTileRotation((current) => {
+        const active = current.active % current.indexes.length
+        const indexes = [...current.indexes]
+        indexes[active] = current.next % projectImageProjects.length
+
+        return {
+          indexes,
+          next: current.next + 1,
+          active: (active + 1) % current.indexes.length,
+        }
+      })
+    }, 1800)
 
     return () => window.clearInterval(timer)
-  }, [portfolioProjects.length])
+  }, [projectImageProjects.length])
 
   useEffect(() => {
     let cancelled = false
@@ -494,7 +514,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       .then(([projectResult, settingsResult, reviewResult]) => {
         if (cancelled) return
 
-        setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
+        const projects = projectResult.status === 'fulfilled' ? projectResult.value.projects : []
+        const seenProjectImages = new Set<string>()
+        const imageProjects = projects.filter((project) => {
+          const src = getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)
+          if (!src || seenProjectImages.has(src)) return false
+          seenProjectImages.add(src)
+          return true
+        })
+        setProjectImageProjects(imageProjects)
+        setPortfolioProjects(projects.slice(0, 6))
         setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
         if (settingsResult.status === 'fulfilled') {
           setShowPortfolioDescriptions(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
@@ -840,16 +869,16 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   'col-start-4 row-start-2',
                   'col-start-2 row-start-3',
                 ].map((className, index) => {
-                  const project = projectImageTiles[(projectTileOffset + index) % Math.max(projectImageTiles.length, 1)]
+                  const project = projectImageTiles[index]
                   return (
                     <span
-                      key={`${project?.id ?? 'project'}-${index}`}
+                      key={`project-tile-${index}`}
                       className={`project-pop-tile col-span-2 aspect-[16/10] overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}
-                      style={{ animationDelay: `${index * 560}ms` }}
                     >
                       {project ? (
                         <SafeImage
-                          className="h-full w-full object-cover"
+                          key={project.id}
+                          className="project-image-frame h-full w-full object-cover"
                           src={getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)}
                           fallbackSrc={projectImageFallbackSrc(project)}
                           alt={project.title}
