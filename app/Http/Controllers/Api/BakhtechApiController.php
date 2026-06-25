@@ -304,6 +304,7 @@ class BakhtechApiController extends Controller
             'twitterUrl',
             'youtubeUrl',
             'bookingIntro',
+            'founder_desk_image',
             'company_name',
             'company_logo',
             'company_email',

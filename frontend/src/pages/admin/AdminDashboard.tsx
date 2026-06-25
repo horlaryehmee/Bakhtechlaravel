@@ -616,6 +616,7 @@ const settingLabels: Record<string, string> = {
   google_business_client_id: 'Google Business Client ID',
   google_business_client_secret: 'Google Business Client Secret',
   cursorEffectEnabled: 'Cursor trail effect',
+  founder_desk_image: "Founder's Desk image",
   homePortfolioShowDescriptions: 'Show public project summaries',
   homepageVideoUrl: 'Homepage video URL',
   instagramUrl: 'Instagram link',
@@ -8020,7 +8021,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'cursorEffectEnabled']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'founder_desk_image', 'cursorEffectEnabled']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
@@ -8153,6 +8154,31 @@ export function AdminDashboard() {
                   </span>
                 </div>
                 <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library.</span>
+              </>
+            ) : key === 'founder_desk_image' ? (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="theme-input min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                    value={settingsForm[key] ?? ''}
+                    placeholder="/uploads/founder.jpg"
+                    onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
+                  />
+                  <span className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700 transition hover:bg-gray-100">
+                    <Upload className="h-4 w-4" />
+                    Upload
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => setSettingsForm(prev => ({ ...prev, [key]: media.url })))}
+                    />
+                  </span>
+                </div>
+                {settingsForm[key] ? (
+                  <SafeImage className="h-40 w-40 rounded-xl border border-gray-200 object-cover" src={settingsForm[key]} fallbackSrc="/founder-portrait.png" alt="Founder's Desk preview" />
+                ) : null}
+                <span className="text-xs font-medium text-gray-500">Upload a founder portrait or paste an image URL. Save settings after upload.</span>
               </>
             ) : key === 'cursorEffectEnabled' || key === 'homePortfolioShowDescriptions' ? (
               <>

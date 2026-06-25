@@ -496,6 +496,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
+  const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const activeNotification = updateNotifications[notificationIndex]
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
@@ -556,7 +557,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         setPortfolioProjects(projects.slice(0, 6))
         setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
         if (settingsResult.status === 'fulfilled') {
-          setShowPortfolioDescriptions(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
+          const publicSettings = settingsResult.value.settings
+          setShowPortfolioDescriptions(publicSettings.homePortfolioShowDescriptions !== 'false')
+          setFounderDeskImage(publicSettings.founder_desk_image || '/founder-portrait.png')
         }
       })
       .catch(() => undefined)
@@ -1113,8 +1116,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
           <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(20rem,30rem)_1fr] lg:items-center lg:gap-16">
             <div className="min-h-[22rem] overflow-hidden rounded-lg bg-white/5">
-              <img
-                src="/founder-portrait.png?v=20260625"
+              <SafeImage
+                src={founderDeskImage}
+                fallbackSrc="/founder-portrait.png"
                 alt="Bakare Olayemi, founder of Bakhtech Solutions"
                 className="aspect-[1.05/1] h-full min-h-[22rem] w-full object-cover object-center"
                 decoding="async"

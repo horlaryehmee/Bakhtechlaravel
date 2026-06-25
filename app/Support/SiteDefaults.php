@@ -114,6 +114,7 @@ class SiteDefaults
             'twitterUrl' => '',
             'youtubeUrl' => '',
             'bookingIntro' => 'Choose a service, pick an available time, and receive a calendar invitation with reminders.',
+            'founder_desk_image' => '/founder-portrait.png',
             'invoicePaymentEnabled' => 'true',
             'invoiceDefaultPaymentGateway' => 'paystack',
             'invoiceEnabledPaymentGateways' => 'paystack,flutterwave',
