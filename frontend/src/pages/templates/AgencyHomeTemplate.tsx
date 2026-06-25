@@ -102,9 +102,9 @@ const comparisonRows: ComparisonRow[] = [
 ]
 
 const founderNotes = [
-  { name: 'Strategy', role: 'Before design', icon: 'analytics', quote: 'We turn unclear ideas into a practical website or product plan.' },
-  { name: 'Build', role: 'During execution', icon: 'react', quote: 'Every interface is shaped around speed, clarity, and real business use.' },
-  { name: 'Launch', role: 'After handoff', icon: 'cloudflare', quote: 'Deployment, support, and iteration stay part of the work.' },
+  { name: 'Strategy', role: 'Before design', icon: Gem, quote: 'We turn unclear ideas into a practical website or product plan.' },
+  { name: 'Build', role: 'During execution', icon: Cpu, quote: 'Every interface is shaped around speed, clarity, and real business use.' },
+  { name: 'Launch', role: 'After handoff', icon: Send, quote: 'Deployment, support, and iteration stay part of the work.' },
 ]
 
 const companyMarqueeItems = [
@@ -1128,7 +1128,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <span className="text-sm font-semibold">in</span>
                 <span className="text-sm font-semibold">◎</span>
               </div>
-              <div className="max-w-2xl text-sm font-bold leading-7 text-white md:text-base md:leading-8">
+              <div className="max-w-2xl text-sm font-normal leading-7 text-white md:text-base md:leading-8">
                 <p>
                   Hi, I lead Bakhtech Solutions. I have been building websites, ecommerce stores, booking systems, dashboards, and custom web applications for over 7 years.
                 </p>
@@ -1140,22 +1140,25 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 </p>
               </div>
 
-              <div className="mt-16 overflow-hidden">
-                <div className="flex w-max gap-4">
-                  {[...founderNotes, ...founderNotes].map((item, index) => (
-                    <article key={`${item.name}-${index}`} className="w-[16rem] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-white">
-                          <BrandIcon icon={item.icon} className="h-4 w-4" />
-                        </span>
-                        <div>
-                          <p className="text-xs font-semibold text-white">{item.name}</p>
-                          <p className="text-[0.68rem] font-semibold text-white/45">{item.role}</p>
+              <div className="mt-16 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
+                <div className="marquee-track flex w-max gap-4 [--marquee-duration:32s]">
+                  {[...founderNotes, ...founderNotes, ...founderNotes].map((item, index) => {
+                    const Icon = item.icon
+                    return (
+                      <article key={`${item.name}-${index}`} className="w-[16rem] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/8 text-white/72">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <p className="text-xs font-medium text-white">{item.name}</p>
+                            <p className="text-[0.68rem] font-normal text-white/45">{item.role}</p>
+                          </div>
                         </div>
-                      </div>
-                      <p className="mt-4 text-xs font-bold leading-5 text-white">{item.quote}</p>
-                    </article>
-                  ))}
+                        <p className="mt-4 text-xs font-normal leading-5 text-white/86">{item.quote}</p>
+                      </article>
+                    )
+                  })}
                 </div>
               </div>
             </div>
