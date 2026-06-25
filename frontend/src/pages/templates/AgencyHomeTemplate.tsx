@@ -867,11 +867,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <p className="mt-4 text-base font-semibold leading-7 text-white/58">
                   Designed to perfection, Bakhtech helps you take your dream idea to reality through expert design and development services.
                 </p>
-                <Link to="/pricing" className="mt-10 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
+                <Link to="/about" className="mt-10 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
                   <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
                     <Check className="h-4 w-4" />
                   </span>
-                  View pricing
+                  About Us
                 </Link>
               </div>
             </article>
@@ -1038,7 +1038,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="relative mt-8">
                 <p className="text-xl font-semibold text-black">Get to know our dream team</p>
                 <div className="mt-5">
-                  <ChatPill label="Chat with Alex" />
+                  <ChatPill label="Book a Call" />
                 </div>
               </div>
             </article>
