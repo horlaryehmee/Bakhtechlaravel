@@ -1111,12 +1111,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         <div className="relative mx-auto max-w-6xl">
           <h2 className="text-4xl font-black tracking-normal md:text-6xl">The Founder's Desk</h2>
 
-          <div className="mt-12 grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-16">
-            <div className="overflow-hidden rounded-lg bg-white/5">
+          <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(20rem,30rem)_1fr] lg:items-center lg:gap-16">
+            <div className="min-h-[22rem] overflow-hidden rounded-lg bg-white/5">
               <img
-                src="/founder/founder-desk.png"
+                src="/founder-desk.png?v=20260625"
                 alt="Bakhtech team reviewing website plans at a desk"
-                className="aspect-[1.05/1] h-full w-full object-cover"
+                className="aspect-[1.05/1] h-full min-h-[22rem] w-full object-cover"
                 decoding="async"
                 loading="lazy"
               />
