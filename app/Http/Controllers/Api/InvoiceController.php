@@ -1564,9 +1564,9 @@ class InvoiceController extends Controller
 
     private function pdfLogoSrc(): string
     {
-        $path = public_path('bakhtech-pdf-logo.jpg');
+        $path = public_path('bakhtech-pdf-logo.png');
         if (!is_file($path)) {
-            $path = public_path('bakhtech-pdf-logo.png');
+            $path = public_path('bakhtech-pdf-logo.jpg');
         }
         if (!is_file($path)) {
             return '';
