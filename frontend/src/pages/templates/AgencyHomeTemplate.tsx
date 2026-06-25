@@ -66,6 +66,122 @@ const pricingCards: Array<{ title: string; text: string; price: string; features
   { title: 'Custom System', text: 'For portals, dashboards, ecommerce, and complex business tools.', price: 'Custom quote', features: ['Workflow mapping', 'Laravel + React build', 'Integrations', 'Ongoing improvements'] },
 ]
 
+const companyMarqueeItems = [
+  { name: 'Microsoft', icon: 'microsoft' },
+  { name: 'Google', icon: 'google' },
+  { name: 'Adobe', icon: 'adobe' },
+  { name: 'Raycast', icon: 'raycast' },
+  { name: 'Stripe', icon: 'stripe' },
+  { name: 'Shopify', icon: 'shopify' },
+  { name: 'Notion', icon: 'notion' },
+  { name: 'Slack', icon: 'slack' },
+  { name: 'Figma', icon: 'figma' },
+  { name: 'Linear', icon: 'linear' },
+]
+
+const technologyMarqueeItems = [
+  { name: 'React', icon: 'react' },
+  { name: 'Laravel', icon: 'laravel' },
+  { name: 'AWS', icon: 'aws' },
+  { name: 'Vite', icon: 'vite' },
+  { name: 'OpenAI', icon: 'openai' },
+  { name: 'Supabase', icon: 'supabase' },
+  { name: 'Firebase', icon: 'firebase' },
+  { name: 'Tailwind', icon: 'tailwind' },
+  { name: 'MySQL', icon: 'mysql' },
+  { name: 'Postgres', icon: 'postgres' },
+  { name: 'Node.js', icon: 'node' },
+  { name: 'TypeScript', icon: 'typescript' },
+  { name: 'GitHub', icon: 'github' },
+  { name: 'Cloudflare', icon: 'cloudflare' },
+  { name: 'Analytics', icon: 'analytics' },
+  { name: 'Paystack', icon: 'paystack' },
+]
+
+function BrandIcon({ icon, className = 'h-5 w-5' }: { icon: string; className?: string }) {
+  switch (icon) {
+    case 'microsoft':
+      return (
+        <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#f25022" d="M2 2h9.4v9.4H2z" />
+          <path fill="#7fba00" d="M12.6 2H22v9.4h-9.4z" />
+          <path fill="#00a4ef" d="M2 12.6h9.4V22H2z" />
+          <path fill="#ffb900" d="M12.6 12.6H22V22h-9.4z" />
+        </svg>
+      )
+    case 'google':
+      return (
+        <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.24 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
+          <path fill="#EA4335" d="M12 5.37c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.37 12 5.37z" />
+        </svg>
+      )
+    case 'adobe':
+      return (
+        <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#ff0000" d="M2 3h8l-8 18zm12 0h8v18zm-2.1 7.4 3.4 8H13l-1-2.6H9.5z" />
+        </svg>
+      )
+    case 'raycast':
+      return <Zap className={`${className} text-[#ff6363] fill-current`} />
+    case 'stripe':
+      return <span className={`${className} grid place-items-center rounded bg-[#635bff] text-[0.65rem] font-black text-white`}>S</span>
+    case 'shopify':
+      return <span className={`${className} grid place-items-center rounded bg-[#95bf47] text-[0.65rem] font-black text-white`}>S</span>
+    case 'notion':
+      return <span className={`${className} grid place-items-center rounded border border-black text-[0.65rem] font-black text-black`}>N</span>
+    case 'slack':
+      return (
+        <span className={`${className} relative block`}>
+          <span className="absolute left-[42%] top-0 h-[42%] w-[24%] rounded bg-[#36c5f0]" />
+          <span className="absolute right-0 top-[42%] h-[24%] w-[42%] rounded bg-[#2eb67d]" />
+          <span className="absolute bottom-0 left-[42%] h-[42%] w-[24%] rounded bg-[#ecb22e]" />
+          <span className="absolute left-0 top-[42%] h-[24%] w-[42%] rounded bg-[#e01e5a]" />
+        </span>
+      )
+    case 'figma':
+      return <span className={`${className} grid place-items-center rounded bg-[#a259ff] text-[0.65rem] font-black text-white`}>F</span>
+    case 'linear':
+      return <span className={`${className} grid place-items-center rounded-full bg-black text-[0.65rem] font-black text-white`}>L</span>
+    case 'react':
+      return <span className={`${className} grid place-items-center rounded-full border border-[#61dafb] text-[0.65rem] font-black text-[#00a9d6]`}>⚛</span>
+    case 'laravel':
+      return <span className={`${className} grid place-items-center rounded bg-[#ff2d20] text-[0.65rem] font-black text-white`}>L</span>
+    case 'aws':
+      return <span className={`${className} grid place-items-center rounded bg-[#ff9900] text-[0.55rem] font-black text-black`}>aws</span>
+    case 'vite':
+      return <span className={`${className} grid place-items-center rounded bg-gradient-to-br from-[#bd34fe] to-[#ffd62e] text-[0.65rem] font-black text-white`}>V</span>
+    case 'openai':
+      return <span className={`${className} grid place-items-center rounded-full border border-black/30 text-[0.58rem] font-black text-black`}>AI</span>
+    case 'supabase':
+      return <span className={`${className} grid place-items-center rounded bg-[#3ecf8e] text-[0.65rem] font-black text-white`}>S</span>
+    case 'firebase':
+      return <span className={`${className} grid place-items-center rounded bg-[#ffca28] text-[0.65rem] font-black text-black`}>F</span>
+    case 'tailwind':
+      return <span className={`${className} grid place-items-center rounded bg-[#38bdf8] text-[0.65rem] font-black text-white`}>T</span>
+    case 'mysql':
+      return <span className={`${className} grid place-items-center rounded bg-[#00758f] text-[0.58rem] font-black text-white`}>SQL</span>
+    case 'postgres':
+      return <span className={`${className} grid place-items-center rounded bg-[#336791] text-[0.65rem] font-black text-white`}>P</span>
+    case 'node':
+      return <span className={`${className} grid place-items-center rounded bg-[#339933] text-[0.65rem] font-black text-white`}>N</span>
+    case 'typescript':
+      return <span className={`${className} grid place-items-center rounded bg-[#3178c6] text-[0.65rem] font-black text-white`}>TS</span>
+    case 'github':
+      return <span className={`${className} grid place-items-center rounded-full bg-black text-[0.65rem] font-black text-white`}>G</span>
+    case 'cloudflare':
+      return <span className={`${className} grid place-items-center rounded bg-[#f38020] text-[0.65rem] font-black text-white`}>C</span>
+    case 'analytics':
+      return <span className={`${className} grid place-items-center rounded bg-[#f9ab00] text-[0.65rem] font-black text-white`}>A</span>
+    case 'paystack':
+      return <span className={`${className} grid place-items-center rounded bg-[#09a5db] text-[0.65rem] font-black text-white`}>P</span>
+    default:
+      return <span className={`${className} grid place-items-center rounded bg-black/10 text-[0.65rem] font-black text-black`}>{icon.slice(0, 1).toUpperCase()}</span>
+  }
+}
+
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
   const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
 
@@ -681,17 +797,14 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </p>
             </article>
 
-            <article className="flex min-h-[8rem] items-center overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4">
-              <div className="flex w-max items-center gap-3">
-                {[
-                  ['Microsoft', 'M'],
-                  ['Google', 'G'],
-                  ['Adobe', 'A'],
-                  ['Raycast', 'R'],
-                ].map(([name, mark]) => (
-                  <span key={name} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-black/62 shadow-[0_8px_24px_rgba(15,23,42,0.10)]">
-                    <span className="font-black text-black">{mark}</span>
-                    {name}
+            <article className="relative flex min-h-[8rem] items-center overflow-hidden rounded-[1.35rem] bg-white py-6 shadow-sm lg:col-span-4">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent" />
+              <div className="marquee-track flex w-max items-center gap-3 px-6 [--marquee-duration:34s]">
+                {[...companyMarqueeItems, ...companyMarqueeItems].map((item, index) => (
+                  <span key={`${item.name}-${index}`} className="inline-flex min-h-10 min-w-max items-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-black/62 shadow-[0_8px_24px_rgba(15,23,42,0.10)]">
+                    <BrandIcon icon={item.icon} className="h-5 w-5 shrink-0" />
+                    {item.name}
                   </span>
                 ))}
               </div>
@@ -709,14 +822,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="flex min-h-[8.5rem] flex-col gap-6 rounded-[1.35rem] bg-white p-8 shadow-sm md:flex-row md:items-center lg:col-span-8">
-              <p className="min-w-max text-xl font-semibold text-black">Technologies we use</p>
-              <div className="grid flex-1 grid-cols-3 gap-4 sm:grid-cols-6">
-                {['React', 'aws', 'Laravel', 'Analytics', 'AI', 'Vite'].map((tech) => (
-                  <span key={tech} className="grid h-14 place-items-center rounded-xl bg-white text-sm font-black text-black/62 shadow-[0_12px_26px_rgba(15,23,42,0.10)]">
-                    {tech}
-                  </span>
-                ))}
+            <article className="relative flex min-h-[8.5rem] flex-col gap-6 overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm md:flex-row md:items-center lg:col-span-8">
+              <p className="relative z-20 min-w-max text-xl font-semibold text-black">Technologies we use</p>
+              <div className="relative min-w-0 flex-1 overflow-hidden">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent" />
+                <div className="marquee-track flex w-max items-center gap-5 px-3 [--marquee-duration:46s]">
+                  {[...technologyMarqueeItems, ...technologyMarqueeItems].map((item, index) => (
+                    <span key={`${item.name}-${index}`} className="inline-flex h-14 min-w-[5rem] items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-black/62 shadow-[0_12px_26px_rgba(15,23,42,0.10)]">
+                      <BrandIcon icon={item.icon} className="h-6 w-6 shrink-0" />
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
               </div>
             </article>
           </div>
