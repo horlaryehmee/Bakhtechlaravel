@@ -1106,7 +1106,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 return (
                   <div
                     key={notification.label}
-                    className="absolute rounded-lg border border-black/8 bg-white p-4 transition-[bottom,left,right,opacity,transform,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                    className="absolute rounded-lg border border-black/8 bg-white p-4 transition-[bottom,left,right,opacity,transform,box-shadow] duration-[1150ms] ease-[cubic-bezier(0.45,0,0.2,1)]"
                     style={stackStyles}
                     aria-hidden={!isFront}
                   >
