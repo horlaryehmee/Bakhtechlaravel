@@ -3056,20 +3056,6 @@ a {
   animation-direction: reverse;
 }
 
-@media (max-width: 767px) {
-  .agency-template .marquee-track {
-    animation: none;
-    transform: translate3d(0, 0, 0);
-  }
-
-  .agency-template .project-pop-tile,
-  .agency-template .project-image-frame {
-    animation: none;
-    transition: none;
-    will-change: auto;
-  }
-}
-
 .project-pop-tile {
   transform-origin: center;
   transition: box-shadow 360ms ease, transform 360ms ease;
