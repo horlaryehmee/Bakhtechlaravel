@@ -732,7 +732,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
-  const activeNotification = updateNotifications[notificationIndex]
+  const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
 
@@ -1094,31 +1094,30 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute right-4 top-4 h-28 w-36 opacity-65 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:10px_10px]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-[#eee9d9]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-transparent border-r-[#f8f8f7] border-t-[#f8f8f7]" />
-              <div className="absolute bottom-[5.85rem] left-8 right-8 h-14 rounded-lg border border-black/8 bg-white/82" />
-              <div className="absolute bottom-[5.15rem] left-6 right-6 h-14 rounded-lg border border-black/8 bg-white/90" />
-              <div
-                key={activeNotification.label}
-                className="absolute bottom-9 left-5 right-5 z-10 animate-[notification-card_480ms_ease-out] rounded-lg border border-black/8 bg-white p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-xs text-black/34">notification</p>
-                    <p className="mt-3 font-mono text-base text-black/74">{activeNotification.label}</p>
+              {notificationStack.map((notification, stackIndex) => {
+                const isFront = stackIndex === 0
+                const stackClassName = [
+                  'bottom-9 left-5 right-5 z-30 p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]',
+                  'bottom-[5.15rem] left-6 right-6 z-20 p-3 opacity-92 shadow-[0_10px_26px_rgba(0,0,0,0.06)]',
+                  'bottom-[5.85rem] left-8 right-8 z-10 p-3 opacity-78 shadow-[0_8px_20px_rgba(0,0,0,0.04)]',
+                ][stackIndex]
+
+                return (
+                  <div
+                    key={`${notification.label}-${notificationIndex}-${stackIndex}`}
+                    className={`absolute rounded-lg border border-black/8 bg-white ${stackClassName} ${isFront ? 'animate-[notification-card_520ms_ease-out]' : 'transition-all duration-500 ease-out'}`}
+                    aria-hidden={!isFront}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className={`font-mono text-xs text-black/34 ${isFront ? '' : 'opacity-0'}`}>notification</p>
+                        <p className={`${isFront ? 'mt-3 text-base text-black/74' : 'mt-1 truncate text-sm text-black/34'} font-mono`}>{notification.label}</p>
+                      </div>
+                      <BrandIcon icon={notification.icon} className={`${isFront ? 'h-5 w-5' : 'h-4 w-4 opacity-45'} mt-1 shrink-0`} />
+                    </div>
                   </div>
-                  {activeNotification.icon === 'slack' ? (
-                    <span className="relative mt-1 h-5 w-5 shrink-0">
-                      <span className="absolute left-2 top-0 h-2 w-1.5 rounded-full bg-[#36c5f0]" />
-                      <span className="absolute right-0 top-2 h-1.5 w-2 rounded-full bg-[#2eb67d]" />
-                      <span className="absolute bottom-0 left-2 h-2 w-1.5 rounded-full bg-[#ecb22e]" />
-                      <span className="absolute left-0 top-2 h-1.5 w-2 rounded-full bg-[#e01e5a]" />
-                    </span>
-                  ) : (
-                    <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-black">
-                      <span className="h-2.5 w-3 rounded-b-full rounded-t-sm bg-white" />
-                    </span>
-                  )}
-                </div>
-              </div>
+                )
+              })}
             </article>
             <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4 md:min-h-0">
               <h3 className="relative z-20 max-w-[19rem] text-lg font-black drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">Hosting, Deployment & Maintenance</h3>
