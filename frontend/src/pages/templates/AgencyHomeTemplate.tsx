@@ -1100,7 +1100,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   { bottom: '2.25rem', left: '1.25rem', right: '1.25rem', zIndex: 40, opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)', boxShadow: '0 14px 42px rgba(0,0,0,0.10)' },
                   { bottom: '5.15rem', left: '1.5rem', right: '1.5rem', zIndex: 30, opacity: 0.92, transform: 'translate3d(0, -2px, 0) scale(0.985)', boxShadow: '0 10px 26px rgba(0,0,0,0.06)' },
                   { bottom: '5.9rem', left: '2rem', right: '2rem', zIndex: 20, opacity: 0.72, transform: 'translate3d(0, -4px, 0) scale(0.965)', boxShadow: '0 8px 20px rgba(0,0,0,0.04)' },
-                  { bottom: '6.2rem', left: '2.75rem', right: '2.75rem', zIndex: 10, opacity: 0, transform: 'translate3d(0, -12px, 0) scale(0.93)', boxShadow: '0 4px 14px rgba(0,0,0,0.02)' },
+                  { bottom: '1.15rem', left: '1.25rem', right: '1.25rem', zIndex: 50, opacity: 0, transform: 'translate3d(0, 34px, 0) scale(0.985)', boxShadow: '0 4px 14px rgba(0,0,0,0.02)' },
                 ][stackIndex]
 
                 return (
