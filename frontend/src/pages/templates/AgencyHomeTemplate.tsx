@@ -732,7 +732,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
-  const notificationStack = Array.from({ length: updateNotifications.length }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
+  const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
 
@@ -1100,13 +1100,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   { bottom: '2.25rem', left: '1.25rem', right: '1.25rem', zIndex: 40, opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)', boxShadow: '0 14px 42px rgba(0,0,0,0.10)' },
                   { bottom: '5.15rem', left: '1.5rem', right: '1.5rem', zIndex: 30, opacity: 0.92, transform: 'translate3d(0, -2px, 0) scale(0.985)', boxShadow: '0 10px 26px rgba(0,0,0,0.06)' },
                   { bottom: '5.9rem', left: '2rem', right: '2rem', zIndex: 20, opacity: 0.72, transform: 'translate3d(0, -4px, 0) scale(0.965)', boxShadow: '0 8px 20px rgba(0,0,0,0.04)' },
-                  { bottom: '1.15rem', left: '1.25rem', right: '1.25rem', zIndex: 50, opacity: 0, transform: 'translate3d(0, 34px, 0) scale(0.985)', boxShadow: '0 4px 14px rgba(0,0,0,0.02)' },
                 ][stackIndex]
 
                 return (
                   <div
-                    key={notification.label}
-                    className="absolute rounded-lg border border-black/8 bg-white p-4 transition-[bottom,left,right,opacity,transform,box-shadow] duration-[1150ms] ease-[cubic-bezier(0.45,0,0.2,1)]"
+                    key={`${notification.label}-${stackIndex === 0 ? notificationIndex : stackIndex}`}
+                    className={`absolute rounded-lg border border-black/8 bg-white p-4 ${isFront ? 'animate-[notification-front-exit_2600ms_ease-in-out_forwards]' : ''}`}
                     style={stackStyles}
                     aria-hidden={!isFront}
                   >

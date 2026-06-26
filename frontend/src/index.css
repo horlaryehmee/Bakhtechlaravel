@@ -3071,6 +3071,24 @@ a {
   will-change: opacity, transform;
 }
 
+@keyframes notification-front-exit {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.985);
+  }
+
+  16%,
+  74% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 38px, 0) scale(0.985);
+  }
+}
+
 @keyframes project-image-enter {
   from {
     opacity: 0;
