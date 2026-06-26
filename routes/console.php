@@ -126,7 +126,9 @@ Artisan::command('database:check {--repair : Insert missing baseline records wit
 Artisan::command('booking:send-reminders', function () {
     $result = app(\App\Services\BookingNotificationService::class)->sendDueReminders();
 
-    $this->info("Processed {$result['processed']} reminders: {$result['sent']} sent, {$result['failed']} failed.");
+    $expired = $result['expired'] ?? 0;
+
+    $this->info("Processed {$result['processed']} reminders: {$result['sent']} sent, {$result['failed']} failed, {$expired} expired.");
 })->purpose('Send due booking reminder emails');
 
 Schedule::command('booking:send-reminders')

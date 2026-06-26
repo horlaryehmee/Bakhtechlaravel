@@ -51,6 +51,8 @@ class BookingNotificationService
 
     public function sendDueReminders(int $limit = 100): array
     {
+        $expired = $this->expirePastBookingReminders();
+
         $due = DB::table('booking_reminders')
             ->join('bookings', 'bookings.id', '=', 'booking_reminders.booking_id')
             ->leftJoin('booking_event_types', 'booking_event_types.id', '=', 'bookings.booking_event_type_id')
@@ -76,8 +78,6 @@ class BookingNotificationService
             )
             ->where('booking_reminders.status', 'pending')
             ->where('booking_reminders.scheduled_for', '<=', now())
-            ->where('bookings.starts_at', '>', now())
-            ->whereNotIn('bookings.status', ['cancelled', 'closed', 'completed'])
             ->orderBy('booking_reminders.scheduled_for')
             ->limit($limit)
             ->get();
@@ -86,6 +86,13 @@ class BookingNotificationService
         $failed = 0;
 
         foreach ($due as $reminder) {
+            if ($this->reminderShouldExpire($reminder)) {
+                $this->expireReminder((int) $reminder->id, 'Booking time has passed or booking is no longer active.');
+                $expired++;
+
+                continue;
+            }
+
             $settings = $this->decodedEmailSettings($reminder->settings_json ?? null);
             $customMessage = $this->render(
                 (string) ($settings['reminderTemplate'] ?? $this->defaultReminderTemplate()),
@@ -129,7 +136,61 @@ class BookingNotificationService
             }
         }
 
-        return ['processed' => $due->count(), 'sent' => $sent, 'failed' => $failed];
+        return ['processed' => $due->count(), 'sent' => $sent, 'failed' => $failed, 'expired' => $expired];
+    }
+
+    private function expirePastBookingReminders(): int
+    {
+        if (! Schema::hasTable('booking_reminders')) {
+            return 0;
+        }
+
+        $ids = DB::table('booking_reminders')
+            ->join('bookings', 'bookings.id', '=', 'booking_reminders.booking_id')
+            ->where('booking_reminders.status', 'pending')
+            ->where(function ($query) {
+                $query
+                    ->where('bookings.starts_at', '<=', now())
+                    ->orWhereIn('bookings.status', ['cancelled', 'closed', 'completed']);
+            })
+            ->limit(1000)
+            ->pluck('booking_reminders.id');
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return DB::table('booking_reminders')
+            ->whereIn('id', $ids)
+            ->update([
+                'status' => 'expired',
+                'error_message' => 'Booking time has passed or booking is no longer active.',
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function reminderShouldExpire(object $reminder): bool
+    {
+        if (in_array((string) $reminder->booking_status, ['cancelled', 'closed', 'completed'], true)) {
+            return true;
+        }
+
+        try {
+            $timezone = (string) ($reminder->timezone ?: config('app.timezone', 'UTC'));
+
+            return Carbon::parse($reminder->starts_at, $timezone)->lte(now($timezone));
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
+    private function expireReminder(int $id, string $message): void
+    {
+        DB::table('booking_reminders')->where('id', $id)->update([
+            'status' => 'expired',
+            'error_message' => $message,
+            'updated_at' => now(),
+        ]);
     }
 
     private function scheduleReminders(object $booking, array $settings, string $adminEmail): void
