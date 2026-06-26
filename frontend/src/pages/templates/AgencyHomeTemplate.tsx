@@ -732,7 +732,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
-  const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
+  const notificationStack = Array.from({ length: updateNotifications.length }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
 
@@ -1096,16 +1096,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-transparent border-r-[#f8f8f7] border-t-[#f8f8f7]" />
               {notificationStack.map((notification, stackIndex) => {
                 const isFront = stackIndex === 0
-                const stackClassName = [
-                  'bottom-9 left-5 right-5 z-30 p-4 shadow-[0_14px_42px_rgba(0,0,0,0.10)]',
-                  'bottom-[5.15rem] left-6 right-6 z-20 p-3 opacity-92 shadow-[0_10px_26px_rgba(0,0,0,0.06)]',
-                  'bottom-[5.85rem] left-8 right-8 z-10 p-3 opacity-78 shadow-[0_8px_20px_rgba(0,0,0,0.04)]',
+                const stackStyles = [
+                  { bottom: '2.25rem', left: '1.25rem', right: '1.25rem', zIndex: 40, opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)', boxShadow: '0 14px 42px rgba(0,0,0,0.10)' },
+                  { bottom: '5.15rem', left: '1.5rem', right: '1.5rem', zIndex: 30, opacity: 0.92, transform: 'translate3d(0, -2px, 0) scale(0.985)', boxShadow: '0 10px 26px rgba(0,0,0,0.06)' },
+                  { bottom: '5.9rem', left: '2rem', right: '2rem', zIndex: 20, opacity: 0.72, transform: 'translate3d(0, -4px, 0) scale(0.965)', boxShadow: '0 8px 20px rgba(0,0,0,0.04)' },
+                  { bottom: '6.2rem', left: '2.75rem', right: '2.75rem', zIndex: 10, opacity: 0, transform: 'translate3d(0, -12px, 0) scale(0.93)', boxShadow: '0 4px 14px rgba(0,0,0,0.02)' },
                 ][stackIndex]
 
                 return (
                   <div
-                    key={`${notification.label}-${notificationIndex}-${stackIndex}`}
-                    className={`absolute rounded-lg border border-black/8 bg-white ${stackClassName} ${isFront ? 'animate-[notification-card_520ms_ease-out]' : 'transition-all duration-500 ease-out'}`}
+                    key={notification.label}
+                    className="absolute rounded-lg border border-black/8 bg-white p-4 transition-[bottom,left,right,opacity,transform,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                    style={stackStyles}
                     aria-hidden={!isFront}
                   >
                     <div className="flex items-start justify-between gap-4">
