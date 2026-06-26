@@ -1,11 +1,12 @@
 ﻿import { Link } from 'react-router-dom'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import {
   ArrowRight,
   ChevronDown,
   Check,
   Cuboid,
   Cpu,
+  ExternalLink,
   Gem,
   GitBranch,
   Globe2,
@@ -55,6 +56,11 @@ import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
+}
+
+type ReviewLinks = {
+  google: string
+  trustpilot: string
 }
 
 const clientLogos = [
@@ -510,7 +516,7 @@ function TestimonialCard({ review }: { review: Review }) {
   const role = review.providerLabel || 'Verified review'
 
   return (
-    <article className="relative flex h-[18rem] w-[min(36rem,calc(100vw-2rem))] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
+    <article className="relative flex h-[18rem] w-[72vw] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:44px_44px] opacity-55" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_8%,rgba(255,255,255,0.24),transparent_22%),linear-gradient(90deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72))]" />
 
@@ -543,7 +549,7 @@ function TestimonialCard({ review }: { review: Review }) {
 
 function TestimonialCardSkeleton() {
   return (
-    <article className="relative flex h-[18rem] w-[min(36rem,calc(100vw-2rem))] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
+    <article className="relative flex h-[18rem] w-[72vw] shrink-0 snap-center flex-col justify-between overflow-hidden rounded-[1.35rem] bg-black p-6 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] md:h-[20rem] md:w-[34rem] md:p-8 lg:w-[39rem]">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:44px_44px] opacity-55" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_7%_8%,rgba(255,255,255,0.24),transparent_22%),linear-gradient(90deg,rgba(0,0,0,0.1),rgba(0,0,0,0.72))]" />
       <div className="relative h-9 w-9 rounded-full bg-white/16" />
@@ -559,6 +565,75 @@ function TestimonialCardSkeleton() {
         </div>
       </div>
     </article>
+  )
+}
+
+function GoogleReviewLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.4 0 6.4 1.2 8.8 3.4l6.6-6.6C35.4 2.6 30.1.5 24 .5 14.8.5 6.9 5.8 3.1 13.5l7.7 6c1.8-5.8 7.1-10 13.2-10z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.3h12.9c-.3 2.1-1.7 5.3-4.9 7.5l7.5 5.8c4.4-4.1 7-10.1 7-17.5z" />
+      <path fill="#FBBC05" d="M10.8 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.7-6C1.4 16.7.5 20.2.5 24s.9 7.3 2.6 10.5l7.7-6z" />
+      <path fill="#34A853" d="M24 47.5c6.1 0 11.3-2 15.1-5.5l-7.5-5.8c-2 1.4-4.7 2.3-7.6 2.3-6.1 0-11.4-4.1-13.2-9.9l-7.7 6C6.9 42.2 14.8 47.5 24 47.5z" />
+    </svg>
+  )
+}
+
+function TrustpilotReviewLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="currentColor" d="M17.227 16.67l2.19 6.742-7.413-5.388 5.223-1.354zM24 9.31h-9.165L12.005.589l-2.84 8.723L0 9.3l7.422 5.397-2.84 8.714 7.422-5.388 4.583-3.326L24 9.311z" />
+    </svg>
+  )
+}
+
+function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: () => void }) {
+  const platforms = [
+    { name: 'Google', href: links.google, icon: <GoogleReviewLogo className="h-7 w-7" /> },
+    { name: 'Trustpilot', href: links.trustpilot, icon: <TrustpilotReviewLogo className="h-7 w-7" /> },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-[170] grid place-items-center bg-[#030712]/70 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Choose review platform">
+      <div className="w-full max-w-md rounded-2xl border border-white/12 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.28)] sm:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-semibold text-[#111827]">Drop a review</h3>
+            <p className="mt-1 text-sm leading-6 text-[#6b7280]">Choose where you would like to leave your feedback.</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#d7dbe5] text-[#111827] transition hover:bg-[#f8f8fb]" aria-label="Close review options">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {platforms.map((platform) => {
+            const disabled = !platform.href.trim()
+            const className = `flex min-h-24 flex-col justify-between rounded-xl border p-4 text-left transition ${disabled ? 'cursor-not-allowed border-[#d7dbe5] bg-[#f8f8fb] text-[#9ca3af]' : 'border-[#d7dbe5] bg-white text-[#111827] hover:border-[#1d4f72] hover:bg-[#f6fbff]'}`
+
+            if (disabled) {
+              return (
+                <div key={platform.name} className={className} aria-disabled="true">
+                  <span>{platform.icon}</span>
+                  <span className="mt-3 text-sm font-semibold">{platform.name}</span>
+                  <span className="mt-1 text-xs font-normal">Link not added yet</span>
+                </div>
+              )
+            }
+
+            return (
+              <a key={platform.name} href={platform.href} target="_blank" rel="noreferrer" className={className}>
+                <span>{platform.icon}</span>
+                <span className="mt-3 flex items-center justify-between gap-2 text-sm font-semibold">
+                  {platform.name}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </span>
+              </a>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -648,14 +723,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
   const [footerSettings, setFooterSettings] = useState(defaultFooterSettings)
+  const [reviewLinks, setReviewLinks] = useState<ReviewLinks>({ google: '', trustpilot: '' })
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const [activeTestimonialIndex, setActiveTestimonialIndex] = useState(0)
   const [testimonialsInView, setTestimonialsInView] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(false)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
+  const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
   const activeNotification = updateNotifications[notificationIndex]
   const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
+  const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)')
@@ -717,14 +796,14 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   }, [])
 
   useEffect(() => {
-    if (!testimonialsInView || reviews.length <= 1) return
+    if (!testimonialsInView || loopedReviews.length <= 1) return
 
     const timer = window.setInterval(() => {
-      setActiveTestimonialIndex((index) => (index + 1) % reviews.length)
+      setActiveTestimonialIndex((index) => (index + 1) % loopedReviews.length)
     }, 3600)
 
     return () => window.clearInterval(timer)
-  }, [reviews.length, testimonialsInView])
+  }, [loopedReviews.length, testimonialsInView])
 
   useEffect(() => {
     const track = testimonialsTrackRef.current
@@ -738,10 +817,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   }, [activeTestimonialIndex])
 
   useEffect(() => {
-    if (reviews.length && activeTestimonialIndex >= reviews.length) {
+    if (loopedReviews.length && activeTestimonialIndex >= loopedReviews.length) {
       setActiveTestimonialIndex(0)
     }
-  }, [activeTestimonialIndex, reviews.length])
+  }, [activeTestimonialIndex, loopedReviews.length])
 
   useEffect(() => {
     let cancelled = false
@@ -765,6 +844,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           const publicSettings = settingsResult.value.settings
           setShowPortfolioDescriptions(publicSettings.homePortfolioShowDescriptions !== 'false')
           setFounderDeskImage(publicSettings.founder_desk_image || '/founder-portrait.png')
+          setReviewLinks({
+            google: publicSettings.googleReviewUrl || '',
+            trustpilot: publicSettings.trustpilotReviewUrl || '',
+          })
           setFooterSettings({
             footerCtaTitle: publicSettings.footerCtaTitle || defaultFooterSettings.footerCtaTitle,
             footerWatermark: publicSettings.footerWatermark || defaultFooterSettings.footerWatermark,
@@ -785,6 +868,63 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       cancelled = true
     }
   }, [])
+
+  function updateActiveTestimonialFromScroll() {
+    const track = testimonialsTrackRef.current
+    if (!track || !track.children.length) return
+
+    const trackCenter = track.scrollLeft + track.clientWidth / 2
+    let closestIndex = 0
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    Array.from(track.children).forEach((child, index) => {
+      const item = child as HTMLElement
+      const itemCenter = item.offsetLeft + item.clientWidth / 2
+      const distance = Math.abs(itemCenter - trackCenter)
+      if (distance < closestDistance) {
+        closestDistance = distance
+        closestIndex = index
+      }
+    })
+
+    setActiveTestimonialIndex(closestIndex)
+  }
+
+  function handleTestimonialPointerDown(event: PointerEvent<HTMLDivElement>) {
+    const track = testimonialsTrackRef.current
+    if (!track) return
+
+    testimonialDragRef.current = {
+      active: true,
+      dragged: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      scrollLeft: track.scrollLeft,
+    }
+    track.setPointerCapture(event.pointerId)
+  }
+
+  function handleTestimonialPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const track = testimonialsTrackRef.current
+    const drag = testimonialDragRef.current
+    if (!track || !drag.active || drag.pointerId !== event.pointerId) return
+
+    const delta = event.clientX - drag.startX
+    if (Math.abs(delta) > 4) drag.dragged = true
+    track.scrollLeft = drag.scrollLeft - delta
+  }
+
+  function handleTestimonialPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const track = testimonialsTrackRef.current
+    const drag = testimonialDragRef.current
+    if (!track || !drag.active || drag.pointerId !== event.pointerId) return
+
+    testimonialDragRef.current.active = false
+    if (track.hasPointerCapture(event.pointerId)) {
+      track.releasePointerCapture(event.pointerId)
+    }
+    updateActiveTestimonialFromScroll()
+  }
 
   return (
     <TemplateShell preview={preview}>
@@ -1377,7 +1517,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
               What people have been saying
             </h2>
-            <ChatPill label="Chat with us" />
+            <button type="button" onClick={() => setShowReviewModal(true)} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg border border-white/15 bg-black px-1.5 pr-4 text-sm font-medium text-white shadow-[0_20px_70px_rgba(0,0,0,0.14)] transition hover:bg-black/82">
+              <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
+                <MessageCircle className="h-4 w-4" />
+              </span>
+              Drop a Review
+            </button>
           </div>
         </div>
 
@@ -1386,19 +1531,21 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#efeee8] to-transparent md:w-28" />
           <div
             ref={testimonialsTrackRef}
-            className="flex min-h-[18rem] snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:min-h-[20rem] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden"
+            className="flex min-h-[18rem] cursor-grab touch-pan-x snap-x snap-mandatory select-none gap-4 overflow-x-auto px-4 pb-2 active:cursor-grabbing [scrollbar-width:none] md:min-h-[20rem] md:gap-7 md:px-[max(1rem,calc((100vw-72rem)/2))] [&::-webkit-scrollbar]:hidden"
+            onPointerDown={handleTestimonialPointerDown}
+            onPointerMove={handleTestimonialPointerMove}
+            onPointerUp={handleTestimonialPointerUp}
+            onPointerCancel={handleTestimonialPointerUp}
           >
             {reviews.length ? (
-              reviews.map((review, index) => (
-                <button
-                  key={review.id}
-                  type="button"
+              loopedReviews.map((review, index) => (
+                <div
+                  key={`${review.id}-${index}`}
                   className="block shrink-0 text-left"
-                  aria-label={`Show testimonial ${index + 1}`}
-                  onClick={() => setActiveTestimonialIndex(index)}
+                  aria-label={`Testimonial ${(index % reviews.length) + 1}`}
                 >
                   <TestimonialCard review={review} />
-                </button>
+                </div>
               ))
             ) : (
               Array.from({ length: 4 }).map((_, index) => <TestimonialCardSkeleton key={`testimonial-skeleton-${index}`} />)
@@ -1414,7 +1561,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   key={review.id}
                   type="button"
                   aria-label={`Go to testimonial ${index + 1}`}
-                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
+                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex % reviews.length ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
                   onClick={() => setActiveTestimonialIndex(index)}
                 />
               ))
@@ -1552,6 +1699,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </footer>
       {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
+      {showReviewModal ? <ReviewPlatformModal links={reviewLinks} onClose={() => setShowReviewModal(false)} /> : null}
     </TemplateShell>
   )
 }
