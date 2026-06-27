@@ -1309,7 +1309,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent" />
                 <div className="marquee-track flex w-max items-center gap-8 px-4 [--marquee-duration:46s]">
                   {[...technologyMarqueeItems, ...technologyMarqueeItems].map((item, index) => (
-                    <span key={`${item.name}-${index}`} className="grid h-14 w-14 shrink-0 place-items-center opacity-75 transition hover:opacity-100" title={item.name} aria-label={item.name}>
+                    <span key={`${item.name}-${index}`} className="grid h-14 w-14 shrink-0 place-items-center opacity-75 transition hover:opacity-100" title={item.name} role="img" aria-label={item.name}>
                       <BrandIcon icon={item.icon} className="h-8 w-8 shrink-0" />
                     </span>
                   ))}
