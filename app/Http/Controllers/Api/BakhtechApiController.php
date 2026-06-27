@@ -287,6 +287,7 @@ class BakhtechApiController extends Controller
             'activeHome',
             'homePortfolioShowDescriptions',
             'homepageVideoUrl',
+            'designDevelopmentVideoUrl',
             'cursorEffectEnabled',
             'theme_light_primary',
             'theme_light_secondary',

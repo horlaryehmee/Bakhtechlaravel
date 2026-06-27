@@ -81,6 +81,7 @@ class SiteDefaults
             'activeHome' => 'home',
             'homePortfolioShowDescriptions' => 'true',
             'homepageVideoUrl' => '',
+            'designDevelopmentVideoUrl' => '',
             'cursorEffectEnabled' => 'false',
             'theme_light_primary' => '#1261ff',
             'theme_light_secondary' => '#12c8a0',

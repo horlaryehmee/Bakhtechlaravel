@@ -611,6 +611,7 @@ function pagePath(page: CmsPage) {
 const settingLabels: Record<string, string> = {
   activeHome: 'Active home page',
   contactEmail: 'Contact email',
+  designDevelopmentVideoUrl: 'Design & Development card video',
   facebookUrl: 'Facebook link',
   googleReviewUrl: 'Google review link',
   google_business_client_id: 'Google Business Client ID',
@@ -8026,7 +8027,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'founder_desk_image', 'footerCtaTitle', 'footerWatermark', 'footerDescription', 'footerCtaLabel', 'footerCopyright', 'cursorEffectEnabled']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'designDevelopmentVideoUrl', 'founder_desk_image', 'footerCtaTitle', 'footerWatermark', 'footerDescription', 'footerCtaLabel', 'footerCopyright', 'cursorEffectEnabled']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
@@ -8138,7 +8139,7 @@ export function AdminDashboard() {
         {keys.filter((key) => key in settingsForm).map((key) => (
           <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
             {settingLabels[key] ?? key}
-            {key === 'homepageVideoUrl' ? (
+            {key === 'homepageVideoUrl' || key === 'designDevelopmentVideoUrl' ? (
               <>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
@@ -8154,11 +8155,11 @@ export function AdminDashboard() {
                       className="hidden"
                       type="file"
                       accept="video/*"
-                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => setSettingsForm(prev => ({ ...prev, homepageVideoUrl: media.url })))}
+                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => setSettingsForm(prev => ({ ...prev, [key]: media.url })))}
                     />
                   </span>
                 </div>
-                <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library.</span>
+                <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library. Save settings after upload.</span>
               </>
             ) : key === 'founder_desk_image' ? (
               <>
