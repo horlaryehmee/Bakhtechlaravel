@@ -1,14 +1,13 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, Moon, Sun, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTheme } from '@/components/theme/theme-context'
 import { CmsPageSync } from '@/components/cms/CmsPageSync'
+import { AgencyFooter } from '@/components/layout/AgencyFooter'
 import { RippleButton } from '@/components/ui/ripple-button'
 import { navigation } from '@/data/site'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-const CinematicFooter = lazy(() => import('@/components/ui/motion-footer').then((module) => ({ default: module.CinematicFooter })))
 
 type HeaderNavItem = {
   label: string
@@ -33,13 +32,9 @@ export function SiteLayout() {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isFooterVisible, setIsFooterVisible] = useState(false)
-  const [shouldRenderFooter, setShouldRenderFooter] = useState(false)
   const [isAgencyTemplatePage, setIsAgencyTemplatePage] = useState(() => location.pathname === '/' || location.pathname.split('/').filter(Boolean).length === 1)
   const [headerNavigation, setHeaderNavigation] = useState<HeaderNavItem[]>(navigation)
-  const footerSentinelRef = useRef<HTMLDivElement>(null)
   const { theme, toggleTheme } = useTheme()
-  const isBookingPage = location.pathname.startsWith('/booking') || location.pathname.startsWith('/book/')
 
   useEffect(() => {
     let cancelled = false
@@ -111,29 +106,11 @@ export function SiteLayout() {
     }
   }, [])
 
-  useEffect(() => {
-    if (isBookingPage || isAgencyTemplatePage) return
-    const footerSentinel = footerSentinelRef.current
-    if (!footerSentinel) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsFooterVisible(entry.isIntersecting)
-        if (entry.isIntersecting) setShouldRenderFooter(true)
-        if (entry.isIntersecting) setOpen(false)
-      },
-      { rootMargin: '900px 0px 0px 0px', threshold: 0.02 },
-    )
-
-    observer.observe(footerSentinel)
-    return () => observer.disconnect()
-  }, [isBookingPage, isAgencyTemplatePage])
-
   return (
     <div className="site-bg min-h-screen">
       {!isAgencyTemplatePage ? (
       <header>
-        <nav data-state={open ? 'active' : undefined} className={cn('group fixed inset-x-0 top-0 z-[120] px-2 transition duration-300', isFooterVisible && 'pointer-events-none -translate-y-8 opacity-0')}>
+        <nav data-state={open ? 'active' : undefined} className="group fixed inset-x-0 top-0 z-[120] px-2 transition duration-300">
           <div
             className={cn(
               'mx-auto mt-2 max-w-6xl rounded-2xl border border-[var(--line)] bg-[var(--surface)]/58 px-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all duration-300 lg:px-8',
@@ -294,17 +271,7 @@ export function SiteLayout() {
         <Outlet />
       </main>
       <CmsPageSync />
-      {!isBookingPage && !isAgencyTemplatePage && (
-        <div ref={footerSentinelRef}>
-          {shouldRenderFooter ? (
-            <Suspense fallback={<div className="h-screen bg-[var(--background)]" />}>
-              <CinematicFooter />
-            </Suspense>
-          ) : (
-            <div className="h-screen bg-[var(--background)]" aria-hidden="true" />
-          )}
-        </div>
-      )}
+      {!isAgencyTemplatePage ? <AgencyFooter /> : null}
     </div>
   )
 }

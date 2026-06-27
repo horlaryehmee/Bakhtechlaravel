@@ -1,0 +1,1 @@
+import{G as e,H as t,J as n,L as r,t as i}from"./index-CMrTik2y.js";var a=r();function o(){let{template:r=``}=n();return t()?r===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(e,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(e,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};

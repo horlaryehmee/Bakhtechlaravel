@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { AgencyFooter } from '@/components/layout/AgencyFooter'
 import * as PricingCard from '@/components/ui/pricing-card'
 import { RippleButton } from '@/components/ui/ripple-button'
 import { api, type PricingCategory, type PricingPlan } from '@/lib/api'
@@ -108,6 +109,7 @@ export function Pricing() {
   const navigate = useNavigate()
   const params = useParams()
   const rootPath = basePath(location.pathname)
+  const isAdminPreview = location.pathname.startsWith('/admin/pricing-preview')
   const [categories, setCategories] = useState<PricingCategory[]>([])
   const [currencies, setCurrencies] = useState(['NGN', 'USD', 'GBP'])
   const [currency, setCurrency] = useState('NGN')
@@ -221,6 +223,7 @@ export function Pricing() {
   }
 
   return (
+    <>
     <main className="min-h-screen bg-[#f4f6fb] pb-16 text-[#071225]">
       <Header />
       <div className="mx-auto w-[min(1320px,calc(100%-32px))] py-8 md:py-12">
@@ -466,5 +469,7 @@ export function Pricing() {
         )}
       </div>
     </main>
+    {!isAdminPreview ? <AgencyFooter /> : null}
+    </>
   )
 }
