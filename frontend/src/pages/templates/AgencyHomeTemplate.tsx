@@ -355,10 +355,10 @@ type AnimatedCtaProps = {
 function AnimatedCta({ label, icon, className = '', iconClassName = 'bg-[#ffc400] text-[#0b0b08]', onClick, to }: AnimatedCtaProps) {
   const content = (
     <>
-      <span className={`pointer-events-none absolute left-1.5 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-[left,transform] duration-500 ease-out group-hover:left-[calc(100%-2.5rem)] group-hover:-translate-y-1/2 group-hover:rotate-[360deg] ${iconClassName}`}>
+      <span className={`pointer-events-none absolute left-1.5 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-[left,transform] duration-500 ease-out group-hover:left-[calc(100%-2.5rem)] group-hover:-translate-y-1/2 group-hover:rotate-[360deg] group-active:left-[calc(100%-2.5rem)] group-active:-translate-y-1/2 group-active:rotate-[360deg] group-focus-visible:left-[calc(100%-2.5rem)] group-focus-visible:-translate-y-1/2 group-focus-visible:rotate-[360deg] ${iconClassName}`}>
         {icon}
       </span>
-      <span className="relative z-0 block pl-9 transition-transform duration-500 ease-out group-hover:-translate-x-8">
+      <span className="relative z-0 block pl-9 transition-transform duration-500 ease-out group-hover:-translate-x-8 group-active:-translate-x-8 group-focus-visible:-translate-x-8">
         {label}
       </span>
     </>

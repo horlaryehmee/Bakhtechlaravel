@@ -17,7 +17,7 @@ export const defaultAgencyFooterSettings: AgencyFooterSettings = {
   footerWatermark: 'Bakhtech',
   footerDescription: 'We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.',
   footerCtaLabel: 'Get started',
-  footerCopyright: '© 2026 Bakhtech Solutions - All Rights Reserved',
+  footerCopyright: '(c) 2026 Bakhtech Solutions - All Rights Reserved',
 }
 
 const footerLinkColumns = [
@@ -26,7 +26,6 @@ const footerLinkColumns = [
     links: [
       { label: 'Overview', to: '/' },
       { label: 'Projects', to: '/portfolio' },
-      { label: 'Pricing', to: '/pricing' },
       { label: 'Testimonials', to: '/#reviews' },
       { label: 'FAQs', to: '/#faq' },
     ],
@@ -35,7 +34,6 @@ const footerLinkColumns = [
     title: 'About',
     links: [
       { label: 'Our Story', to: '/about' },
-      { label: 'Services', to: '/#services' },
       { label: 'Founder', to: '/#founder' },
       { label: 'Portfolio', to: '/portfolio' },
       { label: 'Contact', to: '/contact' },
@@ -47,7 +45,6 @@ const footerLinkColumns = [
       { label: 'Contact Us', to: '/contact' },
       { label: 'Book a Call', to: '/booking' },
       { label: 'Support', to: 'mailto:contact@bakhtech.com.ng' },
-      { label: 'Live Chat', to: '/contact' },
       { label: 'Report Issue', to: 'mailto:contact@bakhtech.com.ng' },
     ],
   },
@@ -57,7 +54,6 @@ const footerLinkColumns = [
       { label: 'Privacy Policy', to: '/privacy-policy' },
       { label: 'Terms of Service', to: '/terms-of-service' },
       { label: 'Cookie Policy', to: '/cookie-policy' },
-      { label: 'Licenses', to: '/licenses' },
       { label: 'Security', to: '/security' },
     ],
   },
@@ -76,10 +72,10 @@ function CalendarIcon() {
 function AnimatedCta({ label, icon, className = '', iconClassName = 'bg-[#ffc400] text-[#0b0b08]', to }: { label: ReactNode; icon: ReactNode; className?: string; iconClassName?: string; to: string }) {
   return (
     <Link to={to} className={`group relative inline-flex min-h-11 items-center overflow-hidden rounded-lg border px-1.5 pr-4 text-sm font-bold transition duration-300 ${className}`}>
-      <span className={`pointer-events-none absolute left-1.5 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-[left,transform] duration-500 ease-out group-hover:left-[calc(100%-2.5rem)] group-hover:-translate-y-1/2 group-hover:rotate-[360deg] ${iconClassName}`}>
+      <span className={`pointer-events-none absolute left-1.5 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-[left,transform] duration-500 ease-out group-hover:left-[calc(100%-2.5rem)] group-hover:-translate-y-1/2 group-hover:rotate-[360deg] group-active:left-[calc(100%-2.5rem)] group-active:-translate-y-1/2 group-active:rotate-[360deg] group-focus-visible:left-[calc(100%-2.5rem)] group-focus-visible:-translate-y-1/2 group-focus-visible:rotate-[360deg] ${iconClassName}`}>
         {icon}
       </span>
-      <span className="relative z-0 block pl-9 transition-transform duration-500 ease-out group-hover:-translate-x-8">
+      <span className="relative z-0 block pl-9 transition-transform duration-500 ease-out group-hover:-translate-x-8 group-active:-translate-x-8 group-focus-visible:-translate-x-8">
         {label}
       </span>
     </Link>
@@ -139,7 +135,7 @@ export function AgencyFooter({ settings }: { settings?: AgencyFooterSettings }) 
             <h2 className="max-w-[34rem] text-4xl font-medium leading-[1.08] tracking-normal text-white md:text-6xl">
               {footerSettings.footerCtaTitle}
             </h2>
-            <span className="grid h-11 w-14 shrink-0 place-items-center rounded-xl bg-white text-black transition group-hover:translate-x-1">
+            <span className="grid h-11 w-14 shrink-0 place-items-center rounded-xl bg-white text-black transition group-hover:translate-x-1 group-active:translate-x-1 group-focus-visible:translate-x-1">
               <ArrowRight className="h-5 w-5" />
             </span>
           </div>

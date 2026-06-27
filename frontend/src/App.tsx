@@ -16,6 +16,7 @@ const AdminTemplatePreview = lazy(() => import('@/pages/admin/AdminTemplatePrevi
 const About = lazy(() => import('@/pages/About').then((module) => ({ default: module.About })))
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const CmsPage = lazy(() => import('@/pages/CmsPage').then((module) => ({ default: module.CmsPage })))
+const LegalPage = lazy(() => import('@/pages/LegalPage').then((module) => ({ default: module.LegalPage })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
@@ -123,6 +124,10 @@ function App() {
             <Route path="booking" element={<Booking />} />
             <Route path="book/:slug" element={<Booking />} />
             <Route path="contact" element={<Contact />} />
+            <Route path="privacy-policy" element={<LegalPage kind="privacy-policy" />} />
+            <Route path="terms-of-service" element={<LegalPage kind="terms-of-service" />} />
+            <Route path="cookie-policy" element={<LegalPage kind="cookie-policy" />} />
+            <Route path="security" element={<LegalPage kind="security" />} />
             <Route path=":pageSlug" element={<CmsPage />} />
           </Route>
           </Routes>
