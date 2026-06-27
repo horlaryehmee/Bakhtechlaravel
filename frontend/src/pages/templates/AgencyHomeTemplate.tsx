@@ -1184,19 +1184,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Scaling Successful Companies</h2>
 
           <div className="mt-10 grid gap-3 lg:grid-cols-12">
-            <article className="relative min-h-[31rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-3">
-              <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(rgba(0,0,0,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.055)_1px,transparent_1px)] bg-[size:92px_92px]" />
-              <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
-              <div className="relative -mx-8 h-[20rem] overflow-hidden pt-9">
+            <article className="relative min-h-[26rem] overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4 lg:row-span-3">
+              <div className="absolute inset-x-0 top-0 h-[18rem] bg-[linear-gradient(rgba(0,0,0,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.055)_1px,transparent_1px)] bg-[size:92px_92px]" />
+              <div className="absolute inset-x-0 top-0 h-[18rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
+              <div className="relative -mx-6 h-[15rem] overflow-hidden pt-7">
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-white to-transparent" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent" />
                 {[topShowcaseScreens, bottomShowcaseScreens.length ? bottomShowcaseScreens : topShowcaseScreens].map((rowProjects, rowIndex) => (
-                  <div key={`showcase-screen-row-${rowIndex}`} className={rowIndex === 0 ? 'relative overflow-hidden' : 'relative mt-6 overflow-hidden'}>
+                  <div key={`showcase-screen-row-${rowIndex}`} className={rowIndex === 0 ? 'relative overflow-hidden' : 'relative mt-4 overflow-hidden'}>
                     <div
-                      className={`showcase-screen-track flex w-max items-center gap-4 px-8 ${rowIndex === 1 ? 'showcase-screen-track-reverse' : ''}`}
+                      className={`showcase-screen-track flex w-max items-center gap-3 px-6 ${rowIndex === 1 ? 'showcase-screen-track-reverse' : ''}`}
                     >
                       {[...rowProjects, ...rowProjects].map((project, index) => (
-                        <span key={`showcase-screen-${rowIndex}-${project.id}-${index}`} className="block aspect-[16/10] w-44 shrink-0 overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)]">
+                        <span key={`showcase-screen-${rowIndex}-${project.id}-${index}`} className="block aspect-[16/10] w-40 shrink-0 overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)]">
                           <SafeImage
                             className="h-full w-full object-cover"
                             src={getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)}
@@ -1208,7 +1208,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                         </span>
                       ))}
                       {!rowProjects.length ? (
-                        <span className="grid aspect-[16/10] w-44 shrink-0 place-items-center rounded-xl bg-[#e6ded0] text-xs font-black text-black/50 shadow-[0_14px_28px_rgba(15,23,42,0.12)]">
+                        <span className="grid aspect-[16/10] w-40 shrink-0 place-items-center rounded-xl bg-[#e6ded0] text-xs font-black text-black/50 shadow-[0_14px_28px_rgba(15,23,42,0.12)]">
                           PROJECTS
                         </span>
                       ) : null}
@@ -1217,9 +1217,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 ))}
               </div>
 
-              <div className="relative mt-8">
+              <div className="relative mt-5">
                 <p className="text-xl font-semibold text-black">See the kind of work we ship</p>
-                <div className="mt-5">
+                <div className="mt-4">
                   <Link to="/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-black/8 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-black/60">
                     <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
                       <ArrowRight className="h-4 w-4" />
@@ -1230,19 +1230,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[19rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-2">
+            <article className="relative min-h-[15rem] overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4 lg:row-span-2">
               <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.045)_1px,transparent_1px)] bg-[size:84px_84px]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_28%,rgba(250,204,21,0.09),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.6),#fff_86%)]" />
               <div className="relative">
-                <p className="text-[clamp(5rem,9vw,7.5rem)] font-light leading-none tracking-normal text-black">100+</p>
-                <p className="mt-4 text-lg font-semibold text-black/42">Companies served</p>
+                <p className="text-[clamp(4.25rem,8vw,6.25rem)] font-light leading-none tracking-normal text-black">100+</p>
+                <p className="mt-3 text-lg font-semibold text-black/42">Companies served</p>
               </div>
-              <p className="relative mt-20 max-w-[23rem] text-base font-semibold leading-7 text-black/42">
+              <p className="relative mt-10 max-w-[23rem] text-base font-semibold leading-7 text-black/42">
                 We design and build websites that drive results and help your business grow. No Calls. No BS. Just Results.
               </p>
             </article>
 
-            <article className="relative flex min-h-[8rem] items-center overflow-hidden rounded-[1.35rem] bg-white py-6 shadow-sm lg:col-span-4">
+            <article className="relative flex min-h-[6.5rem] items-center overflow-hidden rounded-[1.35rem] bg-white py-4 shadow-sm lg:col-span-4">
               <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent" />
               <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-white to-transparent" />
               <div className="marquee-track flex w-max items-center gap-3 px-6 [--marquee-duration:34s]">
@@ -1255,18 +1255,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[18rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4">
+            <article className="relative min-h-[14.5rem] overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4">
               <div className="absolute right-0 top-0 h-full w-1/2 bg-[linear-gradient(rgba(245,183,104,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(245,183,104,0.12)_1px,transparent_1px)] bg-[size:56px_56px]" />
               <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.88)_56%,rgba(255,255,255,0.38)_100%)]" />
               <div className="relative">
                 <p className="max-w-[23rem] text-base font-semibold leading-7 text-black/46">
                   "In business, people trust what they can see and use with confidence. That is why we build digital experiences that make brands look credible, sell better, and operate smarter."
                 </p>
-                <p className="mt-8 text-base font-semibold text-black"><span className="text-black/70">-</span> Bakare Olayemi <span className="ml-1 font-semibold text-black/42">Founder, Bakhtech</span></p>
+                <p className="mt-5 text-base font-semibold text-black"><span className="text-black/70">-</span> Bakare Olayemi <span className="ml-1 font-semibold text-black/42">Founder, Bakhtech</span></p>
               </div>
             </article>
 
-            <article className="relative flex min-h-[8.5rem] flex-col gap-6 overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm md:flex-row md:items-center lg:col-span-8">
+            <article className="relative flex min-h-[6.5rem] flex-col gap-4 overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm md:flex-row md:items-center lg:col-span-8">
               <p className="relative z-20 min-w-max text-xl font-semibold text-black">Technologies we use</p>
               <div className="relative min-w-0 flex-1 overflow-hidden">
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-white to-transparent" />
