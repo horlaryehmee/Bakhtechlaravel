@@ -68,6 +68,8 @@ import {
   type InvoiceOverview,
   type MediaItem,
   type MailSettings,
+  type RedisSettings,
+  type RedisStatus,
   type PricingCategory,
   type PricingPlanFeature,
   type PricingPlan,
@@ -220,6 +222,24 @@ const emptyMailSettings: MailSettings = {
   hasPassword: false,
   fromAddress: '',
   fromName: '',
+}
+
+const emptyRedisSettings: RedisSettings = {
+  enabled: false,
+  host: '127.0.0.1',
+  port: 39445,
+  database: 0,
+  cacheDatabase: 1,
+  client: 'phpredis',
+  password: '',
+  hasPassword: false,
+}
+
+const emptyRedisStatus: RedisStatus = {
+  connected: false,
+  message: 'Redis has not been tested yet.',
+  latencyMs: null,
+  usedMemoryHuman: null,
 }
 
 const defaultInvoiceListMeta: InvoiceListMeta = { page: 1, perPage: 25, total: 0, lastPage: 1 }
@@ -850,6 +870,9 @@ export function AdminDashboard() {
   const [siteSettingsSection, setSiteSettingsSection] = useState<SiteSettingsSection>('menu')
   const [mailSettings, setMailSettings] = useState<MailSettings>(emptyMailSettings)
   const [mailTestEmail, setMailTestEmail] = useState('')
+  const [redisSettings, setRedisSettings] = useState<RedisSettings>(emptyRedisSettings)
+  const [redisStatus, setRedisStatus] = useState<RedisStatus>(emptyRedisStatus)
+  const [redisLoading, setRedisLoading] = useState(false)
   const [siteEmailLogs, setSiteEmailLogs] = useState<SiteEmailLog[]>([])
   const [selectedSiteEmailLog, setSelectedSiteEmailLog] = useState<SiteEmailLog | null>(null)
   const [siteEmailLogsMeta, setSiteEmailLogsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
@@ -859,6 +882,7 @@ export function AdminDashboard() {
   const [deploymentResults, setDeploymentResults] = useState<DeploymentCommandResult[]>([])
   const [deploymentCompletedAt, setDeploymentCompletedAt] = useState('')
   const loadedMailSettings = useRef(false)
+  const loadedRedisSettings = useRef(false)
   const [profileForms, setProfileForms] = useState<Record<number, { name: string; email: string }>>({})
   const [passwordForms, setPasswordForms] = useState<Record<number, { password: string; confirmation: string }>>({})
   const [twoFactorForms, setTwoFactorForms] = useState<Record<number, { secret: string; otpauthUri: string; code: string }>>({})
@@ -944,6 +968,11 @@ export function AdminDashboard() {
     if (siteSettingsSection === 'smtp' && !loadedMailSettings.current) {
       loadedMailSettings.current = true
       void loadMailSettings()
+    }
+
+    if (siteSettingsSection === 'advanced' && !loadedRedisSettings.current) {
+      loadedRedisSettings.current = true
+      void loadRedisSettings()
     }
 
     if (siteSettingsSection === 'email-logs') {
@@ -2163,6 +2192,49 @@ export function AdminDashboard() {
       await loadSiteEmailLogs()
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function loadRedisSettings() {
+    setError('')
+    setRedisLoading(true)
+    try {
+      const result = await api.redisSettings()
+      setRedisSettings(result.settings)
+      setRedisStatus(result.status)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load Redis settings.')
+    } finally {
+      setRedisLoading(false)
+    }
+  }
+
+  async function saveRedisSettings() {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.updateRedisSettings(redisSettings)
+      setRedisSettings(result.settings)
+      setRedisStatus(result.status)
+      notify(result.status.connected ? 'Redis settings saved and connected.' : 'Redis settings saved, but connection test failed.')
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save Redis settings.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function testRedisConnection() {
+    setRedisLoading(true)
+    setError('')
+    try {
+      const result = await api.testRedis(redisSettings)
+      setRedisStatus(result.status)
+      notify(result.status.connected ? 'Redis connection successful.' : 'Redis connection failed.')
+    } catch (testError) {
+      setError(testError instanceof Error ? testError.message : 'Unable to test Redis connection.')
+    } finally {
+      setRedisLoading(false)
     }
   }
 
@@ -8392,6 +8464,117 @@ export function AdminDashboard() {
     )
     const renderAdvancedSettings = () => (
       <div className="grid gap-6">
+        <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-600">Redis cache</p>
+              <h3 className="mt-1 text-xl font-black text-gray-900">Connect Redis from cPanel</h3>
+              <p className="mt-2 text-sm font-semibold leading-6 text-gray-500">
+                Save your Redis server details here and test if Laravel can connect. The password is encrypted and never shown after saving.
+              </p>
+            </div>
+            <span className={cn('rounded-full px-3 py-1.5 text-xs font-black uppercase', redisStatus.connected ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
+              {redisStatus.connected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Host / IP address
+              <input
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.host}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, host: event.target.value }))}
+                placeholder="127.0.0.1"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Port
+              <input
+                type="number"
+                min={1}
+                max={65535}
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.port}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, port: Number(event.target.value) || 6379 }))}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Redis password
+              <input
+                type="password"
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.password}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, password: event.target.value }))}
+                placeholder={redisSettings.hasPassword ? 'Password saved. Enter a new one to replace it.' : 'Enter Redis password'}
+              />
+              {redisSettings.hasPassword ? <span className="text-xs font-bold text-emerald-700">A password is already saved securely.</span> : null}
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Client
+              <select
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.client}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, client: event.target.value as RedisSettings['client'] }))}
+              >
+                <option value="phpredis">phpredis</option>
+                <option value="predis">predis</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Default DB
+              <input
+                type="number"
+                min={0}
+                max={15}
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.database}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, database: Number(event.target.value) || 0 }))}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Cache DB
+              <input
+                type="number"
+                min={0}
+                max={15}
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.cacheDatabase}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, cacheDatabase: Number(event.target.value) || 0 }))}
+              />
+            </label>
+          </div>
+
+          <label className="mt-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-black text-gray-800">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300"
+              checked={redisSettings.enabled}
+              onChange={(event) => setRedisSettings((current) => ({ ...current, enabled: event.target.checked }))}
+            />
+            Use Redis for Laravel cache when connected
+          </label>
+
+          <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm font-semibold leading-6 text-gray-600">
+            <div className="font-black text-gray-900">{redisStatus.message}</div>
+            <div className="mt-1 flex flex-wrap gap-3 text-xs font-bold text-gray-500">
+              {redisStatus.latencyMs !== null ? <span>Latency: {redisStatus.latencyMs} ms</span> : null}
+              {redisStatus.usedMemoryHuman ? <span>Used memory: {redisStatus.usedMemoryHuman}</span> : null}
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button type="button" variant="outline" className="min-h-11 rounded-xl" disabled={redisLoading || saving} onClick={() => void testRedisConnection()}>
+              {redisLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />}
+              Test connection
+            </Button>
+            <Button type="button" className="min-h-11 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={redisLoading || saving} onClick={() => void saveRedisSettings()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Redis settings
+            </Button>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">

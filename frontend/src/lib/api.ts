@@ -636,6 +636,24 @@ export type MailSettings = {
   fromName: string
 }
 
+export type RedisSettings = {
+  enabled: boolean
+  host: string
+  port: number
+  database: number
+  cacheDatabase: number
+  client: 'phpredis' | 'predis'
+  password: string
+  hasPassword: boolean
+}
+
+export type RedisStatus = {
+  connected: boolean
+  message: string
+  latencyMs: number | null
+  usedMemoryHuman: string | null
+}
+
 export type SiteEmailLog = {
   id: number
   recipient: string
@@ -1193,6 +1211,21 @@ export const api = {
     return request<{ message: string }>('/api/admin/mail/test', {
       method: 'POST',
       body: JSON.stringify({ email }),
+    })
+  },
+  redisSettings() {
+    return request<{ settings: RedisSettings; status: RedisStatus }>('/api/admin/redis/settings')
+  },
+  updateRedisSettings(settings: RedisSettings & { clearPassword?: boolean }) {
+    return request<{ settings: RedisSettings; status: RedisStatus }>('/api/admin/redis/settings', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    })
+  },
+  testRedis(settings: RedisSettings) {
+    return request<{ status: RedisStatus }>('/api/admin/redis/test', {
+      method: 'POST',
+      body: JSON.stringify(settings),
     })
   },
   siteEmailLogs(params: Record<string, string | number> = {}) {

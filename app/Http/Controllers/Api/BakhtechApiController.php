@@ -8,6 +8,7 @@ use App\Services\DatabaseSynchronizer;
 use App\Services\DeploymentMaintenanceService;
 use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
+use App\Services\RedisConfigurationService;
 use App\Services\SeoAuditService;
 use App\Services\VisitorAnalyticsService;
 use App\Services\ZoomMeetingService;
@@ -275,14 +276,14 @@ class BakhtechApiController extends Controller
 
     public function publicProjects()
     {
-        return Cache::remember('public:projects', now()->addMinutes(10), function () {
+        return $this->rememberPublicCache('public:projects', function () {
             return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
         });
     }
 
     public function publicSettings()
     {
-        return Cache::remember('public:settings', now()->addMinutes(10), function () {
+        return $this->rememberPublicCache('public:settings', function () {
             $settings = $this->settings();
             $publicKeys = [
                 'siteName',
@@ -421,7 +422,7 @@ class BakhtechApiController extends Controller
 
     public function publicReviews()
     {
-        return Cache::remember('public:reviews', now()->addMinutes(10), function () {
+        return $this->rememberPublicCache('public:reviews', function () {
             if (! Schema::hasTable('reviews')) {
                 return ['reviews' => []];
             }
@@ -1512,14 +1513,32 @@ class BakhtechApiController extends Controller
         return array_merge($this->defaultSettings(), DB::table('settings')->pluck('value', 'key')->all());
     }
 
+    private function rememberPublicCache(string $key, callable $callback): array
+    {
+        try {
+            app(RedisConfigurationService::class)->apply();
+
+            return Cache::remember($key, now()->addMinutes(10), $callback);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $callback();
+        }
+    }
+
     private function flushPublicContentCache(): void
     {
-        Cache::forget('public:settings');
-        Cache::forget('public:projects');
-        Cache::forget('public:reviews');
-        Cache::forget('public:pricing:NGN');
-        Cache::forget('public:pricing:USD');
-        Cache::forget('public:pricing:GBP');
+        try {
+            app(RedisConfigurationService::class)->apply();
+            Cache::forget('public:settings');
+            Cache::forget('public:projects');
+            Cache::forget('public:reviews');
+            Cache::forget('public:pricing:NGN');
+            Cache::forget('public:pricing:USD');
+            Cache::forget('public:pricing:GBP');
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function defaultSettings(): array

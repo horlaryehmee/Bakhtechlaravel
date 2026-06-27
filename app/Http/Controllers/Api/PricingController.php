@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\RedisConfigurationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class PricingController extends Controller
     {
         $currency = strtoupper((string) $request->query('currency', 'NGN'));
 
-        return Cache::remember("public:pricing:{$currency}", now()->addMinutes(10), function () use ($currency) {
+        return $this->rememberPublicPricingCache("public:pricing:{$currency}", function () use ($currency) {
             return [
                 'categories' => $this->categoryQuery()
                     ->where('pricing_categories.is_active', true)
@@ -639,8 +640,26 @@ class PricingController extends Controller
 
     private function flushPublicPricingCache(): void
     {
-        Cache::forget('public:pricing:NGN');
-        Cache::forget('public:pricing:USD');
-        Cache::forget('public:pricing:GBP');
+        try {
+            app(RedisConfigurationService::class)->apply();
+            Cache::forget('public:pricing:NGN');
+            Cache::forget('public:pricing:USD');
+            Cache::forget('public:pricing:GBP');
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function rememberPublicPricingCache(string $key, callable $callback): array
+    {
+        try {
+            app(RedisConfigurationService::class)->apply();
+
+            return Cache::remember($key, now()->addMinutes(10), $callback);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $callback();
+        }
     }
 }
