@@ -1542,8 +1542,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             </h2>
             <p className="mt-5 text-base font-normal text-black/78">
               Have more doubts? Reach out to us at{' '}
-              <a href="mailto:contact@bakhtech.com.ng" className="text-[#4f6f5a] underline underline-offset-2">
-                contact@bakhtech.com.ng
+              <a href="mailto:solutions@bakhtech.com.ng" className="text-[#4f6f5a] underline underline-offset-2">
+                solutions@bakhtech.com.ng
               </a>
             </p>
 

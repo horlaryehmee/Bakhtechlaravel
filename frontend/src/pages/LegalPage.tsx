@@ -54,7 +54,7 @@ const legalPages: Record<LegalPageKind, { eyebrow: string; title: string; summar
       { title: 'Secure development', text: 'We build with structured access control, validation, careful handling of credentials, secure deployment practices, and protection against common web application risks.' },
       { title: 'Hosting and maintenance', text: 'Where we manage hosting or maintenance, we focus on uptime, backups, updates, monitoring, SSL, performance, and practical protection against avoidable failures.' },
       { title: 'Access and credentials', text: 'Client and admin access should be limited to the right users. We recommend strong passwords, two-factor authentication where available, and prompt removal of unused accounts.' },
-      { title: 'Reporting issues', text: 'If you notice a security issue or suspicious activity connected to Bakhtech Solutions, contact us immediately at contact@bakhtech.com.ng with clear details.' },
+      { title: 'Reporting issues', text: 'If you notice a security issue or suspicious activity connected to Bakhtech Solutions, contact us immediately at solutions@bakhtech.com.ng with clear details.' },
     ],
   },
 }

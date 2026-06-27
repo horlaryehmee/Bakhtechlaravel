@@ -44,8 +44,8 @@ const footerLinkColumns = [
     links: [
       { label: 'Contact Us', to: '/contact' },
       { label: 'Book a Call', to: '/booking' },
-      { label: 'Support', to: 'mailto:contact@bakhtech.com.ng' },
-      { label: 'Report Issue', to: 'mailto:contact@bakhtech.com.ng' },
+      { label: 'Support', to: 'mailto:solutions@bakhtech.com.ng' },
+      { label: 'Report Issue', to: 'mailto:solutions@bakhtech.com.ng' },
     ],
   },
   {
