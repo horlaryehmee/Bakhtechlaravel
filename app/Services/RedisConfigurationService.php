@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 
 class RedisConfigurationService
 {
@@ -101,29 +100,20 @@ class RedisConfigurationService
             ];
         }
 
-        $connection = 'bakhtech_redis_test';
-        config([
-            "database.redis.{$connection}" => [
-                'url' => null,
-                'host' => (string) $settings['host'],
-                'username' => blank($settings['username'] ?? '') ? null : (string) $settings['username'],
-                'password' => $password ?: null,
-                'port' => (int) $settings['port'],
-                'database' => (int) $settings['database'],
-            ],
-        ]);
-
         $started = microtime(true);
 
         try {
-            $redis = Redis::connection($connection);
-            $pong = $redis->ping();
-            $info = $redis->command('INFO', ['memory']);
-            $redis->disconnect();
+            $info = $this->socketTest(
+                (string) $settings['host'],
+                (int) $settings['port'],
+                blank($settings['username'] ?? '') ? null : (string) $settings['username'],
+                $password,
+                (int) $settings['database'],
+            );
 
             return [
                 'connected' => true,
-                'message' => is_string($pong) ? $pong : 'Redis connection successful.',
+                'message' => 'Redis connection successful.',
                 'latencyMs' => (int) round((microtime(true) - $started) * 1000),
                 'usedMemoryHuman' => $this->usedMemoryHuman($info),
             ];
@@ -179,5 +169,144 @@ class RedisConfigurationService
         }
 
         return null;
+    }
+
+    private function socketTest(string $host, int $port, ?string $username, ?string $password, int $database): mixed
+    {
+        $errorCode = 0;
+        $errorMessage = '';
+        $socket = @stream_socket_client(
+            "tcp://{$host}:{$port}",
+            $errorCode,
+            $errorMessage,
+            3,
+            STREAM_CLIENT_CONNECT
+        );
+
+        if (! is_resource($socket)) {
+            throw new \RuntimeException($errorMessage ?: "Unable to connect to Redis at {$host}:{$port}.");
+        }
+
+        stream_set_timeout($socket, 3);
+
+        try {
+            if (filled($password)) {
+                $auth = filled($username)
+                    ? $this->redisCommand($socket, 'AUTH', [$username, $password])
+                    : $this->redisCommand($socket, 'AUTH', [$password]);
+
+                if (! $this->redisOk($auth)) {
+                    throw new \RuntimeException('Redis authentication failed: '.$this->redisMessage($auth));
+                }
+            }
+
+            $select = $this->redisCommand($socket, 'SELECT', [(string) $database]);
+            if (! $this->redisOk($select)) {
+                throw new \RuntimeException('Redis database selection failed: '.$this->redisMessage($select));
+            }
+
+            $pong = $this->redisCommand($socket, 'PING');
+            if (! $this->redisOk($pong, 'PONG')) {
+                throw new \RuntimeException('Redis ping failed: '.$this->redisMessage($pong));
+            }
+
+            try {
+                return $this->redisCommand($socket, 'INFO', ['memory']);
+            } catch (\Throwable) {
+                return null;
+            }
+        } finally {
+            fclose($socket);
+        }
+    }
+
+    private function redisCommand($socket, string $command, array $arguments = []): mixed
+    {
+        $parts = array_merge([$command], $arguments);
+        $payload = '*'.count($parts)."\r\n";
+
+        foreach ($parts as $part) {
+            $part = (string) $part;
+            $payload .= '$'.strlen($part)."\r\n{$part}\r\n";
+        }
+
+        fwrite($socket, $payload);
+
+        return $this->redisRead($socket);
+    }
+
+    private function redisRead($socket): mixed
+    {
+        $line = fgets($socket);
+        if ($line === false) {
+            throw new \RuntimeException('Redis did not return a response.');
+        }
+
+        $type = $line[0];
+        $value = rtrim(substr($line, 1), "\r\n");
+
+        return match ($type) {
+            '+' => ['type' => 'status', 'value' => $value],
+            '-' => ['type' => 'error', 'value' => $value],
+            ':' => ['type' => 'integer', 'value' => (int) $value],
+            '$' => $this->redisBulkString($socket, (int) $value),
+            '*' => $this->redisArray($socket, (int) $value),
+            default => ['type' => 'unknown', 'value' => trim($line)],
+        };
+    }
+
+    private function redisBulkString($socket, int $length): mixed
+    {
+        if ($length < 0) {
+            return null;
+        }
+
+        $value = '';
+        while (strlen($value) < $length) {
+            $chunk = fread($socket, $length - strlen($value));
+            if ($chunk === false || $chunk === '') {
+                throw new \RuntimeException('Redis bulk response ended early.');
+            }
+            $value .= $chunk;
+        }
+        fread($socket, 2);
+
+        return $value;
+    }
+
+    private function redisArray($socket, int $count): array
+    {
+        $items = [];
+        for ($index = 0; $index < $count; $index++) {
+            $items[] = $this->redisRead($socket);
+        }
+
+        return $items;
+    }
+
+    private function redisOk(mixed $response, string $expected = 'OK'): bool
+    {
+        if (is_array($response) && ($response['type'] ?? '') === 'status') {
+            return strtoupper((string) $response['value']) === $expected;
+        }
+
+        if (is_string($response)) {
+            return strtoupper($response) === $expected;
+        }
+
+        return false;
+    }
+
+    private function redisMessage(mixed $response): string
+    {
+        if (is_array($response) && array_key_exists('value', $response)) {
+            return (string) $response['value'];
+        }
+
+        if (is_string($response)) {
+            return $response;
+        }
+
+        return 'Unexpected Redis response.';
     }
 }
