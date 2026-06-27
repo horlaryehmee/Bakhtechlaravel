@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface WireframeDottedGlobeProps {
   width?: number
@@ -8,62 +8,56 @@ interface WireframeDottedGlobeProps {
   rotationSpeed?: number
 }
 
-interface DotData {
+type GlobePoint = {
   lng: number
   lat: number
 }
 
-const landDataUrl = 'https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_land.json'
+const landBlobs = [
+  { lng: -100, lat: 42, rx: 33, ry: 22 },
+  { lng: -60, lat: -15, rx: 20, ry: 32 },
+  { lng: 15, lat: 5, rx: 26, ry: 34 },
+  { lng: 78, lat: 35, rx: 48, ry: 25 },
+  { lng: 132, lat: -25, rx: 18, ry: 13 },
+  { lng: -42, lat: 72, rx: 18, ry: 8 },
+]
 
-function pointInPolygon(point: [number, number], polygon: number[][]): boolean {
-  const [x, y] = point
-  let inside = false
+function normalizedDelta(value: number) {
+  return Math.abs(((value + 180) % 360) - 180)
+}
 
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i]
-    const [xj, yj] = polygon[j]
+function isApproximateLand(lng: number, lat: number) {
+  return landBlobs.some((blob) => {
+    const x = normalizedDelta(lng - blob.lng) / blob.rx
+    const y = (lat - blob.lat) / blob.ry
+    return x * x + y * y <= 1
+  })
+}
 
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
-      inside = !inside
+function generatePoints(dotSpacing: number): GlobePoint[] {
+  const points: GlobePoint[] = []
+  const step = Math.max(5, dotSpacing * 0.55)
+
+  for (let lat = -70; lat <= 75; lat += step) {
+    for (let lng = -180; lng <= 180; lng += step) {
+      if (isApproximateLand(lng, lat)) points.push({ lng, lat })
     }
   }
 
-  return inside
+  return points
 }
 
-function pointInFeature(point: [number, number], feature: GeoJSON.Feature): boolean {
-  const geometry = feature.geometry
-  if (!geometry) return false
+function projectPoint(lng: number, lat: number, rotation: number, radius: number, cx: number, cy: number) {
+  const lambda = ((lng + rotation) * Math.PI) / 180
+  const phi = (lat * Math.PI) / 180
+  const cosPhi = Math.cos(phi)
+  const x = radius * cosPhi * Math.sin(lambda)
+  const y = -radius * Math.sin(phi)
+  const z = cosPhi * Math.cos(lambda)
 
-  if (geometry.type === 'Polygon') {
-    const coordinates = geometry.coordinates as number[][][]
-    if (!pointInPolygon(point, coordinates[0])) return false
-    return !coordinates.slice(1).some((ring) => pointInPolygon(point, ring))
-  }
+  if (z < 0) return null
 
-  if (geometry.type === 'MultiPolygon') {
-    const coordinates = geometry.coordinates as number[][][][]
-    return coordinates.some((polygon) => {
-      if (!pointInPolygon(point, polygon[0])) return false
-      return !polygon.slice(1).some((ring) => pointInPolygon(point, ring))
-    })
-  }
-
-  return false
-}
-
-function generateDotsInFeature(feature: GeoJSON.Feature, dotSpacing: number, geoBounds: typeof import('d3').geoBounds): DotData[] {
-  const dots: DotData[] = []
-  const [[minLng, minLat], [maxLng, maxLat]] = geoBounds(feature)
-  const stepSize = dotSpacing * 0.08
-
-  for (let lng = minLng; lng <= maxLng; lng += stepSize) {
-    for (let lat = minLat; lat <= maxLat; lat += stepSize) {
-      if (pointInFeature([lng, lat], feature)) dots.push({ lng, lat })
-    }
-  }
-
-  return dots
+  return { x: cx + x, y: cy + y, z }
 }
 
 export function WireframeDottedGlobe({
@@ -74,153 +68,97 @@ export function WireframeDottedGlobe({
   rotationSpeed = 0.42,
 }: WireframeDottedGlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [error, setError] = useState(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context) return
 
-    const canvasElement = canvas
-    let cancelled = false
-    let cleanup: (() => void) | undefined
+    const dpr = window.devicePixelRatio || 1
+    const radius = Math.min(width, height) / 2.25
+    const cx = width / 2
+    const cy = height / 2
+    const points = generatePoints(dotSpacing)
+    let rotation = 0
+    let frame = 0
+    let animationId = 0
 
-    async function startGlobe() {
-      const context = canvasElement.getContext('2d')
-      if (!context) return
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const d3 = await import('d3')
-      if (cancelled) return
+    const drawLine = (coordinates: Array<[number, number]>) => {
+      let drawing = false
 
-      let autoRotate = true
-      let landFeatures: GeoJSON.FeatureCollection | null = null
-      const allDots: DotData[] = []
-      const rotation: [number, number] = [0, -10]
-      const containerWidth = width
-      const containerHeight = height
-      const radius = Math.min(containerWidth, containerHeight) / 2.25
-      const dpr = window.devicePixelRatio || 1
-
-      canvasElement.width = containerWidth * dpr
-      canvasElement.height = containerHeight * dpr
-      canvasElement.style.width = `${containerWidth}px`
-      canvasElement.style.height = `${containerHeight}px`
-      context.setTransform(dpr, 0, 0, dpr, 0, 0)
-
-      const projection = d3
-        .geoOrthographic()
-        .scale(radius)
-        .translate([containerWidth / 2, containerHeight / 2])
-        .clipAngle(90)
-        .rotate(rotation)
-
-      const path = d3.geoPath().projection(projection).context(context)
-      const graticule = d3.geoGraticule()
-
-      const render = () => {
-        context.clearRect(0, 0, containerWidth, containerHeight)
-
-        context.beginPath()
-        context.arc(containerWidth / 2, containerHeight / 2, radius, 0, Math.PI * 2)
-        context.fillStyle = '#050505'
-        context.fill()
-        context.strokeStyle = 'rgba(255,255,255,0.72)'
-        context.lineWidth = 1.5
-        context.stroke()
-
-        context.beginPath()
-        path(graticule())
-        context.strokeStyle = 'rgba(255,255,255,0.18)'
-        context.lineWidth = 0.8
-        context.stroke()
-
-        if (landFeatures) {
-          context.beginPath()
-          landFeatures.features.forEach((feature) => path(feature))
-          context.strokeStyle = 'rgba(255,255,255,0.48)'
-          context.lineWidth = 0.9
-          context.stroke()
-
-          allDots.forEach((dot) => {
-            const projected = projection([dot.lng, dot.lat])
-            if (!projected) return
-
-            context.beginPath()
-            context.arc(projected[0], projected[1], 1, 0, Math.PI * 2)
-            context.fillStyle = 'rgba(255,255,255,0.58)'
-            context.fill()
-          })
+      coordinates.forEach(([lng, lat]) => {
+        const projected = projectPoint(lng, lat, rotation, radius, cx, cy)
+        if (!projected) {
+          drawing = false
+          return
         }
-      }
 
-      const timer = d3.timer(() => {
-        if (!autoRotate) return
-        rotation[0] += rotationSpeed
-        projection.rotate(rotation)
-        render()
+        if (!drawing) {
+          context.moveTo(projected.x, projected.y)
+          drawing = true
+        } else {
+          context.lineTo(projected.x, projected.y)
+        }
+      })
+    }
+
+    const render = () => {
+      context.clearRect(0, 0, width, height)
+      context.beginPath()
+      context.arc(cx, cy, radius, 0, Math.PI * 2)
+      context.fillStyle = '#050505'
+      context.fill()
+      context.strokeStyle = 'rgba(255,255,255,0.72)'
+      context.lineWidth = 1.5
+      context.stroke()
+
+      context.save()
+      context.beginPath()
+      context.arc(cx, cy, radius, 0, Math.PI * 2)
+      context.clip()
+
+      context.beginPath()
+      for (let lat = -60; lat <= 60; lat += 30) {
+        drawLine(Array.from({ length: 73 }, (_, index) => [-180 + index * 5, lat]))
+      }
+      for (let lng = -150; lng <= 180; lng += 30) {
+        drawLine(Array.from({ length: 37 }, (_, index) => [lng, -90 + index * 5]))
+      }
+      context.strokeStyle = 'rgba(255,255,255,0.18)'
+      context.lineWidth = 0.8
+      context.stroke()
+
+      points.forEach((point) => {
+        const projected = projectPoint(point.lng, point.lat, rotation, radius, cx, cy)
+        if (!projected) return
+
+        context.beginPath()
+        context.arc(projected.x, projected.y, 1.05, 0, Math.PI * 2)
+        context.fillStyle = `rgba(255,255,255,${0.32 + projected.z * 0.3})`
+        context.fill()
       })
 
-      const handlePointerDown = (event: PointerEvent) => {
-        autoRotate = false
-        const startX = event.clientX
-        const startY = event.clientY
-        const startRotation: [number, number] = [...rotation]
-
-        const handlePointerMove = (moveEvent: PointerEvent) => {
-          rotation[0] = startRotation[0] + (moveEvent.clientX - startX) * 0.45
-          rotation[1] = Math.max(-70, Math.min(70, startRotation[1] - (moveEvent.clientY - startY) * 0.45))
-          projection.rotate(rotation)
-          render()
-        }
-
-        const handlePointerUp = () => {
-          document.removeEventListener('pointermove', handlePointerMove)
-          document.removeEventListener('pointerup', handlePointerUp)
-          autoRotate = true
-        }
-
-        document.addEventListener('pointermove', handlePointerMove)
-        document.addEventListener('pointerup', handlePointerUp)
-      }
-
-      canvasElement.addEventListener('pointerdown', handlePointerDown)
-      render()
-
-      fetch(landDataUrl)
-        .then((response) => {
-          if (!response.ok) throw new Error('Failed to load globe data')
-          return response.json() as Promise<GeoJSON.FeatureCollection>
-        })
-        .then((data) => {
-          if (cancelled) return
-          landFeatures = data
-          data.features.forEach((feature) => {
-            allDots.push(...generateDotsInFeature(feature, dotSpacing, d3.geoBounds))
-          })
-          render()
-        })
-        .catch(() => {
-          if (!cancelled) setError(true)
-        })
-
-      cleanup = () => {
-        timer.stop()
-        canvasElement.removeEventListener('pointerdown', handlePointerDown)
-      }
+      context.restore()
     }
 
-    startGlobe().catch(() => {
-      if (!cancelled) setError(true)
-    })
-
-    return () => {
-      cancelled = true
-      cleanup?.()
+    const animate = () => {
+      frame += 1
+      rotation += rotationSpeed
+      if (frame % 2 === 0) render()
+      animationId = window.requestAnimationFrame(animate)
     }
+
+    render()
+    animationId = window.requestAnimationFrame(animate)
+
+    return () => window.cancelAnimationFrame(animationId)
   }, [dotSpacing, height, rotationSpeed, width])
-
-  if (error) {
-    return <div className={`rounded-2xl bg-black/40 ${className}`} aria-hidden="true" />
-  }
 
   return (
     <div className={`relative ${className}`}>

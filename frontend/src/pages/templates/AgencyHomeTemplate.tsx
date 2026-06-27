@@ -52,7 +52,7 @@ import { CpuArchitecture } from '@/components/ui/cpu-architecture'
 import { SafeImage } from '@/components/ui/safe-image'
 import { WireframeDottedGlobe } from '@/components/ui/wireframe-dotted-globe'
 import { api, type Project, type Review } from '@/lib/api'
-import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
+import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, getYoutubeThumbnailUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -732,7 +732,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
   const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
-  const showcaseScreenProjects = projectImageProjects.length ? projectImageProjects : portfolioProjects
+  const homepageProjectCards = portfolioProjects.slice(0, 6)
+  const showcaseScreenProjects = (projectImageProjects.length ? projectImageProjects : portfolioProjects).slice(0, 10)
   const topShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 0)
   const bottomShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 1)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
@@ -1005,13 +1006,21 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 {designDevelopmentVideoUrl ? (
                   <div className="h-full overflow-hidden rounded-[0.9rem] bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
                     {designDevelopmentYoutubeEmbedUrl ? (
-                      <iframe
-                        className="h-full w-full"
-                        src={`${designDevelopmentYoutubeEmbedUrl}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1`}
-                        title="Design and development preview"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
+                      <button type="button" className="relative block h-full w-full overflow-hidden text-white" onClick={() => setActiveVideo({ title: 'Design and development preview', type: 'youtube', url: designDevelopmentVideoUrl })}>
+                        <SafeImage
+                          className="h-full w-full object-cover"
+                          src={getYoutubeThumbnailUrl(designDevelopmentVideoUrl)}
+                          fallbackSrc="/social-preview.png"
+                          alt="Design and development preview"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <span className="absolute inset-0 grid place-items-center bg-black/18">
+                          <span className="grid h-14 w-14 place-items-center rounded-full border border-white/25 bg-black/40 backdrop-blur-md">
+                            <Play className="ml-0.5 h-5 w-5 fill-current" />
+                          </span>
+                        </span>
+                      </button>
                     ) : isVideoUrl(designDevelopmentVideoUrl) ? (
                       <video className="h-full w-full object-cover" src={designDevelopmentVideoUrl} muted autoPlay loop playsInline preload="metadata" />
                     ) : (
@@ -1185,10 +1194,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <ProjectCardSkeleton key={`project-skeleton-${index}`} />
               ))}
             </div>
-          ) : portfolioProjects.length ? (
+          ) : homepageProjectCards.length ? (
             <>
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {portfolioProjects.map((project) => (
+                {homepageProjectCards.map((project) => (
                   <AgencyProjectCard key={project.id} project={project} showDescription={showPortfolioDescriptions} onPlayMedia={setActiveVideo} />
                 ))}
               </div>
