@@ -94,6 +94,43 @@ function PublicCursorEffect() {
   return <SVGFollower colors={cursorEffectColors} />
 }
 
+function ScrollRestoration() {
+  const { pathname, search, hash } = useLocation()
+
+  useEffect(() => {
+    if (pathname.startsWith('/admin')) return
+
+    if (!hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      return
+    }
+
+    const targetId = decodeURIComponent(hash.slice(1))
+    let attempts = 0
+    let timeoutId = 0
+
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+
+      attempts += 1
+      if (attempts < 20) {
+        timeoutId = window.setTimeout(scrollToTarget, 80)
+      } else {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      }
+    }
+
+    timeoutId = window.setTimeout(scrollToTarget, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [pathname, search, hash])
+
+  return null
+}
+
 function App() {
   const location = useLocation()
 
@@ -101,6 +138,7 @@ function App() {
     <>
       <SmartsuppLiveChat />
       {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
+      <ScrollRestoration />
       <PublicCursorEffect />
       <AppErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
