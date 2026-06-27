@@ -1192,7 +1192,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent" />
                 {[topShowcaseScreens, bottomShowcaseScreens.length ? bottomShowcaseScreens : topShowcaseScreens].map((rowProjects, rowIndex) => (
                   <div key={`showcase-screen-row-${rowIndex}`} className={rowIndex === 0 ? 'relative overflow-hidden' : 'relative mt-6 overflow-hidden'}>
-                    <div className="marquee-track flex w-max items-center gap-4 px-8 [--marquee-duration:30s] [animation-direction:reverse]">
+                    <div className={`marquee-track flex w-max items-center gap-4 px-8 [--marquee-duration:30s] ${rowIndex === 1 ? '[animation-direction:reverse]' : ''}`}>
                       {[...rowProjects, ...rowProjects].map((project, index) => (
                         <span key={`showcase-screen-${rowIndex}-${project.id}-${index}`} className="block aspect-[16/10] w-44 shrink-0 overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)]">
                           <SafeImage
