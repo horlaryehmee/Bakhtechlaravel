@@ -1,0 +1,1 @@
+import{i as e}from"./motion-vendor-D6dzZimz.js";import{Ou as t,Pu as n}from"./vendor-UzvFmjAf.js";import{b as r,t as i}from"./index-Cc_JkhaI.js";var a=e();function o(){let{template:e=``}=n();return r()?e===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(t,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(t,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
