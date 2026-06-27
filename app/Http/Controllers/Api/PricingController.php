@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -15,14 +16,16 @@ class PricingController extends Controller
     {
         $currency = strtoupper((string) $request->query('currency', 'NGN'));
 
-        return [
-            'categories' => $this->categoryQuery()
-                ->where('pricing_categories.is_active', true)
-                ->get()
-                ->map(fn ($category) => $this->categoryShape($category, true, $currency))
-                ->values(),
-            'currencies' => ['NGN', 'USD', 'GBP'],
-        ];
+        return Cache::remember("public:pricing:{$currency}", now()->addMinutes(10), function () use ($currency) {
+            return [
+                'categories' => $this->categoryQuery()
+                    ->where('pricing_categories.is_active', true)
+                    ->get()
+                    ->map(fn ($category) => $this->categoryShape($category, true, $currency))
+                    ->values(),
+                'currencies' => ['NGN', 'USD', 'GBP'],
+            ];
+        });
     }
 
     public function adminIndex()
@@ -49,6 +52,7 @@ class PricingController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $this->flushPublicPricingCache();
 
         return response()->json(['category' => $this->categoryShape($this->categoryRow($id), true)], 201);
     }
@@ -64,6 +68,7 @@ class PricingController extends Controller
             ...$this->categoryPayload($data),
             'updated_at' => now(),
         ]);
+        $this->flushPublicPricingCache();
 
         return ['category' => $this->categoryShape($this->categoryRow($id), true)];
     }
@@ -71,6 +76,7 @@ class PricingController extends Controller
     public function destroyCategory(int $id)
     {
         DB::table('pricing_categories')->where('id', $id)->delete();
+        $this->flushPublicPricingCache();
 
         return response()->noContent();
     }
@@ -83,6 +89,7 @@ class PricingController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $this->flushPublicPricingCache();
 
         return response()->json(['feature' => $this->featureShape(DB::table('pricing_features')->where('id', $id)->first())], 201);
     }
@@ -98,6 +105,7 @@ class PricingController extends Controller
             ...$this->featurePayload($data),
             'updated_at' => now(),
         ]);
+        $this->flushPublicPricingCache();
 
         return ['feature' => $this->featureShape(DB::table('pricing_features')->where('id', $id)->first())];
     }
@@ -105,6 +113,7 @@ class PricingController extends Controller
     public function destroyFeature(int $id)
     {
         DB::table('pricing_features')->where('id', $id)->delete();
+        $this->flushPublicPricingCache();
 
         return response()->noContent();
     }
@@ -124,6 +133,7 @@ class PricingController extends Controller
 
             return $planId;
         });
+        $this->flushPublicPricingCache();
 
         return response()->json(['plan' => $this->planShape($this->planRow($planId), true)], 201);
     }
@@ -145,6 +155,7 @@ class PricingController extends Controller
             $this->syncPlanFeatures($id, $data['features'] ?? []);
             $this->writeVersion($id, $request);
         });
+        $this->flushPublicPricingCache();
 
         return ['plan' => $this->planShape($this->planRow($id), true)];
     }
@@ -152,6 +163,7 @@ class PricingController extends Controller
     public function destroyPlan(int $id)
     {
         DB::table('pricing_plans')->where('id', $id)->delete();
+        $this->flushPublicPricingCache();
 
         return response()->noContent();
     }
@@ -623,5 +635,12 @@ class PricingController extends Controller
             'phone' => '+234 708 637 2833',
             'address' => '',
         ], $branding);
+    }
+
+    private function flushPublicPricingCache(): void
+    {
+        Cache::forget('public:pricing:NGN');
+        Cache::forget('public:pricing:USD');
+        Cache::forget('public:pricing:GBP');
     }
 }

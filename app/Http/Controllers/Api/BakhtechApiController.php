@@ -15,6 +15,7 @@ use App\Support\AdminToken;
 use App\Support\SiteDefaults;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -274,52 +275,56 @@ class BakhtechApiController extends Controller
 
     public function publicProjects()
     {
-        return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
+        return Cache::remember('public:projects', now()->addMinutes(10), function () {
+            return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
+        });
     }
 
     public function publicSettings()
     {
-        $settings = $this->settings();
-        $publicKeys = [
-            'siteName',
-            'contactEmail',
-            'phone',
-            'activeHome',
-            'homePortfolioShowDescriptions',
-            'homepageVideoUrl',
-            'designDevelopmentVideoUrl',
-            'cursorEffectEnabled',
-            'theme_light_primary',
-            'theme_light_secondary',
-            'theme_light_active',
-            'theme_dark_primary',
-            'theme_dark_secondary',
-            'theme_dark_active',
-            'navigation_items',
-            'googleReviewUrl',
-            'trustpilotReviewUrl',
-            'facebookUrl',
-            'instagramUrl',
-            'linkedinUrl',
-            'tiktokUrl',
-            'twitterUrl',
-            'youtubeUrl',
-            'bookingIntro',
-            'founder_desk_image',
-            'footerCtaTitle',
-            'footerWatermark',
-            'footerDescription',
-            'footerCtaLabel',
-            'footerCopyright',
-            'company_name',
-            'company_logo',
-            'company_email',
-            'company_phone',
-            'company_address',
-            'company_website',
-        ];
+        return Cache::remember('public:settings', now()->addMinutes(10), function () {
+            $settings = $this->settings();
+            $publicKeys = [
+                'siteName',
+                'contactEmail',
+                'phone',
+                'activeHome',
+                'homePortfolioShowDescriptions',
+                'homepageVideoUrl',
+                'designDevelopmentVideoUrl',
+                'cursorEffectEnabled',
+                'theme_light_primary',
+                'theme_light_secondary',
+                'theme_light_active',
+                'theme_dark_primary',
+                'theme_dark_secondary',
+                'theme_dark_active',
+                'navigation_items',
+                'googleReviewUrl',
+                'trustpilotReviewUrl',
+                'facebookUrl',
+                'instagramUrl',
+                'linkedinUrl',
+                'tiktokUrl',
+                'twitterUrl',
+                'youtubeUrl',
+                'bookingIntro',
+                'founder_desk_image',
+                'footerCtaTitle',
+                'footerWatermark',
+                'footerDescription',
+                'footerCtaLabel',
+                'footerCopyright',
+                'company_name',
+                'company_logo',
+                'company_email',
+                'company_phone',
+                'company_address',
+                'company_website',
+            ];
 
-        return ['settings' => array_intersect_key($settings, array_flip($publicKeys))];
+            return ['settings' => array_intersect_key($settings, array_flip($publicKeys))];
+        });
     }
 
     public function submitContact(Request $request)
@@ -416,40 +421,42 @@ class BakhtechApiController extends Controller
 
     public function publicReviews()
     {
-        if (! Schema::hasTable('reviews')) {
-            return ['reviews' => []];
-        }
+        return Cache::remember('public:reviews', now()->addMinutes(10), function () {
+            if (! Schema::hasTable('reviews')) {
+                return ['reviews' => []];
+            }
 
-        $settings = $this->settings();
-        $minWords = max(0, (int) ($settings['reviewFrontendMinWords'] ?? 0));
-        $maxWords = max(0, (int) ($settings['reviewFrontendMaxWords'] ?? 0));
-        $minCharacters = max(0, (int) ($settings['reviewFrontendMinCharacters'] ?? 0));
-        $maxCharacters = max(0, (int) ($settings['reviewFrontendMaxCharacters'] ?? 0));
-        $minRating = min(5, max(1, (int) ($settings['reviewFrontendMinRating'] ?? 1)));
-        $provider = trim((string) ($settings['reviewFrontendProvider'] ?? 'all'));
-        $featuredOnly = filter_var($settings['reviewFrontendFeaturedOnly'] ?? false, FILTER_VALIDATE_BOOL);
-        $limit = min(50, max(1, (int) ($settings['reviewFrontendLimit'] ?? 6)));
+            $settings = $this->settings();
+            $minWords = max(0, (int) ($settings['reviewFrontendMinWords'] ?? 0));
+            $maxWords = max(0, (int) ($settings['reviewFrontendMaxWords'] ?? 0));
+            $minCharacters = max(0, (int) ($settings['reviewFrontendMinCharacters'] ?? 0));
+            $maxCharacters = max(0, (int) ($settings['reviewFrontendMaxCharacters'] ?? 0));
+            $minRating = min(5, max(1, (int) ($settings['reviewFrontendMinRating'] ?? 1)));
+            $provider = trim((string) ($settings['reviewFrontendProvider'] ?? 'all'));
+            $featuredOnly = filter_var($settings['reviewFrontendFeaturedOnly'] ?? false, FILTER_VALIDATE_BOOL);
+            $limit = min(50, max(1, (int) ($settings['reviewFrontendLimit'] ?? 6)));
 
-        $reviews = $this->reviewQuery(false)
-            ->get()
-            ->filter(function ($row) use ($minWords, $maxWords, $minCharacters, $maxCharacters, $minRating, $provider, $featuredOnly) {
-                $content = trim(strip_tags((string) $row->content));
-                $wordCount = str_word_count($content);
-                $characterCount = mb_strlen($content);
+            $reviews = $this->reviewQuery(false)
+                ->get()
+                ->filter(function ($row) use ($minWords, $maxWords, $minCharacters, $maxCharacters, $minRating, $provider, $featuredOnly) {
+                    $content = trim(strip_tags((string) $row->content));
+                    $wordCount = str_word_count($content);
+                    $characterCount = mb_strlen($content);
 
-                return (int) $row->rating >= $minRating
-                    && ($provider === '' || $provider === 'all' || $row->provider === $provider)
-                    && (! $featuredOnly || (bool) $row->is_featured)
-                    && $wordCount >= $minWords
-                    && ($maxWords === 0 || $wordCount <= $maxWords)
-                    && $characterCount >= $minCharacters
-                    && ($maxCharacters === 0 || $characterCount <= $maxCharacters);
-            })
-            ->take($limit)
-            ->map(fn ($row) => $this->reviewShape($row))
-            ->values();
+                    return (int) $row->rating >= $minRating
+                        && ($provider === '' || $provider === 'all' || $row->provider === $provider)
+                        && (! $featuredOnly || (bool) $row->is_featured)
+                        && $wordCount >= $minWords
+                        && ($maxWords === 0 || $wordCount <= $maxWords)
+                        && $characterCount >= $minCharacters
+                        && ($maxCharacters === 0 || $characterCount <= $maxCharacters);
+                })
+                ->take($limit)
+                ->map(fn ($row) => $this->reviewShape($row))
+                ->values();
 
-        return ['reviews' => $reviews];
+            return ['reviews' => $reviews];
+        });
     }
 
     public function cms(Request $request)
@@ -815,6 +822,7 @@ class BakhtechApiController extends Controller
         $payload['updated_at'] = now();
 
         $id = DB::table('reviews')->insertGetId($payload);
+        $this->flushPublicContentCache();
 
         return response()->json(['review' => $this->reviewShape(DB::table('reviews')->where('id', $id)->first())], 201);
     }
@@ -835,6 +843,7 @@ class BakhtechApiController extends Controller
         $payload['updated_at'] = now();
 
         DB::table('reviews')->where('id', $id)->update($payload);
+        $this->flushPublicContentCache();
 
         return ['review' => $this->reviewShape(DB::table('reviews')->where('id', $id)->first())];
     }
@@ -842,6 +851,7 @@ class BakhtechApiController extends Controller
     public function deleteReview(int $id)
     {
         DB::table('reviews')->where('id', $id)->delete();
+        $this->flushPublicContentCache();
 
         return response()->noContent();
     }
@@ -1102,6 +1112,8 @@ class BakhtechApiController extends Controller
             );
         }
 
+        $this->flushPublicContentCache();
+
         return ['settings' => $this->settings()];
     }
 
@@ -1258,6 +1270,7 @@ class BakhtechApiController extends Controller
         $payload['created_at'] = now();
         $payload['updated_at'] = now();
         $id = DB::table('projects')->insertGetId($payload);
+        $this->flushPublicContentCache();
 
         return response()->json(['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())], 201);
     }
@@ -1284,6 +1297,8 @@ class BakhtechApiController extends Controller
                 'message' => 'Unable to update this project. Check the projects table columns and run migrations.',
             ], 500);
         }
+
+        $this->flushPublicContentCache();
 
         return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
     }
@@ -1319,6 +1334,8 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'The image uploaded, but the project record could not be updated. Check the projects table, then select the image from the media library.'], 422);
         }
 
+        $this->flushPublicContentCache();
+
         return ['project' => $this->projectShape(DB::table('projects')->where('id', $id)->first())];
     }
 
@@ -1328,6 +1345,8 @@ class BakhtechApiController extends Controller
         if (! $deleted) {
             return response()->json(['message' => 'Project not found.'], 404);
         }
+
+        $this->flushPublicContentCache();
 
         return response()->noContent();
     }
@@ -1491,6 +1510,16 @@ class BakhtechApiController extends Controller
     private function settings(): array
     {
         return array_merge($this->defaultSettings(), DB::table('settings')->pluck('value', 'key')->all());
+    }
+
+    private function flushPublicContentCache(): void
+    {
+        Cache::forget('public:settings');
+        Cache::forget('public:projects');
+        Cache::forget('public:reviews');
+        Cache::forget('public:pricing:NGN');
+        Cache::forget('public:pricing:USD');
+        Cache::forget('public:pricing:GBP');
     }
 
     private function defaultSettings(): array

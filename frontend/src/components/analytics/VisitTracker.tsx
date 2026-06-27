@@ -106,9 +106,22 @@ export function VisitTracker() {
       screenHeight: window.screen.height,
     })
 
-    track()
+    let idleId = 0
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    const browserWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+
+    if (browserWindow.requestIdleCallback) {
+      idleId = browserWindow.requestIdleCallback(track, { timeout: 2500 })
+    } else {
+      timeoutId = setTimeout(track, 1200)
+    }
 
     return () => {
+      if (idleId) browserWindow.cancelIdleCallback?.(idleId)
+      if (timeoutId) clearTimeout(timeoutId)
       sendHeartbeat()
     }
   }, [location.pathname, location.search])

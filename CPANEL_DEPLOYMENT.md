@@ -48,6 +48,36 @@ remain Laravel's rewrite file so `/api/...` routes reach `public/index.php`.
    - SMTP values (`MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`)
    - `FLUTTERWAVE_WEBHOOK_SECRET` when Flutterwave invoice payments are enabled
 
+## Redis Cache on cPanel
+
+The app reads Redis from `.env`, so do not commit the Redis password. For the
+cPanel Redis service, set these live `.env` values:
+
+```text
+CACHE_STORE=redis
+SESSION_DRIVER=redis
+SESSION_CONNECTION=default
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=39445
+REDIS_PASSWORD=YOUR_CPANEL_REDIS_PASSWORD
+REDIS_DB=0
+REDIS_CACHE_DB=1
+REDIS_CACHE_CONNECTION=cache
+REDIS_CACHE_LOCK_CONNECTION=default
+```
+
+After changing Redis values on cPanel, run:
+
+```bash
+php artisan optimize:clear
+php artisan optimize
+```
+
+The homepage public API responses are cached for faster repeat loads and are
+cleared automatically when admin settings, projects, reviews, or pricing are
+updated.
+
 ## First Run
 
 Run from cPanel Terminal inside the repository root:
