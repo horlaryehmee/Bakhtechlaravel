@@ -1001,7 +1001,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
             <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
-              <div className="relative h-[21.8rem] overflow-hidden rounded-[0.9rem] bg-[#f7f7f5] px-4 pb-0 pt-4">
+              <div className="relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] bg-[#f7f7f5] px-4 pb-4 pt-4">
                 <div className="h-full overflow-hidden rounded-xl bg-[#ededeb] p-4 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
                   <div className="mb-3 flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
@@ -1057,14 +1057,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                     </div>
                   </div>
                 </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,rgba(247,247,245,0),rgba(255,255,255,0.82)_40%,rgba(5,5,5,0.95))]" />
               </div>
-              <div className="absolute inset-x-0 bottom-0 top-[21rem] bg-[radial-gradient(circle_at_58%_0%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.74),#050505_32%)] bg-[length:auto,8px_8px,auto] p-8 pt-12">
+              <div className="absolute inset-x-0 bottom-0 top-[21.55rem] bg-[radial-gradient(circle_at_58%_0%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.74),#050505_32%)] bg-[length:auto,8px_8px,auto] p-8 pt-12">
                 <h3 className="text-lg font-black">Design and Development</h3>
                 <p className="mt-4 text-base font-semibold leading-7 text-white/58">
                   Designed to perfection, Bakhtech helps you take your dream idea to reality through our expert design and development services.
                 </p>
-                <Link to="/about" className="mt-10 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
+                <Link to="/about" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
                   <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
                     <span className="grid h-4 w-4 grid-cols-3 gap-0.5">
                       {Array.from({ length: 9 }).map((_, dotIndex) => (
