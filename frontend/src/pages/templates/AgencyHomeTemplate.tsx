@@ -389,12 +389,44 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
 
 function ChatPill({ label = 'Chat with us' }: { label?: string }) {
   return (
-    <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl transition hover:bg-white/10">
-      <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
-        <MessageCircle className="h-4 w-4" />
+    <AnimatedCta to="/booking" label={label} icon={<MessageCircle className="h-4 w-4" />} className="border-white/15 bg-black/42 text-white shadow-[0_20px_70px_rgba(0,0,0,0.25)] backdrop-blur-xl hover:bg-white/10" />
+  )
+}
+
+type AnimatedCtaProps = {
+  label: ReactNode
+  icon: ReactNode
+  className?: string
+  iconClassName?: string
+  onClick?: () => void
+  to?: string
+}
+
+function AnimatedCta({ label, icon, className = '', iconClassName = 'bg-[#ffc400] text-[#0b0b08]', onClick, to }: AnimatedCtaProps) {
+  const content = (
+    <>
+      <span className={`pointer-events-none absolute left-1.5 top-1/2 z-10 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-[left,transform] duration-500 ease-out group-hover:left-[calc(100%-2.5rem)] group-hover:-translate-y-1/2 group-hover:rotate-[360deg] ${iconClassName}`}>
+        {icon}
       </span>
-      {label}
-    </Link>
+      <span className="relative z-0 block pl-9 transition-transform duration-500 ease-out group-hover:-translate-x-8">
+        {label}
+      </span>
+    </>
+  )
+  const classes = `group relative inline-flex min-h-11 items-center overflow-hidden rounded-lg border px-1.5 pr-4 text-sm font-bold transition duration-300 ${className}`
+
+  if (to) {
+    return (
+      <Link to={to} className={classes}>
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={classes}>
+      {content}
+    </button>
   )
 }
 
@@ -1074,16 +1106,18 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <p className="mt-4 text-base font-semibold leading-7 text-white/58">
                   Designed to perfection, Bakhtech helps you take your dream idea to reality through our expert design and development services.
                 </p>
-                <Link to="/about" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/16 bg-black/60 px-1.5 pr-4 text-sm font-black text-white transition hover:bg-white/10">
-                  <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
+                <AnimatedCta
+                  to="/about"
+                  label="About us"
+                  className="mt-6 border-white/16 bg-black/60 text-white hover:bg-white/10"
+                  icon={
                     <span className="grid h-4 w-4 grid-cols-3 gap-0.5">
                       {Array.from({ length: 9 }).map((_, dotIndex) => (
                         <span key={`pricing-dot-${dotIndex}`} className="h-0.5 w-0.5 rounded-full bg-current" />
                       ))}
                     </span>
-                  </span>
-                  About us
-                </Link>
+                  }
+                />
               </div>
             </article>
 
@@ -1203,10 +1237,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
 
               <div className="mt-10 flex justify-center">
-                <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-5 text-sm font-black text-black shadow-sm transition hover:bg-black hover:text-white">
-                  Show all projects
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                <AnimatedCta to="/portfolio" label="Show all projects" icon={<ArrowRight className="h-4 w-4" />} className="min-h-12 rounded-xl border-black/10 bg-white text-black shadow-sm hover:bg-black hover:text-white" />
               </div>
             </>
           ) : (
@@ -1256,12 +1287,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute bottom-6 left-6 right-6">
                 <p className="text-xl font-semibold text-black">See the kind of work we ship</p>
                 <div className="mt-4">
-                  <Link to="/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-black/8 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-black/60">
-                    <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                    View Our Work
-                  </Link>
+                  <AnimatedCta to="/portfolio" label="View Our Work" icon={<ArrowRight className="h-4 w-4" />} className="border-black/8 bg-black/42 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl hover:bg-black/60" />
                 </div>
               </div>
             </article>
@@ -1326,10 +1352,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <h2 className="max-w-4xl text-4xl font-black leading-tight tracking-normal text-[#202328] md:text-5xl">
               Bakhtech VS Traditional Service Providers
             </h2>
-            <Link to="/booking" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-black px-3 pr-5 text-sm font-black text-white shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:hidden">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#ffd21f] text-black"><CalendarIcon /></span>
-              Book a Free Call
-            </Link>
+            <AnimatedCta to="/booking" label="Book a Free Call" icon={<CalendarIcon />} className="rounded-xl border-transparent bg-black text-white shadow-[0_12px_32px_rgba(0,0,0,0.12)] lg:hidden" iconClassName="rounded-lg bg-[#ffd21f] text-black" />
           </div>
 
           <div className="hidden overflow-hidden rounded-[1.8rem] border border-black/5 bg-white shadow-sm lg:block">
@@ -1351,10 +1374,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   </div>
                   <div className="flex items-center gap-4 px-10 text-sm font-semibold text-black">
                     {row.label === 'Always Free' ? (
-                      <Link to="/booking" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-black px-2.5 pr-4 text-xs font-black text-white">
-                        <span className="grid h-7 w-7 place-items-center rounded-md bg-[#ffd21f] text-black"><CalendarIcon /></span>
-                        {row.bakhtech}
-                      </Link>
+                      <AnimatedCta to="/booking" label={row.bakhtech} icon={<CalendarIcon />} className="min-h-10 border-transparent bg-black text-xs text-white" iconClassName="rounded-md bg-[#ffd21f] text-black" />
                     ) : (
                       <>
                         <span className="grid h-5 w-5 place-items-center rounded-full bg-[#12b83f] text-white"><Check className="h-3.5 w-3.5 stroke-[4]" /></span>
@@ -1512,12 +1532,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <h2 className="max-w-[48rem] text-4xl font-bold leading-tight tracking-normal text-[#202328] md:text-5xl">
               What people have been saying
             </h2>
-            <button type="button" onClick={() => setShowReviewModal(true)} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg border border-white/15 bg-black px-1.5 pr-4 text-sm font-medium text-white shadow-[0_20px_70px_rgba(0,0,0,0.14)] transition hover:bg-black/82">
-              <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
-                <MessageCircle className="h-4 w-4" />
-              </span>
-              Drop a Review
-            </button>
+            <AnimatedCta onClick={() => setShowReviewModal(true)} label="Drop a Review" icon={<MessageCircle className="h-4 w-4" />} className="w-fit border-white/15 bg-black font-medium text-white shadow-[0_20px_70px_rgba(0,0,0,0.14)] hover:bg-black/82" />
           </div>
         </div>
 
@@ -1651,10 +1666,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
                 {footerSettings.footerDescription}
               </p>
-              <Link to="/booking" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/12 bg-black px-2.5 pr-4 text-sm font-medium text-white">
-                <span className="grid h-7 w-7 place-items-center rounded-md bg-[#ffd21f] text-black"><CalendarIcon /></span>
-                {footerSettings.footerCtaLabel}
-              </Link>
+              <AnimatedCta to="/booking" label={footerSettings.footerCtaLabel} icon={<CalendarIcon />} className="mt-6 border-white/12 bg-black font-medium text-white" iconClassName="rounded-md bg-[#ffd21f] text-black" />
             </div>
 
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
