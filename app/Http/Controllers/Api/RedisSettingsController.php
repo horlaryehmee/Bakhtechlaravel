@@ -26,6 +26,7 @@ class RedisSettingsController extends Controller
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
             'host' => ['required_if:enabled,true', 'nullable', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255'],
             'port' => ['required', 'integer', 'min:1', 'max:65535'],
             'database' => ['required', 'integer', 'min:0', 'max:15'],
             'cacheDatabase' => ['required', 'integer', 'min:0', 'max:15'],
@@ -47,6 +48,7 @@ class RedisSettingsController extends Controller
         $data = $request->validate([
             'enabled' => ['nullable', 'boolean'],
             'host' => ['nullable', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255'],
             'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'database' => ['nullable', 'integer', 'min:0', 'max:15'],
             'cacheDatabase' => ['nullable', 'integer', 'min:0', 'max:15'],
@@ -54,6 +56,6 @@ class RedisSettingsController extends Controller
             'password' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        return ['status' => $this->redisConfiguration->test($data)];
+        return ['status' => $this->redisConfiguration->test($data, false)];
     }
 }

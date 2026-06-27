@@ -227,6 +227,7 @@ const emptyMailSettings: MailSettings = {
 const emptyRedisSettings: RedisSettings = {
   enabled: false,
   host: '127.0.0.1',
+  username: '',
   port: 39445,
   database: 0,
   cacheDatabase: 1,
@@ -8487,6 +8488,16 @@ export function AdminDashboard() {
                 onChange={(event) => setRedisSettings((current) => ({ ...current, host: event.target.value }))}
                 placeholder="127.0.0.1"
               />
+            </label>
+            <label className="grid gap-2 text-sm font-black text-gray-800">
+              Username
+              <input
+                className="min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold text-gray-900"
+                value={redisSettings.username}
+                onChange={(event) => setRedisSettings((current) => ({ ...current, username: event.target.value }))}
+                placeholder="Leave blank for default Redis user"
+              />
+              <span className="text-xs font-bold text-gray-500">Your cPanel tip uses only password auth, so this is usually blank.</span>
             </label>
             <label className="grid gap-2 text-sm font-black text-gray-800">
               Port

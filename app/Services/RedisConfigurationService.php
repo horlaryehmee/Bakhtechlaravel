@@ -17,6 +17,7 @@ class RedisConfigurationService
         return [
             'enabled' => filter_var($settings['redis_enabled'] ?? false, FILTER_VALIDATE_BOOL),
             'host' => (string) ($settings['redis_host'] ?? config('database.redis.default.host', '127.0.0.1')),
+            'username' => (string) ($settings['redis_username'] ?? config('database.redis.default.username', '')),
             'port' => (int) ($settings['redis_port'] ?? config('database.redis.default.port', 6379)),
             'database' => (int) ($settings['redis_database'] ?? config('database.redis.default.database', 0)),
             'cacheDatabase' => (int) ($settings['redis_cache_database'] ?? config('database.redis.cache.database', 1)),
@@ -40,6 +41,7 @@ class RedisConfigurationService
         $payload = [
             'redis_enabled' => ((bool) $data['enabled']) ? 'true' : 'false',
             'redis_host' => trim((string) $data['host']),
+            'redis_username' => trim((string) ($data['username'] ?? '')),
             'redis_port' => (string) ((int) $data['port']),
             'redis_database' => (string) ((int) $data['database']),
             'redis_cache_database' => (string) ((int) $data['cacheDatabase']),
@@ -71,24 +73,26 @@ class RedisConfigurationService
             'cache.default' => 'redis',
             'database.redis.client' => $settings['client'],
             'database.redis.default.host' => $settings['host'],
+            'database.redis.default.username' => $settings['username'] ?: null,
             'database.redis.default.password' => $this->password(),
             'database.redis.default.port' => $settings['port'],
             'database.redis.default.database' => $settings['database'],
             'database.redis.cache.host' => $settings['host'],
+            'database.redis.cache.username' => $settings['username'] ?: null,
             'database.redis.cache.password' => $this->password(),
             'database.redis.cache.port' => $settings['port'],
             'database.redis.cache.database' => $settings['cacheDatabase'],
         ]);
     }
 
-    public function test(?array $override = null): array
+    public function test(?array $override = null, bool $requireEnabled = true): array
     {
         $settings = $override ? array_merge($this->settings(), $override) : $this->settings();
         $password = filled($override['password'] ?? null)
             ? (string) $override['password']
             : $this->password();
 
-        if (! $settings['enabled']) {
+        if ($requireEnabled && ! $settings['enabled']) {
             return [
                 'connected' => false,
                 'message' => 'Redis is saved but not enabled.',
@@ -102,7 +106,7 @@ class RedisConfigurationService
             "database.redis.{$connection}" => [
                 'url' => null,
                 'host' => (string) $settings['host'],
-                'username' => null,
+                'username' => blank($settings['username'] ?? '') ? null : (string) $settings['username'],
                 'password' => $password ?: null,
                 'port' => (int) $settings['port'],
                 'database' => (int) $settings['database'],
@@ -139,6 +143,7 @@ class RedisConfigurationService
             ->whereIn('key', [
                 'redis_enabled',
                 'redis_host',
+                'redis_username',
                 'redis_port',
                 'redis_database',
                 'redis_cache_database',

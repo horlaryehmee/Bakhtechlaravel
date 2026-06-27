@@ -639,6 +639,7 @@ export type MailSettings = {
 export type RedisSettings = {
   enabled: boolean
   host: string
+  username: string
   port: number
   database: number
   cacheDatabase: number
