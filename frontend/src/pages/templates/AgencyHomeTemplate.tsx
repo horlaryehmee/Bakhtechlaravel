@@ -1281,8 +1281,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute right-0 top-0 h-full w-1/2 bg-[linear-gradient(rgba(245,183,104,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(245,183,104,0.12)_1px,transparent_1px)] bg-[size:56px_56px]" />
               <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.88)_56%,rgba(255,255,255,0.38)_100%)]" />
               <div className="relative">
-                <p className="text-xl font-black uppercase tracking-wide text-black/55">Cursor</p>
-                <p className="mt-8 max-w-[23rem] text-base font-semibold leading-7 text-black/46">
+                <p className="max-w-[23rem] text-base font-semibold leading-7 text-black/46">
                   "In business, people trust what they can see and use with confidence. That is why we build digital experiences that make brands look credible, sell better, and operate smarter."
                 </p>
                 <p className="mt-8 text-base font-semibold text-black"><span className="text-black/70">-</span> Bakare Olayemi <span className="ml-1 font-semibold text-black/42">Founder, Bakhtech</span></p>
