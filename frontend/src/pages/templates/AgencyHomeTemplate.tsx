@@ -715,7 +715,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [notificationIndex, setNotificationIndex] = useState(0)
   const [openComparisonIndex, setOpenComparisonIndex] = useState(0)
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
-  const [projectTileRotation, setProjectTileRotation] = useState({ indexes: [0, 1, 2, 3], next: 4, active: 0 })
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
@@ -732,7 +731,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
   const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
-  const projectImageTiles = projectTileRotation.indexes.map((projectIndex) => projectImageProjects[projectIndex % Math.max(projectImageProjects.length, 1)]).filter(Boolean)
+  const showcaseScreenProjects = projectImageProjects.length ? projectImageProjects : portfolioProjects
+  const topShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 0)
+  const bottomShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 1)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
 
   useEffect(() => {
@@ -742,35 +743,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
     return () => window.clearInterval(timer)
   }, [])
-
-  useEffect(() => {
-    const visibleCount = 4
-    setProjectTileRotation({
-      indexes: Array.from({ length: visibleCount }, (_, index) => projectImageProjects.length ? index % projectImageProjects.length : 0),
-      next: Math.min(visibleCount, projectImageProjects.length),
-      active: 0,
-    })
-  }, [projectImageProjects.length])
-
-  useEffect(() => {
-    if (projectImageProjects.length <= 4) return
-
-    const timer = window.setInterval(() => {
-      setProjectTileRotation((current) => {
-        const active = current.active % current.indexes.length
-        const indexes = [...current.indexes]
-        indexes[active] = current.next % projectImageProjects.length
-
-        return {
-          indexes,
-          next: current.next + 1,
-          active: (active + 1) % current.indexes.length,
-        }
-      })
-    }, 1800)
-
-    return () => window.clearInterval(timer)
-  }, [projectImageProjects.length])
 
   useEffect(() => {
     const section = testimonialsSectionRef.current
@@ -1215,39 +1187,43 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <article className="relative min-h-[31rem] overflow-hidden rounded-[1.35rem] bg-white p-8 shadow-sm lg:col-span-4 lg:row-span-3">
               <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(rgba(0,0,0,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.055)_1px,transparent_1px)] bg-[size:92px_92px]" />
               <div className="absolute inset-x-0 top-0 h-[23rem] bg-[linear-gradient(180deg,rgba(255,255,255,0),#fff_86%)]" />
-              <div className="relative mx-auto grid h-[20rem] max-w-[22rem] grid-cols-5 grid-rows-4 gap-4">
-                {[
-                  'col-start-3 row-start-1',
-                  'col-start-1 row-start-2',
-                  'col-start-4 row-start-2',
-                  'col-start-2 row-start-3',
-                ].map((className, index) => {
-                  const project = projectImageTiles[index]
-                  return (
-                    <span
-                      key={`project-tile-${index}`}
-                      className={`project-pop-tile col-span-2 aspect-[16/10] overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)] ${className}`}
-                    >
-                      {project ? (
-                        <SafeImage
-                          key={project.id}
-                          className="project-image-frame h-full w-full object-cover"
-                          src={getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)}
-                          fallbackSrc={projectImageFallbackSrc(project)}
-                          alt={project.title}
-                        />
-                      ) : (
-                        <span className="grid h-full w-full place-items-center bg-[#e6ded0] text-xs font-black text-black/50">PR</span>
-                      )}
-                    </span>
-                  )
-                })}
+              <div className="relative -mx-8 h-[20rem] overflow-hidden pt-9">
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-white to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent" />
+                {[topShowcaseScreens, bottomShowcaseScreens.length ? bottomShowcaseScreens : topShowcaseScreens].map((rowProjects, rowIndex) => (
+                  <div key={`showcase-screen-row-${rowIndex}`} className={rowIndex === 0 ? 'relative overflow-hidden' : 'relative mt-6 overflow-hidden'}>
+                    <div className="marquee-track flex w-max items-center gap-4 px-8 [--marquee-duration:30s] [animation-direction:reverse]">
+                      {[...rowProjects, ...rowProjects].map((project, index) => (
+                        <span key={`showcase-screen-${rowIndex}-${project.id}-${index}`} className="block aspect-[16/10] w-44 shrink-0 overflow-hidden rounded-xl border border-black/8 bg-white shadow-[0_14px_28px_rgba(15,23,42,0.16)]">
+                          <SafeImage
+                            className="h-full w-full object-cover"
+                            src={getProjectPrimaryImage(project) || getProjectVideoCoverImage(project)}
+                            fallbackSrc={projectImageFallbackSrc(project)}
+                            alt={project.title}
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </span>
+                      ))}
+                      {!rowProjects.length ? (
+                        <span className="grid aspect-[16/10] w-44 shrink-0 place-items-center rounded-xl bg-[#e6ded0] text-xs font-black text-black/50 shadow-[0_14px_28px_rgba(15,23,42,0.12)]">
+                          PROJECTS
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="relative mt-8">
-                <p className="text-xl font-semibold text-black">Get to know our dream team</p>
+                <p className="text-xl font-semibold text-black">See the kind of work we ship</p>
                 <div className="mt-5">
-                  <ChatPill label="Book a Call" />
+                  <Link to="/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-black/8 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-black/60">
+                    <span className="grid h-8 w-8 place-items-center rounded-md bg-[#ffc400] text-[#0b0b08]">
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                    View Our Work
+                  </Link>
                 </div>
               </div>
             </article>
