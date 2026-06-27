@@ -1217,7 +1217,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 ))}
               </div>
 
-              <div className="relative mt-5">
+              <div className="absolute bottom-6 left-6 right-6">
                 <p className="text-xl font-semibold text-black">See the kind of work we ship</p>
                 <div className="mt-4">
                   <Link to="/portfolio" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-black/8 bg-black/42 px-1.5 pr-4 text-sm font-bold text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-black/60">
@@ -1255,7 +1255,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[14.5rem] overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4">
+            <article className="relative flex min-h-[14.5rem] items-end overflow-hidden rounded-[1.35rem] bg-white p-6 shadow-sm lg:col-span-4">
               <div className="absolute right-0 top-0 h-full w-1/2 bg-[linear-gradient(rgba(245,183,104,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(245,183,104,0.12)_1px,transparent_1px)] bg-[size:56px_56px]" />
               <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,0.88)_56%,rgba(255,255,255,0.38)_100%)]" />
               <div className="relative">
