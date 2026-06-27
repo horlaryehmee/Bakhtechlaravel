@@ -195,6 +195,15 @@ class RedisConfigurationService
                     ? $this->redisCommand($socket, 'AUTH', [$username, $password])
                     : $this->redisCommand($socket, 'AUTH', [$password]);
 
+                if (
+                    filled($username)
+                    && is_array($auth)
+                    && ($auth['type'] ?? '') === 'error'
+                    && str_contains(strtolower((string) ($auth['value'] ?? '')), 'wrong number of arguments')
+                ) {
+                    $auth = $this->redisCommand($socket, 'AUTH', [$password]);
+                }
+
                 if (! $this->redisOk($auth)) {
                     throw new \RuntimeException('Redis authentication failed: '.$this->redisMessage($auth));
                 }
