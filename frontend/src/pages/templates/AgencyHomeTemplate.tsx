@@ -1001,9 +1001,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
             <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
-              <div className="relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] bg-[#f7f7f5] p-4">
+              <div className={`relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] ${designDevelopmentVideoUrl ? 'bg-black p-0' : 'bg-[#f7f7f5] p-4'}`}>
                 {designDevelopmentVideoUrl ? (
-                  <div className="h-full overflow-hidden rounded-xl bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
+                  <div className="h-full overflow-hidden rounded-[0.9rem] bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
                     {designDevelopmentYoutubeEmbedUrl ? (
                       <iframe
                         className="h-full w-full"
