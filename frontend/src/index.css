@@ -3041,6 +3041,17 @@ a {
   will-change: transform;
 }
 
+.showcase-screen-track {
+  animation: showcase-marquee-left 30s linear infinite;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.showcase-screen-track-reverse {
+  animation-name: showcase-marquee-right;
+  transform: translate3d(-50%, 0, 0);
+}
+
 .slider-track {
   gap: var(--slider-gap, 16px);
   animation: marquee-x var(--slider-duration, 25s) linear infinite;
@@ -3320,6 +3331,22 @@ a {
 @keyframes marquee-x {
   to {
     transform: translate3d(var(--marquee-distance, -50%), 0, 0);
+  }
+}
+
+@keyframes showcase-marquee-left {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes showcase-marquee-right {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
   }
 }
 
