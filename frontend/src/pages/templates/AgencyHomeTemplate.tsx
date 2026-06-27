@@ -1001,62 +1001,64 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
             <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
-              <div className="relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] bg-[#f7f7f5] px-4 pb-4 pt-4">
-                <div className="h-full overflow-hidden rounded-xl bg-[#ededeb] p-4 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
-                  <div className="mb-3 flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
-                    <span className="mx-auto h-2.5 w-40 rounded-full bg-white" />
+              <div className="relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] bg-[#f7f7f5] p-4">
+                {designDevelopmentVideoUrl ? (
+                  <div className="h-full overflow-hidden rounded-xl bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
+                    {designDevelopmentYoutubeEmbedUrl ? (
+                      <iframe
+                        className="h-full w-full"
+                        src={`${designDevelopmentYoutubeEmbedUrl}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1`}
+                        title="Design and development preview"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    ) : isVideoUrl(designDevelopmentVideoUrl) ? (
+                      <video className="h-full w-full object-cover" src={designDevelopmentVideoUrl} muted autoPlay loop playsInline preload="metadata" />
+                    ) : (
+                      <iframe className="h-full w-full" src={designDevelopmentVideoUrl} title="Design and development preview" allow="autoplay; fullscreen; picture-in-picture" />
+                    )}
                   </div>
-                  <div className="relative h-[18.25rem] overflow-hidden rounded-lg border border-black/4 bg-white p-3">
-                    <div className="mb-5 flex items-center justify-between">
-                      <span className="h-3 w-3 rounded-full bg-[#dededb]" />
-                      <div className="flex items-center gap-2">
-                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
-                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
-                        <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
-                        <span className="h-2.5 w-5 rounded-full bg-[#dededb]" />
+                ) : (
+                  <div className="h-full overflow-hidden rounded-xl bg-[#ededeb] p-4 shadow-[0_14px_45px_rgba(0,0,0,0.06)]">
+                    <div className="mb-3 flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#34d399]" />
+                      <span className="mx-auto h-2.5 w-40 rounded-full bg-white" />
+                    </div>
+                    <div className="relative h-[18.25rem] overflow-hidden rounded-lg border border-black/4 bg-white p-3">
+                      <div className="mb-5 flex items-center justify-between">
+                        <span className="h-3 w-3 rounded-full bg-[#dededb]" />
+                        <div className="flex items-center gap-2">
+                          <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                          <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                          <span className="h-1.5 w-7 rounded-full bg-[#e4e4e1]" />
+                          <span className="h-2.5 w-5 rounded-full bg-[#dededb]" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="mx-auto h-1.5 w-44 rounded-full bg-[#d8d8d5]" />
-                    <div className="mx-auto mt-4 h-1.5 w-32 rounded-full bg-[#e3e3e0]" />
-                    <div className="mx-auto mt-4 flex justify-center gap-2">
-                      <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
-                      <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
-                    </div>
-                    <div className="mx-auto mt-2 flex justify-center gap-2">
-                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
-                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
-                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
-                      <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
-                    </div>
-                    <div className="relative mx-auto mt-5 aspect-[1.08] w-[78%] overflow-hidden rounded-xl bg-[#f0f0ee]">
-                      {designDevelopmentVideoUrl ? (
-                        designDevelopmentYoutubeEmbedUrl ? (
-                          <iframe
-                            className="h-full w-full"
-                            src={`${designDevelopmentYoutubeEmbedUrl}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&modestbranding=1`}
-                            title="Design and development preview"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
-                        ) : isVideoUrl(designDevelopmentVideoUrl) ? (
-                          <video className="h-full w-full object-cover" src={designDevelopmentVideoUrl} muted autoPlay loop playsInline preload="metadata" />
-                        ) : (
-                          <iframe className="h-full w-full" src={designDevelopmentVideoUrl} title="Design and development preview" allow="autoplay; fullscreen; picture-in-picture" />
-                        )
-                      ) : (
+                      <div className="mx-auto h-1.5 w-44 rounded-full bg-[#d8d8d5]" />
+                      <div className="mx-auto mt-4 h-1.5 w-32 rounded-full bg-[#e3e3e0]" />
+                      <div className="mx-auto mt-4 flex justify-center gap-2">
+                        <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
+                        <span className="h-3 w-9 rounded-full bg-[#d9d9d6]" />
+                      </div>
+                      <div className="mx-auto mt-2 flex justify-center gap-2">
+                        <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                        <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                        <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                        <span className="h-3 w-3 rounded-full bg-[#d7d7d4]" />
+                      </div>
+                      <div className="relative mx-auto mt-5 aspect-[1.08] w-[78%] overflow-hidden rounded-xl bg-[#f0f0ee]">
                         <div className="grid h-full w-full place-items-center">
                           <span className="relative h-7 w-7 text-black/24 before:absolute before:left-1 before:top-1 before:h-2 before:w-2 before:border-l before:border-t before:border-current after:absolute after:right-1 after:top-1 after:h-2 after:w-2 after:border-r after:border-t after:border-current">
                             <span className="absolute bottom-1 left-1 h-2 w-2 border-b border-l border-current" />
                             <span className="absolute bottom-1 right-1 h-2 w-2 border-b border-r border-current" />
                           </span>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
               <div className="absolute inset-x-0 bottom-0 top-[21.55rem] bg-[radial-gradient(circle_at_58%_0%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(180deg,rgba(5,5,5,0.74),#050505_32%)] bg-[length:auto,8px_8px,auto] p-8 pt-12">
                 <h3 className="text-lg font-black">Design and Development</h3>
