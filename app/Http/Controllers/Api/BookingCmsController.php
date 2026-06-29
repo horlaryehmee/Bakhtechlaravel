@@ -8,6 +8,7 @@ use App\Services\GoogleCalendarOAuthService;
 use App\Services\PaystackPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class BookingCmsController extends Controller
@@ -431,7 +432,7 @@ class BookingCmsController extends Controller
 
     private function validateCalendar(Request $request, ?int $id = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('booking_calendars', 'slug')->ignore($id)],
             'description' => ['nullable', 'string'],
@@ -447,6 +448,69 @@ class BookingCmsController extends Controller
             'resources.*.description' => ['nullable', 'string'],
             'resources.*.isActive' => ['nullable', 'boolean'],
         ]);
+
+        if (isset($data['settings']) && is_array($data['settings'])) {
+            $data['settings'] = $this->sanitizeCalendarSettings($data['settings']);
+        }
+
+        return $data;
+    }
+
+    private function sanitizeCalendarSettings(array $settings): array
+    {
+        if (isset($settings['form']) && is_array($settings['form'])) {
+            $settings['form']['fields'] = $this->sanitizeBookingQuestions($settings['form']['fields'] ?? [], true);
+            $settings['form']['customFields'] = $this->sanitizeBookingQuestions($settings['form']['customFields'] ?? [], false);
+        }
+
+        if (isset($settings['locations']) && is_array($settings['locations'])) {
+            $settings['locations'] = collect($settings['locations'])
+                ->filter(fn ($location) => is_array($location))
+                ->map(fn ($location) => [
+                    'id' => Str::slug((string) ($location['id'] ?? $location['label'] ?? 'location')) ?: 'location',
+                    'label' => trim((string) ($location['label'] ?? 'Meeting location')),
+                    'type' => trim((string) ($location['type'] ?? 'custom')) ?: 'custom',
+                    'details' => trim((string) ($location['details'] ?? '')),
+                    'enabled' => filter_var($location['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $settings;
+    }
+
+    private function sanitizeBookingQuestions(mixed $questions, bool $systemDefault): array
+    {
+        if (!is_array($questions)) {
+            return [];
+        }
+
+        $allowedTypes = ['text', 'name', 'email', 'phone', 'tel', 'message', 'textarea', 'dropdown', 'checkbox', 'location', 'guests'];
+
+        return collect($questions)
+            ->filter(fn ($question) => is_array($question))
+            ->map(function (array $question) use ($systemDefault, $allowedTypes) {
+                $key = Str::slug((string) ($question['key'] ?? $question['label'] ?? ''), '_');
+                $type = in_array(($question['type'] ?? 'text'), $allowedTypes, true) ? (string) $question['type'] : 'text';
+
+                return [
+                    'key' => $key ?: 'question_' . Str::random(8),
+                    'label' => trim((string) ($question['label'] ?? 'Question')),
+                    'type' => $type,
+                    'enabled' => filter_var($question['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+                    'required' => filter_var($question['required'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+                    'system' => filter_var($question['system'] ?? $systemDefault, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $systemDefault,
+                    'hidden' => filter_var($question['hidden'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
+                    'helpMessage' => trim((string) ($question['helpMessage'] ?? '')),
+                    'options' => $type === 'dropdown'
+                        ? collect($question['options'] ?? [])->map(fn ($option) => trim((string) $option))->filter()->values()->all()
+                        : [],
+                ];
+            })
+            ->filter(fn ($question) => $question['label'] !== '')
+            ->values()
+            ->all();
     }
 
     private function validateEventType(Request $request, ?int $id = null): array

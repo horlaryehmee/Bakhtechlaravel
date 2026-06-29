@@ -29,8 +29,9 @@ class DynamicPublicMetadataTest extends TestCase
 
         $response = $this->get('/invoice/meta-invoice-token')
             ->assertOk()
-            ->assertSee('<title>Invoice INV-META-001 from Acme Studio</title>', false)
-            ->assertSee('Preview Invoice INV-META-001 from Acme Studio. NGN 125,000.00. Status: Sent.', false)
+            ->assertSee('<title>INV-META-001</title>', false)
+            ->assertSee('Your invoice is ready. Kindly review it and complete your payment securely.', false)
+            ->assertSee('Invoice INV-META-001 from Acme Studio', false)
             ->assertSee('content="noindex, nofollow, noarchive"', false)
             ->assertSee('href="https://example.test/invoice/meta-invoice-token"', false);
 
@@ -54,7 +55,8 @@ class DynamicPublicMetadataTest extends TestCase
 
         $this->get('/book/website-discovery')
             ->assertOk()
-            ->assertSee('<title>Book Website Discovery Call | Bakhtech Solutions</title>', false)
+            ->assertSee('<title>Website Discovery Call</title>', false)
+            ->assertSee('Book Website Discovery Call with Bakhtech Solutions', false)
             ->assertSee('Choose a convenient time to discuss your website requirements and project goals.', false)
             ->assertSee('href="https://example.test/book/website-discovery"', false);
     }

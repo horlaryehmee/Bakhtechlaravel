@@ -1950,11 +1950,7 @@ export function AdminDashboard() {
     setSaving(true)
     setError('')
     try {
-      const payload = {
-        ...bookingCalendarForm,
-        resources: bookingCalendarForm.resources.filter((resource) => resource.name.trim() !== '')
-      }
-      const result = await api.createBookingCalendar(payload)
+      const result = await api.createBookingCalendar(bookingCalendarPayload(bookingCalendarForm))
       setBookingCalendars((current) => [result.calendar, ...current])
       setBookingCalendarForm(emptyBookingCalendar)
       notify('Calendar created.')
@@ -1965,13 +1961,26 @@ export function AdminDashboard() {
     }
   }
 
+  function bookingCalendarPayload(calendar: Partial<BookingCalendar>) {
+    return {
+      name: calendar.name ?? '',
+      slug: calendar.slug ?? '',
+      description: calendar.description ?? '',
+      timezone: calendar.timezone ?? 'Africa/Lagos',
+      color: calendar.color ?? '#3b82f6',
+      isActive: calendar.isActive ?? true,
+      settings: calendar.settings ?? defaultCalendarSettings,
+      resources: (calendar.resources ?? []).filter((resource) => resource.name.trim() !== ''),
+    }
+  }
+
   async function saveEditingCalendar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingCalendar) return
     setSaving(true)
     setError('')
     try {
-      const result = await api.updateBookingCalendar(editingCalendar.id, editingCalendar)
+      const result = await api.updateBookingCalendar(editingCalendar.id, bookingCalendarPayload(editingCalendar))
       setBookingCalendars((current) => current.map((item) => (item.id === result.calendar.id ? result.calendar : item)))
       setEditingCalendar(result.calendar)
       notify('Calendar updated.')
