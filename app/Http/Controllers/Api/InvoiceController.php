@@ -589,6 +589,10 @@ class InvoiceController extends Controller
         ]);
 
         $amount = min($this->money($validated['amount']), (float) $document->balance_due);
+        if ($amount <= 0) {
+            return response()->json(['message' => 'This invoice has no outstanding balance to record.'], 422);
+        }
+
         $paidAt = $this->dateTimeOrNull($validated['date'] ?? null) ?: now();
         $newAmountPaid = min((float) $document->total, (float) $document->amount_paid + $amount);
         $newBalanceDue = max(0, (float) $document->total - $newAmountPaid);
@@ -1813,6 +1817,7 @@ class InvoiceController extends Controller
         return DB::table('invoice_payments')
             ->where('document_id', $documentId)
             ->whereIn('status', ['paid', 'completed', 'success', 'successful'])
+            ->where('amount', '>', 0)
             ->when($reference, fn ($query, $value) => $query->where('reference', $value))
             ->orderByDesc('paid_at')
             ->orderByDesc('updated_at')
@@ -2436,9 +2441,9 @@ class InvoiceController extends Controller
         $receiptPayment = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? $this->receiptPayment((int) $document->id, $receiptReference)
             : null;
-        $receiptAmount = $receiptPayment
+        $receiptAmount = $receiptPayment && (float) $receiptPayment->amount > 0
             ? (float) $receiptPayment->amount
-            : (float) $document->amount_paid;
+            : $this->fallbackReceiptEmailAmount($document, $templateKey);
         $priceValue = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? "{$currencySymbol}" . $this->formatEmailAmount($receiptAmount)
             : ($document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}");
@@ -2530,6 +2535,18 @@ HTML;
         return fmod($amount, 1.0) === 0.0
             ? number_format($amount, 0)
             : rtrim(rtrim(number_format($amount, 2), '0'), '.');
+    }
+
+    private function fallbackReceiptEmailAmount(object $document, string $templateKey): float
+    {
+        $amountPaid = (float) ($document->amount_paid ?? 0);
+        $total = (float) ($document->total ?? 0);
+
+        if ($templateKey === 'payment_settled') {
+            return max($amountPaid, $total);
+        }
+
+        return $amountPaid > 0 ? $amountPaid : $total;
     }
 
     private function branding(array $branding): array

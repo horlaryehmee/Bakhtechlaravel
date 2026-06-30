@@ -504,6 +504,17 @@ class DeploymentSecurityTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        DB::table('invoice_payments')->insert([
+            'document_id' => $documentId,
+            'gateway' => 'manual',
+            'reference' => 'ZERO-LEGACY-PAYMENT',
+            'amount' => 0,
+            'currency' => 'NGN',
+            'status' => 'paid',
+            'paid_at' => now()->subDay(),
+            'created_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ]);
 
         $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
             ->putJson("/api/admin/invoices/documents/{$documentId}", [
@@ -544,7 +555,7 @@ class DeploymentSecurityTest extends TestCase
             ->assertJsonPath('document.amountPaid', 250000)
             ->assertJsonPath('document.balanceDue', 0);
 
-        $payment = DB::table('invoice_payments')->where('document_id', $documentId)->first();
+        $payment = DB::table('invoice_payments')->where('document_id', $documentId)->where('amount', '>', 0)->first();
         $this->assertNotNull($payment);
         $this->assertSame(250000.0, (float) $payment->amount);
 
@@ -555,6 +566,7 @@ class DeploymentSecurityTest extends TestCase
 
         $this->assertStringContainsString('Invoice fully settled', $emailHtml);
         $this->assertStringContainsString('₦250,000', $emailHtml);
+        $this->assertStringNotContainsString('>₦0<', $emailHtml);
         $this->assertStringContainsString('/receipt/settlement-token?reference=' . $payment->reference, $emailHtml);
     }
 
