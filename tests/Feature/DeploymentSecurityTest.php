@@ -439,12 +439,123 @@ class DeploymentSecurityTest extends TestCase
             'status' => 'sent',
         ]);
         $emailHtml = (string) DB::table('invoice_email_logs')->where('document_id', $documentId)->value('body_html');
+        $this->assertStringContainsString('₦400', $emailHtml);
         $this->assertStringContainsString('/receipt/manual-payment-token?reference=' . $payment->reference, $emailHtml);
         $this->assertStringContainsString('/receipt/pdf?reference=' . $payment->reference, $emailHtml);
         $this->getJson('/api/invoices/manual-payment-token/receipt?reference=' . $payment->reference)
             ->assertOk()
             ->assertJsonPath('receipt.amount', 400)
             ->assertJsonPath('receipt.gateway', 'bank transfer');
+    }
+
+    public function test_marking_invoice_paid_records_settlement_and_notifies_client(): void
+    {
+        Mail::fake();
+        config()->set('security.admin_token_secret', 'status-paid-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'status-paid-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Status Paid Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+        $clientId = DB::table('invoice_clients')->insertGetId([
+            'name' => 'Settlement Client',
+            'email' => 'settled@example.test',
+            'company_name' => 'Settlement Ltd',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $documentId = DB::table('invoice_documents')->insertGetId([
+            'client_id' => $clientId,
+            'type' => 'invoice',
+            'number' => 'INV-SETTLED-001',
+            'title' => 'Settlement Invoice',
+            'public_token' => 'settlement-token',
+            'status' => 'sent',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 250000,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'total' => 250000,
+            'amount_paid' => 0,
+            'balance_due' => 250000,
+            'issue_date' => '2026-06-30',
+            'due_date' => '2026-07-30',
+            'payment_enabled' => true,
+            'branding_json' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('invoice_document_items')->insert([
+            'document_id' => $documentId,
+            'name' => 'Website project',
+            'description' => '',
+            'quantity' => 1,
+            'unit_price' => 250000,
+            'discount_rate' => 0,
+            'tax_rate' => 0,
+            'line_total' => 250000,
+            'sort_order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->putJson("/api/admin/invoices/documents/{$documentId}", [
+                'type' => 'invoice',
+                'number' => 'INV-SETTLED-001',
+                'title' => 'Settlement Invoice',
+                'status' => 'paid',
+                'currency' => 'NGN',
+                'issueDate' => '2026-06-30',
+                'dueDate' => '2026-07-30',
+                'paymentGateway' => 'manual',
+                'paymentEnabled' => true,
+                'partialPaymentEnabled' => true,
+                'serviceOverview' => '',
+                'scopeOfService' => '',
+                'notes' => '',
+                'terms' => '',
+                'branding' => [],
+                'client' => [
+                    'id' => $clientId,
+                    'name' => 'Settlement Client',
+                    'email' => 'settled@example.test',
+                    'phone' => '',
+                    'companyName' => 'Settlement Ltd',
+                    'address' => '',
+                ],
+                'items' => [[
+                    'name' => 'Website project',
+                    'description' => '',
+                    'quantity' => 1,
+                    'unitPrice' => 250000,
+                    'discountRate' => 0,
+                    'taxRate' => 0,
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('document.status', 'paid')
+            ->assertJsonPath('document.amountPaid', 250000)
+            ->assertJsonPath('document.balanceDue', 0);
+
+        $payment = DB::table('invoice_payments')->where('document_id', $documentId)->first();
+        $this->assertNotNull($payment);
+        $this->assertSame(250000.0, (float) $payment->amount);
+
+        $emailHtml = (string) DB::table('invoice_email_logs')
+            ->where('document_id', $documentId)
+            ->where('template_key', 'payment_settled')
+            ->value('body_html');
+
+        $this->assertStringContainsString('Invoice fully settled', $emailHtml);
+        $this->assertStringContainsString('₦250,000', $emailHtml);
+        $this->assertStringContainsString('/receipt/settlement-token?reference=' . $payment->reference, $emailHtml);
     }
 
     public function test_payment_return_verifies_paystack_and_refreshes_invoice_once(): void

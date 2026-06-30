@@ -2592,6 +2592,12 @@ export function AdminDashboard() {
       })
       
       setEditingInvoice(response.document)
+      setPaymentForm({
+        amount: response.document.balanceDue > 0 ? response.document.balanceDue : 0,
+        method: '',
+        date: new Date().toISOString().slice(0, 10),
+        notes: ''
+      })
       notify('Payment recorded successfully. Receipt notification sent.')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to record payment.')
@@ -3935,12 +3941,6 @@ export function AdminDashboard() {
                                 paymentForm.date,
                                 paymentForm.notes
                               )
-                              setPaymentForm({
-                                amount: editingInvoice.total,
-                                method: '',
-                                date: new Date().toISOString().slice(0, 10),
-                                notes: ''
-                              })
                             }
                           }}
                         >

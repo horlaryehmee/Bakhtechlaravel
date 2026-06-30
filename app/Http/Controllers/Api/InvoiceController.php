@@ -128,13 +128,20 @@ class InvoiceController extends Controller
 
     public function updateDocument(Request $request, int $id)
     {
-        if (!DB::table('invoice_documents')->where('id', $id)->exists()) {
+        $existing = DB::table('invoice_documents')->where('id', $id)->first();
+        if (!$existing) {
             return response()->json(['message' => 'Document not found.'], 404);
         }
 
         $data = $this->validatedDocument($request, $id);
+        $document = $this->saveDocument($data, $id, $request);
 
-        return ['document' => $this->saveDocument($data, $id, $request)];
+        if (($existing->status ?? '') !== 'paid' && ($document['status'] ?? '') === 'paid' && ($document['type'] ?? '') === 'invoice') {
+            $payment = $this->receiptPayment($id, null);
+            $this->sendInvoiceNotification($id, $request, 'payment_settled', $payment?->reference);
+        }
+
+        return ['document' => $document];
     }
 
     public function sendDocument(Request $request, int $id)
@@ -1805,9 +1812,10 @@ class InvoiceController extends Controller
     {
         return DB::table('invoice_payments')
             ->where('document_id', $documentId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'completed', 'success', 'successful'])
             ->when($reference, fn ($query, $value) => $query->where('reference', $value))
             ->orderByDesc('paid_at')
+            ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->first();
     }
@@ -1858,12 +1866,15 @@ class InvoiceController extends Controller
             $existingDocument = $id ? DB::table('invoice_documents')->where('id', $id)->first() : null;
             $amountPaid = $existingDocument ? min($totals['total'], (float) $existingDocument->amount_paid) : 0;
             $balanceDue = max(0, $totals['total'] - $amountPaid);
+            $statusSettlementAmount = 0.0;
+            $statusSettlementReference = null;
 
-            if ($amountPaid > 0 && $data['type'] !== 'quote') {
-                $status = $balanceDue <= 0 ? 'paid' : 'partial';
-            } elseif ($status === 'paid') {
+            if ($status === 'paid' && $data['type'] !== 'quote') {
+                $statusSettlementAmount = max(0, $totals['total'] - $amountPaid);
                 $amountPaid = $totals['total'];
                 $balanceDue = 0;
+            } elseif ($data['type'] === 'quote' && $status === 'paid') {
+                $status = 'accepted';
             }
 
             $issueDate = $data['issueDate'] ?? now()->toDateString();
@@ -1925,6 +1936,26 @@ class InvoiceController extends Controller
                 $event = 'document.created';
             }
 
+            if ($statusSettlementAmount > 0) {
+                $statusSettlementReference = 'SETTLED-' . Str::upper(Str::random(12));
+                DB::table('invoice_payments')->insert([
+                    'document_id' => $documentId,
+                    'gateway' => 'manual',
+                    'reference' => $statusSettlementReference,
+                    'amount' => $statusSettlementAmount,
+                    'currency' => strtoupper($data['currency']),
+                    'status' => 'paid',
+                    'gateway_response_json' => json_encode([
+                        'method' => 'status update',
+                        'source' => 'admin',
+                        'note' => 'Invoice marked as paid from the admin dashboard.',
+                    ]),
+                    'paid_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             foreach ($data['items'] as $index => $item) {
                 $line = $this->calculateLine($item);
                 DB::table('invoice_document_items')->insert([
@@ -1942,7 +1973,11 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            $this->trackEvent($documentId, $event, $request, ['number' => $number], null, 'owner');
+            $this->trackEvent($documentId, $event, $request, [
+                'number' => $number,
+                'status' => $status,
+                'settlementReference' => $statusSettlementReference,
+            ], null, 'owner');
 
             return $this->documentShape($this->documentRow($documentId), true);
         });
@@ -2338,6 +2373,7 @@ class InvoiceController extends Controller
 
         return match ($templateKey) {
             'invoice_created_from_quote' => 'Your invoice is ready: ' . $document->number,
+            'payment_settled' => 'Invoice fully settled: ' . $document->number,
             'payment_received' => 'Payment received: ' . $document->number,
             default => $label . ' ' . $document->number . ' from Bakhtech Solutions',
         };
@@ -2355,11 +2391,12 @@ class InvoiceController extends Controller
         $total = $this->formatEmailAmount((float) $document->total);
         $balance = $this->formatEmailAmount((float) $document->balance_due);
         $receiptQuery = $receiptReference ? '?reference=' . rawurlencode($receiptReference) : '';
-        $documentUrl = $templateKey === 'payment_received'
+        $isReceiptEmail = in_array($templateKey, ['payment_received', 'payment_settled'], true);
+        $documentUrl = $isReceiptEmail
             ? '/receipt/' . $document->public_token . $receiptQuery
             : '/invoice/' . $document->public_token;
         $publicUrl = htmlspecialchars($this->absoluteUrl($documentUrl), ENT_QUOTES, 'UTF-8');
-        $pdfPath = $templateKey === 'payment_received'
+        $pdfPath = $isReceiptEmail
             ? '/api/invoices/' . $document->public_token . '/receipt/pdf' . $receiptQuery
             : '/api/invoices/' . $document->public_token . '/pdf';
         $pdfUrl = htmlspecialchars($this->absoluteUrl($pdfPath), ENT_QUOTES, 'UTF-8');
@@ -2367,6 +2404,7 @@ class InvoiceController extends Controller
         $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
         $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
         $headline = match (true) {
+            $templateKey === 'payment_settled' => 'Invoice fully settled',
             $templateKey === 'payment_received' => 'Payment received',
             $templateKey === 'invoice_created_from_quote' => 'Invoice ready',
             $document->type === 'quote' => 'Quote ready',
@@ -2374,37 +2412,37 @@ class InvoiceController extends Controller
             default => 'Invoice ready',
         };
         $message = match (true) {
+            $templateKey === 'payment_settled' => 'Thank you. We have received your payment and your invoice is now fully settled. You can view or download your official receipt below.',
             $templateKey === 'payment_received' => 'Thank you. Your payment has been received and applied to this invoice. You can view your receipt below.',
             $templateKey === 'invoice_created_from_quote' => 'Your approved quote has been converted into an invoice. Please review the invoice details below.',
             $document->type === 'quote' => 'Your quote is available for review. Please confirm the details when you are ready to proceed.',
             $document->type === 'receipt' => 'Your receipt has been issued. You can view the payment record or download a copy below.',
             default => 'Your invoice is available for review. Please check the details below and proceed with payment when convenient.',
         };
-        $primaryAction = $templateKey === 'payment_received'
+        $primaryAction = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? 'View receipt'
             : match ($document->type) {
                 'quote' => 'Review quote',
                 'receipt' => 'View receipt',
                 default => 'Open invoice',
             };
-        $priceLabel = $templateKey === 'payment_received'
-            ? 'Payment received'
+        $priceLabel = in_array($templateKey, ['payment_received', 'payment_settled'], true)
+            ? ($templateKey === 'payment_settled' ? 'Final payment received' : 'Payment received')
             : match ($document->type) {
                 'quote' => 'Quoted amount',
                 'receipt' => 'Amount recorded',
                 default => 'Amount due',
             };
-        $receiptAmount = $receiptReference
-            ? (float) (DB::table('invoice_payments')
-                ->where('document_id', $document->id)
-                ->where('reference', $receiptReference)
-                ->where('status', 'paid')
-                ->value('amount') ?? $document->amount_paid)
+        $receiptPayment = in_array($templateKey, ['payment_received', 'payment_settled'], true)
+            ? $this->receiptPayment((int) $document->id, $receiptReference)
+            : null;
+        $receiptAmount = $receiptPayment
+            ? (float) $receiptPayment->amount
             : (float) $document->amount_paid;
-        $priceValue = $templateKey === 'payment_received'
+        $priceValue = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? "{$currencySymbol}" . $this->formatEmailAmount($receiptAmount)
             : ($document->type === 'invoice' ? "{$currencySymbol}{$balance}" : "{$currencySymbol}{$total}");
-        $downloadLabel = $templateKey === 'payment_received' ? 'Download receipt PDF' : 'Download PDF';
+        $downloadLabel = in_array($templateKey, ['payment_received', 'payment_settled'], true) ? 'Download receipt PDF' : 'Download PDF';
         $documentTitle = "{$label} {$number}";
 
         return <<<HTML
