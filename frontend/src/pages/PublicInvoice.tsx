@@ -515,6 +515,9 @@ export function PublicInvoice() {
           </div>
         </section>
 
+        {renderInvoiceExpandableSection('serviceOverview', 'Service Overview', document.serviceOverview)}
+        {renderInvoiceExpandableSection('scopeOfService', 'Scope of Service', document.scopeOfService)}
+
         <section className="invoice-sheet-items">
           <div className="invoice-sheet-table-head">
             <span>Item</span>
@@ -608,9 +611,6 @@ export function PublicInvoice() {
             ) : hasOutstandingBalance ? <div className="invoice-sheet-paid">Use manual/offline payment for this invoice.</div> : null}
           </div>
         </section>
-
-        {renderInvoiceExpandableSection('serviceOverview', 'Service Overview', document.serviceOverview)}
-        {renderInvoiceExpandableSection('scopeOfService', 'Scope of Service', document.scopeOfService)}
 
         {document.notes ? (
           <section className="invoice-sheet-notes">

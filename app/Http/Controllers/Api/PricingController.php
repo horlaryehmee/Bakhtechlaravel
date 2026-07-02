@@ -627,7 +627,8 @@ class PricingController extends Controller
 
     private function branding(array $branding): array
     {
-        return array_merge([
+        $settings = $this->siteSettings();
+        $defaults = [
             'businessName' => 'Bakhtech Solutions',
             'logoUrl' => '/bakhtech-logo-light.png',
             'primaryColor' => '#ef4444',
@@ -635,7 +636,37 @@ class PricingController extends Controller
             'email' => 'solutions@bakhtech.com.ng',
             'phone' => '+234 708 637 2833',
             'address' => '',
-        ], $branding);
+        ];
+        $settingsMap = [
+            'businessName' => 'company_name',
+            'logoUrl' => 'company_logo',
+            'email' => 'company_email',
+            'phone' => 'company_phone',
+            'address' => 'company_address',
+        ];
+
+        foreach ($settingsMap as $brandingKey => $settingsKey) {
+            if (!empty($settings[$settingsKey])) {
+                $defaults[$brandingKey] = $settings[$settingsKey];
+            }
+        }
+
+        foreach ($defaults as $key => $defaultValue) {
+            if (!array_key_exists($key, $branding) || trim((string) $branding[$key]) === '') {
+                $branding[$key] = $defaultValue;
+            }
+        }
+
+        return array_merge($defaults, $branding);
+    }
+
+    private function siteSettings(): array
+    {
+        if (!Schema::hasTable('settings')) {
+            return [];
+        }
+
+        return DB::table('settings')->pluck('value', 'key')->all();
     }
 
     private function flushPublicPricingCache(): void

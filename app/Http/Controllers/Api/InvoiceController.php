@@ -2552,8 +2552,7 @@ HTML;
     private function branding(array $branding): array
     {
         $settings = $this->siteSettings();
-
-        return array_merge([
+        $defaults = [
             'businessName' => $settings['company_name'] ?? 'Bakhtech Solutions',
             'logoUrl' => $settings['company_logo'] ?? '/bakhtech-logo-light.png',
             'primaryColor' => '#ef4444',
@@ -2561,7 +2560,15 @@ HTML;
             'email' => $settings['company_email'] ?? 'solutions@bakhtech.com.ng',
             'phone' => $settings['company_phone'] ?? '+234 708 637 2833',
             'address' => $settings['company_address'] ?? '',
-        ], $branding);
+        ];
+
+        foreach ($defaults as $key => $defaultValue) {
+            if (!array_key_exists($key, $branding) || trim((string) $branding[$key]) === '') {
+                $branding[$key] = $defaultValue;
+            }
+        }
+
+        return array_merge($defaults, $branding);
     }
 
     private function paymentAccount(string $currency): array
