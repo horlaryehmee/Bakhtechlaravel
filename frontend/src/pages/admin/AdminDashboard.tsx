@@ -2566,6 +2566,14 @@ export function AdminDashboard() {
     notify('Document sent.')
   }
 
+  async function resendInitialInvoiceNotification(document: InvoiceDocument) {
+    if (document.id === null || document.id === undefined) return
+    await api.resendInitialInvoiceNotification(document.id)
+    await loadDocumentEmailLogs(document.id)
+    void loadInvoiceData()
+    notify('Initial notification resent.')
+  }
+
   async function loadDocumentEmailLogs(documentId: number) {
     try {
       const result = await api.invoiceEmailLogs({ documentId, perPage: 100, includeOpens: 1 })
@@ -3281,6 +3289,15 @@ export function AdminDashboard() {
                         >
                           <Link2 className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bkinv-action-btn"
+                          onClick={() => void resendInitialInvoiceNotification(doc)}
+                          title="Resend initial notification"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -3321,6 +3338,7 @@ export function AdminDashboard() {
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void editInvoice(doc)}><Pencil className="h-4 w-4" />Edit</Button>
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => window.open(doc.publicUrl, '_blank')}><Eye className="h-4 w-4" />View</Button>
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void copyInvoiceLink(doc)}><Link2 className="h-4 w-4" />Copy</Button>
+                <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void resendInitialInvoiceNotification(doc)}><Send className="h-4 w-4" />Resend</Button>
               </div>
             </article>
           ))}
@@ -3834,6 +3852,15 @@ export function AdminDashboard() {
                 </Button>
                 {isEdit && editingInvoice?.publicUrl ? (
                   <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="bkinv-btn bkinv-btn-secondary bkinv-btn-block"
+                      onClick={() => void resendInitialInvoiceNotification(editingInvoice)}
+                    >
+                      <Send className="h-4 w-4" />
+                      Resend Initial Notification
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"

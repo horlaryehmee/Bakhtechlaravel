@@ -1457,6 +1457,9 @@ export const api = {
   sendInvoiceDocument(id: number) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send`, { method: 'POST' })
   },
+  resendInitialInvoiceNotification(id: number) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/resend-initial`, { method: 'POST' })
+  },
   recordInvoicePayment(id: number, payment: { amount: number; method: string; date: string; notes?: string }) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/payments`, {
       method: 'POST',

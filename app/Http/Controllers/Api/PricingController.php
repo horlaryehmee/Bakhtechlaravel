@@ -288,6 +288,9 @@ class PricingController extends Controller
         });
 
         $document = DB::table('invoice_documents')->where('id', $documentId)->first();
+        if ($document) {
+            app(InvoiceController::class)->sendInvoiceNotification($documentId, $request, ((string) $document->type) . '_created');
+        }
 
         return response()->json([
             'document' => [

@@ -164,6 +164,19 @@ class InvoiceController extends Controller
         return ['document' => $this->documentShape($this->documentRow($id), true)];
     }
 
+    public function resendInitialNotification(Request $request, int $id)
+    {
+        $document = $this->documentRow($id);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        $this->sendInvoiceNotification($id, $request, $this->initialNotificationTemplate($document));
+        $this->trackEvent($id, 'document.initial_notification_resent', $request, ['recipient' => $document->client_email], null, 'owner');
+
+        return ['document' => $this->documentShape($this->documentRow($id), true)];
+    }
+
     public function emailLogs(Request $request)
     {
         $perPage = $this->perPage($request);
@@ -2307,7 +2320,7 @@ class InvoiceController extends Controller
         ];
     }
 
-    private function sendInvoiceNotification(int $documentId, Request $request, string $templateKey, ?string $receiptReference = null): void
+    public function sendInvoiceNotification(int $documentId, Request $request, string $templateKey, ?string $receiptReference = null): void
     {
         if (!Schema::hasTable('invoice_email_logs')) {
             return;
@@ -2369,6 +2382,15 @@ class InvoiceController extends Controller
 
             DB::table('invoice_email_logs')->where('id', $logId)->update($update);
         }
+    }
+
+    private function initialNotificationTemplate(object $document): string
+    {
+        if (($document->type ?? '') === 'invoice' && isset($document->source_quote_id) && $document->source_quote_id) {
+            return 'invoice_created_from_quote';
+        }
+
+        return ((string) ($document->type ?? 'invoice')) . '_created';
     }
 
     private function emailPreviewHtml(string $html): string
