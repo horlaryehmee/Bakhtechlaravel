@@ -146,6 +146,15 @@ function visibleRichText(value: string) {
   return value.trim() === pricingLockNotice ? '' : value
 }
 
+function documentLogoUrl(logoUrl: string, isDarkMode: boolean) {
+  if (!logoUrl) return ''
+  if (!isDarkMode) return logoUrl
+  if (logoUrl.endsWith('/bakhtech-logo-light.png') || logoUrl === 'bakhtech-logo-light.png') {
+    return '/bakhtech-logo-dark.png'
+  }
+  return logoUrl
+}
+
 export function PublicInvoice() {
   const { token = '' } = useParams()
   const [document, setDocument] = useState<InvoiceDocument | null>(null)
@@ -317,7 +326,7 @@ export function PublicInvoice() {
         <div className="quote-document-sheet">
           <header className="quote-document-header">
             <div className="quote-document-brand">
-              {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+              {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl, darkQuoteMode)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
               <div>
                 <h1>{brand.businessName}</h1>
                 <p>Email: {brand.email || 'Not provided'}</p>
@@ -475,7 +484,7 @@ export function PublicInvoice() {
       <article className="invoice-sheet">
         <header className="invoice-sheet-header">
           <div className="invoice-sheet-brand">
-            {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+            {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl, darkInvoiceMode)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
             <div className="invoice-sheet-contact">
               <strong>{brand.businessName}</strong>
               <span>Email: {brand.email || 'Not provided'}</span>

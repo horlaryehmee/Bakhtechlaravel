@@ -4402,6 +4402,10 @@ a {
   color: #b8c7dc;
 }
 
+.quote-document-page.is-dark .invoice-portal-richtext :is(strong, b, h2, h3, h4) {
+  color: #f8fbff;
+}
+
 @media (max-width: 760px) {
   .quote-document-page {
     min-height: 100vh;
@@ -5153,6 +5157,10 @@ a {
 
 .invoice-sheet-page.is-dark :is(.invoice-sheet-contact, .invoice-sheet-card p, .invoice-sheet-row .invoice-portal-richtext, .invoice-sheet-bank, .invoice-sheet-pay-row > span, .invoice-sheet-pay-row small, .invoice-sheet-notes .invoice-portal-richtext, .invoice-sheet-notes p) {
   color: #94a3b8;
+}
+
+.invoice-sheet-page.is-dark .invoice-portal-richtext :is(strong, b, h2, h3, h4) {
+  color: #f8fafc;
 }
 
 .invoice-sheet-page.is-dark :is(.invoice-sheet-contact strong, .invoice-sheet-id > span:first-child, .invoice-sheet-id h1, .invoice-sheet-card > span, .invoice-sheet-card strong, .invoice-sheet-payment h2, .invoice-sheet-notes h2, .invoice-sheet-expand-toggle, .invoice-sheet-row strong, .invoice-sheet-row > span, .invoice-sheet-row > strong[data-label], .invoice-sheet-total-box strong, .invoice-sheet-total-box .is-final, .invoice-sheet-bank strong, .invoice-sheet-home, .invoice-sheet-mode) {
