@@ -1395,14 +1395,22 @@ class InvoiceController extends Controller
         $currency = $this->currencySymbol($document['currency']);
         $formatMoney = fn ($amount) => e($currency . $this->formatEmailAmount((float) $amount));
         $items = '';
+        $scopeOfService = trim((string) ($document['scopeOfService'] ?? ''));
+        $scopeText = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($scopeOfService), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
         $logoSrc = $this->pdfLogoSrc();
         $logo = $logoSrc
             ? '<img class="logo" src="' . e($logoSrc) . '" alt="' . e($brand['businessName']) . '">'
             : '';
 
         foreach ($document['items'] as $item) {
+            $itemDescription = (string) ($item['description'] ?? '');
+            $itemDescriptionText = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($itemDescription), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+            if ($scopeText !== '' && $itemDescriptionText === $scopeText) {
+                $itemDescription = '';
+            }
+
             $items .= '<tr>'
-                . '<td><strong>' . e($item['name']) . '</strong>' . ($item['description'] ? '<div class="muted rich">' . $item['description'] . '</div>' : '') . '</td>'
+                . '<td><strong>' . e($item['name']) . '</strong>' . ($itemDescription ? '<div class="muted rich">' . $itemDescription . '</div>' : '') . '</td>'
                 . '<td class="right">' . e((string) $item['quantity']) . '</td>'
                 . '<td class="right">' . $formatMoney($item['unitPrice']) . '</td>'
                 . '<td class="right"><strong>' . $formatMoney($item['lineTotal'] ?? 0) . '</strong></td>'
@@ -1435,8 +1443,8 @@ class InvoiceController extends Controller
         $quoteService = $document['type'] === 'quote' && $serviceOverview
             ? '<section><h3>Service Overview</h3><div class="rich">' . $serviceOverview . '</div></section>'
             : '';
-        $quoteScope = $document['type'] === 'quote' && $document['scopeOfService']
-            ? '<section><h3>Scope of Service</h3><div class="rich">' . $document['scopeOfService'] . '</div></section>'
+        $scopeSection = $scopeOfService
+            ? '<section><h3>Scope of Service</h3><div class="rich">' . $scopeOfService . '</div></section>'
             : '';
         $notes = $documentNotes ? '<section><h3>Notes</h3><div class="rich">' . $documentNotes . '</div></section>' : '';
         $termsValue = trim(strip_tags((string) $document['terms'])) === 'Pricing is locked for this document. Future pricing changes will not affect this quote or invoice.'
@@ -1516,7 +1524,7 @@ class InvoiceController extends Controller
                 <td><div class="box"><div class="label">Prepared For</div><strong>' . e($client['name']) . '</strong><br><span class="muted">' . e($client['companyName']) . '<br>' . e($client['email']) . '<br>' . e($client['phone']) . '<br>' . nl2br(e($client['address'])) . '</span></div></td>
                 <td><div class="box"><div class="label">Document Details</div><strong>' . e(ucfirst($document['type'])) . ' #' . e($document['number']) . '</strong><br><span class="muted">Issued: ' . e((string) $document['issueDate']) . '<br>Due: ' . e((string) $document['dueDate']) . '<br>Currency: ' . e((string) $document['currency']) . '</span></div></td>
             </tr></table>
-            ' . $quoteService . $quoteScope . '
+            ' . $quoteService . $scopeSection . '
             <section><h3>Line Items</h3><table class="items"><colgroup><col class="col-item"><col class="col-qty"><col class="col-rate"><col class="col-total"></colgroup><thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Total</th></tr></thead><tbody>' . $items . '</tbody></table></section>
             <table class="below"><tr>
                 <td class="payment"><div class="payment-card"><h3>Payment Details</h3>' . $accountRows . '</div></td>
