@@ -625,7 +625,14 @@ class PricingController extends Controller
         $prefix = $type === 'invoice' ? 'INV-' : 'QT-';
         $count = DB::table('invoice_documents')->where('type', $type)->count();
 
-        return $prefix . (1000 + $count + 1);
+        $next = 1000 + $count + 1;
+
+        do {
+            $number = $prefix . $next;
+            $next++;
+        } while (DB::table('invoice_documents')->where('number', $number)->exists());
+
+        return $number;
     }
 
     private function gatewayForCurrency(string $currency): string

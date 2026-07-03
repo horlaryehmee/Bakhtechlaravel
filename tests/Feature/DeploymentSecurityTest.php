@@ -378,6 +378,74 @@ class DeploymentSecurityTest extends TestCase
         ]);
     }
 
+    public function test_invoice_creation_skips_existing_generated_numbers(): void
+    {
+        Mail::fake();
+        config()->set('security.admin_token_secret', 'invoice-number-secret');
+
+        DB::table('settings')->insert([
+            'key' => 'starting_number',
+            'value' => '1000',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'invoice-number-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Invoice Number Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        DB::table('invoice_documents')->insert([
+            'type' => 'invoice',
+            'number' => 'INV-1002',
+            'title' => 'Existing Invoice',
+            'public_token' => 'existing-invoice-number-token',
+            'status' => 'draft',
+            'currency' => 'NGN',
+            'exchange_rate' => 1,
+            'subtotal' => 1000,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'total' => 1000,
+            'amount_paid' => 0,
+            'balance_due' => 1000,
+            'issue_date' => '2026-06-01',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->postJson('/api/admin/invoices/documents', [
+                'type' => 'invoice',
+                'title' => 'Next generated invoice',
+                'currency' => 'NGN',
+                'issueDate' => '2026-06-02',
+                'paymentGateway' => 'paystack',
+                'paymentEnabled' => true,
+                'client' => [
+                    'name' => 'Number Client',
+                    'email' => 'number-client@example.test',
+                ],
+                'items' => [[
+                    'name' => 'Professional Service',
+                    'quantity' => 1,
+                    'unitPrice' => 1000,
+                ]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('document.number', 'INV-1003');
+
+        $this->assertDatabaseHas('invoice_documents', [
+            'title' => 'Next generated invoice',
+            'number' => 'INV-1003',
+        ]);
+    }
+
     public function test_manual_payment_sends_payment_specific_receipt_email(): void
     {
         Mail::fake();

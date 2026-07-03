@@ -2120,7 +2120,15 @@ class InvoiceController extends Controller
         $start = max(1, (int) ($settings[$type === 'receipt' ? 'receipt_starting_number' : 'starting_number'] ?? 1000));
         $count = DB::table('invoice_documents')->where('type', $type)->count();
 
-        return rtrim($prefix, '-') . '-' . ($start + $count);
+        $basePrefix = rtrim($prefix, '-') . '-';
+        $next = $start + $count + 1;
+
+        do {
+            $number = $basePrefix . $next;
+            $next++;
+        } while (DB::table('invoice_documents')->where('number', $number)->exists());
+
+        return $number;
     }
 
     private function documentRow(int $id): ?object
