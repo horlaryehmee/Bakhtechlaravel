@@ -283,6 +283,10 @@ class InvoiceController extends Controller
 
     public function trackEmailOpen(Request $request, string $token)
     {
+        if (!Schema::hasTable('invoice_email_logs') || !Schema::hasColumn('invoice_email_logs', 'open_token')) {
+            return $this->trackingPixelResponse();
+        }
+
         $log = DB::table('invoice_email_logs')->where('open_token', $token)->first();
         if ($log) {
             $openedAt = now();
@@ -306,11 +310,14 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if (!$log->opened_at) {
-                DB::table('invoice_email_logs')->where('id', $log->id)->update([
-                    'opened_at' => $openedAt,
-                    'updated_at' => $openedAt,
-                ]);
+            if (Schema::hasColumn('invoice_email_logs', 'opened_at') && !($log->opened_at ?? null)) {
+                $update = ['opened_at' => $openedAt];
+
+                if (Schema::hasColumn('invoice_email_logs', 'updated_at')) {
+                    $update['updated_at'] = $openedAt;
+                }
+
+                DB::table('invoice_email_logs')->where('id', $log->id)->update($update);
 
                 $this->trackEvent((int) $log->document_id, 'email.opened', $request, [
                     'emailLogId' => $log->id,
@@ -322,6 +329,11 @@ class InvoiceController extends Controller
             }
         }
 
+        return $this->trackingPixelResponse();
+    }
+
+    private function trackingPixelResponse()
+    {
         $pixel = base64_decode('R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==');
 
         return response($pixel, 200, [
@@ -2331,39 +2343,63 @@ class InvoiceController extends Controller
             return;
         }
 
-        $openToken = (string) Str::uuid();
-        $clickToken = (string) Str::uuid();
+        $emailLogColumns = Schema::getColumnListing('invoice_email_logs');
+        $hasEmailLogColumn = static fn (string $column): bool => in_array($column, $emailLogColumns, true);
+        $openToken = $hasEmailLogColumn('open_token') ? (string) Str::uuid() : '';
+        $clickToken = $hasEmailLogColumn('click_token') ? (string) Str::uuid() : '';
         $subject = $this->invoiceEmailSubject($document, $templateKey);
         $bodyHtml = $this->invoiceEmailHtml($document, $templateKey, $openToken, $receiptReference);
-        $payload = [
+
+        $payload = [];
+        foreach ([
             'document_id' => $documentId,
             'recipient_email' => $document->client_email,
             'subject' => $subject,
             'template_key' => $templateKey,
             'status' => 'queued',
-            'open_token' => $openToken,
-            'click_token' => $clickToken,
             'created_at' => now(),
             'updated_at' => now(),
-        ];
+        ] as $column => $value) {
+            if ($hasEmailLogColumn($column)) {
+                $payload[$column] = $value;
+            }
+        }
 
-        if (Schema::hasColumn('invoice_email_logs', 'body_html')) {
+        if ($openToken !== '') {
+            $payload['open_token'] = $openToken;
+        }
+
+        if ($clickToken !== '') {
+            $payload['click_token'] = $clickToken;
+        }
+
+        if ($hasEmailLogColumn('body_html')) {
             $payload['body_html'] = $bodyHtml;
         }
 
-        $logId = (int) DB::table('invoice_email_logs')->insertGetId($payload);
-
         try {
+            $logId = (int) DB::table('invoice_email_logs')->insertGetId($payload);
+
             Mail::html($bodyHtml, function ($message) use ($document, $subject) {
                 $message->to($document->client_email, $document->client_name ?: null)
                     ->subject($subject);
             });
 
-            DB::table('invoice_email_logs')->where('id', $logId)->update([
+            $update = [
                 'status' => 'sent',
                 'sent_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            $update = array_filter(
+                $update,
+                static fn ($value, string $column): bool => $hasEmailLogColumn($column),
+                ARRAY_FILTER_USE_BOTH
+            );
+
+            if ($update !== []) {
+                DB::table('invoice_email_logs')->where('id', $logId)->update($update);
+            }
 
             $this->trackEvent($documentId, 'email.sent', $request, [
                 'emailLogId' => $logId,
@@ -2371,16 +2407,22 @@ class InvoiceController extends Controller
                 'templateKey' => $templateKey,
             ], null, 'system');
         } catch (\Throwable $exception) {
-            $update = [
-                'status' => 'failed',
-                'updated_at' => now(),
-            ];
+            report($exception);
 
-            if (Schema::hasColumn('invoice_email_logs', 'error_message')) {
+            $update = [];
+            if ($hasEmailLogColumn('status')) {
+                $update['status'] = 'failed';
+            }
+            if ($hasEmailLogColumn('updated_at')) {
+                $update['updated_at'] = now();
+            }
+            if ($hasEmailLogColumn('error_message')) {
                 $update['error_message'] = $exception->getMessage();
             }
 
-            DB::table('invoice_email_logs')->where('id', $logId)->update($update);
+            if (isset($logId) && $update !== []) {
+                DB::table('invoice_email_logs')->where('id', $logId)->update($update);
+            }
         }
     }
 
@@ -2435,7 +2477,9 @@ class InvoiceController extends Controller
             ? '/api/invoices/' . $document->public_token . '/receipt/pdf' . $receiptQuery
             : '/api/invoices/' . $document->public_token . '/pdf';
         $pdfUrl = htmlspecialchars($this->absoluteUrl($pdfPath), ENT_QUOTES, 'UTF-8');
-        $openUrl = htmlspecialchars($this->absoluteUrl('/api/invoices/email/open/' . $openToken), ENT_QUOTES, 'UTF-8');
+        $openPixel = $openToken !== ''
+            ? '<img src="' . htmlspecialchars($this->absoluteUrl('/api/invoices/email/open/' . $openToken), ENT_QUOTES, 'UTF-8') . '" width="1" height="1" alt="" style="display:block;border:0;outline:0;width:1px;height:1px;">'
+            : '';
         $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
         $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
         $headline = match (true) {
@@ -2525,7 +2569,7 @@ class InvoiceController extends Controller
           <tr>
             <td style="padding:22px 30px;background:#f8fafc;color:#64748b;font-size:12px;line-height:1.65;">
               Sent by {$businessName}. If the buttons do not work, open this secure link: <a href="{$publicUrl}" style="color:#ef4444;font-weight:800;">{$publicUrl}</a>
-              <img src="{$openUrl}" width="1" height="1" alt="" style="display:block;border:0;outline:0;width:1px;height:1px;">
+              {$openPixel}
             </td>
           </tr>
         </table>
