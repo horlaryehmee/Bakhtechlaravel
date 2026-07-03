@@ -1901,8 +1901,10 @@ class InvoiceController extends Controller
             $totals = $this->calculateTotals($data['items']);
             $number = trim((string) ($data['number'] ?? '')) ?: $this->nextDocumentNumber($data['type']);
             $status = $data['status'] ?? 'draft';
+            $documentColumns = Schema::getColumnListing('invoice_documents');
+            $hasDocumentColumn = static fn (string $column): bool => in_array($column, $documentColumns, true);
             $existingDocument = $id ? DB::table('invoice_documents')->where('id', $id)->first() : null;
-            $amountPaid = $existingDocument ? min($totals['total'], (float) $existingDocument->amount_paid) : 0;
+            $amountPaid = $existingDocument ? min($totals['total'], (float) ($existingDocument->amount_paid ?? 0)) : 0;
             $balanceDue = max(0, $totals['total'] - $amountPaid);
             $statusSettlementAmount = 0.0;
             $statusSettlementReference = null;
@@ -1945,11 +1947,11 @@ class InvoiceController extends Controller
                 'updated_at' => now(),
             ];
 
-            if (Schema::hasColumn('invoice_documents', 'partial_payment_enabled')) {
+            if ($hasDocumentColumn('partial_payment_enabled')) {
                 $payload['partial_payment_enabled'] = (bool) ($data['partialPaymentEnabled'] ?? true);
             }
 
-            if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+            if ($hasDocumentColumn('service_overview')) {
                 [$serviceOverview, $payload['notes']] = $this->normalizeServiceSelectorText(
                     $this->cleanRichText($data['serviceOverview'] ?? ''),
                     $payload['notes']
@@ -1957,9 +1959,11 @@ class InvoiceController extends Controller
                 $payload['service_overview'] = $serviceOverview;
             }
 
-            if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+            if ($hasDocumentColumn('scope_of_service')) {
                 $payload['scope_of_service'] = $this->cleanRichText($data['scopeOfService'] ?? '');
             }
+
+            $payload = $this->tablePayload('invoice_documents', $payload, $documentColumns);
 
             if ($id) {
                 DB::table('invoice_documents')->where('id', $id)->update($payload);
@@ -1967,16 +1971,22 @@ class InvoiceController extends Controller
                 $documentId = $id;
                 $event = 'document.updated';
             } else {
-                $payload['public_token'] = (string) Str::uuid();
-                $payload['created_by'] = $request->attributes->get('admin')->id ?? null;
-                $payload['created_at'] = now();
+                if ($hasDocumentColumn('public_token')) {
+                    $payload['public_token'] = (string) Str::uuid();
+                }
+                if ($hasDocumentColumn('created_by')) {
+                    $payload['created_by'] = $request->attributes->get('admin')->id ?? null;
+                }
+                if ($hasDocumentColumn('created_at')) {
+                    $payload['created_at'] = now();
+                }
                 $documentId = DB::table('invoice_documents')->insertGetId($payload);
                 $event = 'document.created';
             }
 
-            if ($statusSettlementAmount > 0) {
+            if ($statusSettlementAmount > 0 && Schema::hasTable('invoice_payments')) {
                 $statusSettlementReference = 'SETTLED-' . Str::upper(Str::random(12));
-                DB::table('invoice_payments')->insert([
+                DB::table('invoice_payments')->insert($this->tablePayload('invoice_payments', [
                     'document_id' => $documentId,
                     'gateway' => 'manual',
                     'reference' => $statusSettlementReference,
@@ -1991,12 +2001,12 @@ class InvoiceController extends Controller
                     'paid_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ]));
             }
 
             foreach ($data['items'] as $index => $item) {
                 $line = $this->calculateLine($item);
-                DB::table('invoice_document_items')->insert([
+                DB::table('invoice_document_items')->insert($this->tablePayload('invoice_document_items', [
                     'document_id' => $documentId,
                     'name' => $item['name'],
                     'description' => $this->cleanRichText($item['description'] ?? ''),
@@ -2008,7 +2018,7 @@ class InvoiceController extends Controller
                     'sort_order' => $index + 1,
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ]));
             }
 
             $this->trackEvent($documentId, $event, $request, [
@@ -2023,28 +2033,41 @@ class InvoiceController extends Controller
 
     private function saveClient(array $client): int
     {
-        $payload = [
+        $clientColumns = Schema::getColumnListing('invoice_clients');
+        $hasClientColumn = static fn (string $column): bool => in_array($column, $clientColumns, true);
+        $payload = $this->tablePayload('invoice_clients', [
             'name' => $client['name'],
             'email' => $client['email'] ?? '',
             'phone' => $client['phone'] ?? '',
             'company_name' => $client['companyName'] ?? '',
             'address' => $client['address'] ?? '',
             'updated_at' => now(),
-        ];
+        ], $clientColumns);
 
         if (!empty($client['id'])) {
             DB::table('invoice_clients')->where('id', (int) $client['id'])->update($payload);
             return (int) $client['id'];
         }
 
-        $existing = !empty($payload['email']) ? DB::table('invoice_clients')->where('email', $payload['email'])->first() : null;
+        $existing = $hasClientColumn('email') && !empty($payload['email'])
+            ? DB::table('invoice_clients')->where('email', $payload['email'])->first()
+            : null;
         if ($existing) {
             DB::table('invoice_clients')->where('id', $existing->id)->update($payload);
             return (int) $existing->id;
         }
 
-        $payload['created_at'] = now();
+        if ($hasClientColumn('created_at')) {
+            $payload['created_at'] = now();
+        }
         return (int) DB::table('invoice_clients')->insertGetId($payload);
+    }
+
+    private function tablePayload(string $table, array $payload, ?array $columns = null): array
+    {
+        $columns ??= Schema::getColumnListing($table);
+
+        return array_intersect_key($payload, array_flip($columns));
     }
 
     private function calculateTotals(array $items): array
@@ -2163,13 +2186,13 @@ class InvoiceController extends Controller
             'issueDate' => (string) ($row->issue_date ?? ''),
             'dueDate' => (string) ($row->due_date ?? ''),
             'paymentGateway' => $row->payment_gateway ?? '',
-            'paymentEnabled' => (bool) $row->payment_enabled,
+            'paymentEnabled' => (bool) ($row->payment_enabled ?? false),
             'partialPaymentEnabled' => Schema::hasColumn('invoice_documents', 'partial_payment_enabled') ? (bool) ($row->partial_payment_enabled ?? true) : true,
             'serviceOverview' => $documentText['serviceOverview'],
             'scopeOfService' => $this->cleanRichText(($row->scope_of_service ?? '') ?: ''),
             'notes' => $documentText['notes'],
-            'terms' => $this->cleanRichText($row->terms ?: ''),
-            'branding' => $this->branding(json_decode($row->branding_json ?: '{}', true) ?: []),
+            'terms' => $this->cleanRichText(($row->terms ?? '') ?: ''),
+            'branding' => $this->branding(json_decode(($row->branding_json ?? '') ?: '{}', true) ?: []),
             'paymentAccount' => $this->paymentAccount((string) $row->currency),
             'pricing' => [
                 'categoryId' => isset($row->pricing_category_id) ? $row->pricing_category_id : null,
@@ -2695,21 +2718,25 @@ HTML;
 
         $location = $this->requestLocation($request, $eventType === 'document.viewed');
 
-        DB::table('invoice_events')->insert([
-            'document_id' => $documentId,
-            'event_type' => $eventType,
-            'session_id' => $sessionId ?: (string) $request->input('sessionId', ''),
-            'actor_type' => $actorType,
-            'actor_id' => $request->attributes->get('admin')->id ?? null,
-            'ip_address' => (string) $request->ip(),
-            'user_agent' => (string) $request->userAgent(),
-            'device_type' => $this->deviceType((string) $request->userAgent()),
-            'country' => $location['country'],
-            'city' => $location['city'],
-            'metadata_json' => json_encode(array_filter($metadata, fn ($value) => $value !== null)),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('invoice_events')->insert($this->tablePayload('invoice_events', [
+                'document_id' => $documentId,
+                'event_type' => $eventType,
+                'session_id' => $sessionId ?: (string) $request->input('sessionId', ''),
+                'actor_type' => $actorType,
+                'actor_id' => $request->attributes->get('admin')->id ?? null,
+                'ip_address' => (string) $request->ip(),
+                'user_agent' => (string) $request->userAgent(),
+                'device_type' => $this->deviceType((string) $request->userAgent()),
+                'country' => $location['country'],
+                'city' => $location['city'],
+                'metadata_json' => json_encode(array_filter($metadata, fn ($value) => $value !== null)),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function deviceType(string $userAgent): string
