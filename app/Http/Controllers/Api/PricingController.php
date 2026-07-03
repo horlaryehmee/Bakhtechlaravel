@@ -213,6 +213,8 @@ class PricingController extends Controller
                 $versionId = $this->writeVersion((int) $plan->id, $request);
             }
 
+            $documentColumns = Schema::getColumnListing('invoice_documents');
+            $hasDocumentColumn = static fn (string $column): bool => in_array($column, $documentColumns, true);
             $documentPayload = [
                 'client_id' => $clientId,
                 'pricing_category_id' => $category->id,
@@ -245,17 +247,18 @@ class PricingController extends Controller
                 'updated_at' => now(),
             ];
 
-            if (Schema::hasColumn('invoice_documents', 'service_overview')) {
+            if ($hasDocumentColumn('service_overview')) {
                 $documentPayload['service_overview'] = $category->description;
             }
 
-            if (Schema::hasColumn('invoice_documents', 'scope_of_service')) {
+            if ($hasDocumentColumn('scope_of_service')) {
                 $documentPayload['scope_of_service'] = $this->featuresHtml($snapshot['features']);
             }
 
+            $documentPayload = $this->tablePayload('invoice_documents', $documentPayload, $documentColumns);
             $documentId = (int) DB::table('invoice_documents')->insertGetId($documentPayload);
 
-            DB::table('invoice_document_items')->insert([
+            DB::table('invoice_document_items')->insert($this->tablePayload('invoice_document_items', [
                 'document_id' => $documentId,
                 'name' => $plan->name . ' Plan',
                 'description' => $this->featuresHtml($snapshot['features']),
@@ -267,21 +270,25 @@ class PricingController extends Controller
                 'sort_order' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ]));
 
             if (Schema::hasTable('invoice_events')) {
-                DB::table('invoice_events')->insert([
-                    'document_id' => $documentId,
-                    'event_type' => 'pricing.document_created',
-                    'actor_type' => $request->attributes->get('admin') ? 'owner' : 'anonymous',
-                    'actor_id' => $request->attributes->get('admin')->id ?? null,
-                    'ip_address' => (string) $request->ip(),
-                    'user_agent' => (string) $request->userAgent(),
-                    'device_type' => preg_match('/Mobile|Android|iPhone|iPad/i', (string) $request->userAgent()) ? 'mobile' : 'desktop',
-                    'metadata_json' => json_encode(['planId' => $plan->id, 'categoryId' => $category->id]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                try {
+                    DB::table('invoice_events')->insert($this->tablePayload('invoice_events', [
+                        'document_id' => $documentId,
+                        'event_type' => 'pricing.document_created',
+                        'actor_type' => $request->attributes->get('admin') ? 'owner' : 'anonymous',
+                        'actor_id' => $request->attributes->get('admin')->id ?? null,
+                        'ip_address' => (string) $request->ip(),
+                        'user_agent' => (string) $request->userAgent(),
+                        'device_type' => preg_match('/Mobile|Android|iPhone|iPad/i', (string) $request->userAgent()) ? 'mobile' : 'desktop',
+                        'metadata_json' => json_encode(['planId' => $plan->id, 'categoryId' => $category->id]),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]));
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
             }
 
             return $documentId;
@@ -300,7 +307,7 @@ class PricingController extends Controller
                 'status' => $document->status,
                 'currency' => $document->currency,
                 'total' => (float) $document->total,
-                'publicUrl' => '/invoice/' . $document->public_token,
+                'publicUrl' => '/invoice/' . ($document->public_token ?? ''),
             ],
         ], 201);
     }
@@ -583,23 +590,34 @@ class PricingController extends Controller
     {
         $name = trim((string) ($client['name'] ?? 'Website Client')) ?: 'Website Client';
         $email = trim((string) ($client['email'] ?? ''));
-        $payload = [
+        $clientColumns = Schema::getColumnListing('invoice_clients');
+        $hasClientColumn = static fn (string $column): bool => in_array($column, $clientColumns, true);
+        $payload = $this->tablePayload('invoice_clients', [
             'name' => $name,
             'email' => $email,
             'phone' => $client['phone'] ?? '',
             'company_name' => $client['companyName'] ?? '',
             'address' => $client['address'] ?? '',
             'updated_at' => now(),
-        ];
+        ], $clientColumns);
 
-        $existing = $email ? DB::table('invoice_clients')->where('email', $email)->first() : null;
+        $existing = $email && $hasClientColumn('email') ? DB::table('invoice_clients')->where('email', $email)->first() : null;
         if ($existing) {
             DB::table('invoice_clients')->where('id', $existing->id)->update($payload);
             return (int) $existing->id;
         }
 
-        $payload['created_at'] = now();
+        if ($hasClientColumn('created_at')) {
+            $payload['created_at'] = now();
+        }
         return (int) DB::table('invoice_clients')->insertGetId($payload);
+    }
+
+    private function tablePayload(string $table, array $payload, ?array $columns = null): array
+    {
+        $columns ??= Schema::getColumnListing($table);
+
+        return array_intersect_key($payload, array_flip($columns));
     }
 
     private function nextDocumentNumber(string $type): string
