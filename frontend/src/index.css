@@ -3099,6 +3099,10 @@ a {
   will-change: right, bottom, left, opacity, transform;
 }
 
+.homepage-notification-card.is-exiting {
+  transform-origin: center bottom;
+}
+
 .homepage-notification-card > div {
   opacity: var(--from-label-opacity);
   animation: notification-card-content-cycle 2600ms ease-in-out forwards;
@@ -3113,7 +3117,7 @@ a {
     transform: translate3d(0, var(--from-y), 0) scale(var(--from-scale));
   }
 
-  18% {
+  8% {
     right: var(--from-right);
     bottom: var(--from-bottom);
     left: var(--from-left);
@@ -3121,7 +3125,7 @@ a {
     transform: translate3d(0, var(--from-y), 0) scale(var(--from-scale));
   }
 
-  84% {
+  76% {
     right: var(--to-right);
     bottom: var(--to-bottom);
     left: var(--to-left);
@@ -3140,11 +3144,11 @@ a {
 
 @keyframes notification-card-content-cycle {
   0%,
-  18% {
+  8% {
     opacity: var(--from-label-opacity);
   }
 
-  84%,
+  76%,
   100% {
     opacity: var(--to-label-opacity);
   }
