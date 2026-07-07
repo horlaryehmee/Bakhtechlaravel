@@ -5761,7 +5761,7 @@ export function AdminDashboard() {
 
               <aside className="grid gap-5 lg:self-start">
                 {renderMediaInput('Primary project image', 'Always used first on portfolio cards and homepage project boxes.', projectForm.image, 'image/*', 'image', 'Project image URL or uploaded path')}
-                {renderMediaInput('Video presentation', 'Optional uploaded video or YouTube link. Adds a play action to the project card.', projectForm.videoUrl, 'video/*', 'videoUrl', 'Video URL, uploaded path, or YouTube URL')}
+                {renderMediaInput('Video presentation', 'Optional uploaded video or YouTube link. Adds a play action to the project card.', projectForm.videoUrl, 'video/*,.mp4,.m4v,.webm,.mov,.ogg,.ogv', 'videoUrl', 'Video URL, uploaded path, or YouTube URL')}
                 {renderMediaInput('Video cover image', 'Optional fallback for video cards only. It will not override the primary image.', projectForm.coverImage, 'image/*', 'coverImage', 'Optional cover image URL')}
 
                 <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -6610,7 +6610,7 @@ export function AdminDashboard() {
             <input
               className="hidden"
               type="file"
-              accept="image/*,video/*,application/pdf"
+              accept="image/*,video/*,.mp4,.m4v,.webm,.mov,.ogg,.ogv,application/pdf"
               onChange={(e) => e.target.files?.[0] && void uploadFile(e.target.files[0])}
             />
           </label>
@@ -8275,7 +8275,7 @@ export function AdminDashboard() {
                     <input
                       className="hidden"
                       type="file"
-                      accept="video/*"
+                      accept="video/*,.mp4,.m4v,.webm,.mov,.ogg,.ogv"
                       onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => saveUploadedSettingMedia(key, media))}
                     />
                   </span>

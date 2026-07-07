@@ -1170,8 +1170,13 @@ class BakhtechApiController extends Controller
             'total' => ['required', 'integer', 'min:1', 'max:600'],
             'filename' => ['required', 'string', 'max:180'],
             'mimeType' => ['required', 'string', 'max:120'],
-            'chunk' => ['required', 'file', 'max:6144'],
+            'chunk' => ['nullable', 'file', 'max:6144'],
+            'chunkData' => ['nullable', 'string', 'max:1200000'],
         ]);
+
+        if (! $request->hasFile('chunk') && trim((string) ($data['chunkData'] ?? '')) === '') {
+            return response()->json(['message' => 'The video upload chunk is missing.'], 422);
+        }
 
         $mimeType = strtolower(trim((string) $data['mimeType']));
         $allowedTypes = $this->allowedUploadMimeTypes();
@@ -1190,7 +1195,20 @@ class BakhtechApiController extends Controller
             return response()->json(['message' => 'Unable to prepare video upload storage on the server.'], 422);
         }
 
-        $request->file('chunk')->move($chunkDirectory, $index.'.part');
+        $chunkPath = $chunkDirectory.DIRECTORY_SEPARATOR.$index.'.part';
+        if ($request->hasFile('chunk')) {
+            $request->file('chunk')->move($chunkDirectory, $index.'.part');
+        } else {
+            $chunkData = preg_replace('/^data:[^;]+;base64,/', '', trim((string) $data['chunkData']));
+            $binary = base64_decode($chunkData, true);
+            if ($binary === false || $binary === '' || strlen($binary) > 768 * 1024) {
+                return response()->json(['message' => 'The video upload chunk could not be read.'], 422);
+            }
+
+            if (@file_put_contents($chunkPath, $binary) === false) {
+                return response()->json(['message' => 'Unable to write video upload chunk on the server.'], 422);
+            }
+        }
 
         if ($index < $total - 1) {
             return response()->json(['uploaded' => true, 'index' => $index]);

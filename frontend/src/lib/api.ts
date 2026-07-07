@@ -150,40 +150,54 @@ function fileToDataUrl(file: File) {
   })
 }
 
+function fileExtension(filename: string) {
+  return filename.split('.').pop()?.toLowerCase() || ''
+}
+
+function videoMimeType(file: File) {
+  if (file.type.startsWith('video/')) return file.type
+
+  const mimeTypes: Record<string, string> = {
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    ogg: 'video/ogg',
+    ogv: 'video/ogg',
+  }
+
+  return mimeTypes[fileExtension(file.name)] || ''
+}
+
+function isUploadableVideo(file: File) {
+  return Boolean(videoMimeType(file))
+}
+
 async function uploadVideoInChunks(file: File) {
-  const token = getAdminToken()
-  const chunkSize = 2 * 1024 * 1024
+  const chunkSize = 512 * 1024
   const total = Math.max(1, Math.ceil(file.size / chunkSize))
   const uploadId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const mimeType = videoMimeType(file) || 'video/mp4'
 
   for (let index = 0; index < total; index++) {
     const chunk = file.slice(index * chunkSize, Math.min(file.size, (index + 1) * chunkSize))
-    const formData = new FormData()
-    formData.append('uploadId', uploadId)
-    formData.append('index', String(index))
-    formData.append('total', String(total))
-    formData.append('filename', file.name || 'uploaded-video')
-    formData.append('mimeType', file.type || 'video/mp4')
-    formData.append('chunk', chunk, `${file.name || 'video'}.part${index}`)
-
-    const response = await fetch(apiUrl('/api/admin/media/chunk'), {
+    const dataUrl = await fileToDataUrl(new File([chunk], `${file.name || 'video'}.part${index}`, { type: mimeType }))
+    const response = await request<UploadMediaResponse | { uploaded: true; index: number }>('/api/admin/media/chunk', {
       method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: formData,
+      body: JSON.stringify({
+        uploadId,
+        index,
+        total,
+        filename: file.name || 'uploaded-video.mp4',
+        mimeType,
+        chunkData: dataUrl.replace(/^data:[^;]+;base64,/, ''),
+      }),
     })
 
-    if (!response.ok) {
-      const uploadError = await parseErrorPayload(response, 'Video upload failed.')
-      throw new ApiError(uploadError.message, response.status, uploadError.requiresTwoFactor)
-    }
-
     if (index === total - 1) {
-      return parseJsonResponse<UploadMediaResponse>(response, 'Video upload failed.')
+      return response as UploadMediaResponse
     }
   }
 
@@ -1286,7 +1300,7 @@ export const api = {
     })
   },
   async uploadMedia(file: File) {
-    if (file.type.startsWith('video/')) {
+    if (isUploadableVideo(file)) {
       return uploadVideoInChunks(file)
     }
 
