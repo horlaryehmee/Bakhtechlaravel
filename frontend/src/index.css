@@ -4224,9 +4224,10 @@ a {
 .quote-document-table-head,
 .quote-document-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 58px minmax(118px, max-content) 92px minmax(128px, max-content);
+  grid-template-columns: minmax(220px, 320px) 44px 122px 84px 132px;
   align-items: center;
-  column-gap: 22px;
+  column-gap: 14px;
+  justify-content: start;
   width: 100%;
 }
 
@@ -4260,9 +4261,13 @@ a {
   font-size: 12px;
 }
 
-.quote-document-table-head > span:not(:first-child),
 .quote-document-row > span:not(:first-child) {
   justify-self: end;
+}
+
+.quote-document-table-head > span:not(:first-child) {
+  justify-self: center;
+  text-align: center;
 }
 
 .quote-document-table-head > span:first-child,
@@ -4278,9 +4283,14 @@ a {
 }
 
 .quote-document-row .invoice-portal-richtext {
-  margin-top: 4px;
+  margin-top: 3px;
   color: #536987;
   font-size: 12px;
+  line-height: 1.45;
+}
+
+.quote-document-row .invoice-portal-richtext p {
+  margin: 2px 0 0;
 }
 
 .quote-document-total-row {
