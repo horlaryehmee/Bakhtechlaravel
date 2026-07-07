@@ -713,7 +713,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
-  const notificationStack = Array.from({ length: 3 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
+  const notificationStack = Array.from({ length: 4 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const homepageProjectCards = portfolioProjects.slice(0, 6)
   const showcaseScreenProjects = (projectImageProjects.length ? projectImageProjects : portfolioProjects).slice(0, 10)
   const topShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 0)
@@ -1077,19 +1077,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-[#eee9d9]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-transparent border-r-[#f8f8f7] border-t-[#f8f8f7]" />
               {notificationStack.map((notification, stackIndex) => {
-                const isFront = stackIndex === 0
                 const stackStyles = [
-                  { '--card-bottom': '1.35rem', '--card-left': '1.25rem', '--card-right': '1.25rem', '--card-y': '0px', '--card-scale': 1, '--card-opacity': 1, '--label-opacity': 1, zIndex: 40, boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
-                  { '--card-bottom': '2.82rem', '--card-left': '1.55rem', '--card-right': '1.55rem', '--card-y': '-2px', '--card-scale': 0.985, '--card-opacity': 0.96, '--label-opacity': 0.34, zIndex: 30, boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
-                  { '--card-bottom': '3.42rem', '--card-left': '2rem', '--card-right': '2rem', '--card-y': '-4px', '--card-scale': 0.965, '--card-opacity': 0.82, '--label-opacity': 0.18, zIndex: 20, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
+                  { '--from-bottom': '1.35rem', '--from-left': '1.25rem', '--from-right': '1.25rem', '--from-y': '0px', '--from-scale': 1, '--from-opacity': 1, '--from-label-opacity': 1, '--to-bottom': '0.62rem', '--to-left': '1.25rem', '--to-right': '1.25rem', '--to-y': '1.05rem', '--to-scale': 0.985, '--to-opacity': 0, '--to-label-opacity': 1, zIndex: 40, boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
+                  { '--from-bottom': '2.82rem', '--from-left': '1.55rem', '--from-right': '1.55rem', '--from-y': '-2px', '--from-scale': 0.985, '--from-opacity': 0.96, '--from-label-opacity': 0.34, '--to-bottom': '1.35rem', '--to-left': '1.25rem', '--to-right': '1.25rem', '--to-y': '0px', '--to-scale': 1, '--to-opacity': 1, '--to-label-opacity': 1, zIndex: 35, boxShadow: '0 16px 36px rgba(15,23,42,0.11)' },
+                  { '--from-bottom': '3.42rem', '--from-left': '2rem', '--from-right': '2rem', '--from-y': '-4px', '--from-scale': 0.965, '--from-opacity': 0.82, '--from-label-opacity': 0.18, '--to-bottom': '2.82rem', '--to-left': '1.55rem', '--to-right': '1.55rem', '--to-y': '-2px', '--to-scale': 0.985, '--to-opacity': 0.96, '--to-label-opacity': 0.34, zIndex: 25, boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
+                  { '--from-bottom': '4.02rem', '--from-left': '2.35rem', '--from-right': '2.35rem', '--from-y': '-6px', '--from-scale': 0.94, '--from-opacity': 0, '--from-label-opacity': 0, '--to-bottom': '3.42rem', '--to-left': '2rem', '--to-right': '2rem', '--to-y': '-4px', '--to-scale': 0.965, '--to-opacity': 0.82, '--to-label-opacity': 0.18, zIndex: 15, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
                 ][stackIndex]
 
                 return (
                   <div
                     key={`${notification.label}-${notificationIndex}-${stackIndex}`}
-                    className={`homepage-notification-card ${isFront ? 'is-front' : 'is-behind pointer-events-none'}`}
+                    className={`homepage-notification-card ${stackIndex === 0 ? 'is-exiting' : 'is-promoting pointer-events-none'}`}
                     style={stackStyles as CSSProperties}
-                    aria-hidden={!isFront}
+                    aria-hidden={stackIndex !== 1}
                   >
                     <div className="relative flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
