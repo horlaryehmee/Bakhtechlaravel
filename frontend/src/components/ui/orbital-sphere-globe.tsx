@@ -1,40 +1,34 @@
-import type { CSSProperties } from 'react'
-
 type OrbitalSphereGlobeProps = {
   className?: string
 }
 
-type SphereStyle = CSSProperties & {
-  '--rot': number
-}
+const stars = [
+  'star-1',
+  'star-2',
+  'star-3',
+  'star-4',
+  'star-5',
+  'star-6',
+  'star-7',
+]
 
-type ItemStyle = CSSProperties & {
-  '--rot-y': number
+function CurvedCornerStar({ className }: { className: string }) {
+  return (
+    <div className={`earth-banner-globe__star ${className}`}>
+      <span className="earth-banner-globe__corner earth-banner-globe__corner--top-left" />
+      <span className="earth-banner-globe__corner earth-banner-globe__corner--top-right" />
+      <span className="earth-banner-globe__corner earth-banner-globe__corner--bottom-left" />
+      <span className="earth-banner-globe__corner earth-banner-globe__corner--bottom-right" />
+    </div>
+  )
 }
-
-const sphereIndexes = Array.from({ length: 9 }, (_, index) => index)
-const itemIndexes = Array.from({ length: 9 }, (_, index) => index + 1)
 
 export function OrbitalSphereGlobe({ className = '' }: OrbitalSphereGlobeProps) {
   return (
-    <div className={`orbital-sphere-globe ${className}`} aria-hidden="true">
-      <div className="orbital-sphere-globe__loader">
-        {sphereIndexes.map((sphereIndex) => (
-          <div
-            key={sphereIndex}
-            className="orbital-sphere-globe__sphere"
-            style={{ '--rot': sphereIndex } as SphereStyle}
-          >
-            {itemIndexes.map((itemIndex) => (
-              <span
-                key={itemIndex}
-                className="orbital-sphere-globe__item"
-                style={{ '--rot-y': itemIndex } as ItemStyle}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+    <div className={`earth-banner-globe ${className}`} aria-hidden="true">
+      {stars.map((star) => <CurvedCornerStar key={star} className={star} />)}
+      <div className="earth-banner-globe__planet" />
+      <div className="earth-banner-globe__shade" />
     </div>
   )
 }

@@ -1,0 +1,1 @@
+import{K as e,Q as t,V as n,Y as r,t as i}from"./index-DuPFOAo2.js";var a=n();function o(){let{template:n=``}=t();return e()?n===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(r,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(r,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
