@@ -4224,9 +4224,9 @@ a {
 .quote-document-table-head,
 .quote-document-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 80px 130px 110px 140px;
-  align-items: start;
-  gap: 12px;
+  grid-template-columns: minmax(240px, 1fr) 58px minmax(118px, max-content) 92px minmax(128px, max-content);
+  align-items: center;
+  column-gap: 22px;
   width: 100%;
 }
 
@@ -4260,7 +4260,18 @@ a {
   font-size: 12px;
 }
 
+.quote-document-table-head > span:not(:first-child),
+.quote-document-row > span:not(:first-child) {
+  justify-self: end;
+}
+
+.quote-document-table-head > span:first-child,
+.quote-document-row > span:first-child {
+  min-width: 0;
+}
+
 .quote-document-row strong {
+  display: block;
   color: #001536;
   font-size: 13px;
   font-weight: 950;
