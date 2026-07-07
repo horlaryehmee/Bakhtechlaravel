@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { siInstagram } from 'simple-icons'
 import { api } from '@/lib/api'
 
 export type AgencyFooterSettings = {
@@ -10,6 +9,12 @@ export type AgencyFooterSettings = {
   footerDescription: string
   footerCtaLabel: string
   footerCopyright: string
+  facebookUrl: string
+  instagramUrl: string
+  linkedinUrl: string
+  tiktokUrl: string
+  twitterUrl: string
+  youtubeUrl: string
 }
 
 export const defaultAgencyFooterSettings: AgencyFooterSettings = {
@@ -18,7 +23,15 @@ export const defaultAgencyFooterSettings: AgencyFooterSettings = {
   footerDescription: 'We design and build websites, stores, dashboards, booking systems, and custom web apps that drive results.',
   footerCtaLabel: 'Get started',
   footerCopyright: '(c) 2026 Bakhtech Solutions - All Rights Reserved',
+  facebookUrl: '',
+  instagramUrl: '',
+  linkedinUrl: '',
+  tiktokUrl: '',
+  twitterUrl: '',
+  youtubeUrl: '',
 }
+
+type SocialIconType = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter' | 'youtube'
 
 const footerLinkColumns = [
   {
@@ -82,10 +95,19 @@ function AnimatedCta({ label, icon, className = '', iconClassName = 'bg-[#ffc400
   )
 }
 
-function InstagramIcon({ className = 'h-4 w-4' }: { className?: string }) {
+function SocialIcon({ type, className = 'h-4 w-4' }: { type: SocialIconType; className?: string }) {
+  const paths: Record<SocialIconType, string> = {
+    facebook: 'M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.438H7.078v-3.49h3.047V9.414c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97H15.83c-1.49 0-1.955.93-1.955 1.885v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z',
+    instagram: 'M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9a5.5 5.5 0 0 1-5.5 5.5h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2zm0 2A3.5 3.5 0 0 0 4 7.5v9A3.5 3.5 0 0 0 7.5 20h9a3.5 3.5 0 0 0 3.5-3.5v-9A3.5 3.5 0 0 0 16.5 4h-9zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm5.25-2.3a1.05 1.05 0 1 1 0 2.1 1.05 1.05 0 0 1 0-2.1z',
+    linkedin: 'M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V8.98h3.42v1.57h.05c.48-.9 1.64-1.85 3.37-1.85 3.61 0 4.27 2.38 4.27 5.47v6.28zM5.32 7.41a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zm1.78 13.04H3.53V8.98H7.1v11.47zM22.23 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.21 0 22.23 0z',
+    tiktok: 'M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-2-2.75v-3.5a6.34 6.34 0 1 0 5.45 6.27V8.74a8.16 8.16 0 0 0 4.77 1.52V6.82c-.34 0-.67-.04-1-.13z',
+    twitter: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z',
+    youtube: 'M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.6 15.57V8.43L15.82 12 9.6 15.57z',
+  }
+
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true" role="img">
-      <path fill="currentColor" d={siInstagram.path} />
+      <path fill="currentColor" d={paths[type]} />
     </svg>
   )
 }
@@ -97,11 +119,26 @@ function resolveFooterSettings(settings: Record<string, string>): AgencyFooterSe
     footerDescription: settings.footerDescription || defaultAgencyFooterSettings.footerDescription,
     footerCtaLabel: settings.footerCtaLabel || defaultAgencyFooterSettings.footerCtaLabel,
     footerCopyright: settings.footerCopyright || defaultAgencyFooterSettings.footerCopyright,
+    facebookUrl: settings.facebookUrl || '',
+    instagramUrl: settings.instagramUrl || '',
+    linkedinUrl: settings.linkedinUrl || '',
+    tiktokUrl: settings.tiktokUrl || '',
+    twitterUrl: settings.twitterUrl || '',
+    youtubeUrl: settings.youtubeUrl || '',
   }
 }
 
 export function AgencyFooter({ settings }: { settings?: AgencyFooterSettings }) {
   const [footerSettings, setFooterSettings] = useState(settings || defaultAgencyFooterSettings)
+  const socialOptions: Array<{ key: keyof AgencyFooterSettings; label: string; type: SocialIconType }> = [
+    { key: 'facebookUrl', label: 'Facebook', type: 'facebook' },
+    { key: 'instagramUrl', label: 'Instagram', type: 'instagram' },
+    { key: 'linkedinUrl', label: 'LinkedIn', type: 'linkedin' },
+    { key: 'tiktokUrl', label: 'TikTok', type: 'tiktok' },
+    { key: 'twitterUrl', label: 'X', type: 'twitter' },
+    { key: 'youtubeUrl', label: 'YouTube', type: 'youtube' },
+  ]
+  const socialLinks = socialOptions.filter((social) => String(footerSettings[social.key] || '').trim())
 
   useEffect(() => {
     if (settings) {
@@ -179,13 +216,22 @@ export function AgencyFooter({ settings }: { settings?: AgencyFooterSettings }) 
 
         <div className="mt-16 flex flex-col gap-6 border-t border-white/8 pt-8 md:flex-row md:items-center md:justify-between">
           <p className="text-xs font-normal text-white/42">{footerSettings.footerCopyright}</p>
-          <div className="flex items-center gap-5 text-white/48">
-            <a href="https://x.com" aria-label="Bakhtech on X" className="text-sm font-normal transition hover:text-white">X</a>
-            <a href="https://www.linkedin.com" aria-label="Bakhtech on LinkedIn" className="text-sm font-normal transition hover:text-white">in</a>
-            <a href="https://www.instagram.com" aria-label="Bakhtech on Instagram" className="transition hover:text-white">
-              <InstagramIcon />
-            </a>
-          </div>
+          {socialLinks.length ? (
+            <div className="flex items-center gap-3 text-white/48">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.key}
+                  href={String(footerSettings[social.key])}
+                  aria-label={`Bakhtech on ${social.label}`}
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-white/[0.03] transition hover:border-white/18 hover:bg-white/[0.08] hover:text-white"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <SocialIcon type={social.type} />
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </footer>

@@ -848,6 +848,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             footerDescription: publicSettings.footerDescription || defaultAgencyFooterSettings.footerDescription,
             footerCtaLabel: publicSettings.footerCtaLabel || defaultAgencyFooterSettings.footerCtaLabel,
             footerCopyright: publicSettings.footerCopyright || defaultAgencyFooterSettings.footerCopyright,
+            facebookUrl: publicSettings.facebookUrl || '',
+            instagramUrl: publicSettings.instagramUrl || '',
+            linkedinUrl: publicSettings.linkedinUrl || '',
+            tiktokUrl: publicSettings.tiktokUrl || '',
+            twitterUrl: publicSettings.twitterUrl || '',
+            youtubeUrl: publicSettings.youtubeUrl || '',
           })
         }
       })
