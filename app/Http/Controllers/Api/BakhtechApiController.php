@@ -2169,8 +2169,8 @@ class BakhtechApiController extends Controller
 
         if (Schema::hasTable('media')) {
             $items = DB::table('media')->orderByDesc('created_at')->get()->map(function ($row) use (&$knownFilenames) {
-                if (! empty($row->filename)) {
-                    $knownFilenames[$row->filename] = true;
+                foreach ($this->mediaFilenameKeys($row->filename ?? '', $row->url ?? '') as $key) {
+                    $knownFilenames[$key] = true;
                 }
 
                 return $this->mediaShape($row);
@@ -2193,11 +2193,12 @@ class BakhtechApiController extends Controller
                 }
 
                 $filename = basename($path);
-                if (isset($knownFilenames[$filename])) {
+                $filenameKey = $this->mediaFilenameKey($filename);
+                if ($filenameKey === '' || isset($knownFilenames[$filenameKey])) {
                     continue;
                 }
 
-                $knownFilenames[$filename] = true;
+                $knownFilenames[$filenameKey] = true;
                 $items->push($this->mediaShape((object) [
                     'id' => -abs((int) sprintf('%u', crc32($location['urlPrefix'].$filename))),
                     'filename' => $filename,
@@ -2210,7 +2211,42 @@ class BakhtechApiController extends Controller
             }
         }
 
-        return $items->sortByDesc('createdAt')->values();
+        $uniqueItems = collect();
+        $returnedFilenames = [];
+
+        foreach ($items->sortByDesc('createdAt')->values() as $item) {
+            $filenameKey = $this->mediaFilenameKey($item['filename'] ?? '');
+            if ($filenameKey === '') {
+                $filenameKey = $this->mediaFilenameKey(parse_url($item['url'] ?? '', PHP_URL_PATH) ?: '');
+            }
+
+            if ($filenameKey !== '' && isset($returnedFilenames[$filenameKey])) {
+                continue;
+            }
+
+            if ($filenameKey !== '') {
+                $returnedFilenames[$filenameKey] = true;
+            }
+
+            $uniqueItems->push($item);
+        }
+
+        return $uniqueItems->values();
+    }
+
+    private function mediaFilenameKeys(string $filename, string $url = ''): array
+    {
+        return array_values(array_filter(array_unique([
+            $this->mediaFilenameKey($filename),
+            $this->mediaFilenameKey(parse_url($url, PHP_URL_PATH) ?: $url),
+        ])));
+    }
+
+    private function mediaFilenameKey(string $value): string
+    {
+        $filename = basename(str_replace('\\', '/', trim($value)));
+
+        return in_array($filename, ['', '.', '..'], true) ? '' : strtolower($filename);
     }
 
     private function storeUploadedMediaFile($file, string $filename): string
