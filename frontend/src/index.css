@@ -3082,10 +3082,38 @@ a {
   will-change: opacity, transform;
 }
 
-@keyframes notification-front-exit {
+.homepage-notification-card {
+  position: absolute;
+  right: var(--card-right);
+  bottom: var(--card-bottom);
+  left: var(--card-left);
+  min-height: 5.25rem;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 1rem;
+  opacity: var(--card-opacity);
+  transform: translate3d(0, var(--card-y), 0) scale(var(--card-scale));
+  will-change: opacity, transform;
+}
+
+.homepage-notification-card.is-front {
+  animation: notification-front-cycle 2600ms ease-in-out forwards;
+}
+
+.homepage-notification-card.is-behind {
+  animation: notification-stack-cycle 2600ms ease-in-out forwards;
+}
+
+.homepage-notification-card.is-behind > div {
+  opacity: var(--label-opacity);
+}
+
+@keyframes notification-front-cycle {
   0% {
     opacity: 0;
-    transform: translate3d(0, 12px, 0) scale(0.985);
+    transform: translate3d(0, 0.85rem, 0) scale(0.985);
   }
 
   16%,
@@ -3096,7 +3124,25 @@ a {
 
   100% {
     opacity: 0;
-    transform: translate3d(0, 16px, 0) scale(0.985);
+    transform: translate3d(0, 1rem, 0) scale(0.985);
+  }
+}
+
+@keyframes notification-stack-cycle {
+  0% {
+    opacity: calc(var(--card-opacity) - 0.14);
+    transform: translate3d(0, calc(var(--card-y) + 0.45rem), 0) scale(calc(var(--card-scale) - 0.012));
+  }
+
+  18%,
+  84% {
+    opacity: var(--card-opacity);
+    transform: translate3d(0, var(--card-y), 0) scale(var(--card-scale));
+  }
+
+  100% {
+    opacity: var(--card-opacity);
+    transform: translate3d(0, calc(var(--card-y) - 0.18rem), 0) scale(var(--card-scale));
   }
 }
 

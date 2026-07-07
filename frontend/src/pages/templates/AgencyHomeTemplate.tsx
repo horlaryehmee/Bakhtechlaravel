@@ -1,5 +1,5 @@
 ﻿import { Link } from 'react-router-dom'
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
 import {
   ArrowRight,
   ChevronDown,
@@ -1079,19 +1079,19 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               {notificationStack.map((notification, stackIndex) => {
                 const isFront = stackIndex === 0
                 const stackStyles = [
-                  { bottom: '1.35rem', left: '1.25rem', right: '1.25rem', zIndex: 40, opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)', boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
-                  { bottom: '3.55rem', left: '1.55rem', right: '1.55rem', zIndex: 30, opacity: 0.98, transform: 'translate3d(0, -1px, 0) scale(0.985)', boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
-                  { bottom: '4.15rem', left: '2rem', right: '2rem', zIndex: 20, opacity: 0.78, transform: 'translate3d(0, -2px, 0) scale(0.965)', boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
+                  { '--card-bottom': '1.35rem', '--card-left': '1.25rem', '--card-right': '1.25rem', '--card-y': '0px', '--card-scale': 1, '--card-opacity': 1, '--label-opacity': 1, zIndex: 40, boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
+                  { '--card-bottom': '2.82rem', '--card-left': '1.55rem', '--card-right': '1.55rem', '--card-y': '-2px', '--card-scale': 0.985, '--card-opacity': 0.96, '--label-opacity': 0.34, zIndex: 30, boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
+                  { '--card-bottom': '3.42rem', '--card-left': '2rem', '--card-right': '2rem', '--card-y': '-4px', '--card-scale': 0.965, '--card-opacity': 0.82, '--label-opacity': 0.18, zIndex: 20, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
                 ][stackIndex]
 
                 return (
                   <div
-                    key={`${notification.label}-${stackIndex === 0 ? notificationIndex : stackIndex}`}
-                    className={`absolute min-h-[5.25rem] overflow-hidden rounded-xl border border-black/10 bg-white p-4 ${isFront ? 'animate-[notification-front-exit_2600ms_ease-in-out_forwards]' : 'pointer-events-none'}`}
-                    style={stackStyles}
+                    key={`${notification.label}-${notificationIndex}-${stackIndex}`}
+                    className={`homepage-notification-card ${isFront ? 'is-front' : 'is-behind pointer-events-none'}`}
+                    style={stackStyles as CSSProperties}
                     aria-hidden={!isFront}
                   >
-                    <div className={`flex items-start justify-between gap-4 transition-opacity duration-200 ${isFront ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="relative flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-xs font-semibold text-black/42">notification</p>
                         <p className="mt-3 truncate font-mono text-base font-semibold text-black/80">{notification.label}</p>
