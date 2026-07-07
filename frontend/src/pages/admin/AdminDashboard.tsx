@@ -84,6 +84,7 @@ import {
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
+import { isVideoUrl } from '@/lib/project-media'
 
 type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
@@ -1460,6 +1461,17 @@ export function AdminDashboard() {
     } catch (uploadError) {
       setError(uploadErrorMessage(uploadError, 'Upload failed.'))
     }
+  }
+
+  async function saveUploadedSettingMedia(key: string, media: MediaItem) {
+    const nextSettings = { ...settingsForm, [key]: media.url }
+    const result = await api.updateSettings({
+      ...nextSettings,
+      invoiceEnabledPaymentGateways: 'paystack,flutterwave',
+    })
+    setCms((current) => (current ? { ...current, settings: result.settings } : current))
+    setSettingsForm(result.settings)
+    notify('Video uploaded and saved.')
   }
 
   function updateProjectField<Key extends keyof ProjectInput>(field: Key, value: ProjectInput[Key]) {
@@ -8254,21 +8266,24 @@ export function AdminDashboard() {
                   <input
                     className="theme-input min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
                     value={settingsForm[key] ?? ''}
-                    placeholder="YouTube URL or /uploads/video.mp4"
+                    placeholder="/uploads/video.mp4 or YouTube URL"
                     onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
                   />
                   <span className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm font-black text-gray-700 transition hover:bg-gray-100">
                     <Upload className="h-4 w-4" />
-                    Upload
+                    Upload video
                     <input
                       className="hidden"
                       type="file"
                       accept="video/*"
-                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => setSettingsForm(prev => ({ ...prev, [key]: media.url })))}
+                      onChange={(event) => event.target.files?.[0] && void uploadFile(event.target.files[0], (media) => saveUploadedSettingMedia(key, media))}
                     />
                   </span>
                 </div>
-                <span className="text-xs font-medium text-gray-500">Supports YouTube links or uploaded video files from the media library. Save settings after upload.</span>
+                {isVideoUrl(settingsForm[key] ?? '') ? (
+                  <video className="h-40 w-full max-w-md rounded-xl border border-gray-200 bg-black object-cover" src={settingsForm[key]} muted controls preload="metadata" />
+                ) : null}
+                <span className="text-xs font-medium text-gray-500">Upload MP4, WebM, MOV, or OGG directly here. You can still paste a YouTube or external video URL and press Save settings.</span>
               </>
             ) : key === 'founder_desk_image' ? (
               <>
