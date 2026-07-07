@@ -14,9 +14,12 @@ import {
   Menu,
   MessageCircle,
   Mic,
+  Pause,
   PhoneCall,
   Play,
   Send,
+  Volume2,
+  VolumeX,
   X,
   Zap,
   type LucideIcon,
@@ -704,6 +707,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
   const [designDevelopmentVideoUrl, setDesignDevelopmentVideoUrl] = useState('')
+  const [designDevelopmentVideoInView, setDesignDevelopmentVideoInView] = useState(false)
+  const [designDevelopmentVideoPlaying, setDesignDevelopmentVideoPlaying] = useState(true)
+  const [designDevelopmentVideoMuted, setDesignDevelopmentVideoMuted] = useState(true)
   const [footerSettings, setFooterSettings] = useState(defaultAgencyFooterSettings)
   const [reviewLinks, setReviewLinks] = useState<ReviewLinks>({ google: '', trustpilot: '' })
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -712,6 +718,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [testimonialsInView, setTestimonialsInView] = useState(false)
   const testimonialsSectionRef = useRef<HTMLElement | null>(null)
   const testimonialsTrackRef = useRef<HTMLDivElement | null>(null)
+  const designDevelopmentSectionRef = useRef<HTMLElement | null>(null)
+  const designDevelopmentVideoRef = useRef<HTMLVideoElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
   const notificationStack = Array.from({ length: 4 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const homepageProjectCards = portfolioProjects.slice(0, 6)
@@ -720,6 +728,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const bottomShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 1)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
   const designDevelopmentYoutubeEmbedUrl = getYoutubeEmbedUrl(designDevelopmentVideoUrl)
+  const designDevelopmentIsLocalVideo = isVideoUrl(designDevelopmentVideoUrl)
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -741,6 +750,43 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    const section = designDevelopmentSectionRef.current
+    if (!section || !designDevelopmentIsLocalVideo) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setDesignDevelopmentVideoInView(entry.isIntersecting),
+      { threshold: 0.45 },
+    )
+    observer.observe(section)
+
+    return () => observer.disconnect()
+  }, [designDevelopmentIsLocalVideo, designDevelopmentVideoUrl])
+
+  useEffect(() => {
+    const video = designDevelopmentVideoRef.current
+    if (!video || !designDevelopmentIsLocalVideo) return
+
+    if (!designDevelopmentVideoInView) {
+      video.muted = true
+      setDesignDevelopmentVideoMuted(true)
+      return
+    }
+
+    video.muted = false
+    setDesignDevelopmentVideoMuted(false)
+    const playAttempt = video.play()
+    if (playAttempt) {
+      playAttempt
+        .then(() => setDesignDevelopmentVideoPlaying(true))
+        .catch(() => {
+          video.muted = true
+          setDesignDevelopmentVideoMuted(true)
+          void video.play().then(() => setDesignDevelopmentVideoPlaying(true)).catch(() => setDesignDevelopmentVideoPlaying(false))
+        })
+    }
+  }, [designDevelopmentIsLocalVideo, designDevelopmentVideoInView, designDevelopmentVideoUrl])
 
   useEffect(() => {
     if (!testimonialsInView || loopedReviews.length <= 1) return
@@ -836,6 +882,26 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
     })
 
     setActiveTestimonialIndex(closestIndex)
+  }
+
+  function toggleDesignDevelopmentPlayback() {
+    const video = designDevelopmentVideoRef.current
+    if (!video) return
+
+    if (video.paused) {
+      void video.play().then(() => setDesignDevelopmentVideoPlaying(true)).catch(() => setDesignDevelopmentVideoPlaying(false))
+    } else {
+      video.pause()
+      setDesignDevelopmentVideoPlaying(false)
+    }
+  }
+
+  function toggleDesignDevelopmentMute() {
+    const video = designDevelopmentVideoRef.current
+    if (!video) return
+
+    video.muted = !video.muted
+    setDesignDevelopmentVideoMuted(video.muted)
   }
 
   function handleTestimonialPointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -983,7 +1049,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           <h2 className="text-4xl font-black tracking-normal text-[#202328] md:text-5xl lg:text-[3.35rem]">Websites Built for Real Business Growth</h2>
 
           <div className="mt-10 grid gap-3 md:grid-cols-12 md:grid-rows-[18.5rem_18.5rem]">
-            <article className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
+            <article ref={designDevelopmentSectionRef} className="relative min-h-[39rem] overflow-hidden rounded-[1.25rem] bg-[#050505] p-3 text-white shadow-sm md:col-span-4 md:row-span-2 md:min-h-0">
               <div className={`relative z-10 h-[21.8rem] overflow-hidden rounded-[0.9rem] ${designDevelopmentVideoUrl ? 'bg-black p-0' : 'bg-[#f7f7f5] p-4'}`}>
                 {designDevelopmentVideoUrl ? (
                   <div className="h-full overflow-hidden rounded-[0.9rem] bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
@@ -1003,8 +1069,40 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                           </span>
                         </span>
                       </button>
-                    ) : isVideoUrl(designDevelopmentVideoUrl) ? (
-                      <video className="h-full w-full object-cover" src={designDevelopmentVideoUrl} muted autoPlay loop playsInline preload="metadata" />
+                    ) : designDevelopmentIsLocalVideo ? (
+                      <div className="relative h-full w-full overflow-hidden">
+                        <video
+                          ref={designDevelopmentVideoRef}
+                          className="h-full w-full object-cover"
+                          src={designDevelopmentVideoUrl}
+                          muted={designDevelopmentVideoMuted}
+                          autoPlay
+                          loop
+                          playsInline
+                          preload="metadata"
+                          onPlay={() => setDesignDevelopmentVideoPlaying(true)}
+                          onPause={() => setDesignDevelopmentVideoPlaying(false)}
+                          onVolumeChange={(event) => setDesignDevelopmentVideoMuted(event.currentTarget.muted)}
+                        />
+                        <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={toggleDesignDevelopmentPlayback}
+                            className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-md transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-white/70"
+                            aria-label={designDevelopmentVideoPlaying ? 'Pause design and development video' : 'Play design and development video'}
+                          >
+                            {designDevelopmentVideoPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={toggleDesignDevelopmentMute}
+                            className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-md transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-white/70"
+                            aria-label={designDevelopmentVideoMuted ? 'Unmute design and development video' : 'Mute design and development video'}
+                          >
+                            {designDevelopmentVideoMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <iframe className="h-full w-full" src={designDevelopmentVideoUrl} title="Design and development preview" allow="autoplay; fullscreen; picture-in-picture" />
                     )}
