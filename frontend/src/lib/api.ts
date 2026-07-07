@@ -150,6 +150,46 @@ function fileToDataUrl(file: File) {
   })
 }
 
+async function uploadVideoInChunks(file: File) {
+  const token = getAdminToken()
+  const chunkSize = 2 * 1024 * 1024
+  const total = Math.max(1, Math.ceil(file.size / chunkSize))
+  const uploadId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  for (let index = 0; index < total; index++) {
+    const chunk = file.slice(index * chunkSize, Math.min(file.size, (index + 1) * chunkSize))
+    const formData = new FormData()
+    formData.append('uploadId', uploadId)
+    formData.append('index', String(index))
+    formData.append('total', String(total))
+    formData.append('filename', file.name || 'uploaded-video')
+    formData.append('mimeType', file.type || 'video/mp4')
+    formData.append('chunk', chunk, `${file.name || 'video'}.part${index}`)
+
+    const response = await fetch(apiUrl('/api/admin/media/chunk'), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const uploadError = await parseErrorPayload(response, 'Video upload failed.')
+      throw new ApiError(uploadError.message, response.status, uploadError.requiresTwoFactor)
+    }
+
+    if (index === total - 1) {
+      return parseJsonResponse<UploadMediaResponse>(response, 'Video upload failed.')
+    }
+  }
+
+  throw new Error('Video upload failed before completion.')
+}
+
 export type CmsPage = {
   id: number
   title: string
@@ -1246,6 +1286,10 @@ export const api = {
     })
   },
   async uploadMedia(file: File) {
+    if (file.type.startsWith('video/')) {
+      return uploadVideoInChunks(file)
+    }
+
     const token = getAdminToken()
     const formData = new FormData()
     formData.append('file', file)

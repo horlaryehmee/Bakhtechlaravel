@@ -1156,6 +1156,73 @@ class BakhtechApiController extends Controller
         return $this->saveUploadedMediaRecord($mediaPayload);
     }
 
+    public function uploadMediaChunk(Request $request)
+    {
+        if ($request->hasFile('chunk') && ! $request->file('chunk')->isValid()) {
+            return response()->json([
+                'message' => 'The video chunk did not reach the server correctly. Try again or use a smaller video export.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'uploadId' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9_-]+$/'],
+            'index' => ['required', 'integer', 'min:0'],
+            'total' => ['required', 'integer', 'min:1', 'max:600'],
+            'filename' => ['required', 'string', 'max:180'],
+            'mimeType' => ['required', 'string', 'max:120'],
+            'chunk' => ['required', 'file', 'max:6144'],
+        ]);
+
+        $mimeType = strtolower(trim((string) $data['mimeType']));
+        $allowedTypes = $this->allowedUploadMimeTypes();
+        if (! isset($allowedTypes[$mimeType]) || ! str_starts_with($mimeType, 'video/')) {
+            return response()->json(['message' => 'Upload MP4, WebM, MOV, or OGG video files.'], 422);
+        }
+
+        $index = (int) $data['index'];
+        $total = (int) $data['total'];
+        if ($index >= $total) {
+            return response()->json(['message' => 'Invalid video upload chunk order.'], 422);
+        }
+
+        $chunkDirectory = storage_path('app/media-chunks/'.basename((string) $data['uploadId']));
+        if (! $this->ensureWritableDirectory($chunkDirectory)) {
+            return response()->json(['message' => 'Unable to prepare video upload storage on the server.'], 422);
+        }
+
+        $request->file('chunk')->move($chunkDirectory, $index.'.part');
+
+        if ($index < $total - 1) {
+            return response()->json(['uploaded' => true, 'index' => $index]);
+        }
+
+        for ($chunkIndex = 0; $chunkIndex < $total; $chunkIndex++) {
+            if (! is_file($chunkDirectory.DIRECTORY_SEPARATOR.$chunkIndex.'.part')) {
+                return response()->json(['message' => 'A video upload chunk is missing. Please upload the video again.'], 422);
+            }
+        }
+
+        $originalName = basename((string) $data['filename']) ?: 'uploaded-video.'.$allowedTypes[$mimeType];
+        $filename = (string) Str::uuid().'.'.$allowedTypes[$mimeType];
+        $assembled = $this->assembleUploadedMediaChunks($chunkDirectory, $total, $filename);
+
+        if (! $assembled['url']) {
+            return response()->json(['message' => 'Unable to save this video. Check public/uploads or storage/app/public/uploads permissions.'], 422);
+        }
+
+        $this->deleteDirectory($chunkDirectory);
+
+        return $this->saveUploadedMediaRecord([
+            'filename' => $filename,
+            'original_name' => $originalName,
+            'mime_type' => $mimeType,
+            'size' => $assembled['size'],
+            'url' => $assembled['url'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     public function uploadMediaBase64(Request $request)
     {
         $data = $request->validate([
@@ -1165,18 +1232,7 @@ class BakhtechApiController extends Controller
         ]);
 
         $mimeType = strtolower(trim((string) $data['mimeType']));
-        $allowedTypes = [
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/gif' => 'gif',
-            'image/webp' => 'webp',
-            'image/avif' => 'avif',
-            'application/pdf' => 'pdf',
-            'video/mp4' => 'mp4',
-            'video/webm' => 'webm',
-            'video/quicktime' => 'mov',
-            'video/ogg' => 'ogg',
-        ];
+        $allowedTypes = $this->allowedUploadMimeTypes();
 
         if (! isset($allowedTypes[$mimeType])) {
             return response()->json(['message' => 'This file type is not supported. Upload JPG, PNG, WebP, PDF, MP4, WebM, MOV, or OGG.'], 422);
@@ -2290,6 +2346,108 @@ class BakhtechApiController extends Controller
         }
 
         return $stored ? '/api/uploads/'.$filename : '';
+    }
+
+    private function assembleUploadedMediaChunks(string $chunkDirectory, int $total, string $filename): array
+    {
+        $publicUploadsPath = public_path('uploads');
+        $targetPath = '';
+        $savedUrl = '';
+
+        if ($this->ensureWritableDirectory($publicUploadsPath)) {
+            $targetPath = $publicUploadsPath.DIRECTORY_SEPARATOR.$filename;
+            $savedUrl = '/uploads/'.$filename;
+        } else {
+            $storageUploadsPath = storage_path('app/public/uploads');
+            if ($this->ensureWritableDirectory($storageUploadsPath)) {
+                $targetPath = $storageUploadsPath.DIRECTORY_SEPARATOR.$filename;
+                $savedUrl = '/api/uploads/'.$filename;
+            }
+        }
+
+        if ($targetPath === '') {
+            return ['url' => '', 'size' => 0];
+        }
+
+        $output = @fopen($targetPath, 'wb');
+        if (! $output) {
+            return ['url' => '', 'size' => 0];
+        }
+
+        $size = 0;
+        try {
+            for ($chunkIndex = 0; $chunkIndex < $total; $chunkIndex++) {
+                $chunkPath = $chunkDirectory.DIRECTORY_SEPARATOR.$chunkIndex.'.part';
+                $input = @fopen($chunkPath, 'rb');
+                if (! $input) {
+                    fclose($output);
+                    @unlink($targetPath);
+
+                    return ['url' => '', 'size' => 0];
+                }
+
+                while (! feof($input)) {
+                    $buffer = fread($input, 1024 * 1024);
+                    if ($buffer === false) {
+                        fclose($input);
+                        fclose($output);
+                        @unlink($targetPath);
+
+                        return ['url' => '', 'size' => 0];
+                    }
+
+                    $size += strlen($buffer);
+                    if ($size > 300 * 1024 * 1024) {
+                        fclose($input);
+                        fclose($output);
+                        @unlink($targetPath);
+
+                        return ['url' => '', 'size' => 0];
+                    }
+
+                    fwrite($output, $buffer);
+                }
+
+                fclose($input);
+            }
+        } finally {
+            if (is_resource($output)) {
+                fclose($output);
+            }
+        }
+
+        return ['url' => $savedUrl, 'size' => $size];
+    }
+
+    private function allowedUploadMimeTypes(): array
+    {
+        return [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+            'application/pdf' => 'pdf',
+            'video/mp4' => 'mp4',
+            'video/webm' => 'webm',
+            'video/quicktime' => 'mov',
+            'video/ogg' => 'ogg',
+        ];
+    }
+
+    private function deleteDirectory(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            return;
+        }
+
+        foreach (glob($directory.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($directory);
     }
 
     private function saveUploadedMediaRecord(array $mediaPayload)
