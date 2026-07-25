@@ -34,6 +34,7 @@ export function SiteLayout() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isAgencyTemplatePage, setIsAgencyTemplatePage] = useState(() => location.pathname === '/' || location.pathname.split('/').filter(Boolean).length === 1)
   const [headerNavigation, setHeaderNavigation] = useState<HeaderNavItem[]>(navigation)
+  const [hasProjects, setHasProjects] = useState(false)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -85,9 +86,22 @@ export function SiteLayout() {
   useEffect(() => {
     let cancelled = false
 
-    api.publicSettings()
-      .then((result) => {
+    Promise.allSettled([api.publicSettings(), api.publicProjects()])
+      .then(([settingsResult, projectResult]) => {
         if (cancelled) return
+
+        const projectsAvailable = projectResult.status === 'fulfilled' && projectResult.value.projects.length > 0
+        setHasProjects(projectsAvailable)
+
+        if (settingsResult.status !== 'fulfilled') {
+          setHeaderNavigation(navigation)
+          return
+        }
+
+        return settingsResult.value
+      })
+      .then((result) => {
+        if (cancelled || !result) return
 
         try {
           const parsed = JSON.parse(result.settings.navigation_items || '[]')
@@ -105,6 +119,11 @@ export function SiteLayout() {
       cancelled = true
     }
   }, [])
+
+  const visibleHeaderNavigation = headerNavigation.filter((item) => {
+    const href = item.href.replace(/\/+$/, '') || '/'
+    return hasProjects || href !== '/portfolio'
+  })
 
   return (
     <div className="site-bg min-h-screen">
@@ -154,7 +173,7 @@ export function SiteLayout() {
 
               <div className="absolute inset-0 m-auto hidden size-fit lg:block">
                 <ul className="flex gap-8 text-sm">
-                  {headerNavigation.map((item) => (
+                  {visibleHeaderNavigation.map((item) => (
                     <li key={`${item.label}-${item.href}`} className="group/nav relative">
                       <NavLink
                         to={item.href}
@@ -193,7 +212,7 @@ export function SiteLayout() {
               <div className="hidden w-full flex-wrap items-center justify-end rounded-2xl border border-[var(--line)] bg-[var(--surface)]/96 p-3 shadow-2xl shadow-black/20 backdrop-blur-2xl group-data-[state=active]:block lg:m-0 lg:flex lg:w-fit lg:gap-4 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none">
                 <div className="lg:hidden">
                   <ul className="grid gap-2 text-base">
-                    {headerNavigation.map((item) => (
+                    {visibleHeaderNavigation.map((item) => (
                       <li key={`${item.label}-${item.href}`}>
                         <NavLink
                           to={item.href}

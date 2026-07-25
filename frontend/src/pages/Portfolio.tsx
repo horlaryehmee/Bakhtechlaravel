@@ -1,37 +1,14 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { SafeImage } from '@/components/ui/safe-image'
-import { portfolio } from '@/data/site'
 import { api, type Project } from '@/lib/api'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 function fromProject(project: Project): Project {
   return project
-}
-
-function fromFallback(item: (typeof portfolio)[number], index: number): Project {
-  return {
-    id: index + 1,
-    slug: item.title.toLowerCase().replace(/\s+/g, '-'),
-    category: item.category,
-    title: item.title,
-    summary: item.summary,
-    description: '',
-    image: item.image,
-    coverImage: '',
-    videoUrl: '',
-    websiteUrl: '',
-    services: [],
-    metrics: {},
-    isFeatured: false,
-    status: 'published',
-    sortOrder: index + 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
 }
 
 function cleanProjectUrl(url?: string) {
@@ -142,7 +119,8 @@ function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClo
 
 export function Portfolio() {
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
-  const [items, setItems] = useState<Project[]>(() => portfolio.map(fromFallback))
+  const [items, setItems] = useState<Project[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [showProjectSummaries, setShowProjectSummaries] = useState(true)
 
   useEffect(() => {
@@ -153,15 +131,15 @@ export function Portfolio() {
         const [projectResult, settingsResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings()])
         if (cancelled) return
 
-        if (projectResult.status === 'fulfilled' && projectResult.value.projects.length) {
-          setItems(projectResult.value.projects.map(fromProject))
-        }
+        setItems(projectResult.status === 'fulfilled' ? projectResult.value.projects.map(fromProject) : [])
 
         if (settingsResult.status === 'fulfilled') {
           setShowProjectSummaries(settingsResult.value.settings.homePortfolioShowDescriptions !== 'false')
         }
       } catch {
-        if (!cancelled) setItems(portfolio.map(fromFallback))
+        if (!cancelled) setItems([])
+      } finally {
+        if (!cancelled) setLoaded(true)
       }
     }
 
@@ -170,6 +148,14 @@ export function Portfolio() {
       cancelled = true
     }
   }, [])
+
+  if (!loaded) {
+    return <main className="min-h-screen bg-[var(--background)]" />
+  }
+
+  if (!items.length) {
+    return <Navigate to="/" replace />
+  }
 
   return (
     <main className="projects-page home-page overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
@@ -187,11 +173,7 @@ export function Portfolio() {
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {items.length ? (
-              items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} showDescription={showProjectSummaries} onPlayMedia={setActiveVideo} />)
-            ) : (
-              <div className="surface-card mx-auto max-w-xl rounded-3xl p-8 text-center text-[var(--foreground)]/70">Published projects will appear here.</div>
-            )}
+            {items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} showDescription={showProjectSummaries} onPlayMedia={setActiveVideo} />)}
           </div>
         </div>
       </section>

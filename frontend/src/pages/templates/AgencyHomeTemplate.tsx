@@ -723,6 +723,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
   const notificationStack = Array.from({ length: 4 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const homepageProjectCards = portfolioProjects.slice(0, 6)
+  const hasHomepageProjects = homepageProjectCards.length > 0
+  const visibleNavigation = navigation.filter((item) => hasHomepageProjects || item.href !== '/portfolio')
   const showcaseScreenProjects = (projectImageProjects.length ? projectImageProjects : portfolioProjects).slice(0, 10)
   const topShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 0)
   const bottomShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 1)
@@ -967,7 +969,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-8 w-auto object-contain md:h-10" width="160" height="40" decoding="async" />
           </Link>
           <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
-            {navigation.map((item) => (
+            {visibleNavigation.map((item) => (
               <Link key={`${item.label}-${item.href}`} to={item.href} className="hover:text-white">
                 {item.label}
               </Link>
@@ -986,7 +988,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </button>
           {mobileMenuOpen ? (
             <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-white/10 bg-black/82 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl md:hidden">
-              {navigation.map((item) => (
+              {visibleNavigation.map((item) => (
                 <Link
                   key={`${item.label}-${item.href}`}
                   to={item.href}
@@ -1267,23 +1269,24 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
-      <section id="work" className="relative overflow-hidden px-4 pb-24 pt-14 md:pt-20">
-        <div className="pointer-events-none absolute left-1/2 top-0 w-full max-w-6xl -translate-x-1/2 select-none text-center text-[clamp(5rem,17vw,13.5rem)] font-black leading-none tracking-normal text-black/[0.045]">
-          Projects
-        </div>
-        <div className="relative mx-auto max-w-6xl">
-          <div className="mb-8 pt-12 md:mb-10 md:pt-20">
-            <h2 className="sr-only">Projects</h2>
+      {!homepageDataLoaded || hasHomepageProjects ? (
+        <section id="work" className="relative overflow-hidden px-4 pb-24 pt-14 md:pt-20">
+          <div className="pointer-events-none absolute left-1/2 top-0 w-full max-w-6xl -translate-x-1/2 select-none text-center text-[clamp(5rem,17vw,13.5rem)] font-black leading-none tracking-normal text-black/[0.045]">
+            Projects
           </div>
-
-          {!homepageDataLoaded ? (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <ProjectCardSkeleton key={`project-skeleton-${index}`} />
-              ))}
+          <div className="relative mx-auto max-w-6xl">
+            <div className="mb-8 pt-12 md:mb-10 md:pt-20">
+              <h2 className="sr-only">Projects</h2>
             </div>
-          ) : homepageProjectCards.length ? (
-            <>
+
+            {!homepageDataLoaded ? (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <ProjectCardSkeleton key={`project-skeleton-${index}`} />
+                ))}
+              </div>
+            ) : (
+              <>
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {homepageProjectCards.map((project) => (
                   <AgencyProjectCard key={project.id} project={project} showDescription={showPortfolioDescriptions} onPlayMedia={setActiveVideo} />
@@ -1294,11 +1297,10 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 <AnimatedCta to="/portfolio" label="Show all projects" icon={<ArrowRight className="h-4 w-4" />} className="min-h-12 rounded-xl border-black/10 bg-white text-black shadow-sm hover:bg-black hover:text-white" />
               </div>
             </>
-          ) : (
-            <div className="mx-auto max-w-xl rounded-3xl border border-black/5 bg-white p-8 text-center font-semibold text-black/60 shadow-sm">Published backend projects will appear here.</div>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="px-4 pb-24">
         <div className="mx-auto max-w-6xl">
@@ -1340,9 +1342,11 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
               <div className="absolute bottom-6 left-6 right-6">
                 <p className="text-xl font-semibold text-black">See the kind of work we ship</p>
-                <div className="mt-4">
-                  <AnimatedCta to="/portfolio" label="View Our Work" icon={<ArrowRight className="h-4 w-4" />} className="border-black/8 bg-black/42 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl hover:bg-black/60" />
-                </div>
+                {hasHomepageProjects ? (
+                  <div className="mt-4">
+                    <AnimatedCta to="/portfolio" label="View Our Work" icon={<ArrowRight className="h-4 w-4" />} className="border-black/8 bg-black/42 text-white shadow-[0_20px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl hover:bg-black/60" />
+                  </div>
+                ) : null}
               </div>
             </article>
 
