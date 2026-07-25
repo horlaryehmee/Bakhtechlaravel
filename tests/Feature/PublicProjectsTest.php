@@ -66,4 +66,26 @@ class PublicProjectsTest extends TestCase
         $this->assertContains('Legacy status project', $titles);
         $this->assertNotContains('Draft project', $titles);
     }
+
+    public function test_public_settings_normalizes_founder_desk_upload_url(): void
+    {
+        $uploadPath = public_path('uploads/founder-test.jpg');
+        if (! is_dir(dirname($uploadPath))) {
+            mkdir(dirname($uploadPath), 0755, true);
+        }
+        file_put_contents($uploadPath, 'test image');
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'founder_desk_image'],
+            ['value' => '/api/uploads/founder-test.jpg', 'created_at' => now(), 'updated_at' => now()],
+        );
+
+        try {
+            $this->getJson('/api/settings')
+                ->assertOk()
+                ->assertJsonPath('settings.founder_desk_image', '/uploads/founder-test.jpg');
+        } finally {
+            @unlink($uploadPath);
+        }
+    }
 }

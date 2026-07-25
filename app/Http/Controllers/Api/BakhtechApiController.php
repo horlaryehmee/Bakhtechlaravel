@@ -294,49 +294,49 @@ class BakhtechApiController extends Controller
 
     public function publicSettings()
     {
-        return $this->rememberPublicCache('public:settings', function () {
-            $settings = $this->settings();
-            $publicKeys = [
-                'siteName',
-                'contactEmail',
-                'phone',
-                'activeHome',
-                'homePortfolioShowDescriptions',
-                'homepageVideoUrl',
-                'designDevelopmentVideoUrl',
-                'cursorEffectEnabled',
-                'theme_light_primary',
-                'theme_light_secondary',
-                'theme_light_active',
-                'theme_dark_primary',
-                'theme_dark_secondary',
-                'theme_dark_active',
-                'navigation_items',
-                'googleReviewUrl',
-                'trustpilotReviewUrl',
-                'facebookUrl',
-                'instagramUrl',
-                'linkedinUrl',
-                'tiktokUrl',
-                'twitterUrl',
-                'youtubeUrl',
-                'bookingIntro',
-                'founder_desk_image',
-                'footerCtaTitle',
-                'footerWatermark',
-                'footerDescription',
-                'footerCtaLabel',
-                'footerCopyright',
-                'company_name',
-                'company_logo',
-                'company_email',
-                'company_phone',
-                'company_address',
-                'company_website',
-            ];
+        $settings = $this->settings();
+        $publicKeys = [
+            'siteName',
+            'contactEmail',
+            'phone',
+            'activeHome',
+            'homePortfolioShowDescriptions',
+            'homepageVideoUrl',
+            'designDevelopmentVideoUrl',
+            'cursorEffectEnabled',
+            'theme_light_primary',
+            'theme_light_secondary',
+            'theme_light_active',
+            'theme_dark_primary',
+            'theme_dark_secondary',
+            'theme_dark_active',
+            'navigation_items',
+            'googleReviewUrl',
+            'trustpilotReviewUrl',
+            'facebookUrl',
+            'instagramUrl',
+            'linkedinUrl',
+            'tiktokUrl',
+            'twitterUrl',
+            'youtubeUrl',
+            'bookingIntro',
+            'founder_desk_image',
+            'footerCtaTitle',
+            'footerWatermark',
+            'footerDescription',
+            'footerCtaLabel',
+            'footerCopyright',
+            'company_name',
+            'company_logo',
+            'company_email',
+            'company_phone',
+            'company_address',
+            'company_website',
+        ];
+        $publicSettings = array_intersect_key($settings, array_flip($publicKeys));
+        $publicSettings['founder_desk_image'] = $this->publicMediaSettingUrl((string) ($publicSettings['founder_desk_image'] ?? ''));
 
-            return ['settings' => array_intersect_key($settings, array_flip($publicKeys))];
-        });
+        return ['settings' => $publicSettings];
     }
 
     public function submitContact(Request $request)
@@ -2579,6 +2579,22 @@ class BakhtechApiController extends Controller
         }
 
         return $storedUrl ?: '/uploads/'.$safeFilename;
+    }
+
+    private function publicMediaSettingUrl(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || preg_match('#^(https?:)?//#i', $value) === 1 || str_starts_with($value, 'data:')) {
+            return $value;
+        }
+
+        $path = parse_url($value, PHP_URL_PATH) ?: $value;
+        $filename = basename(str_replace('\\', '/', $path));
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            return $value;
+        }
+
+        return $this->mediaUrl($filename, $value);
     }
 
     private function reviewShape(object $row): array
