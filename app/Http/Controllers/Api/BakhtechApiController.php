@@ -276,9 +276,11 @@ class BakhtechApiController extends Controller
 
     public function publicProjects()
     {
-        return $this->rememberPublicCache('public:projects', function () {
-            return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
-        });
+        if (! Schema::hasTable('projects')) {
+            return ['projects' => []];
+        }
+
+        return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
     }
 
     public function publicSettings()

@@ -155,8 +155,8 @@ function App() {
           <Route path="receipt/:token" element={<PublicReceipt />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="pricing/:categorySlug" element={<Pricing />} />
+          <Route index element={<HomeRouter />} />
           <Route element={<SiteLayout />}>
-            <Route index element={<HomeRouter />} />
             <Route path="about" element={<About />} />
             <Route path="portfolio" element={<Portfolio />} />
             <Route path="booking" element={<Booking />} />
