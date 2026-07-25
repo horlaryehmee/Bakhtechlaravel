@@ -1,8 +1,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    DirectoryIndex index.php
 
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    RewriteRule ^.*$ ../public/index.php [L]
+    RewriteRule ^.*$ index.php [L]
 </IfModule>
