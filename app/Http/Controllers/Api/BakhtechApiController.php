@@ -1462,7 +1462,11 @@ class BakhtechApiController extends Controller
         $query = DB::table('projects');
 
         if (! $includeDrafts) {
-            $query->where('status', 'published');
+            $query->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhere('status', '')
+                    ->orWhereRaw('LOWER(status) <> ?', ['draft']);
+            });
         }
 
         if (Schema::hasColumn('projects', 'sort_order')) {

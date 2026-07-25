@@ -24,12 +24,32 @@ class PublicProjectsTest extends TestCase
                 'updated_at' => now(),
             ],
             [
+                'title' => 'Mixed case published project',
+                'slug' => 'mixed-case-published-project',
+                'category' => 'Website',
+                'summary' => 'Visible on the frontend',
+                'status' => 'Published',
+                'sort_order' => 2,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'title' => 'Legacy status project',
+                'slug' => 'legacy-status-project',
+                'category' => 'Website',
+                'summary' => 'Visible on the frontend',
+                'status' => '',
+                'sort_order' => 3,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
                 'title' => 'Draft project',
                 'slug' => 'draft-project',
                 'category' => 'Website',
                 'summary' => 'Hidden from the frontend',
                 'status' => 'draft',
-                'sort_order' => 2,
+                'sort_order' => 4,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -42,6 +62,8 @@ class PublicProjectsTest extends TestCase
         $titles = collect($projects)->pluck('title');
 
         $this->assertContains('Published project', $titles);
+        $this->assertContains('Mixed case published project', $titles);
+        $this->assertContains('Legacy status project', $titles);
         $this->assertNotContains('Draft project', $titles);
     }
 }
