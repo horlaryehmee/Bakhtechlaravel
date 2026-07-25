@@ -276,11 +276,20 @@ class BakhtechApiController extends Controller
 
     public function publicProjects()
     {
-        if (! Schema::hasTable('projects')) {
-            return ['projects' => []];
-        }
+        try {
+            if (! Schema::hasTable('projects')) {
+                return ['projects' => []];
+            }
 
-        return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
+            return ['projects' => $this->projectQuery(false)->map(fn ($row) => $this->projectShape($row))];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Unable to load published projects. Run migrations and clear Laravel caches on the live server.',
+                'projects' => [],
+            ], 503);
+        }
     }
 
     public function publicSettings()
