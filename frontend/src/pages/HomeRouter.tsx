@@ -13,10 +13,14 @@ export function HomeRouter() {
     api.publicSettings()
       .then((settingsResult) => {
         const activeHome = settingsResult.settings.activeHome?.trim() || 'home'
+        if (activeHome === 'home') {
+          return null
+        }
+
         return api.publicPage(activeHome)
       })
       .then((pageResult) => {
-        if (!cancelled) setHomePage(pageResult.page)
+        if (!cancelled) setHomePage(pageResult?.page ?? null)
       })
       .catch(() => undefined)
       .finally(() => {
@@ -32,7 +36,7 @@ export function HomeRouter() {
     return <AgencyHomeTemplate />
   }
 
-  if (homePage?.template === 'agency-v2') {
+  if (!homePage || homePage.template === 'agency-v2') {
     return <AgencyHomeTemplate />
   }
 
