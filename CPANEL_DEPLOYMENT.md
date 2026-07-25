@@ -37,6 +37,7 @@ remain Laravel's rewrite file so `/api/...` routes reach `public/index.php`.
 3. Copy `.env.live.example` to `.env`.
 4. Fill these values:
    - `APP_URL`
+   - `DB_HOST` (`localhost` on most cPanel hosts; use `127.0.0.1` only if your host confirms TCP MySQL is enabled)
    - `DB_DATABASE`
    - `DB_USERNAME`
    - `DB_PASSWORD`
