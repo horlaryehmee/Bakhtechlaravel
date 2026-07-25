@@ -139,6 +139,11 @@ class DeploymentSecurityTest extends TestCase
         $this->assertStringContainsString('DirectoryIndex index.php', $apiHtaccess);
         $this->assertStringContainsString('RewriteRule ^.*$ index.php [L]', $apiHtaccess);
         $this->assertStringNotContainsString('../public/index.php', $apiHtaccess);
+
+        $apiFrontController = file_get_contents(base_path('api/index.php'));
+        $this->assertStringContainsString('$_SERVER[\'SCRIPT_NAME\'] = \'/index.php\';', $apiFrontController);
+        $this->assertStringContainsString('$_SERVER[\'PHP_SELF\'] = \'/index.php\';', $apiFrontController);
+        $this->assertStringContainsString('$_SERVER[\'SCRIPT_FILENAME\'] = __DIR__.\'/../public/index.php\';', $apiFrontController);
     }
 
     public function test_admin_tokens_use_cached_configuration_secret(): void
