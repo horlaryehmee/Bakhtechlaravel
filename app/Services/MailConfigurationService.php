@@ -98,11 +98,15 @@ class MailConfigurationService
 
     private function row(): ?object
     {
-        if (! Schema::hasTable('mail_settings')) {
+        try {
+            if (! Schema::hasTable('mail_settings')) {
+                return null;
+            }
+
+            return DB::table('mail_settings')->where('id', 1)->first();
+        } catch (\Throwable) {
             return null;
         }
-
-        return DB::table('mail_settings')->where('id', 1)->first();
     }
 
     private function decryptPassword(?string $password): ?string

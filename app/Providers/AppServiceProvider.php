@@ -38,7 +38,11 @@ class AppServiceProvider extends ServiceProvider
         app(MailConfigurationService::class)->apply();
 
         Event::listen(MessageSent::class, function (MessageSent $event) {
-            if (! Schema::hasTable('email_logs')) {
+            try {
+                if (! Schema::hasTable('email_logs')) {
+                    return;
+                }
+            } catch (\Throwable) {
                 return;
             }
 
