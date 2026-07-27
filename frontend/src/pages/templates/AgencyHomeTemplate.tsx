@@ -111,6 +111,54 @@ const founderNotes = [
   { name: 'Launch', role: 'After handoff', icon: Send, quote: 'Deployment, support, and iteration stay part of the work.' },
 ]
 
+const fallbackReviews: Review[] = [
+  {
+    id: -1,
+    provider: 'manual',
+    providerLabel: 'Client Review',
+    authorName: 'Adebayo Martins',
+    authorImage: '',
+    rating: 5,
+    content: 'Bakhtech understood what we needed quickly and turned it into a clean, professional website that made our business look more credible.',
+    externalUrl: '',
+    reviewedAt: '2026-06-01',
+    isFeatured: true,
+    isPublished: true,
+    createdAt: '2026-06-01',
+    updatedAt: '2026-06-01',
+  },
+  {
+    id: -2,
+    provider: 'manual',
+    providerLabel: 'Client Review',
+    authorName: 'Chioma Okafor',
+    authorImage: '',
+    rating: 5,
+    content: 'The process was clear from start to finish. Our new site is faster, easier to manage, and much better for customers on mobile.',
+    externalUrl: '',
+    reviewedAt: '2026-06-08',
+    isFeatured: true,
+    isPublished: true,
+    createdAt: '2026-06-08',
+    updatedAt: '2026-06-08',
+  },
+  {
+    id: -3,
+    provider: 'manual',
+    providerLabel: 'Client Review',
+    authorName: 'Tolu Adeyemi',
+    authorImage: '',
+    rating: 5,
+    content: 'They helped us move from scattered ideas to a working platform with booking, payments, and admin controls that our team can actually use.',
+    externalUrl: '',
+    reviewedAt: '2026-06-15',
+    isFeatured: true,
+    isPublished: true,
+    createdAt: '2026-06-15',
+    updatedAt: '2026-06-15',
+  },
+]
+
 const faqItems = [
   {
     question: 'What exactly does Bakhtech do?',
@@ -728,7 +776,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const showcaseScreenProjects = (projectImageProjects.length ? projectImageProjects : portfolioProjects).slice(0, 10)
   const topShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 0)
   const bottomShowcaseScreens = showcaseScreenProjects.filter((_, index) => index % 2 === 1)
-  const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
+  const displayReviews = reviews.length ? reviews : fallbackReviews
+  const loopedReviews = displayReviews.length > 1 ? [...displayReviews, ...displayReviews] : displayReviews
   const designDevelopmentYoutubeEmbedUrl = getYoutubeEmbedUrl(designDevelopmentVideoUrl)
   const designDevelopmentIsLocalVideo = isVideoUrl(designDevelopmentVideoUrl)
 
@@ -1605,12 +1654,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             onPointerUp={handleTestimonialPointerUp}
             onPointerCancel={handleTestimonialPointerUp}
           >
-            {reviews.length ? (
+            {displayReviews.length ? (
               loopedReviews.map((review, index) => (
                 <div
                   key={`${review.id}-${index}`}
                   className="block shrink-0 text-left"
-                  aria-label={`Testimonial ${(index % reviews.length) + 1}`}
+                  aria-label={`Testimonial ${(index % displayReviews.length) + 1}`}
                 >
                   <TestimonialCard review={review} />
                 </div>
@@ -1623,13 +1672,13 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
         <div className="mt-8 flex justify-center">
           <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.10)]">
-            {reviews.length ? (
-              reviews.map((review, index) => (
+            {displayReviews.length ? (
+              displayReviews.map((review, index) => (
                 <button
                   key={review.id}
                   type="button"
                   aria-label={`Go to testimonial ${index + 1}`}
-                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex % reviews.length ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
+                  className={`h-2.5 w-2.5 rounded-full transition ${index === activeTestimonialIndex % displayReviews.length ? 'bg-black/65' : 'bg-black/12 hover:bg-black/28'}`}
                   onClick={() => setActiveTestimonialIndex(index)}
                 />
               ))
