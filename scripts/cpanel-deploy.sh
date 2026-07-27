@@ -15,6 +15,12 @@ git reset --hard "origin/$BRANCH"
 
 composer install --no-dev --optimize-autoloader
 
+if php -r "exit(class_exists('Redis') ? 0 : 1);"; then
+  :
+else
+  echo "Warning: PHP Redis extension is not installed. Use CACHE_STORE=database and SESSION_DRIVER=database in .env." >&2
+fi
+
 php artisan migrate --force
 php artisan optimize:clear
 php artisan optimize

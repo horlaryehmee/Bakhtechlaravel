@@ -68,6 +68,12 @@ class RedisConfigurationService
             return;
         }
 
+        if (($settings['client'] === 'phpredis' || config('database.redis.client') === 'phpredis') && ! class_exists('Redis')) {
+            config(['cache.default' => 'database']);
+
+            return;
+        }
+
         config([
             'cache.default' => 'redis',
             'database.redis.client' => $settings['client'],

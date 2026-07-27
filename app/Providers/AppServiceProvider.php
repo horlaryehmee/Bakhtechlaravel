@@ -27,6 +27,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (! class_exists('Redis')) {
+            if (config('cache.default') === 'redis') {
+                config(['cache.default' => 'database']);
+            }
+
+            if (config('session.driver') === 'redis') {
+                config(['session.driver' => 'database']);
+            }
+        }
+
         RateLimiter::for('invoice-payment', function (Request $request) {
             return Limit::perMinute(20)
                 ->by(strtolower((string) $request->route('token')).'|'.$request->ip())
