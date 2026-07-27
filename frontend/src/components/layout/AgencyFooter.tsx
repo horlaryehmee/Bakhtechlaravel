@@ -183,7 +183,7 @@ export function AgencyFooter({ settings }: { settings?: AgencyFooterSettings }) 
 
         <div className="mt-16 grid gap-12 lg:grid-cols-[1.1fr_1.6fr] lg:gap-20">
           <div>
-            <img src="/bakhtech-logo-dark.png" alt="Bakhtech Solutions" className="h-9 w-auto object-contain brightness-0 invert" decoding="async" />
+            <img src="/bakhtech-logo-light.jpg" alt="Bakhtech Solutions" className="h-9 w-auto object-contain brightness-0 invert" width="108" height="36" decoding="async" />
             <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
               {footerSettings.footerDescription}
             </p>
