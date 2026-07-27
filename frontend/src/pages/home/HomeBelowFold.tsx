@@ -60,54 +60,6 @@ type ReviewLinks = {
   trustpilot: string
 }
 
-const fallbackReviews: Review[] = [
-  {
-    id: -1,
-    provider: 'manual',
-    providerLabel: 'Client Review',
-    authorName: 'Adebayo Martins',
-    authorImage: '',
-    rating: 5,
-    content: 'Bakhtech understood what we needed quickly and turned it into a clean, professional website that made our business look more credible.',
-    externalUrl: '',
-    reviewedAt: '2026-06-01',
-    isFeatured: true,
-    isPublished: true,
-    createdAt: '2026-06-01',
-    updatedAt: '2026-06-01',
-  },
-  {
-    id: -2,
-    provider: 'manual',
-    providerLabel: 'Client Review',
-    authorName: 'Chioma Okafor',
-    authorImage: '',
-    rating: 5,
-    content: 'The process was clear from start to finish. Our new site is faster, easier to manage, and much better for customers on mobile.',
-    externalUrl: '',
-    reviewedAt: '2026-06-08',
-    isFeatured: true,
-    isPublished: true,
-    createdAt: '2026-06-08',
-    updatedAt: '2026-06-08',
-  },
-  {
-    id: -3,
-    provider: 'manual',
-    providerLabel: 'Client Review',
-    authorName: 'Tolu Adeyemi',
-    authorImage: '',
-    rating: 5,
-    content: 'They helped us move from scattered ideas to a working platform with booking, payments, and admin controls that our team can actually use.',
-    externalUrl: '',
-    reviewedAt: '2026-06-15',
-    isFeatured: true,
-    isPublished: true,
-    createdAt: '2026-06-15',
-    updatedAt: '2026-06-15',
-  },
-]
-
 function cleanProjectUrl(url: string) {
   const value = url.trim()
   if (!value || value === '#') return undefined
@@ -291,7 +243,6 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [showDeferredEffects, setShowDeferredEffects] = useState(false)
-  const displayReviews = reviews.length ? reviews : fallbackReviews
 
   useEffect(() => {
     let cancelled = false
@@ -318,6 +269,20 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
     return () => {
       cancelled = true
       window.clearTimeout(timeoutId)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    api.publicReviews()
+      .then((result) => {
+        if (!cancelled) setReviews(result.reviews)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -404,7 +369,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         </div>
       </section>
 
-      {displayReviews.length ? (
+      {reviews.length ? (
         <section id="reviews" className="home-reviews-section overflow-hidden bg-[#f8f8fb] py-14 md:py-20">
           <div className="container-x">
             <div className="grid gap-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
@@ -418,7 +383,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
                 </button>
               </div>
               <div className="lg:pt-2">
-                <StaggerReviews reviews={displayReviews} />
+                <StaggerReviews reviews={reviews} />
               </div>
             </div>
           </div>
