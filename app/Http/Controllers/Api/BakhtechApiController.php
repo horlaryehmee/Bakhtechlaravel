@@ -211,9 +211,11 @@ class BakhtechApiController extends Controller
         return ['revoked' => $deleted];
     }
 
-    public function dashboard(SeoAuditService $seoAudit, VisitorAnalyticsService $analytics)
+    public function dashboard()
     {
         try {
+            $seoAudit = app(SeoAuditService::class);
+            $analytics = app(VisitorAnalyticsService::class);
             $today = now()->toDateString();
             $seo = $seoAudit->audit()['summary'];
 
