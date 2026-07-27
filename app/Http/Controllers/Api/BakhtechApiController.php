@@ -467,6 +467,14 @@ class BakhtechApiController extends Controller
                 ->map(fn ($row) => $this->reviewShape($row))
                 ->values();
 
+            if ($reviews->isEmpty()) {
+                $reviews = $this->reviewQuery(false)
+                    ->limit($limit)
+                    ->get()
+                    ->map(fn ($row) => $this->reviewShape($row))
+                    ->values();
+            }
+
             return ['reviews' => $reviews];
         });
     }

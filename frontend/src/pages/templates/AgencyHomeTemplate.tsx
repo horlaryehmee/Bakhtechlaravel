@@ -57,6 +57,7 @@ import { SafeImage } from '@/components/ui/safe-image'
 import { OrbitalSphereGlobe } from '@/components/ui/orbital-sphere-globe'
 import { AgencyFooter, defaultAgencyFooterSettings } from '@/components/layout/AgencyFooter'
 import { api, type Project, type Review } from '@/lib/api'
+import { loadPublicReviews } from '@/lib/public-reviews'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, getYoutubeThumbnailUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
@@ -821,7 +822,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   useEffect(() => {
     let cancelled = false
 
-    Promise.allSettled([api.publicProjects(), api.publicSettings(), api.publicReviews()])
+    Promise.allSettled([api.publicProjects(), api.publicSettings(), loadPublicReviews()])
       .then(([projectResult, settingsResult, reviewResult]) => {
         if (cancelled) return
 
@@ -835,7 +836,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         })
         setProjectImageProjects(imageProjects)
         setPortfolioProjects(projects.slice(0, 6))
-        setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
+        setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value : [])
         if (settingsResult.status === 'fulfilled') {
           const publicSettings = settingsResult.value.settings
           setShowPortfolioDescriptions(publicSettings.homePortfolioShowDescriptions !== 'false')
@@ -875,9 +876,9 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   useEffect(() => {
     let cancelled = false
 
-    api.publicReviews()
+    loadPublicReviews()
       .then((result) => {
-        if (!cancelled) setReviews(result.reviews)
+        if (!cancelled) setReviews(result)
       })
       .catch(() => undefined)
 
@@ -1630,8 +1631,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   <TestimonialCard review={review} />
                 </div>
               ))
-            ) : (
+            ) : !homepageDataLoaded ? (
               Array.from({ length: 4 }).map((_, index) => <TestimonialCardSkeleton key={`testimonial-skeleton-${index}`} />)
+            ) : (
+              <div className="flex h-[18rem] w-[72vw] shrink-0 snap-center items-center justify-center rounded-[1.35rem] border border-black/8 bg-white/55 p-8 text-center text-sm font-semibold text-black/55 md:h-[20rem] md:w-[34rem] lg:w-[39rem]">
+                Backend reviews will appear here after they are published.
+              </div>
             )}
           </div>
         </div>

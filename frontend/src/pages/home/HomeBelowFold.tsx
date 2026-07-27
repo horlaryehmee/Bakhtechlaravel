@@ -9,6 +9,7 @@ import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { FeatureCard } from '@/components/ui/grid-feature-cards'
 import { StaggerReviews } from '@/components/ui/stagger-reviews'
 import { api, type Project, type Review } from '@/lib/api'
+import { loadPublicReviews } from '@/lib/public-reviews'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 import { cn } from '@/lib/utils'
 
@@ -248,11 +249,11 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
     let cancelled = false
 
     async function loadPortfolioData() {
-      const [projectResult, settingsResult, reviewResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings(), api.publicReviews()])
+      const [projectResult, settingsResult, reviewResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings(), loadPublicReviews()])
       if (cancelled) return
 
       setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
-      setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value.reviews : [])
+      setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value : [])
       const settings = settingsResult.status === 'fulfilled' ? settingsResult.value.settings : {}
       setShowPortfolioDescriptions(settings.homePortfolioShowDescriptions !== 'false')
       setReviewLinks({
@@ -275,9 +276,9 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
   useEffect(() => {
     let cancelled = false
 
-    api.publicReviews()
+    loadPublicReviews()
       .then((result) => {
-        if (!cancelled) setReviews(result.reviews)
+        if (!cancelled) setReviews(result)
       })
       .catch(() => undefined)
 
