@@ -1220,44 +1220,81 @@ export function AdminDashboard() {
         invoiceDocumentsResult,
         invoiceClientsResult,
         invoiceEmailLogsResult
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         api.dashboard(),
         api.seoAudit(),
         api.adminProjects(),
         api.cms(),
-        api.adminSessions().catch(() => ({ sessions: [] })),
-        api.invoiceOverview().catch(() => null),
-        api.invoiceDocuments().catch(() => null),
-        api.invoiceClients().catch(() => null),
-        api.invoiceEmailLogs().catch(() => null)
+        api.adminSessions(),
+        api.invoiceOverview(),
+        api.invoiceDocuments(),
+        api.invoiceClients(),
+        api.invoiceEmailLogs()
       ])
-      setDashboard(dashboardResult)
-      setSeoAudit(seoAuditResult)
-      setProjects(projectResult.projects)
-      const cmsWithSessions = { ...cmsResult, adminSessions: adminSessionsResult.sessions }
-      setCms(cmsWithSessions)
-      setEditingPageId((current) => current ?? cmsResult.pages[0]?.id ?? null)
-      setSettingsForm(cmsResult.settings)
-      if (invoiceOverviewResult) setInvoiceOverview(invoiceOverviewResult)
-      if (invoiceDocumentsResult) setInvoiceDocuments(invoiceDocumentsResult.documents)
-      if (invoiceDocumentsResult?.meta) setInvoiceDocumentsMeta(invoiceDocumentsResult.meta)
-      if (invoiceClientsResult) setInvoiceClients(invoiceClientsResult.clients)
-      if (invoiceClientsResult?.meta) setInvoiceClientsMeta(invoiceClientsResult.meta)
-      if (invoiceEmailLogsResult) setInvoiceEmailLogs(invoiceEmailLogsResult.logs)
-      if (invoiceEmailLogsResult?.meta) setInvoiceEmailLogsMeta(invoiceEmailLogsResult.meta)
-      writeAdminDataCache({
-        dashboard: dashboardResult,
-        seoAudit: seoAuditResult,
-        projects: projectResult.projects,
-        cms: cmsWithSessions,
-        invoiceOverview: invoiceOverviewResult,
-        invoiceDocuments: invoiceDocumentsResult?.documents ?? [],
-        invoiceDocumentsMeta: invoiceDocumentsResult?.meta ?? defaultInvoiceListMeta,
-        invoiceClients: invoiceClientsResult?.clients ?? [],
-        invoiceClientsMeta: invoiceClientsResult?.meta ?? defaultInvoiceListMeta,
-        invoiceEmailLogs: invoiceEmailLogsResult?.logs ?? [],
-        invoiceEmailLogsMeta: invoiceEmailLogsResult?.meta ?? defaultInvoiceListMeta,
+
+      const failedRequired = [
+        ['dashboard', dashboardResult],
+        ['seo audit', seoAuditResult],
+        ['projects', projectResult],
+        ['CMS/settings', cmsResult],
+      ].filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
+
+      const nextDashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : dashboard
+      const nextSeoAudit = seoAuditResult.status === 'fulfilled' ? seoAuditResult.value : seoAudit
+      const nextProjects = projectResult.status === 'fulfilled' ? projectResult.value.projects : projects
+      const nextCms = cmsResult.status === 'fulfilled' ? cmsResult.value : (cms ?? {
+        pages: [],
+        posts: [],
+        bookings: [],
+        bookingEventTypes: [],
+        reviews: [],
+        users: [],
+        adminSessions: [],
+        settings: {},
+        media: [],
       })
+      const nextSessions = adminSessionsResult.status === 'fulfilled' ? adminSessionsResult.value.sessions : []
+
+      if (nextDashboard) setDashboard(nextDashboard)
+      if (nextSeoAudit) setSeoAudit(nextSeoAudit)
+      setProjects(nextProjects)
+      const cmsWithSessions = nextCms ? { ...nextCms, adminSessions: nextSessions } : null
+      if (!cmsWithSessions) {
+        setError(failedRequired.length ? `Loaded with errors: ${failedRequired.map(([label]) => label).join(', ')} failed. Check Settings -> Incidents.` : 'Unable to load CMS/settings.')
+        return
+      }
+      setCms(cmsWithSessions)
+      setEditingPageId((current) => current ?? cmsWithSessions.pages[0]?.id ?? null)
+      setSettingsForm(cmsWithSessions.settings)
+      if (invoiceOverviewResult.status === 'fulfilled') setInvoiceOverview(invoiceOverviewResult.value)
+      if (invoiceDocumentsResult.status === 'fulfilled') {
+        setInvoiceDocuments(invoiceDocumentsResult.value.documents)
+        setInvoiceDocumentsMeta(invoiceDocumentsResult.value.meta)
+      }
+      if (invoiceClientsResult.status === 'fulfilled') {
+        setInvoiceClients(invoiceClientsResult.value.clients)
+        setInvoiceClientsMeta(invoiceClientsResult.value.meta)
+      }
+      if (invoiceEmailLogsResult.status === 'fulfilled') {
+        setInvoiceEmailLogs(invoiceEmailLogsResult.value.logs)
+        setInvoiceEmailLogsMeta(invoiceEmailLogsResult.value.meta)
+      }
+      writeAdminDataCache({
+        dashboard: nextDashboard,
+        seoAudit: nextSeoAudit,
+        projects: nextProjects,
+        cms: cmsWithSessions,
+        invoiceOverview: invoiceOverviewResult.status === 'fulfilled' ? invoiceOverviewResult.value : null,
+        invoiceDocuments: invoiceDocumentsResult.status === 'fulfilled' ? invoiceDocumentsResult.value.documents : [],
+        invoiceDocumentsMeta: invoiceDocumentsResult.status === 'fulfilled' ? invoiceDocumentsResult.value.meta : defaultInvoiceListMeta,
+        invoiceClients: invoiceClientsResult.status === 'fulfilled' ? invoiceClientsResult.value.clients : [],
+        invoiceClientsMeta: invoiceClientsResult.status === 'fulfilled' ? invoiceClientsResult.value.meta : defaultInvoiceListMeta,
+        invoiceEmailLogs: invoiceEmailLogsResult.status === 'fulfilled' ? invoiceEmailLogsResult.value.logs : [],
+        invoiceEmailLogsMeta: invoiceEmailLogsResult.status === 'fulfilled' ? invoiceEmailLogsResult.value.meta : defaultInvoiceListMeta,
+      })
+      if (failedRequired.length) {
+        setError(`Loaded with errors: ${failedRequired.map(([label]) => label).join(', ')} failed. Check Settings -> Incidents.`)
+      }
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 401) {
         clearAdminToken()
