@@ -433,7 +433,7 @@ class BakhtechApiController extends Controller
 
     public function publicReviews()
     {
-        return $this->rememberPublicCache('public:reviews', function () {
+        $payload = (function () {
             if (! Schema::hasTable('reviews')) {
                 return ['reviews' => []];
             }
@@ -476,7 +476,12 @@ class BakhtechApiController extends Controller
             }
 
             return ['reviews' => $reviews];
-        });
+        })();
+
+        return response()
+            ->json($payload)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function cms(Request $request)

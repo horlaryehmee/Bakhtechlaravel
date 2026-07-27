@@ -1585,6 +1585,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         </div>
       </section>
 
+      {reviews.length || !homepageDataLoaded || !reviewsLoaded ? (
       <section ref={testimonialsSectionRef} id="reviews" className="overflow-hidden px-4 py-20 md:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-center md:justify-between">
@@ -1618,11 +1619,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               ))
             ) : !homepageDataLoaded || !reviewsLoaded ? (
               Array.from({ length: 4 }).map((_, index) => <TestimonialCardSkeleton key={`testimonial-skeleton-${index}`} />)
-            ) : (
-              <div className="flex h-[18rem] w-[72vw] shrink-0 snap-center items-center justify-center rounded-[1.35rem] border border-black/8 bg-white/55 p-8 text-center text-sm font-semibold text-black/55 md:h-[20rem] md:w-[34rem] lg:w-[39rem]">
-                Backend reviews will appear here after they are published.
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -1646,6 +1643,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           </div>
         </div>
       </section>
+      ) : null}
 
       <section id="faq" className="px-4 py-20 md:py-24">
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.12fr] lg:gap-20">
