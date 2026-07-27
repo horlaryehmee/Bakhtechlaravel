@@ -21,6 +21,8 @@ class SiteIncidentService
             'type' => class_basename($exception),
             'source' => 'exception-handler',
             'message' => $exception->getMessage() ?: class_basename($exception),
+            'url' => (string) ($context['url'] ?? ''),
+            'method' => (string) ($context['method'] ?? ''),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
             'trace' => $exception->getTraceAsString(),
@@ -162,8 +164,12 @@ class SiteIncidentService
         $storageWritable = is_writable(storage_path()) && is_writable(storage_path('logs'));
         $checks[] = $this->check('storage', 'Storage writable', $storageWritable, $storageWritable ? 'Storage and logs are writable.' : 'Storage or logs directory is not writable.');
 
-        $mailEnabled = Schema::hasTable('mail_settings') && (bool) DB::table('mail_settings')->value('enabled');
-        $checks[] = $this->check('mail', 'SMTP alerts', $mailEnabled, $mailEnabled ? 'SMTP is enabled for outgoing alerts.' : 'SMTP is not enabled; incident emails cannot be delivered.');
+        try {
+            $mailEnabled = Schema::hasTable('mail_settings') && (bool) DB::table('mail_settings')->value('enabled');
+            $checks[] = $this->check('mail', 'SMTP alerts', $mailEnabled, $mailEnabled ? 'SMTP is enabled for outgoing alerts.' : 'SMTP is not enabled; incident emails cannot be delivered.');
+        } catch (Throwable $exception) {
+            $checks[] = $this->check('mail', 'SMTP alerts', false, 'Unable to check SMTP settings: '.$exception->getMessage());
+        }
 
         return $checks;
     }

@@ -926,6 +926,36 @@ async function parseErrorPayload(response: Response, fallbackMessage: string) {
   }
 }
 
+async function reportAdminApiFailure(path: string, method: string, response: Response, message: string) {
+  if (!path.startsWith('/api/admin') || path.includes('/api/admin/incidents/client-report')) return
+  if (response.status < 500) return
+
+  const token = getAdminToken()
+  if (!token) return
+
+  const body = await response.clone().text().catch(() => '')
+
+  try {
+    await fetch(apiUrl('/api/admin/incidents/client-report'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        path,
+        method,
+        status: response.status,
+        message,
+        body: body.slice(0, 4000),
+      }),
+    })
+  } catch {
+    // The original request error is still the one shown to the admin.
+  }
+}
+
 export function getAdminToken() {
   const token = localStorage.getItem(tokenKey) || sessionStorage.getItem(tokenKey)
   if (token) sessionStorage.removeItem(tokenKey)
@@ -956,7 +986,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
 
   if (!response.ok) {
+    const reportResponse = response.clone()
     const errorPayload = await parseErrorPayload(response, 'Request failed.')
+    await reportAdminApiFailure(path, options.method ? String(options.method) : 'GET', reportResponse, errorPayload.message)
     throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
   }
 

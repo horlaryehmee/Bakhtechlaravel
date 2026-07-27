@@ -99,6 +99,35 @@ class SiteIncidentController extends Controller
         ];
     }
 
+    public function clientReport(Request $request, SiteIncidentService $incidents)
+    {
+        $data = $request->validate([
+            'path' => ['required', 'string', 'max:1000'],
+            'method' => ['nullable', 'string', 'max:16'],
+            'status' => ['required', 'integer', 'min:400', 'max:599'],
+            'message' => ['nullable', 'string', 'max:1000'],
+            'body' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        $incidents->report([
+            'severity' => $data['status'] >= 500 ? 'error' : 'warning',
+            'type' => 'frontend_api_failure',
+            'source' => 'admin-frontend',
+            'message' => $data['message'] ?: "Admin API request failed with HTTP {$data['status']}",
+            'url' => $data['path'],
+            'method' => $data['method'] ?? '',
+            'context' => [
+                'status' => $data['status'],
+                'body' => $data['body'] ?? '',
+                'browserUrl' => $request->headers->get('referer'),
+                'userAgent' => $request->userAgent(),
+                'ip' => $request->ip(),
+            ],
+        ]);
+
+        return response()->json(['recorded' => true]);
+    }
+
     private function shape(object $row, bool $includeDetails): array
     {
         return [

@@ -131,6 +131,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/incidents/{id}', [SiteIncidentController::class, 'show'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/{id}/resolve', [SiteIncidentController::class, 'resolve'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/check', [SiteIncidentController::class, 'runCheck'])->middleware(['admin.role:admin', 'throttle:10,1']);
+    Route::post('/admin/incidents/client-report', [SiteIncidentController::class, 'clientReport'])->middleware(['admin.role:admin', 'throttle:30,1']);
     Route::get('/admin/redis/settings', [RedisSettingsController::class, 'show'])->middleware('admin.role:admin');
     Route::post('/admin/redis/settings', [RedisSettingsController::class, 'update'])->middleware('admin.role:admin');
     Route::put('/admin/redis/settings', [RedisSettingsController::class, 'update'])->middleware('admin.role:admin');
