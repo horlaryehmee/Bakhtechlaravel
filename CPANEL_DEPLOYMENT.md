@@ -92,6 +92,17 @@ php artisan optimize
 chmod -R 775 storage bootstrap/cache public/uploads
 ```
 
+For repeat deployments, use the bundled deploy script from the repository root:
+
+```bash
+bash scripts/cpanel-deploy.sh
+```
+
+The script pulls `main` from `https://github.com/horlaryehmee/Bakhtechlaravel.git`,
+installs production Composer dependencies, runs migrations, clears/rebuilds
+Laravel caches, and fails if the admin controller or white logo asset is
+missing.
+
 Run those commands only after the updated `app/`, `routes/`, and `database/`
 files have been deployed. If the frontend is deployed before the backend route
 files, the admin may show an API route error or a method-not-supported error.

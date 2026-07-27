@@ -20,7 +20,8 @@
     RewriteRule ^portfolio-marquee/(.*)$ public/portfolio-marquee/$1 [L]
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
-    RewriteRule ^(bakhtech-logo-dark\.png|bakhtech-logo-light\.png|bakhtech-logo-white\.png|bg1\.jpg|favicon\.png|favicon\.svg|icons\.svg|robots\.txt)$ public/$1 [L]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^(.+)$ public/$1 [L]
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
