@@ -23,4 +23,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->report(function (\Throwable $exception): void {
+            try {
+                $request = request();
+                app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                    'url' => $request->fullUrl(),
+                    'path' => $request->path(),
+                    'method' => $request->method(),
+                    'ip' => $request->ip(),
+                    'userAgent' => (string) $request->userAgent(),
+                    'environment' => app()->environment(),
+                ]);
+            } catch (\Throwable) {
+                //
+            }
+        });
     })->create();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MailSettingsController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\RedisSettingsController;
+use App\Http\Controllers\Api\SiteIncidentController;
 use App\Http\Controllers\Api\SystemMaintenanceController;
 use App\Http\Middleware\RequireAdminToken;
 use Illuminate\Support\Facades\DB;
@@ -126,6 +127,10 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/mail/logs/{id}', [MailSettingsController::class, 'log'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/mail/logs/clear', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
+    Route::get('/admin/incidents', [SiteIncidentController::class, 'index'])->middleware('admin.role:admin');
+    Route::get('/admin/incidents/{id}', [SiteIncidentController::class, 'show'])->whereNumber('id')->middleware('admin.role:admin');
+    Route::post('/admin/incidents/{id}/resolve', [SiteIncidentController::class, 'resolve'])->whereNumber('id')->middleware('admin.role:admin');
+    Route::post('/admin/incidents/check', [SiteIncidentController::class, 'runCheck'])->middleware(['admin.role:admin', 'throttle:10,1']);
     Route::get('/admin/redis/settings', [RedisSettingsController::class, 'show'])->middleware('admin.role:admin');
     Route::post('/admin/redis/settings', [RedisSettingsController::class, 'update'])->middleware('admin.role:admin');
     Route::put('/admin/redis/settings', [RedisSettingsController::class, 'update'])->middleware('admin.role:admin');

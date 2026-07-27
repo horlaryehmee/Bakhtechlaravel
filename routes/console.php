@@ -131,6 +131,20 @@ Artisan::command('booking:send-reminders', function () {
     $this->info("Processed {$result['processed']} reminders: {$result['sent']} sent, {$result['failed']} failed, {$expired} expired.");
 })->purpose('Send due booking reminder emails');
 
+Artisan::command('site:monitor {--url=}', function () {
+    $result = app(\App\Services\SiteIncidentService::class)->runHealthCheck($this->option('url') ?: null);
+
+    if ($result['ok']) {
+        $this->info("Site health check passed: {$result['url']} ({$result['status']}, {$result['durationMs']}ms)");
+
+        return 0;
+    }
+
+    $this->error("Site health check failed: {$result['url']} ({$result['status']}, {$result['durationMs']}ms)");
+
+    return 1;
+})->purpose('Check the public website health endpoint and email/log an incident when it fails');
+
 Schedule::command('booking:send-reminders')
     ->everyMinute()
     ->withoutOverlapping();

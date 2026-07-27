@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } 
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
+  Activity,
+  AlertTriangle,
   CalendarDays,
   CreditCard,
   ChevronLeft,
@@ -81,6 +83,9 @@ import {
   type ReviewInput,
   type SeoAudit,
   type SiteEmailLog,
+  type SiteHealthCheck,
+  type SiteIncident,
+  type SiteIncidentSummary,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
@@ -90,7 +95,7 @@ type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | '
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
-type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'smtp' | 'email-logs' | 'advanced'
+type SiteSettingsSection = 'menu' | 'theme' | 'site' | 'social' | 'smtp' | 'incidents' | 'email-logs' | 'advanced'
 type ReviewAdminSection = 'reviews' | 'google' | 'trustpilot' | 'settings'
 type LocationTab = 'google-meet' | 'zoom' | 'whatsapp-call' | 'in-person' | 'phone-call'
 type MediaPickerState = {
@@ -245,6 +250,7 @@ const emptyRedisStatus: RedisStatus = {
 }
 
 const defaultInvoiceListMeta: InvoiceListMeta = { page: 1, perPage: 25, total: 0, lastPage: 1 }
+const defaultIncidentSummary: SiteIncidentSummary = { open: 0, resolved: 0, critical: 0, total: 0 }
 
 const locationTabs: Array<{ id: LocationTab; label: string; type: string; placeholder: string; help: string }> = [
   { id: 'google-meet', label: 'Google Meet', type: 'google_meet', placeholder: 'Google Meet links are generated automatically after Google is connected', help: 'Enable this to let clients choose Google Meet. The system creates the link from your connected Google Calendar.' },
@@ -880,6 +886,15 @@ export function AdminDashboard() {
   const [siteEmailLogsMeta, setSiteEmailLogsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
   const [siteEmailLogStatus, setSiteEmailLogStatus] = useState('')
   const [siteEmailLogSearch, setSiteEmailLogSearch] = useState('')
+  const [siteIncidents, setSiteIncidents] = useState<SiteIncident[]>([])
+  const [selectedSiteIncident, setSelectedSiteIncident] = useState<SiteIncident | null>(null)
+  const [siteIncidentChecks, setSiteIncidentChecks] = useState<SiteHealthCheck[]>([])
+  const [siteIncidentSummary, setSiteIncidentSummary] = useState<SiteIncidentSummary>(defaultIncidentSummary)
+  const [siteIncidentsMeta, setSiteIncidentsMeta] = useState<InvoiceListMeta>(defaultInvoiceListMeta)
+  const [siteIncidentStatus, setSiteIncidentStatus] = useState('open')
+  const [siteIncidentSeverity, setSiteIncidentSeverity] = useState('')
+  const [siteIncidentSearch, setSiteIncidentSearch] = useState('')
+  const [siteIncidentChecking, setSiteIncidentChecking] = useState(false)
   const [deploymentRunning, setDeploymentRunning] = useState(false)
   const [deploymentResults, setDeploymentResults] = useState<DeploymentCommandResult[]>([])
   const [deploymentCompletedAt, setDeploymentCompletedAt] = useState('')
@@ -979,6 +994,9 @@ export function AdminDashboard() {
 
     if (siteSettingsSection === 'email-logs') {
       void loadSiteEmailLogs()
+    }
+    if (siteSettingsSection === 'incidents') {
+      void loadSiteIncidents()
     }
   }, [activeSection, siteSettingsSection])
 
@@ -2302,6 +2320,66 @@ export function AdminDashboard() {
     } catch (previewError) {
       setSelectedSiteEmailLog(null)
       setError(previewError instanceof Error ? previewError.message : 'Unable to load email preview.')
+    }
+  }
+
+  async function loadSiteIncidents(page = 1) {
+    setError('')
+    try {
+      const result = await api.siteIncidents({
+        page,
+        perPage: siteIncidentsMeta.perPage,
+        status: siteIncidentStatus,
+        severity: siteIncidentSeverity,
+        search: siteIncidentSearch,
+      })
+      setSiteIncidents(result.incidents)
+      setSiteIncidentSummary(result.summary)
+      setSiteIncidentChecks(result.checks)
+      setSiteIncidentsMeta(result.meta)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load incident reports.')
+    }
+  }
+
+  async function previewSiteIncident(incident: SiteIncident) {
+    setSelectedSiteIncident(incident)
+    setError('')
+    try {
+      const result = await api.siteIncident(incident.id)
+      setSelectedSiteIncident(result.incident)
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Unable to load incident details.')
+    }
+  }
+
+  async function resolveSiteIncident(incident: SiteIncident) {
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.resolveSiteIncident(incident.id)
+      setSelectedSiteIncident((current) => current?.id === incident.id ? result.incident : current)
+      notify('Incident marked as resolved.')
+      await loadSiteIncidents(siteIncidentsMeta.page)
+    } catch (resolveError) {
+      setError(resolveError instanceof Error ? resolveError.message : 'Unable to resolve incident.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function runSiteIncidentCheck() {
+    setSiteIncidentChecking(true)
+    setError('')
+    try {
+      const result = await api.runSiteIncidentCheck()
+      setSiteIncidentChecks(result.checks)
+      notify(result.health.ok ? `Health check passed in ${result.health.durationMs}ms.` : 'Health check failed and an incident was recorded.')
+      await loadSiteIncidents(1)
+    } catch (checkError) {
+      setError(checkError instanceof Error ? checkError.message : 'Unable to run health check.')
+    } finally {
+      setSiteIncidentChecking(false)
     }
   }
 
@@ -8144,6 +8222,7 @@ export function AdminDashboard() {
       { id: 'site', label: 'Site Info', icon: Settings },
       { id: 'social', label: 'Social Links', icon: Link2 },
       { id: 'smtp', label: 'SMTP', icon: Send },
+      { id: 'incidents', label: 'Incidents', icon: AlertTriangle },
       { id: 'email-logs', label: 'Email Logs', icon: Mail },
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
@@ -8514,6 +8593,168 @@ export function AdminDashboard() {
       ) : null}
       </>
     )
+    const renderSiteIncidents = () => (
+      <>
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-red-600">Website monitoring</p>
+            <h3 className="mt-1 text-xl font-black text-gray-900">Incident reports</h3>
+            <p className="mt-2 text-sm font-semibold text-gray-500">Server errors, database failures, health-check failures, and alert emails are tracked here.</p>
+          </div>
+          <Button type="button" disabled={siteIncidentChecking} className="rounded-xl bg-red-600 text-white" onClick={() => void runSiteIncidentCheck()}>
+            {siteIncidentChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+            Run health check
+          </Button>
+        </div>
+
+        <div className="mb-5 grid gap-3 md:grid-cols-4">
+          {[
+            ['Open', siteIncidentSummary.open, 'text-red-700 bg-red-50'],
+            ['Critical', siteIncidentSummary.critical, 'text-orange-700 bg-orange-50'],
+            ['Resolved', siteIncidentSummary.resolved, 'text-emerald-700 bg-emerald-50'],
+            ['Total', siteIncidentSummary.total, 'text-gray-700 bg-gray-50'],
+          ].map(([label, value, tone]) => (
+            <div key={String(label)} className={cn('rounded-2xl border border-gray-100 p-4', String(tone))}>
+              <p className="text-xs font-black uppercase tracking-wide opacity-70">{label}</p>
+              <p className="mt-2 text-3xl font-black">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-5 grid gap-3 lg:grid-cols-4">
+          {siteIncidentChecks.map((check) => (
+            <div key={check.key} className={cn('rounded-2xl border p-4', check.ok ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-red-100 bg-red-50 text-red-800')}>
+              <div className="flex items-center gap-2">
+                {check.ok ? <SearchCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <h4 className="text-sm font-black">{check.label}</h4>
+              </div>
+              <p className="mt-2 text-xs font-semibold leading-5">{check.message}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-4 grid gap-3 md:grid-cols-[1fr_160px_160px_auto]">
+          <input className={mailFieldClass} value={siteIncidentSearch} placeholder="Search message, type, source, or URL" onChange={(event) => setSiteIncidentSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void loadSiteIncidents(1) } }} />
+          <select className={mailFieldClass} value={siteIncidentStatus} onChange={(event) => setSiteIncidentStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <select className={mailFieldClass} value={siteIncidentSeverity} onChange={(event) => setSiteIncidentSeverity(event.target.value)}>
+            <option value="">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="error">Error</option>
+            <option value="warning">Warning</option>
+            <option value="info">Info</option>
+          </select>
+          <Button type="button" className="rounded-xl bg-gray-900 text-white" onClick={() => void loadSiteIncidents(1)}>Filter</Button>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <tr>
+                <th className="px-4 py-3">Last seen</th>
+                <th className="px-4 py-3">Issue</th>
+                <th className="px-4 py-3">Where</th>
+                <th className="px-4 py-3">Count</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {siteIncidents.map((incident) => (
+                <tr key={incident.id} className="align-top">
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-500">{incident.lastSeenAt ? new Date(incident.lastSeenAt).toLocaleString() : ''}</td>
+                  <td className="max-w-lg px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn('rounded-full px-2.5 py-1 text-xs font-black uppercase', incident.severity === 'critical' ? 'bg-orange-50 text-orange-700' : incident.severity === 'error' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700')}>{incident.severity}</span>
+                      <span className="font-black text-gray-900">{incident.type}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-gray-600">{incident.message}</p>
+                  </td>
+                  <td className="max-w-sm px-4 py-3 text-xs font-semibold text-gray-500">
+                    <p className="truncate">{incident.url || incident.source}</p>
+                    {incident.file ? <p className="mt-1 truncate">{incident.file}{incident.line ? `:${incident.line}` : ''}</p> : null}
+                  </td>
+                  <td className="px-4 py-3 font-black text-gray-900">{incident.occurrenceCount}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase', incident.status === 'open' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700')}>{incident.status}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="ghost" className="rounded-xl border border-gray-200" onClick={() => void previewSiteIncident(incident)}>
+                        <Eye className="h-4 w-4" />
+                        Details
+                      </Button>
+                      {incident.status === 'open' ? (
+                        <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-emerald-100 text-emerald-700" onClick={() => void resolveSiteIncident(incident)}>
+                          Resolve
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {siteIncidents.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center font-semibold text-gray-500">No incidents found.</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm font-bold text-gray-500">
+          <span>{siteIncidentsMeta.total} total incidents</span>
+          {renderNumberedPagination({
+            currentPage: siteIncidentsMeta.page,
+            totalPages: siteIncidentsMeta.lastPage,
+            onPage: (page) => void loadSiteIncidents(page),
+          })}
+        </div>
+      </section>
+      {selectedSiteIncident ? (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Incident details">
+          <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 p-5">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-red-600">Incident details</p>
+                <h3 className="mt-1 truncate text-lg font-black text-gray-900">{selectedSiteIncident.type}</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">{selectedSiteIncident.message}</p>
+              </div>
+              <div className="flex gap-2">
+                {selectedSiteIncident.status === 'open' ? (
+                  <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-emerald-100 text-emerald-700" onClick={() => void resolveSiteIncident(selectedSiteIncident)}>Resolve</Button>
+                ) : null}
+                <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" onClick={() => setSelectedSiteIncident(null)} title="Close incident details">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3 border-b border-gray-100 bg-gray-50 px-5 py-3 text-xs font-bold text-gray-500 sm:grid-cols-3">
+              <span>Severity: {selectedSiteIncident.severity}</span>
+              <span>Status: {selectedSiteIncident.status}</span>
+              <span>Occurrences: {selectedSiteIncident.occurrenceCount}</span>
+              <span>First seen: {selectedSiteIncident.firstSeenAt ? new Date(selectedSiteIncident.firstSeenAt).toLocaleString() : ''}</span>
+              <span>Last seen: {selectedSiteIncident.lastSeenAt ? new Date(selectedSiteIncident.lastSeenAt).toLocaleString() : ''}</span>
+              <span>Last alert: {selectedSiteIncident.lastNotifiedAt ? new Date(selectedSiteIncident.lastNotifiedAt).toLocaleString() : 'Not sent'}</span>
+            </div>
+            <div className="overflow-y-auto p-5">
+              <div className="grid gap-3 text-sm font-semibold text-gray-700 md:grid-cols-2">
+                <p><span className="font-black text-gray-900">URL:</span> {selectedSiteIncident.url || 'N/A'}</p>
+                <p><span className="font-black text-gray-900">Method:</span> {selectedSiteIncident.method || 'N/A'}</p>
+                <p className="md:col-span-2"><span className="font-black text-gray-900">File:</span> {selectedSiteIncident.file || 'N/A'}{selectedSiteIncident.line ? `:${selectedSiteIncident.line}` : ''}</p>
+              </div>
+              <h4 className="mt-5 text-sm font-black uppercase tracking-wide text-gray-500">Context</h4>
+              <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-gray-950 p-4 text-xs leading-5 text-gray-100">{JSON.stringify(selectedSiteIncident.context || {}, null, 2)}</pre>
+              <h4 className="mt-5 text-sm font-black uppercase tracking-wide text-gray-500">Trace</h4>
+              <pre className="mt-2 max-h-80 overflow-auto rounded-xl bg-gray-950 p-4 text-xs leading-5 text-gray-100">{selectedSiteIncident.trace || 'No trace available.'}</pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      </>
+    )
     const renderAdvancedSettings = () => (
       <div className="grid gap-6">
         <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
@@ -8712,7 +8953,7 @@ export function AdminDashboard() {
           text="Configure global settings for your website including contact info, social media links, and more." 
         />
         <form className="grid gap-6" onSubmit={saveSettings}>
-          <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-7">
+          <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm sm:grid-cols-2 xl:grid-cols-8">
             {settingSections.map((section) => {
               const Icon = section.icon
               return (
@@ -8808,6 +9049,8 @@ export function AdminDashboard() {
             </section>
           ) : siteSettingsSection === 'smtp' ? (
             renderSmtpSettings()
+          ) : siteSettingsSection === 'incidents' ? (
+            renderSiteIncidents()
           ) : siteSettingsSection === 'email-logs' ? (
             renderSiteEmailLogs()
           ) : siteSettingsSection === 'advanced' ? (
@@ -8820,7 +9063,7 @@ export function AdminDashboard() {
             </section>
           )}
 
-          {!['smtp', 'email-logs'].includes(siteSettingsSection) ? (
+          {!['smtp', 'incidents', 'email-logs'].includes(siteSettingsSection) ? (
             <div>
               <Button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">Save Settings</Button>
             </div>

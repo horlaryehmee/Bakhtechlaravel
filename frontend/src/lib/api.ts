@@ -723,6 +723,41 @@ export type SiteEmailLog = {
   createdAt: string
 }
 
+export type SiteIncident = {
+  id: number
+  severity: 'info' | 'warning' | 'error' | 'critical' | string
+  type: string
+  source: string
+  message: string
+  url: string
+  method: string
+  file: string
+  line: number | null
+  status: 'open' | 'resolved'
+  occurrenceCount: number
+  firstSeenAt: string
+  lastSeenAt: string
+  lastNotifiedAt: string
+  resolvedAt: string
+  context: Record<string, unknown>
+  trace: string
+}
+
+export type SiteHealthCheck = {
+  key: string
+  label: string
+  ok: boolean
+  status: string
+  message: string
+}
+
+export type SiteIncidentSummary = {
+  open: number
+  resolved: number
+  critical: number
+  total: number
+}
+
 export type DeploymentCommandResult = {
   command: string
   exitCode: number
@@ -1292,6 +1327,19 @@ export const api = {
   },
   clearSiteEmailLogs() {
     return request<{ deleted: number }>('/api/admin/mail/logs/clear', { method: 'POST' })
+  },
+  siteIncidents(params: Record<string, string | number> = {}) {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    return request<{ incidents: SiteIncident[]; summary: SiteIncidentSummary; checks: SiteHealthCheck[]; meta: InvoiceListMeta }>(`/api/admin/incidents${query ? `?${query}` : ''}`)
+  },
+  siteIncident(id: number) {
+    return request<{ incident: SiteIncident }>(`/api/admin/incidents/${id}`)
+  },
+  resolveSiteIncident(id: number) {
+    return request<{ incident: SiteIncident }>(`/api/admin/incidents/${id}/resolve`, { method: 'POST' })
+  },
+  runSiteIncidentCheck() {
+    return request<{ health: { ok: boolean; status: number; url: string; durationMs: number; message?: string }; checks: SiteHealthCheck[] }>('/api/admin/incidents/check', { method: 'POST' })
   },
   runDeploymentMaintenance() {
     return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/settings', {
