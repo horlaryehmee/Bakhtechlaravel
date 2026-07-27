@@ -8,8 +8,8 @@ import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { FeatureCard } from '@/components/ui/grid-feature-cards'
 import { StaggerReviews } from '@/components/ui/stagger-reviews'
-import { api, type Project, type Review } from '@/lib/api'
-import { loadPublicReviews } from '@/lib/public-reviews'
+import { api, type Project } from '@/lib/api'
+import { usePublicReviews } from '@/hooks/usePublicReviews'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 import { cn } from '@/lib/utils'
 
@@ -238,7 +238,7 @@ function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: 
 
 export function HomeBelowFold({ isDark }: { isDark: boolean }) {
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
+  const { reviews } = usePublicReviews()
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [reviewLinks, setReviewLinks] = useState<ReviewLinks>({ google: '', trustpilot: '' })
   const [activeVideo, setActiveVideo] = useState<ProjectVideoMedia | null>(null)
@@ -249,11 +249,10 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
     let cancelled = false
 
     async function loadPortfolioData() {
-      const [projectResult, settingsResult, reviewResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings(), loadPublicReviews()])
+      const [projectResult, settingsResult] = await Promise.allSettled([api.publicProjects(), api.publicSettings()])
       if (cancelled) return
 
       setPortfolioProjects(projectResult.status === 'fulfilled' ? projectResult.value.projects.slice(0, 6) : [])
-      setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value : [])
       const settings = settingsResult.status === 'fulfilled' ? settingsResult.value.settings : {}
       setShowPortfolioDescriptions(settings.homePortfolioShowDescriptions !== 'false')
       setReviewLinks({
@@ -270,20 +269,6 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
     return () => {
       cancelled = true
       window.clearTimeout(timeoutId)
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    loadPublicReviews()
-      .then((result) => {
-        if (!cancelled) setReviews(result)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
     }
   }, [])
 

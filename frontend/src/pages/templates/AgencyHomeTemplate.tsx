@@ -57,7 +57,7 @@ import { SafeImage } from '@/components/ui/safe-image'
 import { OrbitalSphereGlobe } from '@/components/ui/orbital-sphere-globe'
 import { AgencyFooter, defaultAgencyFooterSettings } from '@/components/layout/AgencyFooter'
 import { api, type Project, type Review } from '@/lib/api'
-import { loadPublicReviews } from '@/lib/public-reviews'
+import { usePublicReviews } from '@/hooks/usePublicReviews'
 import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, getYoutubeThumbnailUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
@@ -704,7 +704,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
   const [projectImageProjects, setProjectImageProjects] = useState<Project[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
+  const { reviews, reviewsLoaded } = usePublicReviews()
   const [homepageDataLoaded, setHomepageDataLoaded] = useState(false)
   const [showPortfolioDescriptions, setShowPortfolioDescriptions] = useState(true)
   const [founderDeskImage, setFounderDeskImage] = useState('/founder-portrait.png')
@@ -822,8 +822,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   useEffect(() => {
     let cancelled = false
 
-    Promise.allSettled([api.publicProjects(), api.publicSettings(), loadPublicReviews()])
-      .then(([projectResult, settingsResult, reviewResult]) => {
+    Promise.allSettled([api.publicProjects(), api.publicSettings()])
+      .then(([projectResult, settingsResult]) => {
         if (cancelled) return
 
         const projects = projectResult.status === 'fulfilled' ? projectResult.value.projects : []
@@ -836,7 +836,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
         })
         setProjectImageProjects(imageProjects)
         setPortfolioProjects(projects.slice(0, 6))
-        setReviews(reviewResult.status === 'fulfilled' ? reviewResult.value : [])
         if (settingsResult.status === 'fulfilled') {
           const publicSettings = settingsResult.value.settings
           setShowPortfolioDescriptions(publicSettings.homePortfolioShowDescriptions !== 'false')
@@ -867,20 +866,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
           setHomepageDataLoaded(true)
         }
       })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    loadPublicReviews()
-      .then((result) => {
-        if (!cancelled) setReviews(result)
-      })
-      .catch(() => undefined)
 
     return () => {
       cancelled = true
@@ -1631,7 +1616,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   <TestimonialCard review={review} />
                 </div>
               ))
-            ) : !homepageDataLoaded ? (
+            ) : !homepageDataLoaded || !reviewsLoaded ? (
               Array.from({ length: 4 }).map((_, index) => <TestimonialCardSkeleton key={`testimonial-skeleton-${index}`} />)
             ) : (
               <div className="flex h-[18rem] w-[72vw] shrink-0 snap-center items-center justify-center rounded-[1.35rem] border border-black/8 bg-white/55 p-8 text-center text-sm font-semibold text-black/55 md:h-[20rem] md:w-[34rem] lg:w-[39rem]">
