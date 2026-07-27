@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { api } from '@/lib/api'
+import { whiteBakhtechLogo } from '@/data/brand-assets'
 
 export type AgencyFooterSettings = {
   footerCtaTitle: string
@@ -183,7 +184,7 @@ export function AgencyFooter({ settings }: { settings?: AgencyFooterSettings }) 
 
         <div className="mt-16 grid gap-12 lg:grid-cols-[1.1fr_1.6fr] lg:gap-20">
           <div>
-            <img src="/bakhtech-logo-light.png" alt="Bakhtech Solutions" className="h-9 w-auto object-contain" width="108" height="36" decoding="async" />
+            <img src={whiteBakhtechLogo} alt="Bakhtech Solutions" className="h-9 w-auto object-contain" width="108" height="36" decoding="async" />
             <p className="mt-5 max-w-xs text-sm font-normal leading-6 text-white/45">
               {footerSettings.footerDescription}
             </p>

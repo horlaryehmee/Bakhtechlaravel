@@ -50,6 +50,7 @@ import {
   siVite,
 } from 'simple-icons'
 import { navigation } from '@/data/site'
+import { whiteBakhtechLogo } from '@/data/brand-assets'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { CpuArchitecture } from '@/components/ui/cpu-architecture'
 import { SafeImage } from '@/components/ui/safe-image'
@@ -1015,7 +1016,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
 
         <nav className="relative z-20 mx-auto flex max-w-[86rem] items-center justify-between py-6 md:py-7">
           <Link to="/" className="flex items-center" aria-label="Bakhtech home" onClick={() => setMobileMenuOpen(false)}>
-            <img src="/bakhtech-logo-light.png" alt="Bakhtech" className="h-8 w-auto object-contain md:h-10" width="120" height="40" decoding="async" />
+            <img src={whiteBakhtechLogo} alt="Bakhtech" className="h-8 w-auto object-contain md:h-10" width="120" height="40" decoding="async" />
           </Link>
           <div className="hidden items-center gap-14 text-sm font-bold text-white/82 md:flex">
             {visibleNavigation.map((item) => (

@@ -1365,7 +1365,7 @@ export const api = {
     return request<{ page: CmsPage }>(`/api/pages/${encodeURIComponent(slug)}`)
   },
   publicReviews() {
-    return request<{ reviews: Review[] }>('/api/reviews')
+    return request<{ reviews: Review[] }>(`/api/reviews?t=${Date.now()}`)
   },
   publicPricing(currency = 'NGN') {
     return request<{ categories: PricingCategory[]; currencies: string[] }>(`/api/pricing?currency=${encodeURIComponent(currency)}`)
