@@ -42,6 +42,10 @@ that checkout to `/home/bakhtech/public_html`. It preserves `.env`, `storage/`,
 backups in `/home/bakhtech/.bakhtech-deploy-backups` and restores the previous
 release automatically if a local validation step fails.
 
+The production `.user.ini` forces PHP OPcache to revalidate source timestamps
+on every request. This prevents LiteSpeed from continuing to execute a cached
+empty controller after Git has repaired the file.
+
 If the domain document root can be changed, `/home/bakhtech/public_html/public`
 is preferred. Otherwise the root `.htaccess` safely forwards requests to the
 Laravel public directory.
