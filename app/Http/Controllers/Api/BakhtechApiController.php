@@ -213,53 +213,59 @@ class BakhtechApiController extends Controller
 
     public function dashboard()
     {
-        try {
-            $seoAudit = app(SeoAuditService::class);
-            $analytics = app(VisitorAnalyticsService::class);
-            $today = now()->toDateString();
-            $seo = $seoAudit->audit()['summary'];
+        $today = now()->toDateString();
+        $safe = function (callable $callback, mixed $fallback = 0) {
+            try {
+                return $callback();
+            } catch (\Throwable $exception) {
+                app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                    'url' => request()->fullUrl(),
+                    'path' => request()->path(),
+                    'method' => request()->method(),
+                    'ip' => request()->ip(),
+                    'userAgent' => (string) request()->userAgent(),
+                    'endpoint' => 'admin.dashboard',
+                ]);
 
-            return [
-                'totals' => [
-                    'projects' => Schema::hasTable('projects') ? DB::table('projects')->count() : 0,
-                    'publishedProjects' => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0,
-                    'bookings' => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0,
-                    'upcomingBookings' => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
-                        ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
-                        : 0,
-                    'visits' => Schema::hasTable('visits') ? DB::table('visits')->count() : 0,
-                    'todayVisits' => Schema::hasTable('visits') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0,
-                ],
-                'seo' => [
-                    'score' => $seo['score'],
-                    'indexedPages' => $seo['indexable'],
-                    'issues' => $seo['critical'] + $seo['warnings'],
-                ],
-                'performance' => ['score' => 88, 'loadTime' => '1.8s', 'mobileScore' => 84],
-                'visits' => [
-                    'topPages' => Schema::hasTable('visits')
-                        ? DB::table('visits')
-                            ->select('path', DB::raw('COUNT(*) as visits'))
-                            ->groupBy('path')
-                            ->orderByDesc('visits')
-                            ->limit(6)
-                            ->get()
-                        : collect(),
-                ],
-                'analytics' => $analytics->dashboard('month'),
-            ];
-        } catch (\Throwable $exception) {
-            app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
-                'url' => request()->fullUrl(),
-                'path' => request()->path(),
-                'method' => request()->method(),
-                'ip' => request()->ip(),
-                'userAgent' => (string) request()->userAgent(),
-                'endpoint' => 'admin.dashboard',
-            ]);
+                return $fallback;
+            }
+        };
 
-            return response()->json($this->dashboardFallback($exception), 200);
-        }
+        $topPages = $safe(function () {
+            if (! Schema::hasTable('visits') || ! Schema::hasColumn('visits', 'path')) {
+                return [];
+            }
+
+            return DB::table('visits')
+                ->select('path', DB::raw('COUNT(*) as visits'))
+                ->groupBy('path')
+                ->orderByDesc('visits')
+                ->limit(6)
+                ->get();
+        }, []);
+
+        $publishedPages = $safe(fn () => Schema::hasTable('pages') ? DB::table('pages')->where('status', 'published')->count() : 0);
+
+        return [
+            'totals' => [
+                'projects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->count() : 0),
+                'publishedProjects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0),
+                'bookings' => $safe(fn () => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0),
+                'upcomingBookings' => $safe(fn () => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
+                    ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
+                    : 0),
+                'visits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->count() : 0),
+                'todayVisits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0),
+            ],
+            'seo' => [
+                'score' => 0,
+                'indexedPages' => $publishedPages,
+                'issues' => 0,
+            ],
+            'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
+            'visits' => ['topPages' => $topPages],
+            'analytics' => $this->dashboardAnalyticsFallback(),
+        ];
     }
 
     public function visitorAnalytics(Request $request, VisitorAnalyticsService $analytics)
@@ -299,34 +305,39 @@ class BakhtechApiController extends Controller
             ],
             'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
             'visits' => ['topPages' => []],
-            'analytics' => [
-                'migrationRequired' => true,
-                'range' => 'month',
-                'periodLabel' => 'Unavailable',
-                'startDate' => now()->subDays(29)->toDateString(),
-                'endDate' => now()->toDateString(),
-                'visitorTotals' => ['week' => 0, 'month' => 0, 'year' => 0],
-                'liveVisitors' => 0,
-                'visitors' => 0,
-                'sessions' => 0,
-                'pageViews' => 0,
-                'excludedBotPageViews' => 0,
-                'averageDurationSeconds' => 0,
-                'bounceRate' => 0,
-                'pagesPerSession' => 0,
-                'topPages' => [],
-                'countries' => [],
-                'sources' => [],
-                'devices' => [],
-                'browsers' => [],
-                'trendInterval' => 'day',
-                'trend' => [],
-                'liveSessions' => [],
-            ],
+            'analytics' => $this->dashboardAnalyticsFallback(),
             'incident' => [
                 'message' => 'Dashboard metrics failed to load. A backend incident was recorded with the full trace.',
                 'error' => $exception->getMessage(),
             ],
+        ];
+    }
+
+    private function dashboardAnalyticsFallback(): array
+    {
+        return [
+            'migrationRequired' => true,
+            'range' => 'month',
+            'periodLabel' => 'Unavailable',
+            'startDate' => now()->subDays(29)->toDateString(),
+            'endDate' => now()->toDateString(),
+            'visitorTotals' => ['week' => 0, 'month' => 0, 'year' => 0],
+            'liveVisitors' => 0,
+            'visitors' => 0,
+            'sessions' => 0,
+            'pageViews' => 0,
+            'excludedBotPageViews' => 0,
+            'averageDurationSeconds' => 0,
+            'bounceRate' => 0,
+            'pagesPerSession' => 0,
+            'topPages' => [],
+            'countries' => [],
+            'sources' => [],
+            'devices' => [],
+            'browsers' => [],
+            'trendInterval' => 'day',
+            'trend' => [],
+            'liveSessions' => [],
         ];
     }
 
