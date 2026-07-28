@@ -6,35 +6,51 @@ folder for cPanel.
 
 ## Required cPanel Layout
 
-Your cPanel Git checkout should show Laravel files at the repository root:
+Do not use `public_html` as the cPanel Git repository path. cPanel updates a
+repository worktree before deployment tasks run, so an interrupted checkout can
+replace a live PHP file with an empty or partial file before Laravel can enter
+maintenance mode.
 
 ```text
-app/
-bootstrap/
-config/
-database/
-public/
-routes/
-storage/
-artisan
-composer.json
+/home/bakhtech/
+|-- repositories/
+|   `-- Bakhtechlaravel/  # cPanel Git checkout; never served by the domain
+`-- public_html/          # deployed application and persistent runtime data
 ```
 
-Best setup: the domain document root should point to:
+Create the cPanel Git repository at:
 
 ```text
-/home/YOUR_CPANEL_USER/REPO_FOLDER/public
+/home/bakhtech/repositories/Bakhtechlaravel
 ```
 
-If cPanel forces the repository itself to be the domain folder, the root
-`.htaccess` forwards requests into `public/`. The `public/.htaccess` file must
-remain Laravel's rewrite file so `/api/...` routes reach `public/index.php`.
+For the one-time migration from the old layout:
+
+1. In **Git Version Control**, remove cPanel management for the repository whose
+   path is `/home/bakhtech/public_html`. cPanel leaves the directory and website
+   files in place.
+2. Clone `https://github.com/horlaryehmee/Bakhtechlaravel.git` as a new
+   cPanel-managed repository at
+   `/home/bakhtech/repositories/Bakhtechlaravel`.
+3. Open the new repository's **Pull or Deploy** screen, click **Update from
+   Remote**, then click **Deploy HEAD Commit**.
+4. Do not reconnect `/home/bakhtech/public_html` as a Git repository.
+
+The committed `.cpanel.yml` publishes a fully staged and verified release from
+that checkout to `/home/bakhtech/public_html`. It preserves `.env`, `storage/`,
+`public/uploads/`, and installed dependencies. It also keeps three source
+backups in `/home/bakhtech/.bakhtech-deploy-backups` and restores the previous
+release automatically if a local validation step fails.
+
+If the domain document root can be changed, `/home/bakhtech/public_html/public`
+is preferred. Otherwise the root `.htaccess` safely forwards requests to the
+Laravel public directory.
 
 ## Configure Backend
 
 1. In cPanel, create a MySQL database and database user.
 2. Give the user all privileges on that database.
-3. Copy `.env.live.example` to `.env`.
+3. Copy `.env.live.example` to `/home/bakhtech/public_html/.env`.
 4. Fill these values:
    - `APP_URL`
    - `DB_HOST` (`localhost` on most cPanel hosts; use `127.0.0.1` only if your host confirms TCP MySQL is enabled)
@@ -81,27 +97,40 @@ updated.
 
 ## First Run
 
-Run from cPanel Terminal inside the repository root:
+For an existing site, keep the current `/home/bakhtech/public_html/.env`. For a
+new site, create that file first, then run:
 
 ```bash
-composer install --no-dev --optimize-autoloader
-php artisan key:generate --force
+cd /home/bakhtech/repositories/Bakhtechlaravel
+APP_ROOT=/home/bakhtech/public_html bash scripts/cpanel-deploy.sh
+cd /home/bakhtech/public_html
+php artisan key:generate
 php artisan migrate --seed --force
-php artisan optimize:clear
-php artisan optimize
 chmod -R 775 storage bootstrap/cache public/uploads
 ```
 
-For repeat deployments, use the bundled deploy script from the repository root:
+Never run `php artisan key:generate --force` on an existing site because it
+invalidates encrypted sessions and application data.
+
+For repeat deployments, use cPanel's **Deploy HEAD Commit** action in the
+repository at `/home/bakhtech/repositories/Bakhtechlaravel`. From a terminal,
+the equivalent command is:
 
 ```bash
-bash scripts/cpanel-deploy.sh
+cd /home/bakhtech/repositories/Bakhtechlaravel
+APP_ROOT=/home/bakhtech/public_html bash scripts/cpanel-deploy.sh
 ```
 
-The script pulls `main` from `https://github.com/horlaryehmee/Bakhtechlaravel.git`,
-installs production Composer dependencies, runs migrations, clears/rebuilds
-Laravel caches, and fails if the admin controller or white logo asset is
-missing.
+The script fetches `main` from
+`https://github.com/horlaryehmee/Bakhtechlaravel.git`, validates every PHP file
+in a temporary release, enters maintenance mode, publishes the verified source,
+repairs any hash mismatch atomically from Git, installs production Composer
+dependencies, runs migrations and database checks, rebuilds Laravel caches, and
+checks the health, readiness, and admin routes.
+
+Do not upload application PHP files with File Manager or FTP. User uploads
+belong only in `public/uploads/`; application releases must go through Git
+deployment.
 
 Run those commands only after the updated `app/`, `routes/`, and `database/`
 files have been deployed. If the frontend is deployed before the backend route
@@ -125,7 +154,7 @@ full administrators can use:
 Admin > Settings > Advanced > Run deployment update
 ```
 
-The button runs:
+The button runs database and cache maintenance only:
 
 ```bash
 php artisan migrate --force
@@ -133,14 +162,15 @@ php artisan optimize:clear
 php artisan optimize
 ```
 
-The first deployment of the button still requires the terminal commands in
-**First Run**, because an older cached route table cannot know about the new
-maintenance endpoint. Future deployments can use the admin button.
+It does not fetch or publish application source and does not replace Git
+deployment.
 
-Add this cPanel cron entry so booking reminders and future scheduled tasks run:
+Add this cPanel cron entry. The scheduler sends booking reminders, monitors the
+public readiness endpoint, and repairs missing, empty, truncated, or modified
+tracked source files from the trusted repository every minute:
 
 ```cron
-* * * * * cd /home/YOUR_CPANEL_USER/REPO_FOLDER && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/bakhtech/public_html && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 Configure payment provider webhooks:

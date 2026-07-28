@@ -813,6 +813,16 @@ class DeploymentSecurityTest extends TestCase
             ]);
     }
 
+    public function test_readiness_endpoint_checks_required_source_classes(): void
+    {
+        $this->getJson('/api/ready')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('service', 'bakhtech-api')
+            ->assertJsonPath('checks.4.key', 'source')
+            ->assertJsonPath('checks.4.ok', true);
+    }
+
     public function test_only_published_cms_pages_are_public(): void
     {
         DB::table('pages')->insert([

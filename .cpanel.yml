@@ -1,4 +1,4 @@
 ---
 deployment:
   tasks:
-    - /bin/bash scripts/cpanel-deploy.sh
+    - APP_ROOT=/home/bakhtech/public_html /bin/bash scripts/cpanel-deploy.sh

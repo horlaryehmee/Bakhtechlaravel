@@ -28,42 +28,6 @@ use Illuminate\Validation\Rule;
 
 class BakhtechApiController extends Controller
 {
-    public function health()
-    {
-        try {
-            DB::connection()->getPdo();
-            DB::table('migrations')->limit(1)->exists();
-        } catch (\Throwable) {
-            return response()->json([
-                'ok' => false,
-                'service' => 'bakhtech-api',
-                'database' => 'disconnected',
-            ], 503);
-        }
-
-        return [
-            'ok' => true,
-            'service' => 'bakhtech-api',
-            'database' => 'connected',
-        ];
-    }
-
-    public function ready()
-    {
-        $checks = app(\App\Services\SiteIncidentService::class)->diagnostics();
-        $required = ['application', 'database', 'storage'];
-        $ok = collect($checks)
-            ->filter(fn ($check) => in_array((string) ($check['key'] ?? ''), $required, true))
-            ->every(fn ($check) => (bool) ($check['ok'] ?? false));
-
-        return response()->json([
-            'ok' => $ok,
-            'service' => 'bakhtech-api',
-            'requiredChecks' => $required,
-            'checks' => $checks,
-        ], $ok ? 200 : 503);
-    }
-
     public function login(Request $request)
     {
         $email = strtolower(trim((string) $request->input('email')));

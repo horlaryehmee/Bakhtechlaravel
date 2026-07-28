@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BakhtechApiController;
 use App\Http\Controllers\Api\BookingCmsController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\MailSettingsController;
 use App\Http\Controllers\Api\PricingController;
@@ -13,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
-Route::get('/health', [BakhtechApiController::class, 'health']);
-Route::get('/ready', [BakhtechApiController::class, 'ready']);
+Route::get('/health', [HealthController::class, 'health']);
+Route::get('/ready', [HealthController::class, 'ready']);
 Route::get('/sitemap.xml', function () {
     $baseUrl = rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
     $paths = collect(['/', '/about', '/portfolio', '/pricing', '/booking', '/contact']);

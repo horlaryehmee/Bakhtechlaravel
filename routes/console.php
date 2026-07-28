@@ -143,8 +143,16 @@ Artisan::command('site:monitor {--url=}', function () {
     $this->error("Site health check failed: {$result['url']} ({$result['status']}, {$result['durationMs']}ms)");
 
     return 1;
-})->purpose('Check the public website health endpoint and email/log an incident when it fails');
+})->purpose('Check the public website readiness endpoint and email/log an incident when it fails');
 
 Schedule::command('booking:send-reminders')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::exec('/bin/bash '.escapeshellarg(base_path('scripts/deployment-integrity.sh')).' --repair --full --quick')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('site:monitor')
+    ->everyFiveMinutes()
     ->withoutOverlapping();

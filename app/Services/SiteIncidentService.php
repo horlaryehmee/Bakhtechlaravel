@@ -32,7 +32,7 @@ class SiteIncidentService
 
     public function runHealthCheck(?string $url = null): array
     {
-        $target = rtrim($url ?: (string) config('app.url'), '/').'/api/health';
+        $target = rtrim($url ?: (string) config('app.url'), '/').'/api/ready';
         $started = microtime(true);
 
         try {
