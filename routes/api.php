@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 Route::get('/health', [BakhtechApiController::class, 'health']);
+Route::get('/ready', [BakhtechApiController::class, 'ready']);
 Route::get('/sitemap.xml', function () {
     $baseUrl = rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
     $paths = collect(['/', '/about', '/portfolio', '/pricing', '/booking', '/contact']);
@@ -44,20 +45,22 @@ Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware(
 Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
 Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
-Route::post('/reviews/google/trustindex-webhook', [BakhtechApiController::class, 'googleReviewWebhook'])->middleware('throttle:20,1');
-Route::post('/reviews/trustpilot/trustindex-webhook', [BakhtechApiController::class, 'trustpilotReviewWebhook'])->middleware('throttle:20,1');
-Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
-Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
-Route::post('/contact', [BakhtechApiController::class, 'submitContact'])->middleware('throttle:3,1');
-Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
-Route::get('/uploads/{filename}', [BakhtechApiController::class, 'uploadedMedia'])->where('filename', '[^/]+');
-Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
-Route::get('/pricing', [PricingController::class, 'publicIndex']);
-Route::post('/pricing/checkout', [PricingController::class, 'createDocumentFromPlan'])->middleware('throttle:20,1');
-Route::get('/booking/event-types', [BakhtechApiController::class, 'bookingEventTypes']);
-Route::get('/booking/calendars', [BakhtechApiController::class, 'bookingCalendars']);
-Route::get('/booking/calendars/{slug}', [BakhtechApiController::class, 'bookingCalendar']);
-Route::get('/booking/event-types/{slug}/availability', [BakhtechApiController::class, 'bookingAvailability']);
+Route::post('/reviews/google/trustindex-webhook', [BakhtechApiController::class, 'googleReviewWebhook'])->middleware('throttle:webhook');
+Route::post('/reviews/trustpilot/trustindex-webhook', [BakhtechApiController::class, 'trustpilotReviewWebhook'])->middleware('throttle:webhook');
+Route::middleware('throttle:public-read')->group(function () {
+    Route::get('/projects', [BakhtechApiController::class, 'publicProjects']);
+    Route::get('/settings', [BakhtechApiController::class, 'publicSettings']);
+    Route::get('/pages/{slug}', [BakhtechApiController::class, 'publicPage']);
+    Route::get('/uploads/{filename}', [BakhtechApiController::class, 'uploadedMedia'])->where('filename', '[^/]+');
+    Route::get('/reviews', [BakhtechApiController::class, 'publicReviews']);
+    Route::get('/pricing', [PricingController::class, 'publicIndex']);
+    Route::get('/booking/event-types', [BakhtechApiController::class, 'bookingEventTypes']);
+    Route::get('/booking/calendars', [BakhtechApiController::class, 'bookingCalendars']);
+    Route::get('/booking/calendars/{slug}', [BakhtechApiController::class, 'bookingCalendar']);
+    Route::get('/booking/event-types/{slug}/availability', [BakhtechApiController::class, 'bookingAvailability']);
+});
+Route::post('/contact', [BakhtechApiController::class, 'submitContact'])->middleware(['throttle:public-write', 'throttle:3,1']);
+Route::post('/pricing/checkout', [PricingController::class, 'createDocumentFromPlan'])->middleware('throttle:public-write');
 Route::post('/booking/bookings', [BakhtechApiController::class, 'bookPublicAppointment'])->middleware('throttle:10,1');
 Route::post('/booking/payments/paystack/initialize', [BookingCmsController::class, 'initializePaystackPayment'])->middleware('throttle:20,1');
 Route::post('/booking/payments/paystack/verify', [BookingCmsController::class, 'verifyPaystackPayment'])->middleware('throttle:30,1');
@@ -73,9 +76,9 @@ Route::post('/invoices/{token}/payments/verify', [InvoiceController::class, 'ver
 Route::get('/invoices/{token}/pdf', [InvoiceController::class, 'printablePdf'])->middleware('throttle:30,1');
 Route::get('/invoices/{token}/receipt', [InvoiceController::class, 'publicReceipt'])->middleware('throttle:60,1');
 Route::get('/invoices/{token}/receipt/pdf', [InvoiceController::class, 'receiptPdf'])->middleware('throttle:30,1');
-Route::post('/invoices/payments/{gateway}/webhook', [InvoiceController::class, 'webhook'])->middleware('throttle:120,1');
+Route::post('/invoices/payments/{gateway}/webhook', [InvoiceController::class, 'webhook'])->middleware('throttle:webhook');
 
-Route::middleware(RequireAdminToken::class)->group(function () {
+Route::middleware([RequireAdminToken::class, 'throttle:admin-read'])->group(function () {
     Route::get('/auth/me', [BakhtechApiController::class, 'me']);
     Route::post('/auth/logout', [BakhtechApiController::class, 'logout']);
 
@@ -88,6 +91,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::get('/admin/seo/audit', [BakhtechApiController::class, 'seoAudit']);
     Route::get('/admin/projects', [BakhtechApiController::class, 'adminProjects']);
     Route::get('/admin/cms', [BakhtechApiController::class, 'cms']);
+    Route::middleware('throttle:admin-write')->group(function () {
     Route::post('/admin/profile-users/{id}/save', [BakhtechApiController::class, 'updateAdminUser'])->middleware('admin.role:admin');
     Route::post('/admin/profile-users/{id}/password', [BakhtechApiController::class, 'updateAdminUserPassword'])->middleware('admin.role:admin');
     Route::post('/admin/profile-users/{id}/delete', [BakhtechApiController::class, 'deleteAdminUser'])->middleware('admin.role:admin');
@@ -148,6 +152,7 @@ Route::middleware(RequireAdminToken::class)->group(function () {
     Route::post('/admin/projects/{id}/save', [BakhtechApiController::class, 'updateProject']);
     Route::put('/admin/projects/{id}', [BakhtechApiController::class, 'updateProject']);
     Route::delete('/admin/projects/{id}', [BakhtechApiController::class, 'deleteProject']);
+    });
 
     Route::prefix('/admin/pricing')->middleware('throttle:60,1')->group(function () {
         Route::get('/', [PricingController::class, 'adminIndex']);

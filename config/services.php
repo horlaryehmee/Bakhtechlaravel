@@ -65,4 +65,8 @@ return [
         'url' => env('IP_GEOLOCATION_URL', 'https://ipwho.is/{ip}'),
     ],
 
+    'monitoring' => [
+        'slow_request_ms' => env('SLOW_REQUEST_MS', 5000),
+    ],
+
 ];

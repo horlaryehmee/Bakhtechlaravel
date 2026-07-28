@@ -45,6 +45,12 @@ class AppServiceProvider extends ServiceProvider
                 ], 429));
         });
 
+        RateLimiter::for('public-read', fn (Request $request) => Limit::perMinute(240)->by($request->ip()));
+        RateLimiter::for('public-write', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
+        RateLimiter::for('admin-read', fn (Request $request) => Limit::perMinute(240)->by(($request->attributes->get('admin')?->id ?? 'guest').'|'.$request->ip()));
+        RateLimiter::for('admin-write', fn (Request $request) => Limit::perMinute(90)->by(($request->attributes->get('admin')?->id ?? 'guest').'|'.$request->ip()));
+        RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
+
         app(MailConfigurationService::class)->apply();
 
         Event::listen(MessageSent::class, function (MessageSent $event) {

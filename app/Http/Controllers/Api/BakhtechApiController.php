@@ -48,6 +48,22 @@ class BakhtechApiController extends Controller
         ];
     }
 
+    public function ready()
+    {
+        $checks = app(\App\Services\SiteIncidentService::class)->diagnostics();
+        $required = ['application', 'database', 'storage'];
+        $ok = collect($checks)
+            ->filter(fn ($check) => in_array((string) ($check['key'] ?? ''), $required, true))
+            ->every(fn ($check) => (bool) ($check['ok'] ?? false));
+
+        return response()->json([
+            'ok' => $ok,
+            'service' => 'bakhtech-api',
+            'requiredChecks' => $required,
+            'checks' => $checks,
+        ], $ok ? 200 : 503);
+    }
+
     public function login(Request $request)
     {
         $email = strtolower(trim((string) $request->input('email')));
