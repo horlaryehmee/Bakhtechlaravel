@@ -22,6 +22,8 @@ if [ ! -d "$SOURCE_ROOT/.git" ]; then
 fi
 
 mkdir -p "$APP_ROOT/storage/app" "$APP_ROOT/storage/framework" "$BACKUP_ROOT"
+# LiteSpeed must be able to traverse the cPanel document root.
+chmod o+x "$APP_ROOT"
 exec 9>"$APP_ROOT/storage/framework/deployment.lock"
 if ! flock -n 9; then
   echo "Deployment failed: another deployment or integrity repair is running." >&2
@@ -134,6 +136,7 @@ finish() {
     php "$APP_ROOT/artisan" up >/dev/null 2>&1
   fi
 
+  chmod o+x "$APP_ROOT"
   rm -rf "$STAGE_ROOT"
   exit "$status"
 }
@@ -185,6 +188,7 @@ ROLLBACK_REQUIRED=true
 remove_paths_deleted_by_release
 
 rsync -a \
+  --no-perms \
   --exclude='.git/' \
   --exclude='.env' \
   --exclude='storage/' \
