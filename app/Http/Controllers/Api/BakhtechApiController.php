@@ -127,7 +127,7 @@ class BakhtechApiController extends Controller
     {
         $session = $request->attributes->get('admin_session');
 
-        if ($session) {
+        if ($session && AdminToken::sessionsSupported()) {
             DB::table('admin_sessions')->where('id', $session->id)->update([
                 'revoked_at' => now(),
                 'updated_at' => now(),
@@ -139,9 +139,11 @@ class BakhtechApiController extends Controller
 
     public function adminSessions(Request $request)
     {
-        if (! Schema::hasTable('admin_sessions')) {
+        if (! AdminToken::sessionsSupported()) {
             return ['sessions' => []];
         }
+
+        AdminToken::touchSession($request->attributes->get('admin_session'));
 
         return [
             'sessions' => $this->adminSessionQuery()
@@ -153,7 +155,7 @@ class BakhtechApiController extends Controller
 
     public function revokeAdminSession(Request $request, int $id)
     {
-        if (! Schema::hasTable('admin_sessions')) {
+        if (! AdminToken::sessionsSupported()) {
             return response()->json(['message' => 'Device session tracking has not been migrated yet.'], 404);
         }
 
@@ -175,7 +177,7 @@ class BakhtechApiController extends Controller
 
     public function logoutAllAdminSessions(Request $request)
     {
-        if (! Schema::hasTable('admin_sessions')) {
+        if (! AdminToken::sessionsSupported()) {
             return ['revoked' => 0];
         }
 
@@ -194,59 +196,61 @@ class BakhtechApiController extends Controller
     public function dashboard()
     {
         try {
-            $today = now()->toDateString();
-            $safe = function (callable $callback, mixed $fallback = 0) {
-                try {
-                    return $callback();
-                } catch (\Throwable $exception) {
-                    app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
-                        'url' => request()->fullUrl(),
-                        'path' => request()->path(),
-                        'method' => request()->method(),
-                        'ip' => request()->ip(),
-                        'userAgent' => (string) request()->userAgent(),
-                        'endpoint' => 'admin.dashboard',
-                    ]);
+            return Cache::store('file')->remember('admin:dashboard:summary:v3', now()->addMinute(), function (): array {
+                $today = now()->toDateString();
+                $safe = function (callable $callback, mixed $fallback = 0) {
+                    try {
+                        return $callback();
+                    } catch (\Throwable $exception) {
+                        app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                            'url' => request()->fullUrl(),
+                            'path' => request()->path(),
+                            'method' => request()->method(),
+                            'ip' => request()->ip(),
+                            'userAgent' => (string) request()->userAgent(),
+                            'endpoint' => 'admin.dashboard',
+                        ]);
 
-                    return $fallback;
-                }
-            };
+                        return $fallback;
+                    }
+                };
 
-            $topPages = $safe(function () {
-                if (! Schema::hasTable('visits') || ! Schema::hasColumn('visits', 'path')) {
-                    return [];
-                }
+                $topPages = $safe(function () {
+                    if (! Schema::hasTable('visits') || ! Schema::hasColumn('visits', 'path')) {
+                        return [];
+                    }
 
-                return DB::table('visits')
-                    ->select('path', DB::raw('COUNT(*) as visits'))
-                    ->groupBy('path')
-                    ->orderByDesc('visits')
-                    ->limit(6)
-                    ->get();
-            }, []);
+                    return DB::table('visits')
+                        ->select('path', DB::raw('COUNT(*) as visits'))
+                        ->groupBy('path')
+                        ->orderByDesc('visits')
+                        ->limit(6)
+                        ->get();
+                }, []);
 
-            $publishedPages = $safe(fn () => Schema::hasTable('pages') ? DB::table('pages')->where('status', 'published')->count() : 0);
+                $publishedPages = $safe(fn () => Schema::hasTable('pages') ? DB::table('pages')->where('status', 'published')->count() : 0);
 
-            return [
-                'totals' => [
-                    'projects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->count() : 0),
-                    'publishedProjects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0),
-                    'bookings' => $safe(fn () => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0),
-                    'upcomingBookings' => $safe(fn () => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
-                        ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
-                        : 0),
-                    'visits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->count() : 0),
-                    'todayVisits' => $safe(fn () => Schema::hasTable('visits') && Schema::hasColumn('visits', 'created_at') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0),
-                ],
-                'seo' => [
-                    'score' => 0,
-                    'indexedPages' => $publishedPages,
-                    'issues' => 0,
-                ],
-                'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
-                'visits' => ['topPages' => $topPages],
-                'analytics' => $this->dashboardAnalyticsFallback(),
-            ];
+                return [
+                    'totals' => [
+                        'projects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->count() : 0),
+                        'publishedProjects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0),
+                        'bookings' => $safe(fn () => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0),
+                        'upcomingBookings' => $safe(fn () => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
+                            ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
+                            : 0),
+                        'visits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->count() : 0),
+                        'todayVisits' => $safe(fn () => Schema::hasTable('visits') && Schema::hasColumn('visits', 'created_at') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0),
+                    ],
+                    'seo' => [
+                        'score' => 0,
+                        'indexedPages' => $publishedPages,
+                        'issues' => 0,
+                    ],
+                    'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
+                    'visits' => ['topPages' => $topPages],
+                    'analytics' => $this->dashboardAnalyticsFallback(),
+                ];
+            });
         } catch (\Throwable $exception) {
             app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
                 'url' => request()->fullUrl(),

@@ -60,8 +60,21 @@ class HealthController extends Controller
         return response()->json([
             'ok' => $ok,
             'service' => 'bakhtech-api',
+            'release' => $this->releaseId(),
             'requiredChecks' => $required,
             'checks' => $checks->values(),
         ], $ok ? 200 : 503);
+    }
+
+    private function releaseId(): string
+    {
+        $path = storage_path('app/deployment-ref');
+        if (! is_readable($path)) {
+            return 'unknown';
+        }
+
+        $release = trim((string) file_get_contents($path));
+
+        return $release !== '' ? substr($release, 0, 12) : 'unknown';
     }
 }

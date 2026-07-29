@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -201,6 +202,7 @@ class DeploymentSecurityTest extends TestCase
 
     public function test_admin_dashboard_tolerates_legacy_analytics_columns(): void
     {
+        Cache::store('file')->forget('admin:dashboard:summary:v3');
         config()->set('security.admin_token_secret', 'legacy-dashboard-secret');
 
         $adminId = DB::table('admins')->insertGetId([
@@ -219,6 +221,7 @@ class DeploymentSecurityTest extends TestCase
                 $table->dropIndex(['visitor_id', 'created_at']);
                 $table->dropIndex(['country', 'created_at']);
                 $table->dropIndex(['source_type', 'created_at']);
+                $table->dropIndex('visits_dashboard_created_at_index');
                 $table->dropColumn('created_at');
             });
         }
@@ -881,6 +884,7 @@ class DeploymentSecurityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('service', 'bakhtech-api')
+            ->assertJsonStructure(['release'])
             ->assertJsonPath('checks.4.key', 'source')
             ->assertJsonPath('checks.4.ok', true);
     }

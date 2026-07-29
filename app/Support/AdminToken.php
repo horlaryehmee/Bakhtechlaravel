@@ -12,30 +12,35 @@ class AdminToken
 {
     public static function make(object $admin, ?Request $request = null): string
     {
+        $trackSession = self::sessionsSupported();
         $expires = now()->addDays(7)->timestamp;
-        $sessionId = (string) Str::uuid();
+        $sessionId = ($trackSession ? '' : 'stateless-').Str::uuid();
         $payload = $admin->id . '|' . $sessionId . '|' . $expires . '|' . Str::random(32);
         $signature = hash_hmac('sha256', $payload, self::secret());
         $token = rtrim(strtr(base64_encode($payload . '|' . $signature), '+/', '-_'), '=');
 
-        if (! Schema::hasTable('admin_sessions')) {
+        if (! $trackSession) {
             return $token;
         }
 
-        DB::table('admin_sessions')->insert([
-            'admin_id' => $admin->id,
-            'session_id' => $sessionId,
-            'token_hash' => hash('sha256', $token),
-            'device_name' => self::deviceName($request),
-            'browser' => self::browser($request?->userAgent() ?? ''),
-            'platform' => self::platform($request?->userAgent() ?? ''),
-            'ip_address' => $request?->ip(),
-            'user_agent' => $request?->userAgent(),
-            'last_used_at' => now(),
-            'expires_at' => now()->setTimestamp($expires),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::table('admin_sessions')->insert([
+                'admin_id' => $admin->id,
+                'session_id' => $sessionId,
+                'token_hash' => hash('sha256', $token),
+                'device_name' => self::deviceName($request),
+                'browser' => self::browser($request?->userAgent() ?? ''),
+                'platform' => self::platform($request?->userAgent() ?? ''),
+                'ip_address' => $request?->ip(),
+                'user_agent' => $request?->userAgent(),
+                'last_used_at' => now(),
+                'expires_at' => now()->setTimestamp($expires),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (Throwable) {
+            return self::makeStateless($admin);
+        }
 
         return $token;
     }
@@ -66,7 +71,7 @@ class AdminToken
         }
 
         try {
-            if (! Schema::hasTable('admin_sessions') || ! self::adminSessionsSchemaReady()) {
+            if (str_starts_with($sessionId, 'stateless-') || ! self::sessionsSupported()) {
                 $admin = self::adminQuery()
                     ->where('id', $adminId)
                     ->first();
@@ -86,11 +91,6 @@ class AdminToken
                 return null;
             }
 
-            DB::table('admin_sessions')->where('id', $session->id)->update([
-                'last_used_at' => now(),
-                'updated_at' => now(),
-            ]);
-
             $admin = self::adminQuery()
                 ->where('id', $adminId)
                 ->first();
@@ -98,6 +98,37 @@ class AdminToken
             return $admin ? ['admin' => $admin, 'session' => $session] : null;
         } catch (Throwable) {
             return null;
+        }
+    }
+
+    public static function sessionsSupported(): bool
+    {
+        try {
+            return Schema::hasTable('admin_sessions') && self::adminSessionsSchemaReady();
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    public static function touchSession(?object $session): void
+    {
+        if (! $session || ! isset($session->id)) {
+            return;
+        }
+
+        try {
+            DB::table('admin_sessions')
+                ->where('id', $session->id)
+                ->where(function ($query) {
+                    $query->whereNull('last_used_at')
+                        ->orWhere('last_used_at', '<=', now()->subMinutes(5));
+                })
+                ->update([
+                    'last_used_at' => now(),
+                    'updated_at' => now(),
+                ]);
+        } catch (Throwable) {
+            //
         }
     }
 
@@ -116,13 +147,26 @@ class AdminToken
 
     private static function adminSessionsSchemaReady(): bool
     {
-        foreach (['session_id', 'token_hash', 'revoked_at', 'expires_at'] as $column) {
+        foreach ([
+            'admin_id', 'session_id', 'token_hash', 'device_name', 'browser', 'platform',
+            'ip_address', 'user_agent', 'last_used_at', 'expires_at', 'revoked_at',
+            'created_at', 'updated_at',
+        ] as $column) {
             if (! Schema::hasColumn('admin_sessions', $column)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private static function makeStateless(object $admin): string
+    {
+        $expires = now()->addDays(7)->timestamp;
+        $payload = $admin->id.'|stateless-'.Str::uuid().'|'.$expires.'|'.Str::random(32);
+        $signature = hash_hmac('sha256', $payload, self::secret());
+
+        return rtrim(strtr(base64_encode($payload.'|'.$signature), '+/', '-_'), '=');
     }
 
     private static function secret(): string

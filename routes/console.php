@@ -145,6 +145,53 @@ Artisan::command('site:monitor {--url=}', function () {
     return 1;
 })->purpose('Check the public website readiness endpoint and email/log an incident when it fails');
 
+Artisan::command('site:verify-admin-runtime', function () {
+    if (! Schema::hasTable('admins')) {
+        $this->error('Admin runtime verification failed: admins table is missing.');
+
+        return 1;
+    }
+
+    $admin = DB::table('admins')->first();
+    if (! $admin) {
+        $this->error('Admin runtime verification failed: no admin account exists.');
+
+        return 1;
+    }
+
+    $token = \App\Support\AdminToken::make($admin);
+    $resolved = null;
+
+    try {
+        $resolved = \App\Support\AdminToken::resolve($token);
+        if (! $resolved || (int) $resolved['admin']->id !== (int) $admin->id) {
+            $this->error('Admin runtime verification failed: a newly issued token could not be resolved.');
+
+            return 1;
+        }
+
+        $request = \Illuminate\Http\Request::create('/api/admin/me', 'GET');
+        $request->attributes->set('admin', $resolved['admin']);
+        $me = app(\App\Http\Controllers\Api\BakhtechApiController::class)->me($request);
+        $dashboard = app(\App\Http\Controllers\Api\BakhtechApiController::class)->dashboard();
+
+        if (! isset($me['admin']['id'], $dashboard['totals'], $dashboard['analytics'])) {
+            $this->error('Admin runtime verification failed: admin endpoint response is incomplete.');
+
+            return 1;
+        }
+    } finally {
+        $session = $resolved['session'] ?? null;
+        if ($session && \App\Support\AdminToken::sessionsSupported()) {
+            DB::table('admin_sessions')->where('id', $session->id)->delete();
+        }
+    }
+
+    $this->info('Admin authentication and dashboard runtime: OK');
+
+    return 0;
+})->purpose('Verify admin token resolution and dashboard responses before completing deployment');
+
 Schedule::command('booking:send-reminders')
     ->everyMinute()
     ->withoutOverlapping();

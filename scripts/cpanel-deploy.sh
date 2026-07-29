@@ -180,6 +180,7 @@ php "$APP_ROOT/artisan" migrate --force
 php "$APP_ROOT/artisan" database:check --repair
 php "$APP_ROOT/artisan" optimize:clear
 php "$APP_ROOT/artisan" optimize
+php "$APP_ROOT/artisan" site:verify-admin-runtime
 
 APP_ROOT="$APP_ROOT" GIT_ROOT="$SOURCE_ROOT" DEPLOY_REF="$RELEASE_REF" INTEGRITY_SKIP_LOCK=1 \
   bash "$APP_ROOT/scripts/deployment-integrity.sh" --repair --full
@@ -204,6 +205,15 @@ fi
 
 ROLLBACK_REQUIRED=false
 printf '%s\n' "$RELEASE_REF" > "$APP_ROOT/storage/app/deployment-ref"
+
+if [ "$APP_ROOT" = "$SOURCE_ROOT" ]; then
+  CURRENT_BRANCH="$(git -C "$SOURCE_ROOT" symbolic-ref --quiet --short HEAD || true)"
+  if [ "$CURRENT_BRANCH" = "$BRANCH" ]; then
+    git -C "$SOURCE_ROOT" update-ref "refs/heads/$BRANCH" "$RELEASE_REF"
+    git -C "$SOURCE_ROOT" read-tree "$RELEASE_REF"
+    echo "Synchronized the cPanel checkout to ${RELEASE_REF}."
+  fi
+fi
 
 find "$BACKUP_ROOT" -maxdepth 1 -type f -name '*-before.tar.gz' -printf '%T@ %p\n' \
   | sort -nr \
