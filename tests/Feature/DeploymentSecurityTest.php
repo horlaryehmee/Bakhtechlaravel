@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class DeploymentSecurityTest extends TestCase
@@ -167,6 +168,66 @@ class DeploymentSecurityTest extends TestCase
 
         config()->set('security.admin_token_secret', 'different-secret');
         $this->assertNull(AdminToken::admin($token));
+    }
+
+    public function test_admin_me_tolerates_legacy_admin_profile_columns(): void
+    {
+        config()->set('security.admin_token_secret', 'legacy-admin-profile-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'legacy-admin@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Legacy Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+        $token = AdminToken::make($admin);
+
+        if (Schema::hasColumn('admins', 'two_factor_enabled')) {
+            Schema::table('admins', fn ($table) => $table->dropColumn('two_factor_enabled'));
+        }
+        if (Schema::hasColumn('admins', 'two_factor_secret')) {
+            Schema::table('admins', fn ($table) => $table->dropColumn('two_factor_secret'));
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/admin/me')
+            ->assertOk()
+            ->assertJsonPath('admin.email', 'legacy-admin@example.test')
+            ->assertJsonPath('admin.twoFactorEnabled', false);
+    }
+
+    public function test_admin_dashboard_tolerates_legacy_analytics_columns(): void
+    {
+        config()->set('security.admin_token_secret', 'legacy-dashboard-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'legacy-dashboard@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Legacy Dashboard Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+        $token = AdminToken::make($admin);
+
+        if (Schema::hasColumn('visits', 'created_at')) {
+            Schema::table('visits', function ($table) {
+                $table->dropIndex(['visitor_id', 'created_at']);
+                $table->dropIndex(['country', 'created_at']);
+                $table->dropIndex(['source_type', 'created_at']);
+                $table->dropColumn('created_at');
+            });
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/admin/dashboard')
+            ->assertOk()
+            ->assertJsonPath('totals.todayVisits', 0)
+            ->assertJsonPath('analytics.migrationRequired', true);
     }
 
     public function test_media_upload_rejects_executable_files(): void

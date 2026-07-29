@@ -193,59 +193,73 @@ class BakhtechApiController extends Controller
 
     public function dashboard()
     {
-        $today = now()->toDateString();
-        $safe = function (callable $callback, mixed $fallback = 0) {
-            try {
-                return $callback();
-            } catch (\Throwable $exception) {
-                app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
-                    'url' => request()->fullUrl(),
-                    'path' => request()->path(),
-                    'method' => request()->method(),
-                    'ip' => request()->ip(),
-                    'userAgent' => (string) request()->userAgent(),
-                    'endpoint' => 'admin.dashboard',
-                ]);
+        try {
+            $today = now()->toDateString();
+            $safe = function (callable $callback, mixed $fallback = 0) {
+                try {
+                    return $callback();
+                } catch (\Throwable $exception) {
+                    app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                        'url' => request()->fullUrl(),
+                        'path' => request()->path(),
+                        'method' => request()->method(),
+                        'ip' => request()->ip(),
+                        'userAgent' => (string) request()->userAgent(),
+                        'endpoint' => 'admin.dashboard',
+                    ]);
 
-                return $fallback;
-            }
-        };
+                    return $fallback;
+                }
+            };
 
-        $topPages = $safe(function () {
-            if (! Schema::hasTable('visits') || ! Schema::hasColumn('visits', 'path')) {
-                return [];
-            }
+            $topPages = $safe(function () {
+                if (! Schema::hasTable('visits') || ! Schema::hasColumn('visits', 'path')) {
+                    return [];
+                }
 
-            return DB::table('visits')
-                ->select('path', DB::raw('COUNT(*) as visits'))
-                ->groupBy('path')
-                ->orderByDesc('visits')
-                ->limit(6)
-                ->get();
-        }, []);
+                return DB::table('visits')
+                    ->select('path', DB::raw('COUNT(*) as visits'))
+                    ->groupBy('path')
+                    ->orderByDesc('visits')
+                    ->limit(6)
+                    ->get();
+            }, []);
 
-        $publishedPages = $safe(fn () => Schema::hasTable('pages') ? DB::table('pages')->where('status', 'published')->count() : 0);
+            $publishedPages = $safe(fn () => Schema::hasTable('pages') ? DB::table('pages')->where('status', 'published')->count() : 0);
 
-        return [
-            'totals' => [
-                'projects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->count() : 0),
-                'publishedProjects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0),
-                'bookings' => $safe(fn () => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0),
-                'upcomingBookings' => $safe(fn () => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
-                    ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
-                    : 0),
-                'visits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->count() : 0),
-                'todayVisits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0),
-            ],
-            'seo' => [
-                'score' => 0,
-                'indexedPages' => $publishedPages,
-                'issues' => 0,
-            ],
-            'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
-            'visits' => ['topPages' => $topPages],
-            'analytics' => $this->dashboardAnalyticsFallback(),
-        ];
+            return [
+                'totals' => [
+                    'projects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->count() : 0),
+                    'publishedProjects' => $safe(fn () => Schema::hasTable('projects') ? DB::table('projects')->where('status', 'published')->count() : 0),
+                    'bookings' => $safe(fn () => Schema::hasTable('bookings') ? DB::table('bookings')->count() : 0),
+                    'upcomingBookings' => $safe(fn () => Schema::hasTable('bookings') && Schema::hasColumn('bookings', 'starts_at')
+                        ? DB::table('bookings')->where('starts_at', '>=', now())->whereNotIn('status', ['cancelled', 'closed'])->count()
+                        : 0),
+                    'visits' => $safe(fn () => Schema::hasTable('visits') ? DB::table('visits')->count() : 0),
+                    'todayVisits' => $safe(fn () => Schema::hasTable('visits') && Schema::hasColumn('visits', 'created_at') ? DB::table('visits')->whereDate('created_at', $today)->count() : 0),
+                ],
+                'seo' => [
+                    'score' => 0,
+                    'indexedPages' => $publishedPages,
+                    'issues' => 0,
+                ],
+                'performance' => ['score' => 0, 'loadTime' => 'Unavailable', 'mobileScore' => 0],
+                'visits' => ['topPages' => $topPages],
+                'analytics' => $this->dashboardAnalyticsFallback(),
+            ];
+        } catch (\Throwable $exception) {
+            app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                'url' => request()->fullUrl(),
+                'path' => request()->path(),
+                'method' => request()->method(),
+                'ip' => request()->ip(),
+                'userAgent' => (string) request()->userAgent(),
+                'endpoint' => 'admin.dashboard',
+                'fallback' => 'top_level',
+            ]);
+
+            return $this->dashboardFallback($exception);
+        }
     }
 
     public function visitorAnalytics(Request $request, VisitorAnalyticsService $analytics)

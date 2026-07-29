@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Support\AdminToken;
 use Closure;
 use Illuminate\Http\Request;
+use Throwable;
 
 class RequireAdminToken
 {
@@ -12,7 +13,17 @@ class RequireAdminToken
     {
         $header = $request->header('Authorization', '');
         $token = preg_replace('/^Bearer\s+/i', '', $header);
-        $session = $token ? AdminToken::resolve($token) : null;
+
+        try {
+            $session = $token ? AdminToken::resolve($token) : null;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Admin session could not be verified. Run deployment maintenance, then sign in again.',
+            ], 503);
+        }
+
         $admin = $session['admin'] ?? null;
 
         if (!$admin) {

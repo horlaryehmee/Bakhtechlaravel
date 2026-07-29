@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Throwable;
 
 class AdminToken
 {
@@ -64,38 +65,64 @@ class AdminToken
             return null;
         }
 
-        if (! Schema::hasTable('admin_sessions')) {
-            $admin = DB::table('admins')
-                ->select('id', 'email', 'name', 'role', 'two_factor_enabled', 'created_at')
+        try {
+            if (! Schema::hasTable('admin_sessions') || ! self::adminSessionsSchemaReady()) {
+                $admin = self::adminQuery()
+                    ->where('id', $adminId)
+                    ->first();
+
+                return $admin ? ['admin' => $admin, 'session' => null] : null;
+            }
+
+            $session = DB::table('admin_sessions')
+                ->where('session_id', $sessionId)
+                ->where('admin_id', $adminId)
+                ->where('token_hash', hash('sha256', $token))
+                ->whereNull('revoked_at')
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if (! $session) {
+                return null;
+            }
+
+            DB::table('admin_sessions')->where('id', $session->id)->update([
+                'last_used_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $admin = self::adminQuery()
                 ->where('id', $adminId)
                 ->first();
 
-            return $admin ? ['admin' => $admin, 'session' => null] : null;
-        }
-
-        $session = DB::table('admin_sessions')
-            ->where('session_id', $sessionId)
-            ->where('admin_id', $adminId)
-            ->where('token_hash', hash('sha256', $token))
-            ->whereNull('revoked_at')
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if (! $session) {
+            return $admin ? ['admin' => $admin, 'session' => $session] : null;
+        } catch (Throwable) {
             return null;
         }
+    }
 
-        DB::table('admin_sessions')->where('id', $session->id)->update([
-            'last_used_at' => now(),
-            'updated_at' => now(),
-        ]);
+    private static function adminQuery()
+    {
+        $columns = ['id', 'email', 'name', 'created_at'];
 
-        $admin = DB::table('admins')
-            ->select('id', 'email', 'name', 'role', 'two_factor_enabled', 'created_at')
-            ->where('id', $adminId)
-            ->first();
+        foreach (['role', 'two_factor_enabled'] as $column) {
+            if (Schema::hasColumn('admins', $column)) {
+                $columns[] = $column;
+            }
+        }
 
-        return $admin ? ['admin' => $admin, 'session' => $session] : null;
+        return DB::table('admins')->select($columns);
+    }
+
+    private static function adminSessionsSchemaReady(): bool
+    {
+        foreach (['session_id', 'token_hash', 'revoked_at', 'expires_at'] as $column) {
+            if (! Schema::hasColumn('admin_sessions', $column)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static function secret(): string
