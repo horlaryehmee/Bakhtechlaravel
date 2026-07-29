@@ -1082,15 +1082,29 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!token || activeSection !== 'dashboard') return
-    const refresh = () => void api.visitorAnalytics({
-      range: analyticsRange,
-      ...(analyticsRange === 'custom' ? { startDate: analyticsStartDate, endDate: analyticsEndDate } : {}),
-    }).then(({ analytics }) => {
-      setDashboard((current) => current ? { ...current, analytics } : current)
-    }).catch(() => undefined)
-    refresh()
-    const interval = window.setInterval(refresh, 15000)
-    return () => window.clearInterval(interval)
+    let disposed = false
+    let refreshing = false
+    const refresh = async () => {
+      if (refreshing || document.visibilityState !== 'visible') return
+      refreshing = true
+      try {
+        const { analytics } = await api.visitorAnalytics({
+          range: analyticsRange,
+          ...(analyticsRange === 'custom' ? { startDate: analyticsStartDate, endDate: analyticsEndDate } : {}),
+        })
+        if (!disposed) setDashboard((current) => current ? { ...current, analytics } : current)
+      } catch {
+        // Keep the last successful analytics snapshot during a transient request failure.
+      } finally {
+        refreshing = false
+      }
+    }
+    void refresh()
+    const interval = window.setInterval(() => void refresh(), 60000)
+    return () => {
+      disposed = true
+      window.clearInterval(interval)
+    }
   }, [token, activeSection, analyticsRange, analyticsStartDate, analyticsEndDate])
 
   useEffect(() => {

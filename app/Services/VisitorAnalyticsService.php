@@ -2,18 +2,17 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class VisitorAnalyticsService
 {
-    public function __construct(private readonly IpGeolocationService $geolocation)
-    {
-    }
+    public function __construct(private readonly IpGeolocationService $geolocation) {}
 
     public function track(Request $request, array $data): void
     {
@@ -21,7 +20,7 @@ class VisitorAnalyticsService
         $path = Str::limit((string) ($data['path'] ?? '/'), 500, '');
         $now = now();
 
-        if (!$this->analyticsSchemaReady()) {
+        if (! $this->analyticsSchemaReady()) {
             if (($data['eventType'] ?? 'pageview') === 'pageview') {
                 DB::table('visits')->insert([
                     'path' => $path,
@@ -32,6 +31,7 @@ class VisitorAnalyticsService
                     'updated_at' => $now,
                 ]);
             }
+
             return;
         }
 
@@ -44,6 +44,7 @@ class VisitorAnalyticsService
                     'updated_at' => $now,
                 ]);
             }
+
             return;
         }
 
@@ -79,50 +80,73 @@ class VisitorAnalyticsService
     {
         [$start, $end, $periodLabel] = $this->period($range, $startDate, $endDate);
 
-        if (!$this->analyticsSchemaReady()) {
+        if (! $this->analyticsSchemaReady()) {
             return $this->legacyDashboard($range, $periodLabel, $start, $end);
         }
 
-        $this->backfillKnownSources();
+        $trackedVisits = $this->trackedVisits($start, $end);
+        $totals = (clone $trackedVisits)
+            ->selectRaw('COUNT(*) as page_views')
+            ->selectRaw("COUNT(DISTINCT CASE WHEN visitor_id IS NOT NULL AND visitor_id != '' THEN visitor_id END) as visitors")
+            ->first();
+        $sessionRollups = (clone $trackedVisits)
+            ->select('session_id')
+            ->selectRaw('COUNT(*) as page_views')
+            ->selectRaw('SUM(COALESCE(duration_seconds, 0)) as total_duration')
+            ->groupBy('session_id');
+        $sessionSummary = DB::query()
+            ->fromSub($sessionRollups, 'session_rollups')
+            ->selectRaw('COUNT(*) as sessions')
+            ->selectRaw('COALESCE(AVG(total_duration), 0) as average_duration')
+            ->selectRaw('COALESCE(SUM(CASE WHEN page_views = 1 AND total_duration < 10 THEN 1 ELSE 0 END), 0) as bounces')
+            ->first();
+        $pageViews = (int) ($totals->page_views ?? 0);
+        $sessions = (int) ($sessionSummary->sessions ?? 0);
+        $bounces = (int) ($sessionSummary->bounces ?? 0);
 
-        $rows = DB::table('visits')->whereBetween('created_at', [$start, $end])->orderByDesc('created_at')->get();
-        $botPageViews = $rows->filter(fn ($row) => strtolower((string) $row->device_type) === 'bot')->count();
-        $trackedRows = $rows->filter(fn ($row) => (string) $row->session_id !== '' && strtolower((string) $row->device_type) !== 'bot');
-        $sessions = $trackedRows->groupBy('session_id');
-        $sessionEntrances = $sessions->map(fn (Collection $visits) => $visits->last())->values();
-        $liveRows = DB::table('visits')->where('last_seen_at', '>=', now()->subMinutes(2))->where(function ($query) {
-            $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
-        })->orderByDesc('last_seen_at')->limit(200)->get();
-        $liveSessions = $liveRows->filter(fn ($row) => (string) $row->session_id !== '')->unique('session_id')->values();
-        $sessionDurations = $sessions->map(fn (Collection $visits) => (int) $visits->sum('duration_seconds'));
-        $bounces = $sessions->filter(fn (Collection $visits) => $visits->count() === 1 && (int) $visits->sum('duration_seconds') < 10)->count();
+        $liveSessions = DB::table('visits')
+            ->select([
+                'session_id', 'path', 'country', 'city', 'source', 'device_type',
+                'browser', 'duration_seconds', 'last_seen_at',
+            ])
+            ->where('last_seen_at', '>=', now()->subMinutes(2))
+            ->whereNotNull('session_id')
+            ->where('session_id', '!=', '')
+            ->where(function ($query) {
+                $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
+            })
+            ->orderByDesc('last_seen_at')
+            ->limit(200)
+            ->get()
+            ->unique('session_id')
+            ->take(20)
+            ->values();
 
         return [
             'range' => $range,
             'periodLabel' => $periodLabel,
             'startDate' => $start->toDateString(),
             'endDate' => $end->toDateString(),
-            'visitorTotals' => [
-                'week' => $this->uniqueVisitorsSince(now()->subDays(6)->startOfDay()),
-                'month' => $this->uniqueVisitorsSince(now()->subDays(29)->startOfDay()),
-                'year' => $this->uniqueVisitorsSince(now()->subDays(364)->startOfDay()),
-            ],
+            'visitorTotals' => $this->visitorTotals(),
             'liveVisitors' => $liveSessions->count(),
-            'visitors' => $trackedRows->pluck('visitor_id')->filter()->unique()->count(),
-            'sessions' => $sessions->count(),
-            'pageViews' => $trackedRows->count(),
-            'excludedBotPageViews' => $botPageViews,
-            'averageDurationSeconds' => $sessionDurations->count() ? (int) round($sessionDurations->average()) : 0,
-            'bounceRate' => $sessions->count() ? round(($bounces / $sessions->count()) * 100, 1) : 0,
-            'pagesPerSession' => $sessions->count() ? round($trackedRows->count() / $sessions->count(), 2) : 0,
-            'topPages' => $this->breakdown($trackedRows, 'path', 'Unknown', 8),
-            'countries' => $this->breakdown($sessionEntrances, 'country', 'Unknown', 8),
-            'sources' => $this->breakdown($sessionEntrances, 'source', 'Direct', 8),
-            'devices' => $this->breakdown($sessionEntrances, 'device_type', 'Unknown', 5),
-            'browsers' => $this->breakdown($sessionEntrances, 'browser', 'Unknown', 6),
+            'visitors' => (int) ($totals->visitors ?? 0),
+            'sessions' => $sessions,
+            'pageViews' => $pageViews,
+            'excludedBotPageViews' => DB::table('visits')
+                ->whereBetween('created_at', [$start, $end])
+                ->where('device_type', 'bot')
+                ->count(),
+            'averageDurationSeconds' => $sessions ? (int) round((float) $sessionSummary->average_duration) : 0,
+            'bounceRate' => $sessions ? round(($bounces / $sessions) * 100, 1) : 0,
+            'pagesPerSession' => $sessions ? round($pageViews / $sessions, 2) : 0,
+            'topPages' => $this->queryBreakdown($trackedVisits, 'path', 'Unknown', 8),
+            'countries' => $this->queryBreakdown($trackedVisits, 'country', 'Unknown', 8, true),
+            'sources' => $this->queryBreakdown($trackedVisits, 'source', 'Direct', 8, true),
+            'devices' => $this->queryBreakdown($trackedVisits, 'device_type', 'Unknown', 5, true),
+            'browsers' => $this->queryBreakdown($trackedVisits, 'browser', 'Unknown', 6, true),
             'trendInterval' => $start->diffInDays($end) > 90 ? 'month' : 'day',
-            'trend' => $this->visitorTrend($trackedRows, $start, $end),
-            'liveSessions' => $liveSessions->take(20)->map(fn ($row) => [
+            'trend' => $this->visitorTrend($trackedVisits, $start, $end),
+            'liveSessions' => $liveSessions->map(fn ($row) => [
                 'sessionId' => $row->session_id,
                 'path' => $row->path,
                 'country' => $row->country ?: 'Unknown',
@@ -134,6 +158,43 @@ class VisitorAnalyticsService
                 'lastSeenAt' => (string) $row->last_seen_at,
             ])->all(),
         ];
+    }
+
+    public function backfillKnownSources(int $limit = 250): int
+    {
+        if (! $this->analyticsSchemaReady()) {
+            return 0;
+        }
+
+        return DB::table('visits')->where(function ($query) {
+            $query->whereNull('source')->orWhere('source', '')->orWhere('source', 'Direct');
+        })->where(function ($query) {
+            $query->whereNotNull('referrer')->where('referrer', '!=', '')
+                ->orWhere('user_agent', 'like', '%Instagram%')
+                ->orWhere('user_agent', 'like', '%FBAN%')
+                ->orWhere('user_agent', 'like', '%FBAV%')
+                ->orWhere('user_agent', 'like', '%TikTok%')
+                ->orWhere('user_agent', 'like', '%WhatsApp%')
+                ->orWhere('user_agent', 'like', '%GSA/%')
+                ->orWhere('path', 'like', '%utm_source=%')
+                ->orWhere('path', 'like', '%gclid=%')
+                ->orWhere('path', 'like', '%fbclid=%')
+                ->orWhere('path', 'like', '%ttclid=%');
+        })->orderByDesc('id')
+            ->limit(max(1, min($limit, 1000)))
+            ->get()
+            ->sum(function ($visit): int {
+                $source = $this->source((string) $visit->referrer, (string) $visit->path, (string) $visit->user_agent);
+
+                if ($source['name'] === 'Direct') {
+                    return 0;
+                }
+
+                return DB::table('visits')->where('id', $visit->id)->update([
+                    'source' => $source['name'],
+                    'source_type' => $source['type'],
+                ]);
+            });
     }
 
     private function analyticsSchemaReady(): bool
@@ -192,35 +253,106 @@ class VisitorAnalyticsService
         };
     }
 
-    private function uniqueVisitorsSince(Carbon $start): int
+    private function trackedVisits(Carbon $start, Carbon $end): Builder
     {
-        return DB::table('visits')->where('created_at', '>=', $start)
-            ->whereNotNull('visitor_id')->where('visitor_id', '!=', '')
+        return DB::table('visits')
+            ->whereBetween('created_at', [$start, $end])
+            ->whereNotNull('session_id')
+            ->where('session_id', '!=', '')
             ->where(function ($query) {
                 $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
-            })->distinct()->count('visitor_id');
+            });
     }
 
-    private function visitorTrend(Collection $rows, Carbon $start, Carbon $end): array
+    private function visitorTotals(): array
+    {
+        $week = now()->subDays(6)->startOfDay();
+        $month = now()->subDays(29)->startOfDay();
+        $year = now()->subDays(364)->startOfDay();
+        $totals = DB::table('visits')
+            ->where('created_at', '>=', $year)
+            ->whereNotNull('visitor_id')
+            ->where('visitor_id', '!=', '')
+            ->where(function ($query) {
+                $query->whereNull('device_type')->orWhere('device_type', '!=', 'bot');
+            })
+            ->selectRaw('COUNT(DISTINCT CASE WHEN created_at >= ? THEN visitor_id END) as week', [$week])
+            ->selectRaw('COUNT(DISTINCT CASE WHEN created_at >= ? THEN visitor_id END) as month', [$month])
+            ->selectRaw('COUNT(DISTINCT visitor_id) as year')
+            ->first();
+
+        return [
+            'week' => (int) ($totals->week ?? 0),
+            'month' => (int) ($totals->month ?? 0),
+            'year' => (int) ($totals->year ?? 0),
+        ];
+    }
+
+    private function visitorTrend(Builder $query, Carbon $start, Carbon $end): array
     {
         $monthly = $start->diffInDays($end) > 90;
-        $grouped = $rows->groupBy(fn ($row) => Carbon::parse($row->created_at)->format($monthly ? 'Y-m' : 'Y-m-d'));
+        $driver = DB::connection()->getDriverName();
+        $bucketExpression = match (true) {
+            $monthly && $driver === 'mysql' => "DATE_FORMAT(created_at, '%Y-%m')",
+            $monthly && $driver === 'pgsql' => "TO_CHAR(created_at, 'YYYY-MM')",
+            $monthly => "strftime('%Y-%m', created_at)",
+            $driver === 'pgsql' => "TO_CHAR(created_at, 'YYYY-MM-DD')",
+            default => 'DATE(created_at)',
+        };
+        $grouped = (clone $query)
+            ->selectRaw("{$bucketExpression} as bucket")
+            ->selectRaw('COUNT(*) as page_views')
+            ->selectRaw("COUNT(DISTINCT CASE WHEN visitor_id IS NOT NULL AND visitor_id != '' THEN visitor_id END) as visitors")
+            ->groupBy(DB::raw($bucketExpression))
+            ->get()
+            ->keyBy('bucket');
         $cursor = $start->copy();
         $trend = [];
 
         while ($cursor->lessThanOrEqualTo($end)) {
             $key = $cursor->format($monthly ? 'Y-m' : 'Y-m-d');
-            $items = $grouped->get($key, collect());
+            $bucket = $grouped->get($key);
             $trend[] = [
                 'date' => $key,
                 'label' => $cursor->format($monthly ? 'M Y' : 'M j'),
-                'visitors' => $items->pluck('visitor_id')->filter()->unique()->count(),
-                'pageViews' => $items->count(),
+                'visitors' => (int) ($bucket->visitors ?? 0),
+                'pageViews' => (int) ($bucket->page_views ?? 0),
             ];
             $cursor = $monthly ? $cursor->addMonth()->startOfMonth() : $cursor->addDay();
         }
 
         return $trend;
+    }
+
+    private function queryBreakdown(
+        Builder $query,
+        string $field,
+        string $fallback,
+        int $limit,
+        bool $distinctSessions = false,
+    ): array {
+        $count = $distinctSessions ? 'COUNT(DISTINCT session_id)' : 'COUNT(*)';
+
+        return (clone $query)
+            ->select($field)
+            ->selectRaw("{$count} as aggregate")
+            ->groupBy($field)
+            ->orderByDesc('aggregate')
+            ->limit($limit * 2)
+            ->get()
+            ->map(fn ($row) => [
+                'name' => trim((string) ($row->{$field} ?? '')) ?: $fallback,
+                'count' => (int) $row->aggregate,
+            ])
+            ->groupBy('name')
+            ->map(fn (Collection $items, string $name) => [
+                'name' => $name,
+                'count' => $items->sum('count'),
+            ])
+            ->sortByDesc('count')
+            ->take($limit)
+            ->values()
+            ->all();
     }
 
     private function breakdown(Collection $rows, string $field, string $fallback, int $limit): array
@@ -234,7 +366,7 @@ class VisitorAnalyticsService
     {
         $country = $request->header('CF-IPCountry') ?: $request->header('CloudFront-Viewer-Country') ?: $request->header('X-Vercel-IP-Country');
         $city = $request->header('CloudFront-Viewer-City') ?: $request->header('X-Vercel-IP-City');
-        $resolved = (!$country || !$city) ? $this->geolocation->locate($request->ip()) : ['country' => null, 'city' => null];
+        $resolved = (! $country || ! $city) ? $this->geolocation->locate($request->ip()) : ['country' => null, 'city' => null];
 
         return [
             'country' => $country ? Str::limit(urldecode((string) $country), 80, '') : $resolved['country'],
@@ -252,14 +384,25 @@ class VisitorAnalyticsService
                 'tiktok' => 'TikTok', 'linkedin' => 'LinkedIn', 'whatsapp' => 'WhatsApp',
                 'twitter' => 'X / Twitter', 'x' => 'X / Twitter', 'youtube' => 'YouTube',
             ];
+
             return ['name' => $campaigns[$campaignSource] ?? Str::headline($campaignSource), 'type' => 'campaign'];
         }
 
-        if (isset($query['gclid']) || isset($query['gbraid']) || isset($query['wbraid'])) return ['name' => 'Google Ads', 'type' => 'campaign'];
-        if (isset($query['fbclid'])) return ['name' => 'Meta Ads', 'type' => 'campaign'];
-        if (isset($query['ttclid'])) return ['name' => 'TikTok Ads', 'type' => 'campaign'];
-        if (isset($query['msclkid'])) return ['name' => 'Microsoft Ads', 'type' => 'campaign'];
-        if (isset($query['li_fat_id'])) return ['name' => 'LinkedIn Ads', 'type' => 'campaign'];
+        if (isset($query['gclid']) || isset($query['gbraid']) || isset($query['wbraid'])) {
+            return ['name' => 'Google Ads', 'type' => 'campaign'];
+        }
+        if (isset($query['fbclid'])) {
+            return ['name' => 'Meta Ads', 'type' => 'campaign'];
+        }
+        if (isset($query['ttclid'])) {
+            return ['name' => 'TikTok Ads', 'type' => 'campaign'];
+        }
+        if (isset($query['msclkid'])) {
+            return ['name' => 'Microsoft Ads', 'type' => 'campaign'];
+        }
+        if (isset($query['li_fat_id'])) {
+            return ['name' => 'LinkedIn Ads', 'type' => 'campaign'];
+        }
 
         $sourceHint = trim($sourceHint);
         if ($sourceHint !== '') {
@@ -272,6 +415,7 @@ class VisitorAnalyticsService
             $normalized = strtolower($sourceHint);
             if (isset($knownHints[$normalized])) {
                 $type = str_contains($normalized, 'ads') ? 'campaign' : (in_array($normalized, ['google', 'bing'], true) ? 'search' : 'social');
+
                 return ['name' => $knownHints[$normalized], 'type' => $type];
             }
         }
@@ -288,7 +432,9 @@ class VisitorAnalyticsService
         }
         $host = strtolower((string) parse_url($referrer, PHP_URL_HOST));
         $siteHost = strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
-        if ($host === '' || $host === $siteHost) return ['name' => 'Direct', 'type' => 'direct'];
+        if ($host === '' || $host === $siteHost) {
+            return ['name' => 'Direct', 'type' => 'direct'];
+        }
 
         $known = [
             'google.' => ['Google', 'search'], 'bing.com' => ['Bing', 'search'], 'yahoo.' => ['Yahoo', 'search'],
@@ -298,39 +444,23 @@ class VisitorAnalyticsService
             'youtube.com' => ['YouTube', 'social'], 'whatsapp.com' => ['WhatsApp', 'social'],
         ];
         foreach ($known as $needle => [$name, $type]) {
-            if (str_contains($host, $needle)) return ['name' => $name, 'type' => $type];
-        }
-        return ['name' => preg_replace('/^www\./', '', $host), 'type' => 'referral'];
-    }
-
-    private function backfillKnownSources(): void
-    {
-        DB::table('visits')->where(function ($query) {
-            $query->whereNull('source')->orWhere('source', '')->orWhere('source', 'Direct');
-        })->where(function ($query) {
-            $query->whereNotNull('referrer')->where('referrer', '!=', '')
-                ->orWhere('user_agent', 'like', '%Instagram%')
-                ->orWhere('user_agent', 'like', '%FBAN%')
-                ->orWhere('user_agent', 'like', '%FBAV%')
-                ->orWhere('user_agent', 'like', '%TikTok%')
-                ->orWhere('user_agent', 'like', '%WhatsApp%')
-                ->orWhere('user_agent', 'like', '%GSA/%')
-                ->orWhere('path', 'like', '%utm_source=%')
-                ->orWhere('path', 'like', '%gclid=%')
-                ->orWhere('path', 'like', '%fbclid=%')
-                ->orWhere('path', 'like', '%ttclid=%');
-        })->orderByDesc('id')->limit(1000)->get()->each(function ($visit) {
-            $source = $this->source((string) $visit->referrer, (string) $visit->path, (string) $visit->user_agent);
-            if ($source['name'] !== 'Direct') {
-                DB::table('visits')->where('id', $visit->id)->update(['source' => $source['name'], 'source_type' => $source['type']]);
+            if (str_contains($host, $needle)) {
+                return ['name' => $name, 'type' => $type];
             }
-        });
+        }
+
+        return ['name' => preg_replace('/^www\./', '', $host), 'type' => 'referral'];
     }
 
     private function device(string $ua): string
     {
-        if (preg_match('/bot|crawl|spider|slurp/i', $ua)) return 'bot';
-        if (preg_match('/iPad|Tablet|Android(?!.*Mobile)/i', $ua)) return 'tablet';
+        if (preg_match('/bot|crawl|spider|slurp/i', $ua)) {
+            return 'bot';
+        }
+        if (preg_match('/iPad|Tablet|Android(?!.*Mobile)/i', $ua)) {
+            return 'tablet';
+        }
+
         return preg_match('/Mobile|Android|iPhone/i', $ua) ? 'mobile' : 'desktop';
     }
 

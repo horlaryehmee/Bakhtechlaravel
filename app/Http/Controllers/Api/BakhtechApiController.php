@@ -10,6 +10,7 @@ use App\Services\GoogleBusinessReviewsService;
 use App\Services\GoogleCalendarService;
 use App\Services\RedisConfigurationService;
 use App\Services\SeoAuditService;
+use App\Services\SiteIncidentService;
 use App\Services\VisitorAnalyticsService;
 use App\Services\ZoomMeetingService;
 use App\Support\AdminToken;
@@ -202,7 +203,7 @@ class BakhtechApiController extends Controller
                     try {
                         return $callback();
                     } catch (\Throwable $exception) {
-                        app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+                        app(SiteIncidentService::class)->reportThrowable($exception, [
                             'url' => request()->fullUrl(),
                             'path' => request()->path(),
                             'method' => request()->method(),
@@ -252,7 +253,7 @@ class BakhtechApiController extends Controller
                 ];
             });
         } catch (\Throwable $exception) {
-            app(\App\Services\SiteIncidentService::class)->reportThrowable($exception, [
+            app(SiteIncidentService::class)->reportThrowable($exception, [
                 'url' => request()->fullUrl(),
                 'path' => request()->path(),
                 'method' => request()->method(),
@@ -282,7 +283,29 @@ class BakhtechApiController extends Controller
             }
         }
 
-        return ['analytics' => $analytics->dashboard($data['range'] ?? 'month', $data['startDate'] ?? null, $data['endDate'] ?? null)];
+        $range = $data['range'] ?? 'month';
+        $startDate = $data['startDate'] ?? null;
+        $endDate = $data['endDate'] ?? null;
+
+        try {
+            return ['analytics' => $analytics->dashboard($range, $startDate, $endDate)];
+        } catch (\Throwable $exception) {
+            try {
+                app(SiteIncidentService::class)->reportThrowable($exception, [
+                    'url' => $request->fullUrl(),
+                    'path' => $request->path(),
+                    'method' => $request->method(),
+                    'ip' => $request->ip(),
+                    'userAgent' => (string) $request->userAgent(),
+                    'endpoint' => 'admin.analytics',
+                    'fallback' => 'empty_analytics',
+                ]);
+            } catch (\Throwable) {
+                // The analytics response must not depend on incident storage being available.
+            }
+
+            return ['analytics' => $this->dashboardAnalyticsFallback($range, $startDate, $endDate, false)];
+        }
     }
 
     private function dashboardFallback(\Throwable $exception): array
@@ -311,14 +334,29 @@ class BakhtechApiController extends Controller
         ];
     }
 
-    private function dashboardAnalyticsFallback(): array
-    {
+    private function dashboardAnalyticsFallback(
+        string $range = 'month',
+        ?string $startDate = null,
+        ?string $endDate = null,
+        bool $migrationRequired = true,
+    ): array {
+        [$start, $end, $periodLabel] = match ($range) {
+            'week' => [now()->subDays(6)->startOfDay(), now()->endOfDay(), 'Last 7 days'],
+            'year' => [now()->subMonths(11)->startOfMonth(), now()->endOfDay(), 'Last 12 months'],
+            'custom' => [
+                Carbon::parse((string) $startDate)->startOfDay(),
+                Carbon::parse((string) $endDate)->endOfDay(),
+                Carbon::parse((string) $startDate)->format('M j, Y').' - '.Carbon::parse((string) $endDate)->format('M j, Y'),
+            ],
+            default => [now()->subDays(29)->startOfDay(), now()->endOfDay(), 'Last 30 days'],
+        };
+
         return [
-            'migrationRequired' => true,
-            'range' => 'month',
-            'periodLabel' => 'Unavailable',
-            'startDate' => now()->subDays(29)->toDateString(),
-            'endDate' => now()->toDateString(),
+            'migrationRequired' => $migrationRequired,
+            'range' => $range,
+            'periodLabel' => $periodLabel,
+            'startDate' => $start->toDateString(),
+            'endDate' => $end->toDateString(),
             'visitorTotals' => ['week' => 0, 'month' => 0, 'year' => 0],
             'liveVisitors' => 0,
             'visitors' => 0,
@@ -857,7 +895,7 @@ class BakhtechApiController extends Controller
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
-                $term = '%'.addcslashes($search, '%_').'%' ;
+                $term = '%'.addcslashes($search, '%_').'%';
                 $builder->where('title', 'like', $term)
                     ->orWhere('slug', 'like', $term)
                     ->orWhere('excerpt', 'like', $term)

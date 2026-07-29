@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Services\VisitorAnalyticsService;
+use App\Support\AdminToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class VisitorAnalyticsTest extends TestCase
@@ -154,8 +156,36 @@ class VisitorAnalyticsTest extends TestCase
         ]);
 
         app(VisitorAnalyticsService::class)->dashboard('month');
+        $this->assertDatabaseHas('visits', ['session_id' => 'old-instagram-session', 'source' => 'Direct']);
 
+        $updated = app(VisitorAnalyticsService::class)->backfillKnownSources();
+        $this->assertSame(1, $updated);
         $this->assertDatabaseHas('visits', ['session_id' => 'old-instagram-session', 'source' => 'Instagram', 'source_type' => 'social']);
+    }
+
+    public function test_admin_analytics_returns_a_safe_payload_when_aggregation_fails(): void
+    {
+        config()->set('security.admin_token_secret', 'analytics-fallback-test-secret');
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'analytics@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Analytics Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $token = AdminToken::make(DB::table('admins')->where('id', $adminId)->first());
+
+        $this->mock(VisitorAnalyticsService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('dashboard')->once()->andThrow(new \RuntimeException('Forced analytics failure'));
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/admin/analytics?range=month')
+            ->assertOk()
+            ->assertJsonPath('analytics.range', 'month')
+            ->assertJsonPath('analytics.migrationRequired', false)
+            ->assertJsonPath('analytics.pageViews', 0);
     }
 
     public function test_bots_are_excluded_from_live_and_human_analytics(): void

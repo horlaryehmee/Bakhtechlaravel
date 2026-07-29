@@ -1,12 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\BakhtechApiController;
+use App\Services\BookingNotificationService;
 use App\Services\DatabaseSynchronizer;
-use Carbon\Carbon;
+use App\Services\SiteIncidentService;
+use App\Services\VisitorAnalyticsService;
+use App\Support\AdminToken;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Schema;
 
@@ -124,7 +128,7 @@ Artisan::command('database:check {--repair : Insert missing baseline records wit
 })->purpose('Check database connectivity, migrations, baseline records, and relationships');
 
 Artisan::command('booking:send-reminders', function () {
-    $result = app(\App\Services\BookingNotificationService::class)->sendDueReminders();
+    $result = app(BookingNotificationService::class)->sendDueReminders();
 
     $expired = $result['expired'] ?? 0;
 
@@ -132,7 +136,7 @@ Artisan::command('booking:send-reminders', function () {
 })->purpose('Send due booking reminder emails');
 
 Artisan::command('site:monitor {--url=}', function () {
-    $result = app(\App\Services\SiteIncidentService::class)->runHealthCheck($this->option('url') ?: null);
+    $result = app(SiteIncidentService::class)->runHealthCheck($this->option('url') ?: null);
 
     if ($result['ok']) {
         $this->info("Site health check passed: {$result['url']} ({$result['status']}, {$result['durationMs']}ms)");
@@ -144,6 +148,13 @@ Artisan::command('site:monitor {--url=}', function () {
 
     return 1;
 })->purpose('Check the public website readiness endpoint and email/log an incident when it fails');
+
+Artisan::command('analytics:backfill-sources {--limit=250}', function (VisitorAnalyticsService $analytics) {
+    $updated = $analytics->backfillKnownSources((int) $this->option('limit'));
+    $this->info("Updated {$updated} historical analytics source record(s).");
+
+    return 0;
+})->purpose('Backfill source attribution without adding work to dashboard requests');
 
 Artisan::command('site:verify-admin-runtime', function () {
     if (! Schema::hasTable('admins')) {
@@ -159,21 +170,21 @@ Artisan::command('site:verify-admin-runtime', function () {
         return 1;
     }
 
-    $token = \App\Support\AdminToken::make($admin);
+    $token = AdminToken::make($admin);
     $resolved = null;
 
     try {
-        $resolved = \App\Support\AdminToken::resolve($token);
+        $resolved = AdminToken::resolve($token);
         if (! $resolved || (int) $resolved['admin']->id !== (int) $admin->id) {
             $this->error('Admin runtime verification failed: a newly issued token could not be resolved.');
 
             return 1;
         }
 
-        $request = \Illuminate\Http\Request::create('/api/admin/me', 'GET');
+        $request = Request::create('/api/admin/me', 'GET');
         $request->attributes->set('admin', $resolved['admin']);
-        $me = app(\App\Http\Controllers\Api\BakhtechApiController::class)->me($request);
-        $dashboard = app(\App\Http\Controllers\Api\BakhtechApiController::class)->dashboard();
+        $me = app(BakhtechApiController::class)->me($request);
+        $dashboard = app(BakhtechApiController::class)->dashboard();
 
         if (! isset($me['admin']['id'], $dashboard['totals'], $dashboard['analytics'])) {
             $this->error('Admin runtime verification failed: admin endpoint response is incomplete.');
@@ -182,7 +193,7 @@ Artisan::command('site:verify-admin-runtime', function () {
         }
     } finally {
         $session = $resolved['session'] ?? null;
-        if ($session && \App\Support\AdminToken::sessionsSupported()) {
+        if ($session && AdminToken::sessionsSupported()) {
             DB::table('admin_sessions')->where('id', $session->id)->delete();
         }
     }
@@ -202,4 +213,8 @@ Schedule::exec('/bin/bash '.escapeshellarg(base_path('scripts/deployment-integri
 
 Schedule::command('site:monitor')
     ->everyFiveMinutes()
+    ->withoutOverlapping();
+
+Schedule::command('analytics:backfill-sources')
+    ->hourly()
     ->withoutOverlapping();
