@@ -62,25 +62,25 @@ MAINTENANCE_ENABLED=false
 remove_paths_added_by_release() {
   local path
 
-  while IFS= read -r path; do
+  git diff --diff-filter=A --name-only "$PREVIOUS_REF" "$RELEASE_REF" | while IFS= read -r path; do
     [ -n "$path" ] || continue
     case "$path" in
       /*|../*|*/../*) continue ;;
     esac
     rm -f "$APP_ROOT/$path"
-  done < <(git diff --diff-filter=A --name-only "$PREVIOUS_REF" "$RELEASE_REF")
+  done
 }
 
 remove_paths_deleted_by_release() {
   local path
 
-  while IFS= read -r path; do
+  git diff --diff-filter=D --name-only "$PREVIOUS_REF" "$RELEASE_REF" | while IFS= read -r path; do
     [ -n "$path" ] || continue
     case "$path" in
       /*|../*|*/../*) continue ;;
     esac
     rm -f "$APP_ROOT/$path"
-  done < <(git diff --diff-filter=D --name-only "$PREVIOUS_REF" "$RELEASE_REF")
+  done
 }
 
 restore_previous_release() {
@@ -126,10 +126,11 @@ if find "$STAGE_ROOT/app" "$STAGE_ROOT/bootstrap" "$STAGE_ROOT/config" "$STAGE_R
   exit 1
 fi
 
-while IFS= read -r php_file; do
-  php -l "$php_file" >/dev/null
-done < <(find "$STAGE_ROOT/app" "$STAGE_ROOT/bootstrap" "$STAGE_ROOT/config" "$STAGE_ROOT/database" "$STAGE_ROOT/routes" \
-  -type f -name '*.php' -print)
+find "$STAGE_ROOT/app" "$STAGE_ROOT/bootstrap" "$STAGE_ROOT/config" "$STAGE_ROOT/database" "$STAGE_ROOT/routes" \
+  -type f -name '*.php' -print |
+  while IFS= read -r php_file; do
+    php -l "$php_file" >/dev/null
+  done
 
 if [ ! -s "$STAGE_ROOT/app/Http/Controllers/Api/BakhtechApiController.php" ] ||
   [ ! -s "$STAGE_ROOT/app/Http/Controllers/Api/HealthController.php" ]; then

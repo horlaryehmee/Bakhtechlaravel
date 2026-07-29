@@ -8,6 +8,14 @@ DEPLOY_REF="${DEPLOY_REF:-HEAD}"
 REPAIR=false
 FULL=false
 QUICK=false
+MANIFEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/bakhtech-integrity.XXXXXX")"
+SOURCE_MANIFEST="$MANIFEST_ROOT/source-files"
+PHP_MANIFEST="$MANIFEST_ROOT/php-files"
+
+cleanup() {
+  rm -rf "$MANIFEST_ROOT"
+}
+trap cleanup EXIT
 
 for argument in "$@"; do
   case "$argument" in
@@ -89,6 +97,9 @@ repair_file_atomically() {
   mv -f "$temporary" "$path"
 }
 
+git -C "$GIT_ROOT" ls-tree -r --name-only "$DEPLOY_REF" -- \
+  app bootstrap config database routes artisan composer.json composer.lock public/index.php > "$SOURCE_MANIFEST"
+
 while IFS= read -r path; do
   [ -n "$path" ] || continue
   is_safe_source_path "$path" || continue
@@ -123,7 +134,7 @@ while IFS= read -r path; do
       echo "Repaired atomically from ${DEPLOY_REF}: $path"
     fi
   fi
-done < <(git -C "$GIT_ROOT" ls-tree -r --name-only "$DEPLOY_REF" -- app bootstrap config database routes artisan composer.json composer.lock public/index.php)
+done < "$SOURCE_MANIFEST"
 
 if [ "$corrupt_count" -gt 0 ] && [ "$REPAIR" = false ]; then
   echo "Deployment integrity failed: ${corrupt_count} corrupt or missing source file(s)." >&2
@@ -131,10 +142,12 @@ if [ "$corrupt_count" -gt 0 ] && [ "$REPAIR" = false ]; then
 fi
 
 if [ "$QUICK" = false ]; then
+  find app bootstrap config database routes -type f -name '*.php' -print > "$PHP_MANIFEST"
+
   while IFS= read -r path; do
     [ -n "$path" ] || continue
     php -l "$path" >/dev/null
-  done < <(find app bootstrap config database routes -type f -name '*.php' -print)
+  done < "$PHP_MANIFEST"
 
   php -r "require 'vendor/autoload.php'; exit(class_exists('App\\Http\\Controllers\\Api\\HealthController') && class_exists('App\\Http\\Controllers\\Api\\BakhtechApiController') ? 0 : 1);"
 fi
