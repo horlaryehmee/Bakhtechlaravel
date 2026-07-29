@@ -788,6 +788,63 @@ function writeAdminDataCache(payload: Record<string, unknown>) {
   }
 }
 
+function emptyVisitorAnalytics(): DashboardData['analytics'] {
+  const endDate = new Date().toISOString().slice(0, 10)
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() - 29)
+
+  return {
+    range: 'month',
+    periodLabel: 'Last 30 days',
+    startDate: startDate.toISOString().slice(0, 10),
+    endDate,
+    visitorTotals: { week: 0, month: 0, year: 0 },
+    liveVisitors: 0,
+    visitors: 0,
+    sessions: 0,
+    pageViews: 0,
+    excludedBotPageViews: 0,
+    averageDurationSeconds: 0,
+    bounceRate: 0,
+    pagesPerSession: 0,
+    topPages: [],
+    countries: [],
+    sources: [],
+    devices: [],
+    browsers: [],
+    trendInterval: 'day',
+    trend: [],
+    liveSessions: [],
+  }
+}
+
+function dashboardFromLoadedData(projects: Project[], cms: CmsData | null, current?: DashboardData | null): DashboardData {
+  const bookings = cms?.bookings ?? []
+  const now = Date.now()
+
+  return {
+    totals: {
+      projects: projects.length,
+      publishedProjects: projects.filter((project) => project.status === 'published').length,
+      bookings: bookings.length,
+      upcomingBookings: bookings.filter((booking) => {
+        const startsAt = Date.parse(booking.startsAt || booking.scheduledAt)
+        return Number.isFinite(startsAt) && startsAt >= now && !['cancelled', 'closed'].includes(booking.status)
+      }).length,
+      visits: current?.totals.visits ?? 0,
+      todayVisits: current?.totals.todayVisits ?? 0,
+    },
+    seo: {
+      score: current?.seo.score ?? 0,
+      indexedPages: (cms?.pages ?? []).filter((page) => page.status === 'published').length,
+      issues: current?.seo.issues ?? 0,
+    },
+    performance: current?.performance ?? { score: 0, loadTime: 'Unavailable', mobileScore: 0 },
+    visits: current?.visits ?? { topPages: [] },
+    analytics: current?.analytics ?? emptyVisitorAnalytics(),
+  }
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
   const token = getAdminToken()
@@ -795,7 +852,7 @@ export function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'invoices', 'users', 'settings']))
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
-  const [dashboard, setDashboard] = useState<DashboardData | null>(initialAdminCache?.dashboard ?? null)
+  const [dashboard, setDashboard] = useState<DashboardData>(() => initialAdminCache?.dashboard ?? dashboardFromLoadedData([], null))
   const [seoAudit, setSeoAudit] = useState<SeoAudit | null>(initialAdminCache?.seoAudit ?? null)
   const [cms, setCms] = useState<CmsData | null>(initialAdminCache?.cms ?? null)
   const [mediaPicker, setMediaPicker] = useState<MediaPickerState>(null)
@@ -1211,7 +1268,6 @@ export function AdminDashboard() {
 
     try {
       const [
-        dashboardResult,
         seoAuditResult,
         projectResult,
         cmsResult,
@@ -1221,7 +1277,6 @@ export function AdminDashboard() {
         invoiceClientsResult,
         invoiceEmailLogsResult
       ] = await Promise.allSettled([
-        api.dashboard(),
         api.seoAudit(),
         api.adminProjects(),
         api.cms(),
@@ -1233,13 +1288,11 @@ export function AdminDashboard() {
       ])
 
       const failedRequired = [
-        ['dashboard', dashboardResult],
         ['seo audit', seoAuditResult],
         ['projects', projectResult],
         ['CMS/settings', cmsResult],
       ].filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
 
-      const nextDashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : dashboard
       const nextSeoAudit = seoAuditResult.status === 'fulfilled' ? seoAuditResult.value : seoAudit
       const nextProjects = projectResult.status === 'fulfilled' ? projectResult.value.projects : projects
       const nextCms = cmsResult.status === 'fulfilled' ? cmsResult.value : (cms ?? {
@@ -1254,8 +1307,9 @@ export function AdminDashboard() {
         media: [],
       })
       const nextSessions = adminSessionsResult.status === 'fulfilled' ? adminSessionsResult.value.sessions : []
+      const nextDashboard = dashboardFromLoadedData(nextProjects, nextCms, dashboard)
 
-      if (nextDashboard) setDashboard(nextDashboard)
+      setDashboard(nextDashboard)
       if (nextSeoAudit) setSeoAudit(nextSeoAudit)
       setProjects(nextProjects)
       const cmsWithSessions = nextCms ? { ...nextCms, adminSessions: nextSessions } : null

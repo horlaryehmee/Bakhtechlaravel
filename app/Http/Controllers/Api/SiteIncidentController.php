@@ -268,23 +268,24 @@ class SiteIncidentController extends Controller
                     'resolved_at' => $now,
                     'updated_at' => $now,
                 ]);
-
-            $resolved += DB::table('site_incidents')
-                ->where('status', 'open')
-                ->where('type', 'frontend_api_failure')
-                ->where('source', 'admin-frontend')
-                ->where('message', 'like', '%(500)%')
-                ->update([
-                    'status' => 'resolved',
-                    'resolved_at' => $now,
-                    'updated_at' => $now,
-                ]);
         }
 
         if (($readyOk === true) || ($requiredChecksOk && $sourceOk)) {
             $resolved += DB::table('site_incidents')
                 ->where('status', 'open')
                 ->whereIn('type', ['health_check_http_failure', 'health_check_unreachable'])
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            $frontendAutoResolveMinutes = max(1, (int) config('services.monitoring.auto_resolve_frontend_minutes', 10));
+            $resolved += DB::table('site_incidents')
+                ->where('status', 'open')
+                ->where('type', 'frontend_api_failure')
+                ->where('source', 'admin-frontend')
+                ->where('last_seen_at', '<=', $now->copy()->subMinutes($frontendAutoResolveMinutes))
                 ->update([
                     'status' => 'resolved',
                     'resolved_at' => $now,

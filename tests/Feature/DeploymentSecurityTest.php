@@ -983,6 +983,58 @@ class DeploymentSecurityTest extends TestCase
             ->assertJsonPath('incidents.0.status', 'resolved');
     }
 
+    public function test_frontend_failures_resolve_after_they_stop_recurring(): void
+    {
+        config()->set('security.admin_token_secret', 'frontend-auto-resolve-secret');
+        config()->set('services.monitoring.auto_resolve_frontend_minutes', 10);
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'frontend-auto@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Incident Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        foreach ([
+            ['fingerprint' => 'stale-frontend', 'last_seen_at' => now()->subMinutes(11)],
+            ['fingerprint' => 'active-frontend', 'last_seen_at' => now()->subMinutes(2)],
+        ] as $incident) {
+            DB::table('site_incidents')->insert([
+                'fingerprint' => hash('sha256', $incident['fingerprint']),
+                'severity' => 'error',
+                'type' => 'frontend_api_failure',
+                'source' => 'admin-frontend',
+                'message' => 'Server Error',
+                'url' => '/api/admin/me',
+                'method' => 'GET',
+                'status' => 'open',
+                'occurrence_count' => 1,
+                'first_seen_at' => $incident['last_seen_at'],
+                'last_seen_at' => $incident['last_seen_at'],
+                'created_at' => $incident['last_seen_at'],
+                'updated_at' => $incident['last_seen_at'],
+            ]);
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->getJson('/api/admin/incidents')
+            ->assertOk()
+            ->assertJsonPath('summary.open', 1)
+            ->assertJsonPath('summary.resolved', 1);
+
+        $this->assertDatabaseHas('site_incidents', [
+            'fingerprint' => hash('sha256', 'stale-frontend'),
+            'status' => 'resolved',
+        ]);
+        $this->assertDatabaseHas('site_incidents', [
+            'fingerprint' => hash('sha256', 'active-frontend'),
+            'status' => 'open',
+        ]);
+    }
+
     public function test_admin_can_clear_one_or_all_incident_reports(): void
     {
         config()->set('security.admin_token_secret', 'incident-clear-secret');

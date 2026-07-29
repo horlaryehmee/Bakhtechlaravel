@@ -68,6 +68,7 @@ return [
     'monitoring' => [
         'slow_request_ms' => env('SLOW_REQUEST_MS', 5000),
         'auto_resolve_slow_minutes' => env('SLOW_REQUEST_AUTO_RESOLVE_MINUTES', 60),
+        'auto_resolve_frontend_minutes' => env('FRONTEND_FAILURE_AUTO_RESOLVE_MINUTES', 10),
     ],
 
 ];
