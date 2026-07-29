@@ -196,32 +196,37 @@ php "$APP_ROOT/artisan" route:list --path=admin >/dev/null
 
 php "$APP_ROOT/artisan" up
 MAINTENANCE_ENABLED=false
-
-if command -v curl >/dev/null 2>&1; then
-  HEALTHCHECK_URL="${HEALTHCHECK_URL:-$(php -r "require '$APP_ROOT/vendor/autoload.php'; \$app = require '$APP_ROOT/bootstrap/app.php'; echo rtrim((string) \$app->make('config')->get('app.url'), '/').'/api/ready';")}"
-  if ! curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 20 "$HEALTHCHECK_URL" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
-    echo "Warning: external readiness check failed after local validation: $HEALTHCHECK_URL" >&2
-  fi
-fi
-
 ROLLBACK_REQUIRED=false
 printf '%s\n' "$RELEASE_REF" > "$APP_ROOT/storage/app/deployment-ref"
 
 if [ "$APP_ROOT" = "$SOURCE_ROOT" ]; then
   CURRENT_BRANCH="$(git -C "$SOURCE_ROOT" symbolic-ref --quiet --short HEAD || true)"
   if [ "$CURRENT_BRANCH" = "$BRANCH" ]; then
-    git -C "$SOURCE_ROOT" update-ref "refs/heads/$BRANCH" "$RELEASE_REF"
-    git -C "$SOURCE_ROOT" read-tree "$RELEASE_REF"
-    echo "Synchronized the cPanel checkout to ${RELEASE_REF}."
+    if git -C "$SOURCE_ROOT" update-ref "refs/heads/$BRANCH" "$RELEASE_REF" &&
+      git -C "$SOURCE_ROOT" read-tree "$RELEASE_REF"; then
+      echo "Synchronized the cPanel checkout to ${RELEASE_REF}."
+    else
+      echo "Warning: release is live, but the cPanel checkout could not be synchronized." >&2
+    fi
   fi
 fi
 
-find "$BACKUP_ROOT" -maxdepth 1 -type f -name '*-before.tar.gz' -printf '%T@ %p\n' \
+if command -v curl >/dev/null 2>&1; then
+  HEALTHCHECK_BASE="${APP_URL:-https://bakhtech.com.ng}"
+  HEALTHCHECK_URL="${HEALTHCHECK_URL:-${HEALTHCHECK_BASE%/}/api/ready}"
+  if ! curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 20 "$HEALTHCHECK_URL" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+    echo "Warning: external readiness check failed after local validation: $HEALTHCHECK_URL" >&2
+  fi
+fi
+
+if ! find "$BACKUP_ROOT" -maxdepth 1 -type f -name '*-before.tar.gz' -printf '%T@ %p\n' \
   | sort -nr \
   | tail -n "+$((KEEP_BACKUPS + 1))" \
   | cut -d' ' -f2- \
   | while IFS= read -r old_backup; do
       [ -n "$old_backup" ] && rm -f "$old_backup"
-    done
+    done; then
+  echo "Warning: release is live, but old deployment backups could not be pruned." >&2
+fi
 
 echo "Deployment complete: ${RELEASE_REF}. Backup: ${BACKUP_FILE}"
