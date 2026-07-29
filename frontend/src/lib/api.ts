@@ -1370,6 +1370,15 @@ export const api = {
   resolveSiteIncident(id: number) {
     return request<{ incident: SiteIncident }>(`/api/admin/incidents/${id}/resolve`, { method: 'POST' })
   },
+  deleteSiteIncident(id: number) {
+    return request<{ deleted: number }>(`/api/admin/incidents/${id}`, { method: 'DELETE' })
+  },
+  clearSiteIncidents(status = '') {
+    return request<{ deleted: number }>('/api/admin/incidents/clear', {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    })
+  },
   runSiteIncidentCheck() {
     return request<{ health: { ok: boolean; status: number; url: string; durationMs: number; message?: string }; checks: SiteHealthCheck[] }>('/api/admin/incidents/check', { method: 'POST' })
   },

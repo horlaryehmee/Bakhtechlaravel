@@ -67,6 +67,7 @@ return [
 
     'monitoring' => [
         'slow_request_ms' => env('SLOW_REQUEST_MS', 5000),
+        'auto_resolve_slow_minutes' => env('SLOW_REQUEST_AUTO_RESOLVE_MINUTES', 60),
     ],
 
 ];

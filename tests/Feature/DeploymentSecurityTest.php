@@ -880,6 +880,104 @@ class DeploymentSecurityTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_fixed_source_incidents_are_auto_resolved_when_loaded(): void
+    {
+        config()->set('security.admin_token_secret', 'incident-auto-resolve-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'incident-auto@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Incident Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        DB::table('site_incidents')->insert([
+            'fingerprint' => hash('sha256', 'missing-controller'),
+            'severity' => 'error',
+            'type' => 'BindingResolutionException',
+            'source' => 'exception-handler',
+            'message' => 'Target class [App\Http\Controllers\Api\BakhtechApiController] does not exist.',
+            'url' => 'https://bakhtech.com.ng/api/reviews',
+            'method' => 'GET',
+            'status' => 'open',
+            'occurrence_count' => 3,
+            'first_seen_at' => now()->subHour(),
+            'last_seen_at' => now()->subHour(),
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->getJson('/api/admin/incidents?status=resolved')
+            ->assertOk()
+            ->assertJsonPath('summary.open', 0)
+            ->assertJsonPath('summary.resolved', 1)
+            ->assertJsonPath('incidents.0.status', 'resolved');
+    }
+
+    public function test_admin_can_clear_one_or_all_incident_reports(): void
+    {
+        config()->set('security.admin_token_secret', 'incident-clear-secret');
+
+        $adminId = DB::table('admins')->insertGetId([
+            'email' => 'incident-clear@example.test',
+            'password_hash' => bcrypt('password'),
+            'name' => 'Incident Admin',
+            'role' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $admin = DB::table('admins')->where('id', $adminId)->first();
+
+        $firstId = DB::table('site_incidents')->insertGetId([
+            'fingerprint' => hash('sha256', 'first-clearable'),
+            'severity' => 'warning',
+            'type' => 'slow_request',
+            'source' => 'request-diagnostics',
+            'message' => 'Slow request: GET /api/settings took 7000ms',
+            'url' => 'https://bakhtech.com.ng/api/settings',
+            'method' => 'GET',
+            'status' => 'open',
+            'occurrence_count' => 1,
+            'first_seen_at' => now(),
+            'last_seen_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('site_incidents')->insert([
+            'fingerprint' => hash('sha256', 'second-clearable'),
+            'severity' => 'error',
+            'type' => 'frontend_api_failure',
+            'source' => 'admin-frontend',
+            'message' => 'Request failed. (500)',
+            'url' => '/api/admin/dashboard',
+            'method' => 'GET',
+            'status' => 'open',
+            'occurrence_count' => 1,
+            'first_seen_at' => now(),
+            'last_seen_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->deleteJson("/api/admin/incidents/{$firstId}")
+            ->assertOk()
+            ->assertJsonPath('deleted', 1);
+
+        $this->assertDatabaseMissing('site_incidents', ['id' => $firstId]);
+
+        $this->withHeader('Authorization', 'Bearer '.AdminToken::make($admin))
+            ->postJson('/api/admin/incidents/clear')
+            ->assertOk()
+            ->assertJsonPath('deleted', 1);
+
+        $this->assertDatabaseCount('site_incidents', 0);
+    }
+
     public function test_only_published_cms_pages_are_public(): void
     {
         DB::table('pages')->insert([

@@ -134,8 +134,11 @@ Route::middleware([RequireAdminToken::class, 'throttle:admin-read'])->group(func
     Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::get('/admin/incidents', [SiteIncidentController::class, 'index'])->middleware('admin.role:admin');
     Route::get('/admin/incidents/export', [SiteIncidentController::class, 'export'])->middleware('admin.role:admin');
+    Route::post('/admin/incidents/clear', [SiteIncidentController::class, 'clear'])->middleware('admin.role:admin');
+    Route::delete('/admin/incidents/clear', [SiteIncidentController::class, 'clear'])->middleware('admin.role:admin');
     Route::get('/admin/incidents/{id}', [SiteIncidentController::class, 'show'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/{id}/resolve', [SiteIncidentController::class, 'resolve'])->whereNumber('id')->middleware('admin.role:admin');
+    Route::delete('/admin/incidents/{id}', [SiteIncidentController::class, 'destroy'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/check', [SiteIncidentController::class, 'runCheck'])->middleware(['admin.role:admin', 'throttle:10,1']);
     Route::post('/admin/incidents/client-report', [SiteIncidentController::class, 'clientReport'])->middleware(['admin.role:admin', 'throttle:30,1']);
     Route::get('/admin/redis/settings', [RedisSettingsController::class, 'show'])->middleware('admin.role:admin');

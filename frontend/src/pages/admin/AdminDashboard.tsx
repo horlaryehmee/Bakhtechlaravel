@@ -2405,6 +2405,44 @@ export function AdminDashboard() {
     }
   }
 
+  async function clearSiteIncident(incident: SiteIncident) {
+    if (!window.confirm(`Clear this incident report for ${incident.type}? This cannot be undone.`)) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.deleteSiteIncident(incident.id)
+      setSelectedSiteIncident((current) => current?.id === incident.id ? null : current)
+      notify(`${result.deleted} incident report${result.deleted === 1 ? '' : 's'} cleared.`)
+      const nextPage = siteIncidents.length <= 1 && siteIncidentsMeta.page > 1
+        ? siteIncidentsMeta.page - 1
+        : siteIncidentsMeta.page
+      await loadSiteIncidents(nextPage)
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : 'Unable to clear incident report.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function clearAllSiteIncidents() {
+    const target = siteIncidentStatus ? `${siteIncidentStatus} incident reports` : 'all incident reports'
+    if (!window.confirm(`Clear ${target}? This permanently removes them from the incident list.`)) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const result = await api.clearSiteIncidents(siteIncidentStatus)
+      setSelectedSiteIncident(null)
+      notify(`${result.deleted} incident report${result.deleted === 1 ? '' : 's'} cleared.`)
+      await loadSiteIncidents(1)
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : 'Unable to clear incident reports.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function runSiteIncidentCheck() {
     setSiteIncidentChecking(true)
     setError('')
@@ -8665,6 +8703,10 @@ export function AdminDashboard() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Export all
             </Button>
+            <Button type="button" variant="ghost" disabled={saving || siteIncidentSummary.total === 0} className="rounded-xl border border-red-100 text-red-600" onClick={() => void clearAllSiteIncidents()}>
+              <Trash2 className="h-4 w-4" />
+              Clear all
+            </Button>
             <Button type="button" disabled={siteIncidentChecking} className="rounded-xl bg-red-600 text-white" onClick={() => void runSiteIncidentCheck()}>
               {siteIncidentChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
               Run health check
@@ -8757,6 +8799,10 @@ export function AdminDashboard() {
                           Resolve
                         </Button>
                       ) : null}
+                      <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-red-100 text-red-600" onClick={() => void clearSiteIncident(incident)}>
+                        <Trash2 className="h-4 w-4" />
+                        Clear
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -8790,6 +8836,10 @@ export function AdminDashboard() {
                 {selectedSiteIncident.status === 'open' ? (
                   <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-emerald-100 text-emerald-700" onClick={() => void resolveSiteIncident(selectedSiteIncident)}>Resolve</Button>
                 ) : null}
+                <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-red-100 text-red-600" onClick={() => void clearSiteIncident(selectedSiteIncident)}>
+                  <Trash2 className="h-4 w-4" />
+                  Clear
+                </Button>
                 <Button type="button" variant="ghost" className="h-10 w-10 rounded-xl border border-gray-200 p-0" onClick={() => setSelectedSiteIncident(null)} title="Close incident details">
                   <X className="h-4 w-4" />
                 </Button>

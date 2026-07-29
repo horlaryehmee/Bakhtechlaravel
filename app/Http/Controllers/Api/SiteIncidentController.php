@@ -33,6 +33,9 @@ class SiteIncidentController extends Controller
             ];
         }
 
+        $checks = $incidents->diagnostics();
+        $this->autoResolveRecoveredIncidents($checks);
+
         $query = $this->incidentQuery($data);
 
         $total = (clone $query)->count();
@@ -49,7 +52,7 @@ class SiteIncidentController extends Controller
                 'critical' => DB::table('site_incidents')->where('status', 'open')->where('severity', 'critical')->count(),
                 'total' => DB::table('site_incidents')->count(),
             ],
-            'checks' => $incidents->diagnostics(),
+            'checks' => $checks,
             'meta' => [
                 'page' => $page,
                 'perPage' => $perPage,
@@ -150,11 +153,45 @@ class SiteIncidentController extends Controller
         return $this->show($id);
     }
 
+    public function destroy(int $id)
+    {
+        $deleted = Schema::hasTable('site_incidents')
+            ? DB::table('site_incidents')->where('id', $id)->delete()
+            : 0;
+
+        return response()->json(['deleted' => $deleted]);
+    }
+
+    public function clear(Request $request)
+    {
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in(['open', 'resolved'])],
+        ]);
+
+        if (! Schema::hasTable('site_incidents')) {
+            return response()->json(['deleted' => 0]);
+        }
+
+        $query = DB::table('site_incidents');
+        if (($data['status'] ?? '') !== '') {
+            $query->where('status', $data['status']);
+        }
+
+        return response()->json(['deleted' => $query->delete()]);
+    }
+
     public function runCheck(SiteIncidentService $incidents)
     {
+        $health = $incidents->runHealthCheck();
+        $checks = $incidents->diagnostics();
+
+        if (Schema::hasTable('site_incidents')) {
+            $this->autoResolveRecoveredIncidents($checks, (bool) ($health['ok'] ?? false));
+        }
+
         return [
-            'health' => $incidents->runHealthCheck(),
-            'checks' => $incidents->diagnostics(),
+            'health' => $health,
+            'checks' => $checks,
         ];
     }
 
@@ -200,6 +237,84 @@ class SiteIncidentController extends Controller
                         ->orWhere('url', 'like', "%{$search}%");
                 });
             });
+    }
+
+    private function autoResolveRecoveredIncidents(array $checks, ?bool $readyOk = null): int
+    {
+        $now = now();
+        $resolved = 0;
+        $checksByKey = collect($checks)->keyBy(fn (array $check): string => (string) ($check['key'] ?? ''));
+        $requiredChecksOk = collect(['application', 'database', 'storage'])
+            ->every(fn (string $key): bool => (bool) ($checksByKey->get($key)['ok'] ?? false));
+        $sourceOk = class_exists(BakhtechApiController::class)
+            && class_exists(HealthController::class)
+            && class_exists(BookingCmsController::class)
+            && class_exists(InvoiceController::class)
+            && class_exists(PricingController::class);
+
+        if ($sourceOk) {
+            $resolved += DB::table('site_incidents')
+                ->where('status', 'open')
+                ->whereIn('type', ['BindingResolutionException', 'ReflectionException'])
+                ->where(function ($query) {
+                    $query->where('message', 'like', '%BakhtechApiController%')
+                        ->orWhere('message', 'like', '%HealthController%')
+                        ->orWhere('message', 'like', '%BookingCmsController%')
+                        ->orWhere('message', 'like', '%InvoiceController%')
+                        ->orWhere('message', 'like', '%PricingController%');
+                })
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            $resolved += DB::table('site_incidents')
+                ->where('status', 'open')
+                ->where('type', 'frontend_api_failure')
+                ->where('source', 'admin-frontend')
+                ->where('message', 'like', '%(500)%')
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        }
+
+        if (($readyOk === true) || ($requiredChecksOk && $sourceOk)) {
+            $resolved += DB::table('site_incidents')
+                ->where('status', 'open')
+                ->whereIn('type', ['health_check_http_failure', 'health_check_unreachable'])
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        }
+
+        if ((bool) ($checksByKey->get('mail')['ok'] ?? false)) {
+            $resolved += DB::table('site_incidents')
+                ->where('status', 'open')
+                ->where('type', 'TransportException')
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        }
+
+        $slowAutoResolveMinutes = max(1, (int) config('services.monitoring.auto_resolve_slow_minutes', 60));
+        $resolved += DB::table('site_incidents')
+            ->where('status', 'open')
+            ->where('type', 'slow_request')
+            ->where('last_seen_at', '<=', $now->copy()->subMinutes($slowAutoResolveMinutes))
+            ->update([
+                'status' => 'resolved',
+                'resolved_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+        return $resolved;
     }
 
     private function shape(object $row, bool $includeDetails): array
