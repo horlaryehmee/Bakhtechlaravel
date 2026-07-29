@@ -70,7 +70,7 @@ is_safe_source_path() {
     bootstrap/*.php|bootstrap/*/*.php|\
     config/*.php|config/*/*.php|\
     database/*.php|database/*/*.php|database/*/*/*.php|\
-    routes/*.php|artisan|composer.json|composer.lock|public/index.php)
+    routes/*.php|artisan|composer.json|composer.lock|.htaccess|public/.htaccess|public/index.php|public/index.html)
       return 0
       ;;
     *)
@@ -98,7 +98,8 @@ repair_file_atomically() {
 }
 
 git -C "$GIT_ROOT" ls-tree -r --name-only "$DEPLOY_REF" -- \
-  app bootstrap config database routes artisan composer.json composer.lock public/index.php > "$SOURCE_MANIFEST"
+  app bootstrap config database routes artisan composer.json composer.lock \
+  .htaccess public/.htaccess public/index.php public/index.html > "$SOURCE_MANIFEST"
 
 while IFS= read -r path; do
   [ -n "$path" ] || continue

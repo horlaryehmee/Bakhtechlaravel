@@ -59,6 +59,27 @@ BACKUP_FILE="$BACKUP_ROOT/${RELEASE_ID}-before.tar.gz"
 ROLLBACK_REQUIRED=false
 MAINTENANCE_ENABLED=false
 
+validate_web_entrypoint() {
+  local path
+  local asset_manifest="$STAGE_ROOT/entry-assets"
+
+  for path in .htaccess public/.htaccess public/index.php public/index.html; do
+    if [ ! -s "$APP_ROOT/$path" ]; then
+      echo "Deployment failed: required web-root file is missing: $path" >&2
+      return 1
+    fi
+  done
+
+  grep -oE '/assets/[^"]+' "$APP_ROOT/public/index.html" | sort -u > "$asset_manifest"
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if [ ! -s "$APP_ROOT/public$path" ]; then
+      echo "Deployment failed: frontend entry asset is missing: public$path" >&2
+      return 1
+    fi
+  done < "$asset_manifest"
+}
+
 remove_paths_added_by_release() {
   local path
 
@@ -94,6 +115,7 @@ restore_previous_release() {
   composer install --working-dir="$APP_ROOT" --no-dev --no-interaction --prefer-dist --optimize-autoloader
   php "$APP_ROOT/artisan" optimize:clear
   php "$APP_ROOT/artisan" optimize
+  validate_web_entrypoint
 }
 
 finish() {
@@ -185,6 +207,8 @@ php "$APP_ROOT/artisan" site:verify-admin-runtime
 
 APP_ROOT="$APP_ROOT" GIT_ROOT="$SOURCE_ROOT" DEPLOY_REF="$RELEASE_REF" INTEGRITY_SKIP_LOCK=1 \
   bash "$APP_ROOT/scripts/deployment-integrity.sh" --repair --full
+
+validate_web_entrypoint
 
 php "$APP_ROOT/artisan" route:list --path=api/health >/dev/null
 php "$APP_ROOT/artisan" route:list --path=api/ready >/dev/null
