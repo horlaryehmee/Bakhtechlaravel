@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Support\AdminToken;
+use App\Services\SiteIncidentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -821,6 +822,62 @@ class DeploymentSecurityTest extends TestCase
             ->assertJsonPath('service', 'bakhtech-api')
             ->assertJsonPath('checks.4.key', 'source')
             ->assertJsonPath('checks.4.ok', true);
+    }
+
+    public function test_incident_warnings_do_not_send_alert_email(): void
+    {
+        Mail::fake();
+
+        DB::table('settings')->insert([
+            'key' => 'adminEmail',
+            'value' => 'alerts@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(SiteIncidentService::class)->report([
+            'severity' => 'warning',
+            'type' => 'slow_request',
+            'source' => 'request-diagnostics',
+            'message' => 'Slow request: GET /api/settings took 7000ms',
+            'url' => 'https://bakhtech.com.ng/api/settings',
+        ]);
+
+        $this->assertDatabaseHas('site_incidents', [
+            'severity' => 'warning',
+            'type' => 'slow_request',
+            'source' => 'request-diagnostics',
+            'message' => 'Slow request: GET /api/settings took 7000ms',
+        ]);
+        Mail::assertNothingSent();
+    }
+
+    public function test_smtp_transport_incidents_do_not_send_alert_email(): void
+    {
+        Mail::fake();
+
+        DB::table('settings')->insert([
+            'key' => 'adminEmail',
+            'value' => 'alerts@example.test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(SiteIncidentService::class)->report([
+            'severity' => 'error',
+            'type' => 'TransportException',
+            'source' => 'exception-handler',
+            'message' => 'Failed to authenticate on SMTP server.',
+            'url' => 'https://bakhtech.com.ng/api/admin/invoices/documents',
+        ]);
+
+        $this->assertDatabaseHas('site_incidents', [
+            'severity' => 'error',
+            'type' => 'TransportException',
+            'source' => 'exception-handler',
+            'message' => 'Failed to authenticate on SMTP server.',
+        ]);
+        Mail::assertNothingSent();
     }
 
     public function test_only_published_cms_pages_are_public(): void

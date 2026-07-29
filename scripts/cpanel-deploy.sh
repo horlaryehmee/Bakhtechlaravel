@@ -186,6 +186,10 @@ APP_ROOT="$APP_ROOT" GIT_ROOT="$SOURCE_ROOT" DEPLOY_REF="$RELEASE_REF" INTEGRITY
 
 php "$APP_ROOT/artisan" route:list --path=api/health >/dev/null
 php "$APP_ROOT/artisan" route:list --path=api/ready >/dev/null
+php "$APP_ROOT/artisan" route:list --path=api/reviews >/dev/null
+php "$APP_ROOT/artisan" route:list --path=api/projects >/dev/null
+php "$APP_ROOT/artisan" route:list --path=api/settings >/dev/null
+php "$APP_ROOT/artisan" route:list --path=api/visits >/dev/null
 php "$APP_ROOT/artisan" route:list --path=admin >/dev/null
 
 php "$APP_ROOT/artisan" up

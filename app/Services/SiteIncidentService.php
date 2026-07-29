@@ -137,7 +137,7 @@ class SiteIncidentService
                 ]);
             }
 
-            if ($shouldNotify && $recipient !== '') {
+            if ($shouldNotify && $recipient !== '' && $this->shouldSendAlert($incident)) {
                 $this->sendAlert($recipient, array_merge($incident, ['fingerprint' => $fingerprint]));
             }
         } catch (Throwable $exception) {
@@ -221,6 +221,27 @@ class SiteIncidentService
         } catch (Throwable $exception) {
             Log::error('Unable to send site incident alert email.', ['error' => $exception->getMessage()]);
         }
+    }
+
+    private function shouldSendAlert(array $incident): bool
+    {
+        $severity = strtolower((string) ($incident['severity'] ?? 'error'));
+        $type = (string) ($incident['type'] ?? '');
+        $source = (string) ($incident['source'] ?? '');
+
+        if (! in_array($severity, ['error', 'critical'], true)) {
+            return false;
+        }
+
+        if ($source === 'request-diagnostics' || $type === 'slow_request') {
+            return false;
+        }
+
+        if (str_contains($type, 'TransportException')) {
+            return false;
+        }
+
+        return true;
     }
 
     private function adminEmail(): string

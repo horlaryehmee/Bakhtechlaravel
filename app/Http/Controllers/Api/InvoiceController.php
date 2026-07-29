@@ -9,6 +9,7 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -2438,7 +2439,12 @@ class InvoiceController extends Controller
                 'templateKey' => $templateKey,
             ], null, 'system');
         } catch (\Throwable $exception) {
-            report($exception);
+            Log::warning('Invoice email notification failed.', [
+                'documentId' => $documentId,
+                'templateKey' => $templateKey,
+                'recipient' => $document->client_email,
+                'error' => $exception->getMessage(),
+            ]);
 
             $update = [];
             if ($hasEmailLogColumn('status')) {
