@@ -36,8 +36,9 @@ else
   git remote add "$DEPLOY_REMOTE" "$REMOTE_URL"
 fi
 
-git fetch --prune "$DEPLOY_REMOTE" "${BRANCH}:refs/remotes/${DEPLOY_REMOTE}/${BRANCH}"
+git fetch --no-tags "$DEPLOY_REMOTE" "$BRANCH"
 git fsck --connectivity-only --no-dangling
+RELEASE_REF="$(git rev-parse 'FETCH_HEAD^{commit}')"
 
 if [ -s "$APP_ROOT/storage/app/deployment-ref" ]; then
   PREVIOUS_REF="$(<"$APP_ROOT/storage/app/deployment-ref")"
@@ -52,7 +53,6 @@ if ! git cat-file -e "${PREVIOUS_REF}^{commit}" 2>/dev/null; then
   PREVIOUS_REF="$(git rev-parse HEAD)"
 fi
 
-RELEASE_REF="$(git rev-parse "${DEPLOY_REMOTE}/${BRANCH}^{commit}")"
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)-${RELEASE_REF:0:12}"
 STAGE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/bakhtech-release.XXXXXX")"
 BACKUP_FILE="$BACKUP_ROOT/${RELEASE_ID}-before.tar.gz"
