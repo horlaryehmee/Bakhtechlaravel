@@ -37,8 +37,8 @@ else
 fi
 
 git fetch --no-tags "$DEPLOY_REMOTE" "$BRANCH"
-git fsck --connectivity-only --no-dangling
 RELEASE_REF="$(git rev-parse 'FETCH_HEAD^{commit}')"
+git fsck --connectivity-only --no-dangling "$RELEASE_REF"
 
 if [ -s "$APP_ROOT/storage/app/deployment-ref" ]; then
   PREVIOUS_REF="$(<"$APP_ROOT/storage/app/deployment-ref")"
