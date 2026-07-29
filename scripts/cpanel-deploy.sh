@@ -4,7 +4,7 @@ set -Eeuo pipefail
 REMOTE_URL="${REMOTE_URL:-https://github.com/horlaryehmee/Bakhtechlaravel.git}"
 BRANCH="${BRANCH:-main}"
 DEPLOY_REMOTE="${DEPLOY_REMOTE:-bakhtech_deploy_source}"
-SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE_ROOT="${SOURCE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 APP_ROOT="${APP_ROOT:-$SOURCE_ROOT}"
 BACKUP_ROOT="${BACKUP_ROOT:-$(dirname "$APP_ROOT")/.bakhtech-deploy-backups}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-3}"
