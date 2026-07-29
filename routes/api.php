@@ -133,6 +133,7 @@ Route::middleware([RequireAdminToken::class, 'throttle:admin-read'])->group(func
     Route::post('/admin/mail/logs/clear', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::delete('/admin/mail/logs', [MailSettingsController::class, 'clear'])->middleware('admin.role:admin');
     Route::get('/admin/incidents', [SiteIncidentController::class, 'index'])->middleware('admin.role:admin');
+    Route::get('/admin/incidents/export', [SiteIncidentController::class, 'export'])->middleware('admin.role:admin');
     Route::get('/admin/incidents/{id}', [SiteIncidentController::class, 'show'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/{id}/resolve', [SiteIncidentController::class, 'resolve'])->whereNumber('id')->middleware('admin.role:admin');
     Route::post('/admin/incidents/check', [SiteIncidentController::class, 'runCheck'])->middleware(['admin.role:admin', 'throttle:10,1']);

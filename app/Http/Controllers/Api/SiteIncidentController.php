@@ -33,17 +33,7 @@ class SiteIncidentController extends Controller
             ];
         }
 
-        $query = DB::table('site_incidents')
-            ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->when($data['severity'] ?? null, fn ($query, $severity) => $query->where('severity', $severity))
-            ->when($data['search'] ?? null, function ($query, $search) {
-                $query->where(function ($inner) use ($search) {
-                    $inner->where('message', 'like', "%{$search}%")
-                        ->orWhere('type', 'like', "%{$search}%")
-                        ->orWhere('source', 'like', "%{$search}%")
-                        ->orWhere('url', 'like', "%{$search}%");
-                });
-            });
+        $query = $this->incidentQuery($data);
 
         $total = (clone $query)->count();
         $rows = $query->orderByRaw("CASE WHEN status = 'open' THEN 0 ELSE 1 END")
@@ -78,6 +68,75 @@ class SiteIncidentController extends Controller
         }
 
         return ['incident' => $this->shape($row, true)];
+    }
+
+    public function export(Request $request)
+    {
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in(['open', 'resolved'])],
+            'severity' => ['nullable', 'string', 'max:24'],
+            'search' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $filename = 'bakhtech-site-incidents-'.now()->format('Y-m-d-His').'.txt';
+
+        if (! Schema::hasTable('site_incidents')) {
+            return response("Bakhtech Site Incident Export\nGenerated: ".now()->toIso8601String()."\n\nNo incident table was found.\n", 200, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            ]);
+        }
+
+        $query = $this->incidentQuery($data);
+        $rows = $query->orderByRaw("CASE WHEN status = 'open' THEN 0 ELSE 1 END")
+            ->orderByDesc('last_seen_at')
+            ->get();
+
+        $lines = [
+            'Bakhtech Site Incident Export',
+            'Generated: '.now()->toIso8601String(),
+            'Total incidents: '.$rows->count(),
+            '',
+            'Filters:',
+            '- Status: '.($data['status'] ?? 'all'),
+            '- Severity: '.($data['severity'] ?? 'all'),
+            '- Search: '.($data['search'] ?? 'none'),
+            '',
+        ];
+
+        foreach ($rows as $index => $row) {
+            $incident = $this->shape($row, true);
+            $lines = array_merge($lines, [
+                str_repeat('=', 80),
+                'Incident #'.($index + 1).' (ID '.$incident['id'].')',
+                str_repeat('=', 80),
+                'Severity: '.$incident['severity'],
+                'Type: '.$incident['type'],
+                'Status: '.$incident['status'],
+                'Occurrences: '.$incident['occurrenceCount'],
+                'Source: '.$incident['source'],
+                'Message: '.$incident['message'],
+                'URL: '.($incident['url'] ?: 'N/A'),
+                'Method: '.($incident['method'] ?: 'N/A'),
+                'File: '.($incident['file'] ?: 'N/A').($incident['line'] ? ':'.$incident['line'] : ''),
+                'First seen: '.($incident['firstSeenAt'] ?: 'N/A'),
+                'Last seen: '.($incident['lastSeenAt'] ?: 'N/A'),
+                'Last alert: '.($incident['lastNotifiedAt'] ?: 'N/A'),
+                'Resolved at: '.($incident['resolvedAt'] ?: 'N/A'),
+                '',
+                'Context:',
+                json_encode($incident['context'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}',
+                '',
+                'Trace:',
+                $incident['trace'] ?: 'No trace available.',
+                '',
+            ]);
+        }
+
+        return response(implode("\n", $lines), 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
     }
 
     public function resolve(int $id)
@@ -126,6 +185,21 @@ class SiteIncidentController extends Controller
         ]);
 
         return response()->json(['recorded' => true]);
+    }
+
+    private function incidentQuery(array $data)
+    {
+        return DB::table('site_incidents')
+            ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($data['severity'] ?? null, fn ($query, $severity) => $query->where('severity', $severity))
+            ->when($data['search'] ?? null, function ($query, $search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('message', 'like', "%{$search}%")
+                        ->orWhere('type', 'like', "%{$search}%")
+                        ->orWhere('source', 'like', "%{$search}%")
+                        ->orWhere('url', 'like', "%{$search}%");
+                });
+            });
     }
 
     private function shape(object $row, bool $includeDetails): array

@@ -1373,6 +1373,22 @@ export const api = {
   runSiteIncidentCheck() {
     return request<{ health: { ok: boolean; status: number; url: string; durationMs: number; message?: string }; checks: SiteHealthCheck[] }>('/api/admin/incidents/check', { method: 'POST' })
   },
+  async exportSiteIncidentsText(params: Record<string, string | number> = {}) {
+    const token = getAdminToken()
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '').map(([key, value]) => [key, String(value)])).toString()
+    const response = await fetch(apiUrl(`/api/admin/incidents/export${query ? `?${query}` : ''}`), {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const errorPayload = await parseErrorPayload(response, 'Incident export failed.')
+      throw new ApiError(errorPayload.message, response.status, errorPayload.requiresTwoFactor)
+    }
+
+    return response.blob()
+  },
   runDeploymentMaintenance() {
     return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/settings', {
       method: 'PUT',

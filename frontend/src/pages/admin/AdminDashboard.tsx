@@ -2420,6 +2420,27 @@ export function AdminDashboard() {
     }
   }
 
+  async function exportSiteIncidents() {
+    setSaving(true)
+    setError('')
+    try {
+      const blob = await api.exportSiteIncidentsText()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `bakhtech-site-incidents-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      notify('Incident export downloaded.')
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : 'Unable to export incidents.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function runDeploymentMaintenance() {
     const confirmed = window.confirm(
       'Run database migrations and rebuild Laravel caches now? The site may respond more slowly while this is running.'
@@ -8639,10 +8660,16 @@ export function AdminDashboard() {
             <h3 className="mt-1 text-xl font-black text-gray-900">Incident reports</h3>
             <p className="mt-2 text-sm font-semibold text-gray-500">Server errors, database failures, health-check failures, and alert emails are tracked here.</p>
           </div>
-          <Button type="button" disabled={siteIncidentChecking} className="rounded-xl bg-red-600 text-white" onClick={() => void runSiteIncidentCheck()}>
-            {siteIncidentChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-            Run health check
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="ghost" disabled={saving} className="rounded-xl border border-gray-200" onClick={() => void exportSiteIncidents()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export all
+            </Button>
+            <Button type="button" disabled={siteIncidentChecking} className="rounded-xl bg-red-600 text-white" onClick={() => void runSiteIncidentCheck()}>
+              {siteIncidentChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+              Run health check
+            </Button>
+          </div>
         </div>
 
         <div className="mb-5 grid gap-3 md:grid-cols-4">
