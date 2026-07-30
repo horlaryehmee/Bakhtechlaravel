@@ -18,7 +18,9 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ index.php [L]
+    RewriteRule ^api(/.*)?$ index.php [L]
+    RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]
+    RewriteRule ^admin(/.*)?$ index.html [L]
     RewriteRule ^up$ index.php [L]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ index.php [L]
 

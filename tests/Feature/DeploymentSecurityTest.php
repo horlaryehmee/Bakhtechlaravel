@@ -119,25 +119,38 @@ class DeploymentSecurityTest extends TestCase
         $this->assertStringContainsString('RewriteRule ^ index.php [L]', file_get_contents(public_path('.htaccess')));
     }
 
-    public function test_apache_routes_api_requests_through_laravel_before_spa_fallback(): void
+    public function test_apache_routes_api_and_dynamic_public_requests_through_laravel_before_spa_fallback(): void
     {
         $rootHtaccess = file_get_contents(base_path('.htaccess'));
         $publicHtaccess = file_get_contents(public_path('.htaccess'));
         $apiHtaccess = file_get_contents(base_path('api/.htaccess'));
 
-        $this->assertStringContainsString('RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ public/index.php [L]', $rootHtaccess);
+        $this->assertStringContainsString('RewriteRule ^api(/.*)?$ public/index.php [L]', $rootHtaccess);
+        $this->assertStringContainsString('RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ public/index.php [L]', $rootHtaccess);
         $this->assertStringContainsString('RewriteRule ^ public/index.html [L]', $rootHtaccess);
         $this->assertLessThan(
             strpos($rootHtaccess, 'RewriteRule ^ public/index.html [L]'),
-            strpos($rootHtaccess, 'RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ public/index.php [L]')
+            strpos($rootHtaccess, 'RewriteRule ^api(/.*)?$ public/index.php [L]')
+        );
+        $this->assertLessThan(
+            strpos($rootHtaccess, 'RewriteRule ^ public/index.html [L]'),
+            strpos($rootHtaccess, 'RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ public/index.php [L]')
         );
 
-        $this->assertStringContainsString('RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ index.php [L]', $publicHtaccess);
+        $this->assertStringContainsString('RewriteRule ^api(/.*)?$ index.php [L]', $publicHtaccess);
+        $this->assertStringContainsString('RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]', $publicHtaccess);
         $this->assertStringContainsString('RewriteRule ^ index.html [L]', $publicHtaccess);
         $this->assertLessThan(
             strpos($publicHtaccess, 'RewriteRule ^ index.html [L]'),
-            strpos($publicHtaccess, 'RewriteRule ^(api|admin|invoice|receipt|booking|book)(/.*)?$ index.php [L]')
+            strpos($publicHtaccess, 'RewriteRule ^api(/.*)?$ index.php [L]')
         );
+        $this->assertLessThan(
+            strpos($publicHtaccess, 'RewriteRule ^ index.html [L]'),
+            strpos($publicHtaccess, 'RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]')
+        );
+
+        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ public/index.html [L]', $rootHtaccess);
+        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ index.html [L]', $publicHtaccess);
 
         $this->assertStringContainsString('DirectoryIndex index.php', $apiHtaccess);
         $this->assertStringContainsString('RewriteRule ^.*$ index.php [L]', $apiHtaccess);
