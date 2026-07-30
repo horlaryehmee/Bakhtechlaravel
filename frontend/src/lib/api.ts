@@ -1574,10 +1574,6 @@ export const api = {
       keepalive: analytics.eventType === 'heartbeat',
     }).catch(() => undefined)
   },
-  visitorAnalytics(filters: { range?: 'week' | 'month' | 'year' | 'custom'; startDate?: string; endDate?: string } = {}) {
-    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value).map(([key, value]) => [key, String(value)])).toString()
-    return request<{ analytics: VisitorAnalytics }>(`/api/admin/analytics${query ? `?${query}` : ''}`)
-  },
   invoiceOverview() {
     return request<InvoiceOverview>('/api/admin/invoices/overview')
   },

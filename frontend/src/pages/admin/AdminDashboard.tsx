@@ -979,9 +979,6 @@ export function AdminDashboard() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showCreateNewDropdown, setShowCreateNewDropdown] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '12m'>('30d')
-  const [analyticsRange, setAnalyticsRange] = useState<'week' | 'month' | 'year' | 'custom'>('month')
-  const [analyticsStartDate, setAnalyticsStartDate] = useState(() => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10))
-  const [analyticsEndDate, setAnalyticsEndDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -1079,33 +1076,6 @@ export function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('bakhtech-admin-invoice-section', activeInvoiceSubsection)
   }, [activeInvoiceSubsection])
-
-  useEffect(() => {
-    if (!token || activeSection !== 'dashboard') return
-    let disposed = false
-    let refreshing = false
-    const refresh = async () => {
-      if (refreshing || document.visibilityState !== 'visible') return
-      refreshing = true
-      try {
-        const { analytics } = await api.visitorAnalytics({
-          range: analyticsRange,
-          ...(analyticsRange === 'custom' ? { startDate: analyticsStartDate, endDate: analyticsEndDate } : {}),
-        })
-        if (!disposed) setDashboard((current) => current ? { ...current, analytics } : current)
-      } catch {
-        // Keep the last successful analytics snapshot during a transient request failure.
-      } finally {
-        refreshing = false
-      }
-    }
-    void refresh()
-    const interval = window.setInterval(() => void refresh(), 60000)
-    return () => {
-      disposed = true
-      window.clearInterval(interval)
-    }
-  }, [token, activeSection, analyticsRange, analyticsStartDate, analyticsEndDate])
 
   useEffect(() => {
     setProjectPage(1)
@@ -5075,18 +5045,9 @@ export function AdminDashboard() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">Real first-party visitor data for {dashboard.analytics?.periodLabel?.toLowerCase() || 'the selected period'}{dashboard.analytics?.excludedBotPageViews ? ` · ${dashboard.analytics.excludedBotPageViews} bot page views excluded` : ''}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {(['week', 'month', 'year', 'custom'] as const).map((range) => (
-                    <button key={range} type="button" onClick={() => setAnalyticsRange(range)} className={cn('rounded-lg px-3 py-2 text-xs font-semibold capitalize transition', analyticsRange === range ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')}>{range}</button>
-                  ))}
-                  <span className="ml-2 inline-flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live</span>
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Loaded with dashboard</span>
                 </div>
               </div>
-              {analyticsRange === 'custom' ? (
-                <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
-                  <label className="grid gap-1 text-xs font-semibold text-slate-500">Start date<input type="date" className="theme-input rounded-lg px-3 py-2" value={analyticsStartDate} max={analyticsEndDate} onChange={(event) => setAnalyticsStartDate(event.target.value)} /></label>
-                  <label className="grid gap-1 text-xs font-semibold text-slate-500">End date<input type="date" className="theme-input rounded-lg px-3 py-2" value={analyticsEndDate} min={analyticsStartDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setAnalyticsEndDate(event.target.value)} /></label>
-                </div>
-              ) : null}
               {dashboard.analytics?.migrationRequired ? (
                 <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">Visitor analytics database migration is pending. Run <code>php artisan migrate --force</code> to enable live data.</div>
               ) : null}
