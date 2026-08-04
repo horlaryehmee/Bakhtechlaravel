@@ -127,30 +127,33 @@ class DeploymentSecurityTest extends TestCase
 
         $this->assertStringContainsString('RewriteRule ^api(/.*)?$ public/index.php [L]', $rootHtaccess);
         $this->assertStringContainsString('RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ public/index.php [L]', $rootHtaccess);
-        $this->assertStringContainsString('RewriteRule ^ public/index.html [L]', $rootHtaccess);
+        $this->assertStringContainsString('RewriteRule ^ public/index.php [L]', $rootHtaccess);
+        $rootSpaFallbackPosition = strrpos($rootHtaccess, 'RewriteRule ^ public/index.php [L]');
+        $publicSpaFallbackPosition = strrpos($publicHtaccess, 'RewriteRule ^ index.php [L]');
+
         $this->assertLessThan(
-            strpos($rootHtaccess, 'RewriteRule ^ public/index.html [L]'),
+            $rootSpaFallbackPosition,
             strpos($rootHtaccess, 'RewriteRule ^api(/.*)?$ public/index.php [L]')
         );
         $this->assertLessThan(
-            strpos($rootHtaccess, 'RewriteRule ^ public/index.html [L]'),
+            $rootSpaFallbackPosition,
             strpos($rootHtaccess, 'RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ public/index.php [L]')
         );
 
         $this->assertStringContainsString('RewriteRule ^api(/.*)?$ index.php [L]', $publicHtaccess);
         $this->assertStringContainsString('RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]', $publicHtaccess);
-        $this->assertStringContainsString('RewriteRule ^ index.html [L]', $publicHtaccess);
+        $this->assertStringContainsString('RewriteRule ^ index.php [L]', $publicHtaccess);
         $this->assertLessThan(
-            strpos($publicHtaccess, 'RewriteRule ^ index.html [L]'),
+            $publicSpaFallbackPosition,
             strpos($publicHtaccess, 'RewriteRule ^api(/.*)?$ index.php [L]')
         );
         $this->assertLessThan(
-            strpos($publicHtaccess, 'RewriteRule ^ index.html [L]'),
+            $publicSpaFallbackPosition,
             strpos($publicHtaccess, 'RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]')
         );
 
-        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ public/index.html [L]', $rootHtaccess);
-        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ index.html [L]', $publicHtaccess);
+        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ public/index.php [L]', $rootHtaccess);
+        $this->assertStringContainsString('RewriteRule ^admin(/.*)?$ index.php [L]', $publicHtaccess);
 
         $this->assertStringContainsString('DirectoryIndex index.php', $apiHtaccess);
         $this->assertStringContainsString('RewriteRule ^.*$ index.php [L]', $apiHtaccess);

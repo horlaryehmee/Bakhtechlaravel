@@ -75,4 +75,36 @@ class SeoToolsTest extends TestCase
         $this->assertStringContainsString('application/ld+json', $html);
         $this->assertStringContainsString('AboutPage', $html);
     }
+
+    public function test_suspicious_homepage_query_urls_are_removed_from_indexing(): void
+    {
+        $this->get('/?r=2866354602daf')
+            ->assertGone()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+        $this->get('/?items%2FM222528597%2F=')
+            ->assertGone()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    }
+
+    public function test_allowed_tracking_query_urls_redirect_to_canonical_path(): void
+    {
+        $this->get('/?utm_source=google&utm_campaign=test')
+            ->assertMovedPermanently()
+            ->assertRedirect(rtrim((string) config('app.url'), '/').'/');
+    }
+
+    public function test_unknown_public_paths_do_not_return_indexable_homepage_html(): void
+    {
+        $this->get('/shop')
+            ->assertNotFound()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    }
+
+    public function test_admin_spa_shell_is_not_indexable(): void
+    {
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    }
 }

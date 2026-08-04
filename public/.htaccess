@@ -20,13 +20,13 @@
 
     RewriteRule ^api(/.*)?$ index.php [L]
     RewriteRule ^(invoice|receipt|booking|book)(/.*)?$ index.php [L]
-    RewriteRule ^admin(/.*)?$ index.html [L]
+    RewriteRule ^admin(/.*)?$ index.php [L]
     RewriteRule ^up$ index.php [L]
     RewriteRule ^(sitemaps?\.xml|robots\.txt|llms\.txt|markdown-mirrors\.txt|markdown/[^/]+\.md)$ index.php [L]
 
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.html [L]
+    RewriteRule ^ index.php [L]
 </IfModule>
 
 <IfModule mod_expires.c>

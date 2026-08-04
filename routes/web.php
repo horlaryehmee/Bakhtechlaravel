@@ -18,6 +18,78 @@ $seoStaticPages = fn () => collect([
     ['path' => '/contact', 'slug' => 'contact', 'title' => 'Contact Bakhtech Solutions', 'description' => 'Contact Bakhtech Solutions to plan a website, online store, booking system, dashboard, client portal, or custom business web app.'],
 ]);
 
+$spamQueryResponse = function (Request $request) use ($seoBaseUrl) {
+    if (! $request->query->count()) {
+        return null;
+    }
+
+    $allowedTrackingKeys = [
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
+        'gclid',
+        'fbclid',
+        'msclkid',
+    ];
+    $keys = array_map('strtolower', array_keys($request->query->all()));
+
+    if (array_diff($keys, $allowedTrackingKeys) === []) {
+        return redirect($seoBaseUrl().$request->getPathInfo(), 301);
+    }
+
+    return response('Gone.', 410, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+        'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+        'Cache-Control' => 'no-store, max-age=0',
+    ]);
+};
+
+$notFoundResponse = function () {
+    return response('Not found.', 404, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+        'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+        'Cache-Control' => 'no-store, max-age=0',
+    ]);
+};
+
+$spaFileResponse = function (bool $private = false) {
+    $index = public_path('index.html');
+
+    if (! is_file($index)) {
+        return response('Frontend build not found.', 503);
+    }
+
+    $response = response()->file($index);
+
+    if ($private) {
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        $response->headers->set('Cache-Control', 'no-store, max-age=0');
+    }
+
+    return $response;
+};
+
+$staticPageResponse = function (string $slug) use ($seoBaseUrl, $seoStaticPages) {
+    $page = $seoStaticPages()->firstWhere('slug', $slug);
+
+    if (! $page) {
+        return null;
+    }
+
+    $baseUrl = $seoBaseUrl();
+    $path = $page['path'] === '/' ? '' : $page['path'];
+
+    return SpaMetadataResponse::make([
+        'title' => $page['title'],
+        'description' => $page['description'],
+        'url' => $baseUrl.$path,
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        'imageAlt' => $page['title'],
+    ]);
+};
+
 $cmsPageResponse = function (string $slug) use ($seoBaseUrl) {
     if (! Schema::hasTable('pages')) {
         return null;
@@ -109,19 +181,21 @@ $legacyInvoiceRedirect = function (Request $request) {
     return null;
 };
 
-Route::get('/', function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse) {
+Route::get('/', function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse, $spamQueryResponse, $staticPageResponse) {
     if ($redirect = $legacyInvoiceRedirect($request)) {
         return $redirect;
+    }
+
+    if ($response = $spamQueryResponse($request)) {
+        return $response;
     }
 
     if ($response = $cmsPageResponse('home')) {
         return $response;
     }
 
-    $index = public_path('index.html');
-
-    if (is_file($index)) {
-        return response()->file($index);
+    if ($response = $staticPageResponse('home')) {
+        return $response;
     }
 
     return response()->json([
@@ -131,10 +205,22 @@ Route::get('/', function (Request $request) use ($legacyInvoiceRedirect, $cmsPag
     ]);
 });
 
+Route::get('/admin/{path?}', function () use ($spaFileResponse) {
+    return $spaFileResponse(true);
+})->where('path', '.*');
+
+Route::get('/pricing/{categorySlug}', function () use ($spaFileResponse) {
+    return $spaFileResponse();
+})->where('categorySlug', '[A-Za-z0-9_-]+');
+
+Route::get('/{legalPage}', function (string $legalPage) use ($spaFileResponse) {
+    return $spaFileResponse();
+})->whereIn('legalPage', ['privacy-policy', 'terms-of-service', 'cookie-policy', 'security']);
+
 Route::get('/robots.txt', function () {
     $baseUrl = rtrim((string) config('app.url', 'https://bakhtech.com.ng'), '/');
 
-    return response("User-agent: *\nAllow: /\nAllow: /llms.txt\nAllow: /markdown-mirrors.txt\nAllow: /markdown/\nDisallow: /admin\nDisallow: /api/admin\nDisallow: /api/auth\nDisallow: /invoice\nSitemap: {$baseUrl}/sitemap.xml\n", 200, [
+    return response("User-agent: *\nAllow: /\nAllow: /llms.txt\nAllow: /markdown-mirrors.txt\nAllow: /markdown/\nDisallow: /admin\nDisallow: /api/admin\nDisallow: /api/auth\nDisallow: /invoice\nDisallow: /*?r=\nDisallow: /*?items\nDisallow: /*?item\nDisallow: /*?product\nDisallow: /*?shop\nSitemap: {$baseUrl}/sitemap.xml\n", 200, [
         'Content-Type' => 'text/plain; charset=UTF-8',
     ]);
 });
@@ -278,9 +364,13 @@ Route::get('/{sitemapFile}', function () use ($seoBaseUrl, $seoStaticPages) {
     ]);
 })->where('sitemapFile', 'sitemaps?\.xml');
 
-Route::fallback(function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse) {
+Route::fallback(function (Request $request) use ($legacyInvoiceRedirect, $cmsPageResponse, $spamQueryResponse, $staticPageResponse, $spaFileResponse, $notFoundResponse) {
     if ($request->isMethod('GET') && $redirect = $legacyInvoiceRedirect($request)) {
         return $redirect;
+    }
+
+    if ($request->isMethod('GET') && $response = $spamQueryResponse($request)) {
+        return $response;
     }
 
     if (request()->is('api') || request()->is('api/*')) {
@@ -292,11 +382,18 @@ Route::fallback(function (Request $request) use ($legacyInvoiceRedirect, $cmsPag
         return $response;
     }
 
-    $index = public_path('index.html');
-
-    if (is_file($index)) {
-        return response()->file($index);
+    if ($request->isMethod('GET') && ! str_contains($slug, '/') && ($response = $staticPageResponse($slug))) {
+        return $response;
     }
 
-    return response()->json(['message' => 'Not found.'], 404);
+    if ($request->isMethod('GET') && (
+        $request->is('invoice/*')
+        || $request->is('receipt/*')
+        || $request->is('booking')
+        || $request->is('book/*')
+    )) {
+        return $spaFileResponse($request->is('invoice/*') || $request->is('receipt/*'));
+    }
+
+    return $notFoundResponse();
 });

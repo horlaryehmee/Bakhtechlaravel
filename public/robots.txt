@@ -7,4 +7,9 @@ Disallow: /admin
 Disallow: /api/admin
 Disallow: /api/auth
 Disallow: /invoice
+Disallow: /*?r=
+Disallow: /*?items
+Disallow: /*?item
+Disallow: /*?product
+Disallow: /*?shop
 Sitemap: https://bakhtech.com.ng/sitemap.xml
