@@ -17,6 +17,7 @@ const About = lazy(() => import('@/pages/About').then((module) => ({ default: mo
 const Contact = lazy(() => import('@/pages/Contact').then((module) => ({ default: module.Contact })))
 const CmsPage = lazy(() => import('@/pages/CmsPage').then((module) => ({ default: module.CmsPage })))
 const LegalPage = lazy(() => import('@/pages/LegalPage').then((module) => ({ default: module.LegalPage })))
+const NotFound = lazy(() => import('@/pages/NotFound').then((module) => ({ default: module.NotFound })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
@@ -168,6 +169,7 @@ function App() {
             <Route path="security" element={<LegalPage kind="security" />} />
             <Route path=":pageSlug" element={<CmsPage />} />
           </Route>
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </AppErrorBoundary>

@@ -1,6 +1,7 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { usePublicCmsPage } from '@/hooks/usePublicCmsPage'
 import { AgencyHomeTemplate } from '@/pages/templates/AgencyHomeTemplate'
+import { NotFound } from '@/pages/NotFound'
 
 export function CmsPage() {
   const { pageSlug } = useParams()
@@ -11,16 +12,7 @@ export function CmsPage() {
   }
 
   if (notFound || !page) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--background)] px-5 text-[var(--foreground)]">
-        <div className="text-center">
-          <h1 className="text-4xl font-black">Page not found</h1>
-          <Link to="/" className="mt-5 inline-flex rounded-xl bg-[var(--foreground)] px-5 py-3 font-black text-[var(--background)]">
-            Return home
-          </Link>
-        </div>
-      </main>
-    )
+    return <NotFound />
   }
 
   if (page.template === 'agency-v2') {

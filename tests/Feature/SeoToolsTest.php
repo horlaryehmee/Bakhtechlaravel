@@ -96,9 +96,13 @@ class SeoToolsTest extends TestCase
 
     public function test_unknown_public_paths_do_not_return_indexable_homepage_html(): void
     {
-        $this->get('/shop')
+        $html = $this->get('/shop')
             ->assertNotFound()
-            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->getContent();
+
+        $this->assertStringContainsString('<title>404 - Page Not Found</title>', $html);
+        $this->assertStringContainsString('noindex, nofollow, noarchive', $html);
     }
 
     public function test_admin_spa_shell_is_not_indexable(): void

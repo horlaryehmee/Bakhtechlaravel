@@ -46,9 +46,15 @@ $spamQueryResponse = function (Request $request) use ($seoBaseUrl) {
     ]);
 };
 
-$notFoundResponse = function () {
-    return response('Not found.', 404, [
-        'Content-Type' => 'text/plain; charset=UTF-8',
+$notFoundResponse = function (Request $request) use ($seoBaseUrl) {
+    return SpaMetadataResponse::make([
+        'title' => '404 - Page Not Found',
+        'description' => 'The page you requested could not be found on Bakhtech Solutions.',
+        'url' => $seoBaseUrl().$request->getPathInfo(),
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+        'imageAlt' => 'Bakhtech Solutions page not found',
+        'robots' => 'noindex, nofollow, noarchive',
+    ], false, 404, [
         'X-Robots-Tag' => 'noindex, nofollow, noarchive',
         'Cache-Control' => 'no-store, max-age=0',
     ]);
@@ -395,5 +401,5 @@ Route::fallback(function (Request $request) use ($legacyInvoiceRedirect, $cmsPag
         return $spaFileResponse($request->is('invoice/*') || $request->is('receipt/*'));
     }
 
-    return $notFoundResponse();
+    return $notFoundResponse($request);
 });

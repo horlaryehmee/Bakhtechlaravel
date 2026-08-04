@@ -6,7 +6,7 @@ use Illuminate\Http\Response;
 
 class SpaMetadataResponse
 {
-    public static function make(array $metadata, bool $private = false): Response
+    public static function make(array $metadata, bool $private = false, int $status = 200, array $headers = []): Response
     {
         $index = public_path('index.html');
         if (! is_file($index)) {
@@ -23,7 +23,7 @@ class SpaMetadataResponse
         $xpath = new \DOMXPath($dom);
         $head = $xpath->query('//head')->item(0);
         if (! $head) {
-            return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+            return response($html, $status, array_merge(['Content-Type' => 'text/html; charset=UTF-8'], $headers));
         }
 
         $title = (string) $metadata['title'];
@@ -55,9 +55,9 @@ class SpaMetadataResponse
             self::setSchema($dom, $xpath, $head, (array) $metadata['schema']);
         }
 
-        $response = response($dom->saveHTML() ?: $html, 200, [
+        $response = response($dom->saveHTML() ?: $html, $status, array_merge([
             'Content-Type' => 'text/html; charset=UTF-8',
-        ]);
+        ], $headers));
 
         return $private ? $response->header('Cache-Control', 'private, no-store') : $response;
     }
