@@ -10,6 +10,23 @@
 
       gtag('config', 'AW-17706794532');
     </script>
+    <!-- Event snippet for Book appointment conversion page -->
+    <script data-cfasync="false">
+      function gtag_report_conversion(url) {
+        var callback = function () {
+          if (typeof(url) != 'undefined') {
+            window.location = url;
+          }
+        };
+        gtag('event', 'conversion', {
+            'send_to': 'AW-17706794532/-g0RCNbgkt0cEKT8oPtB',
+            'value': 1.0,
+            'currency': 'USD',
+            'event_callback': callback
+        });
+        return false;
+      }
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="/favicon.png?v=2" />
@@ -117,7 +134,7 @@
       }
     </script>
     <title>Bakhtech Solutions | Websites, Online Stores & Business Tools</title>
-    <script type="module" crossorigin src="/assets/index-6NlfcES_.js"></script>
+    <script type="module" crossorigin src="/assets/index-11VAajp7.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-ztGpmoKK.css">
   </head>
   <body>

@@ -34,6 +34,20 @@ const defaultMeetingLocations = [
   { id: "in-person", label: "In Person", type: "in_person", details: "", enabled: false },
 ];
 
+function reportBookingConversion() {
+  const reportConversion = (window as Window & {
+    gtag_report_conversion?: (url?: string) => boolean;
+  }).gtag_report_conversion;
+
+  if (typeof reportConversion === "function") {
+    try {
+      reportConversion();
+    } catch {
+      // Conversion tracking must not block the booking confirmation flow.
+    }
+  }
+}
+
 function locationIcon(type: string) {
   if (type === "phone") return Phone;
   if (type === "whatsapp") return MessageSquare;
@@ -327,6 +341,7 @@ export function Booking() {
         ...form,
       });
       setConfirmedBooking(result.booking);
+      reportBookingConversion();
       setCurrentStep(4);
     } catch (saveError) {
       if (saveError instanceof ApiError && saveError.status === 409) {
