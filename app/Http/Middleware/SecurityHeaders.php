@@ -27,12 +27,14 @@ class SecurityHeaders
             "base-uri 'self'",
             "frame-ancestors 'none'",
             "object-src 'none'",
-            "img-src 'self' data: https:",
+            "img-src 'self' data: https: https://www.googletagmanager.com https://googleads.g.doubleclick.net https://www.google.com https://google.com https://pagead2.googlesyndication.com https://www.googleadservices.com",
             "media-src 'self' data: https:",
             "font-src 'self' data: https:",
             "style-src 'self' 'unsafe-inline' https:",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-            "connect-src 'self' https: wss:",
+            "script-src-elem 'self' 'unsafe-inline' https: https://www.googleadservices.com https://www.google.com https://www.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net",
+            "connect-src 'self' https: wss: https://pagead2.googlesyndication.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://google.com",
+            "frame-src 'self' https://www.googletagmanager.com",
         ]));
 
         if ($request->isSecure()) {
