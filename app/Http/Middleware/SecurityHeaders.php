@@ -34,7 +34,7 @@ class SecurityHeaders
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
             "script-src-elem 'self' 'unsafe-inline' https: https://www.googleadservices.com https://www.google.com https://www.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net",
             "connect-src 'self' https: wss: https://pagead2.googlesyndication.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://ad.doubleclick.net https://www.google.com https://google.com",
-            "frame-src 'self' https://www.googletagmanager.com",
+            "frame-src 'self' https://www.googletagmanager.com https://www.youtube.com https://www.youtube-nocookie.com",
         ]));
 
         if ($request->isSecure()) {
