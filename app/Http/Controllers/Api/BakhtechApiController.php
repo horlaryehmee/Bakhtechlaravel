@@ -1272,7 +1272,7 @@ class BakhtechApiController extends Controller
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp,avif,heic,heif,pdf,mp4,webm,mov,ogg', 'max:51200'],
         ]);
         $file = $data['file'];
-        $extension = strtolower($file->getClientOriginalExtension());
+        $extension = $this->uploadExtension((string) $file->getClientOriginalName(), (string) $file->getClientMimeType());
         $filename = (string) Str::uuid().'.'.$extension;
         $savedUrl = $this->storeUploadedMediaFile($file, $filename);
 
@@ -1404,7 +1404,8 @@ class BakhtechApiController extends Controller
         }
 
         $originalName = basename((string) $data['filename']) ?: 'uploaded-file.'.$allowedTypes[$mimeType];
-        $filename = (string) Str::uuid().'.'.$allowedTypes[$mimeType];
+        $extension = $this->uploadExtension($originalName, $mimeType);
+        $filename = (string) Str::uuid().'.'.$extension;
         $savedUrl = $this->storeBinaryMediaFile($binary, $filename);
 
         if (! $savedUrl) {
@@ -2592,6 +2593,20 @@ class BakhtechApiController extends Controller
             'video/quicktime' => 'mov',
             'video/ogg' => 'ogg',
         ];
+    }
+
+    private function uploadExtension(string $originalName, string $mimeType): string
+    {
+        $allowedTypes = $this->allowedUploadMimeTypes();
+        $fallback = $allowedTypes[strtolower(trim($mimeType))] ?? 'bin';
+        $extension = strtolower(pathinfo(basename($originalName), PATHINFO_EXTENSION));
+        $allowedExtensions = array_unique(array_merge(array_values($allowedTypes), ['jpeg']));
+
+        if (! in_array($extension, $allowedExtensions, true)) {
+            return $fallback;
+        }
+
+        return $extension === 'jpeg' ? 'jpg' : $extension;
     }
 
     private function deleteDirectory(string $directory): void

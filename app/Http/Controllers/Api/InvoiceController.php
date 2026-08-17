@@ -2499,7 +2499,7 @@ class InvoiceController extends Controller
         $label = ucfirst((string) $document->type);
         $clientName = htmlspecialchars((string) ($document->client_name ?: 'there'), ENT_QUOTES, 'UTF-8');
         $businessName = htmlspecialchars((string) $branding['businessName'], ENT_QUOTES, 'UTF-8');
-        $logoUrl = htmlspecialchars($this->absoluteUrl((string) ($branding['logoUrl'] ?: '/uploads/929ee571-1302-4134-9fdd-2556fb7d5590.jpg')), ENT_QUOTES, 'UTF-8');
+        $logoUrl = htmlspecialchars($this->absoluteUrl((string) ($branding['logoUrl'] ?: '/uploads/929ee571-1302-4134-9fdd-2556fb7d5590.png')), ENT_QUOTES, 'UTF-8');
         $number = htmlspecialchars((string) $document->number, ENT_QUOTES, 'UTF-8');
         $currencySymbol = htmlspecialchars($this->currencySymbol((string) $document->currency), ENT_QUOTES, 'UTF-8');
         $total = $this->formatEmailAmount((float) $document->total);
@@ -2665,7 +2665,7 @@ HTML;
         $settings = $this->siteSettings();
         $defaults = [
             'businessName' => $settings['company_name'] ?? 'Bakhtech Solutions',
-            'logoUrl' => $settings['company_logo'] ?? '/uploads/929ee571-1302-4134-9fdd-2556fb7d5590.jpg',
+            'logoUrl' => $settings['company_logo'] ?? '/uploads/929ee571-1302-4134-9fdd-2556fb7d5590.png',
             'primaryColor' => '#ef4444',
             'accentColor' => '#12c8a0',
             'email' => $settings['company_email'] ?? 'solutions@bakhtech.com.ng',
