@@ -132,9 +132,19 @@ function escapeHtml(value: string) {
 
 const optimizedImageMaxBytes = 1_800_000
 const optimizedImageMaxSide = 1920
+const preservedImageFormats = new Set(['image/png', 'image/gif', 'image/webp', 'image/avif'])
+
+function uploadedFileExtension(file: File) {
+  return file.name.split('.').pop()?.toLowerCase() ?? ''
+}
 
 function isCompressibleImage(file: File) {
-  return file.type.startsWith('image/') && !['image/gif', 'image/svg+xml'].includes(file.type)
+  const extension = uploadedFileExtension(file)
+  if (['png', 'gif', 'webp', 'avif'].includes(extension) || preservedImageFormats.has(file.type)) {
+    return false
+  }
+
+  return file.type.startsWith('image/') && file.type !== 'image/svg+xml'
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
