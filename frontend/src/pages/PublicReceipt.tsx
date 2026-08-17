@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { api, type PublicReceiptData } from '@/lib/api'
 
-const bakhtechColoredLogo = '/bakhtech-logo-dark.png'
+const bakhtechColoredLogo = '/bakhtech-logo-light.png'
 
 function money(amount: number, currency: string) {
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(Number(amount || 0))

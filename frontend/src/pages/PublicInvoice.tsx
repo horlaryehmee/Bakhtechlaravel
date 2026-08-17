@@ -141,7 +141,7 @@ function RichTextBlock({ value }: { value: string }) {
 }
 
 const pricingLockNotice = 'Pricing is locked for this document. Future pricing changes will not affect this quote or invoice.'
-const bakhtechColoredLogo = '/bakhtech-logo-dark.png'
+const bakhtechColoredLogo = '/bakhtech-logo-light.png'
 
 function visibleRichText(value: string) {
   return value.trim() === pricingLockNotice ? '' : value
