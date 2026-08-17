@@ -71,7 +71,7 @@ function Header() {
     <header className="mx-auto mt-4 w-[min(1500px,calc(100%-32px))] rounded-[1.2rem] border border-slate-200 bg-white/95 shadow-[0_18px_56px_rgba(15,23,42,0.10)] backdrop-blur-xl">
       <div className="flex min-h-[82px] items-center justify-between gap-4 px-4 md:px-6">
         <Link to="/" aria-label="Bakhtech home">
-          <img src="/bakhtech-logo-light.png" alt="Bakhtech" className="h-12 w-auto" />
+          <img src="/bakhtech-logo-dark.png" alt="Bakhtech" className="h-12 w-auto" />
         </Link>
         <div className="flex items-center gap-2 md:gap-3">
           <Link to="/" className="hidden min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-black text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 sm:inline-flex">

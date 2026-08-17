@@ -16,6 +16,14 @@ function dateTime(value: string) {
     : new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed)
 }
 
+function documentLogoUrl(logoUrl: string) {
+  if (!logoUrl) return ''
+  if (logoUrl.endsWith('/bakhtech-logo-light.png') || logoUrl === 'bakhtech-logo-light.png') {
+    return '/bakhtech-logo-dark.png'
+  }
+  return logoUrl
+}
+
 export function PublicReceipt() {
   const { token = '' } = useParams()
   const [receipt, setReceipt] = useState<PublicReceiptData | null>(null)
@@ -43,7 +51,7 @@ export function PublicReceipt() {
       <article className="receipt-card">
         <header className="receipt-header">
           <div className="receipt-brand">
-            {brand.logoUrl ? <img src={brand.logoUrl} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+            {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
             <div><strong>{brand.businessName}</strong><span>{brand.email}</span><span>{brand.phone}</span></div>
           </div>
           <div className="receipt-status"><CheckCircle2 className="h-5 w-5" />Payment received</div>

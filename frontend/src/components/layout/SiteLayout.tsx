@@ -140,7 +140,7 @@ export function SiteLayout() {
               <div className="flex w-full items-center justify-between gap-3 lg:w-auto">
                 <Link to="/" className="flex items-center gap-3 text-[var(--foreground)]" onClick={() => setOpen(false)} aria-label="Bakhtech home">
                   <img
-                    src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'}
+                    src="/bakhtech-logo-dark.png"
                     alt="Bakhtech"
                     className="h-10 w-auto"
                     width="160"

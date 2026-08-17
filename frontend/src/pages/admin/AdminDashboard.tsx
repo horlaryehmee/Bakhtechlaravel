@@ -453,7 +453,7 @@ const emptyInvoiceForm: Partial<InvoiceDocument> & {
   items: [{ ...emptyInvoiceItem, name: 'Professional Service', unitPrice: 0 }],
   branding: {
     businessName: 'Bakhtech Solutions',
-    logoUrl: '/bakhtech-logo-light.png',
+    logoUrl: '/bakhtech-logo-dark.png',
     primaryColor: '#3b82f6',
     accentColor: '#12c8a0',
     email: 'solutions@bakhtech.com.ng',
@@ -4446,7 +4446,7 @@ export function AdminDashboard() {
         description: 'Used on public quotes, invoices, receipts, and generated PDFs.',
         fields: [
           { key: 'company_name', label: 'Company name', placeholder: 'Bakhtech Solutions' },
-          { key: 'company_logo', label: 'Company logo URL', placeholder: '/bakhtech-logo-light.png' },
+          { key: 'company_logo', label: 'Company logo URL', placeholder: '/bakhtech-logo-dark.png' },
           { key: 'company_email', label: 'Company email', type: 'email', placeholder: 'solutions@bakhtech.com.ng' },
           { key: 'company_phone', label: 'Company phone', placeholder: '+2347086372833' },
           { key: 'company_address', label: 'Company address', multiline: true, placeholder: 'Bakhtech Solutions, Eti Osa, Lekki, Lagos' },

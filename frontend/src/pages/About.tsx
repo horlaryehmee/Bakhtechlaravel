@@ -23,7 +23,6 @@ import {
   Smartphone,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useTheme } from '@/components/theme/theme-context'
 
 const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
 const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
@@ -117,8 +116,6 @@ const ctaOrbitRows = [
 ]
 
 export function About() {
-  const { theme } = useTheme()
-
   return (
     <main className="about-page home-page overflow-hidden bg-[var(--background)]">
       <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
@@ -282,7 +279,7 @@ export function About() {
             <div className="about-cta-orbit-wrap" aria-hidden="true">
               <div className="about-cta-orbit-stage">
                 <div className="about-cta-orbit-core">
-                  <img src={theme === 'light' ? '/bakhtech-logo-light.png' : '/bakhtech-logo-dark.png'} alt="" className="about-cta-orbit-logo" />
+                  <img src="/bakhtech-logo-dark.png" alt="" className="about-cta-orbit-logo" />
                 </div>
                 {ctaOrbitRows.map((orbitItems, orbitIndex) => (
                   <div key={orbitIndex} className={`about-cta-orbit about-cta-orbit-${orbitIndex + 1}`}>

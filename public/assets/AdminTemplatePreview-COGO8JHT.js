@@ -1,0 +1,1 @@
+import{G as e,J as t,V as n,Z as r,t as i}from"./index-70yS3wOX.js";var a=n();function o(){let{template:n=``}=r();return e()?n===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(t,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(t,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
