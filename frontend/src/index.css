@@ -4103,7 +4103,9 @@ a {
 .quote-document-brand img,
 .quote-document-brand > svg {
   width: 126px;
+  height: auto;
   max-height: 68px;
+  flex: 0 0 auto;
   object-fit: contain;
   color: var(--quote-primary);
 }
@@ -4522,8 +4524,10 @@ a {
 
   .quote-document-brand img,
   .quote-document-brand > svg {
-    width: 170px;
-    max-height: 100px;
+    display: block;
+    width: min(170px, 56vw);
+    height: auto;
+    max-height: none;
   }
 
   .quote-document-brand h1 {
@@ -4785,7 +4789,9 @@ a {
 .invoice-sheet-brand img,
 .invoice-sheet-brand > svg {
   width: 116px;
+  height: auto;
   max-height: 58px;
+  flex: 0 0 auto;
   object-fit: contain;
   color: var(--sheet-primary);
 }
@@ -5317,8 +5323,10 @@ a {
 
   .invoice-sheet-brand img,
   .invoice-sheet-brand > svg {
-    width: 146px;
-    max-height: 78px;
+    display: block;
+    width: min(146px, 52vw);
+    height: auto;
+    max-height: none;
   }
 
   .invoice-sheet-brand img ~ .invoice-sheet-contact strong {
