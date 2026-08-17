@@ -658,7 +658,7 @@ class PricingController extends Controller
         $settings = $this->siteSettings();
         $defaults = [
             'businessName' => 'Bakhtech Solutions',
-            'logoUrl' => '/uploads/929ee571-1302-4134-9fdd-2556fb7d5590.png',
+            'logoUrl' => '/uploads/a709e85a-a31b-4585-9b2c-1f45fe5487af.png',
             'primaryColor' => '#ef4444',
             'accentColor' => '#12c8a0',
             'email' => 'solutions@bakhtech.com.ng',

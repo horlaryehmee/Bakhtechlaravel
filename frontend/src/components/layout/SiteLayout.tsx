@@ -9,6 +9,8 @@ import { navigation } from '@/data/site'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
+const lightModeLogo = '/uploads/a709e85a-a31b-4585-9b2c-1f45fe5487af.png'
+
 type HeaderNavItem = {
   label: string
   href: string
@@ -140,7 +142,7 @@ export function SiteLayout() {
               <div className="flex w-full items-center justify-between gap-3 lg:w-auto">
                 <Link to="/" className="flex items-center gap-3 text-[var(--foreground)]" onClick={() => setOpen(false)} aria-label="Bakhtech home">
                   <img
-                    src="/bakhtech-logo-dark.png"
+                    src={lightModeLogo}
                     alt="Bakhtech"
                     className="h-10 w-auto"
                     width="160"

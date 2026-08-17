@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom'
 
 const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
 const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
+const lightModeLogo = '/uploads/a709e85a-a31b-4585-9b2c-1f45fe5487af.png'
 
 const highlights = [
   { label: 'Years building digital products', value: '7+' },
@@ -279,7 +280,7 @@ export function About() {
             <div className="about-cta-orbit-wrap" aria-hidden="true">
               <div className="about-cta-orbit-stage">
                 <div className="about-cta-orbit-core">
-                  <img src="/bakhtech-logo-dark.png" alt="" className="about-cta-orbit-logo" />
+                  <img src={lightModeLogo} alt="" className="about-cta-orbit-logo" />
                 </div>
                 {ctaOrbitRows.map((orbitItems, orbitIndex) => (
                   <div key={orbitIndex} className={`about-cta-orbit about-cta-orbit-${orbitIndex + 1}`}>
