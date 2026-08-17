@@ -125,7 +125,7 @@ class SiteDefaults
             'invoiceDefaultPaymentGateway' => 'paystack',
             'invoiceEnabledPaymentGateways' => 'paystack,flutterwave',
             'company_name' => 'Bakhtech Solutions',
-            'company_logo' => '/bakhtech-logo-light.png',
+            'company_logo' => '/uploads/d33c8e05-c4ed-494c-b586-0c426860b6a9.jpg',
             'company_email' => 'solutions@bakhtech.com.ng',
             'company_phone' => '+234 708 637 2833',
             'company_address' => '',

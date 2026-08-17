@@ -146,7 +146,7 @@ return new class extends Migration
             'payment_enabled' => true,
             'branding_json' => json_encode([
                 'businessName' => 'Bakhtech Solutions',
-                'logoUrl' => '/bakhtech-logo-light.png',
+                'logoUrl' => '/uploads/d33c8e05-c4ed-494c-b586-0c426860b6a9.jpg',
                 'primaryColor' => '#ef4444',
                 'accentColor' => '#12c8a0',
                 'email' => 'solutions@bakhtech.com.ng',
