@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { api, type PublicReceiptData } from '@/lib/api'
 
+const bakhtechColoredLogo = '/bakhtech-logo-dark.png'
+
 function money(amount: number, currency: string) {
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(Number(amount || 0))
 }
@@ -17,11 +19,50 @@ function dateTime(value: string) {
 }
 
 function documentLogoUrl(logoUrl: string) {
-  if (!logoUrl) return ''
-  if (logoUrl.endsWith('/bakhtech-logo-light.png') || logoUrl === 'bakhtech-logo-light.png') {
-    return '/bakhtech-logo-dark.png'
+  const value = logoUrl.trim()
+  if (!value) return bakhtechColoredLogo
+
+  try {
+    const url = new URL(value, window.location.origin)
+    const path = url.pathname.toLowerCase()
+    if (path.endsWith('/bakhtech-logo-light.png')
+      || path.endsWith('/bakhtech-logo-light.jpg')
+      || path.endsWith('/bakhtech-logo-white.png')
+      || path.endsWith('/bakhtech-logo-white.jpg')) {
+      return bakhtechColoredLogo
+    }
+  } catch {
+    const path = value.toLowerCase()
+    if (path === 'bakhtech-logo-light.png'
+      || path === 'bakhtech-logo-light.jpg'
+      || path === 'bakhtech-logo-white.png'
+      || path === 'bakhtech-logo-white.jpg') {
+      return bakhtechColoredLogo
+    }
   }
-  return logoUrl
+
+  return value
+}
+
+function DocumentBrandLogo({ logoUrl, businessName }: { logoUrl: string; businessName: string }) {
+  const normalizedSrc = documentLogoUrl(logoUrl)
+  const [src, setSrc] = useState(normalizedSrc)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setSrc(normalizedSrc)
+    setFailed(false)
+  }, [normalizedSrc])
+
+  if (failed) return <Building2 className="h-10 w-10" />
+
+  return <img src={src} alt={businessName} onError={() => {
+    if (src !== bakhtechColoredLogo) {
+      setSrc(bakhtechColoredLogo)
+      return
+    }
+    setFailed(true)
+  }} />
 }
 
 export function PublicReceipt() {
@@ -51,7 +92,7 @@ export function PublicReceipt() {
       <article className="receipt-card">
         <header className="receipt-header">
           <div className="receipt-brand">
-            {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+            <DocumentBrandLogo logoUrl={brand.logoUrl} businessName={brand.businessName} />
             <div><strong>{brand.businessName}</strong><span>{brand.email}</span><span>{brand.phone}</span></div>
           </div>
           <div className="receipt-status"><CheckCircle2 className="h-5 w-5" />Payment received</div>

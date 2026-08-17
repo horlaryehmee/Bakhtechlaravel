@@ -141,17 +141,57 @@ function RichTextBlock({ value }: { value: string }) {
 }
 
 const pricingLockNotice = 'Pricing is locked for this document. Future pricing changes will not affect this quote or invoice.'
+const bakhtechColoredLogo = '/bakhtech-logo-dark.png'
 
 function visibleRichText(value: string) {
   return value.trim() === pricingLockNotice ? '' : value
 }
 
 function documentLogoUrl(logoUrl: string) {
-  if (!logoUrl) return ''
-  if (logoUrl.endsWith('/bakhtech-logo-light.png') || logoUrl === 'bakhtech-logo-light.png') {
-    return '/bakhtech-logo-dark.png'
+  const value = logoUrl.trim()
+  if (!value) return bakhtechColoredLogo
+
+  try {
+    const url = new URL(value, window.location.origin)
+    const path = url.pathname.toLowerCase()
+    if (path.endsWith('/bakhtech-logo-light.png')
+      || path.endsWith('/bakhtech-logo-light.jpg')
+      || path.endsWith('/bakhtech-logo-white.png')
+      || path.endsWith('/bakhtech-logo-white.jpg')) {
+      return bakhtechColoredLogo
+    }
+  } catch {
+    const path = value.toLowerCase()
+    if (path === 'bakhtech-logo-light.png'
+      || path === 'bakhtech-logo-light.jpg'
+      || path === 'bakhtech-logo-white.png'
+      || path === 'bakhtech-logo-white.jpg') {
+      return bakhtechColoredLogo
+    }
   }
-  return logoUrl
+
+  return value
+}
+
+function DocumentBrandLogo({ logoUrl, businessName }: { logoUrl: string; businessName: string }) {
+  const normalizedSrc = documentLogoUrl(logoUrl)
+  const [src, setSrc] = useState(normalizedSrc)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setSrc(normalizedSrc)
+    setFailed(false)
+  }, [normalizedSrc])
+
+  if (failed) return <Building2 className="h-10 w-10" />
+
+  return <img src={src} alt={businessName} onError={() => {
+    if (src !== bakhtechColoredLogo) {
+      setSrc(bakhtechColoredLogo)
+      return
+    }
+    setFailed(true)
+  }} />
 }
 
 export function PublicInvoice() {
@@ -325,7 +365,7 @@ export function PublicInvoice() {
         <div className="quote-document-sheet">
           <header className="quote-document-header">
             <div className="quote-document-brand">
-              {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+              <DocumentBrandLogo logoUrl={brand.logoUrl} businessName={brand.businessName} />
               <div>
                 <h1>{brand.businessName}</h1>
                 <p>Email: {brand.email || 'Not provided'}</p>
@@ -483,7 +523,7 @@ export function PublicInvoice() {
       <article className="invoice-sheet">
         <header className="invoice-sheet-header">
           <div className="invoice-sheet-brand">
-            {brand.logoUrl ? <img src={documentLogoUrl(brand.logoUrl)} alt={brand.businessName} /> : <Building2 className="h-10 w-10" />}
+            <DocumentBrandLogo logoUrl={brand.logoUrl} businessName={brand.businessName} />
             <div className="invoice-sheet-contact">
               <strong>{brand.businessName}</strong>
               <span>Email: {brand.email || 'Not provided'}</span>
