@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Menu, Moon, Sun, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useTheme } from '@/components/theme/theme-context'
 import { CmsPageSync } from '@/components/cms/CmsPageSync'
 import { AgencyFooter } from '@/components/layout/AgencyFooter'
 import { RippleButton } from '@/components/ui/ripple-button'
@@ -37,7 +36,6 @@ export function SiteLayout() {
   const [isAgencyTemplatePage, setIsAgencyTemplatePage] = useState(() => location.pathname === '/' || location.pathname.split('/').filter(Boolean).length === 1)
   const [headerNavigation, setHeaderNavigation] = useState<HeaderNavItem[]>(navigation)
   const [hasProjects, setHasProjects] = useState(false)
-  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     let cancelled = false
@@ -154,15 +152,6 @@ export function SiteLayout() {
                 <div className="flex items-center gap-2 lg:hidden">
                   <button
                     type="button"
-                    onClick={toggleTheme}
-                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                    className="grid h-11 w-11 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/82 text-[var(--foreground)] shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:bg-[var(--surface-2)]"
-                  >
-                    {theme === 'dark' ? <Sun className="h-5 w-5 text-[#facc15]" /> : <Moon className="h-5 w-5 text-[#30373f]" />}
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setOpen((value) => !value)}
                     aria-label={open ? 'Close menu' : 'Open menu'}
                     className="relative z-20 grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-[var(--line)] bg-[var(--foreground)] text-[var(--background)] shadow-[0_10px_30px_rgba(15,23,42,0.12)] transition hover:opacity-90"
@@ -253,15 +242,6 @@ export function SiteLayout() {
                 </div>
 
                 <div className="mt-3 flex w-full flex-col gap-3 border-t border-[var(--line)] pt-3 sm:flex-row lg:mt-0 lg:w-fit lg:border-t-0 lg:pt-0">
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    className="hidden min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:bg-[var(--surface-2)] lg:inline-flex"
-                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                  >
-                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  </button>
-
                   <RippleButton
                     as={NavLink}
                     to="/booking"

@@ -6,10 +6,9 @@ import {
   useMotionValue,
   type MotionValue,
 } from 'framer-motion'
-import { Info, Moon, MousePointerClick, Settings2, Sun } from 'lucide-react'
+import { Info, MousePointerClick, Settings2 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { useTheme } from '@/components/theme/theme-context'
 import { AnimatedImageMarquee } from '@/components/ui/hero-3'
 import { RippleButton } from '@/components/ui/ripple-button'
 
@@ -270,24 +269,8 @@ export const InfiniteGrid = ({
 }
 
 const App: React.FC = () => {
-  const { theme, toggleTheme } = useTheme()
-  const isDark = theme === 'dark'
-
   return (
     <div className="relative min-h-screen w-full">
-      {/* Sticky Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        className="fixed right-4 top-4 z-50 flex items-center justify-center rounded-full border border-border bg-background/50 p-3 shadow-lg backdrop-blur-sm transition-all hover:scale-110 active:scale-95"
-        aria-label="Toggle Theme"
-      >
-        {isDark ? (
-          <Sun className="h-5 w-5 text-yellow-500 transition-transform group-hover:rotate-45" />
-        ) : (
-          <Moon className="h-5 w-5 text-indigo-500 transition-transform group-hover:-rotate-12" />
-        )}
-      </button>
-
       {/* Main Content */}
       <main>
         <InfiniteGrid />

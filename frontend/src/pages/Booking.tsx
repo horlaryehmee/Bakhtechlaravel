@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, Globe2, Loader2, MapPin, MessageSquare, MonitorUp, Phone, Video } from "lucide-react";
 import { CountrySelector, DialCodePreview, defaultCountries, usePhoneInput, type CountryIso2 } from "react-international-phone";
 import "react-international-phone/style.css";
+import { AgencyCta } from "@/components/ui/agency-cta";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { api, ApiError, type Booking, type BookingAvailabilityDay, type BookingEventType, type BookingCalendar, type BookingSlot } from "@/lib/api";
@@ -745,14 +746,13 @@ export function Booking() {
                 <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">{error}</p>
               )}
 
-              <Button
+              <AgencyCta
                 type="submit"
-                className="h-11 w-full rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))]"
+                className="w-full"
                 disabled={saving || !requiredQuestionsAnswered}
-              >
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {saving ? "Booking..." : "Confirm Booking"}
-              </Button>
+                label={saving ? "Booking..." : "Confirm Booking"}
+                icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+              />
             </form>
           </div>
         </div>
@@ -800,14 +800,13 @@ export function Booking() {
                 <p className="text-red-600 text-xs font-semibold bg-red-50 rounded-xl px-4 py-3">{error}</p>
               )}
 
-              <Button
+              <AgencyCta
                 type="submit"
-                className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
+                className="w-full"
                 disabled={saving || !requiredQuestionsAnswered}
-              >
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {saving ? "Booking..." : "Confirm Booking"}
-              </Button>
+                label={saving ? "Booking..." : "Confirm Booking"}
+                icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+              />
             </form>
           </div>
         </div>
@@ -892,17 +891,17 @@ export function Booking() {
               </div>
             ) : null}
 
-            <Button
-              className="h-11 rounded-xl bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_84%,var(--foreground))] w-full"
+            <AgencyCta
+              className="w-full"
+              label="Book Another Time"
+              icon={<CalendarCheck className="h-4 w-4" />}
               onClick={() => {
                 setCurrentStep(1);
                 setSelectedDate(null);
                 setSelectedSlot(null);
                 setConfirmedBooking(null);
               }}
-            >
-              Book Another Time
-            </Button>
+            />
           </div>
         </div>
       )}

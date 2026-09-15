@@ -22,7 +22,7 @@ import {
   ShoppingCart,
   Smartphone,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { AgencyCta } from '@/components/ui/agency-cta'
 
 const BouncingBalls = lazy(() => import('@/components/ui/bouncing-balls').then((module) => ({ default: module.BouncingBalls })))
 const RetroGrid = lazy(() => import('@/components/ui/retro-grid'))
@@ -119,9 +119,9 @@ const ctaOrbitRows = [
 export function About() {
   return (
     <main className="about-page home-page overflow-hidden bg-[var(--background)]">
-      <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
+      <section className="relative grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_50%_20%,rgba(255,196,0,0.14),transparent_34%),var(--background)] pt-24 text-[var(--foreground)] md:pt-28">
         <Suspense fallback={null}>
-          <RetroGrid className="pointer-events-none absolute inset-0 opacity-70" glowEffect={false} gridColor="#587d9f" />
+          <RetroGrid className="pointer-events-none absolute inset-0 opacity-40" glowEffect={false} gridColor="#111111" />
           <BouncingBalls
             className="pointer-events-none absolute inset-0"
             colors={heroBallColors}
@@ -147,13 +147,8 @@ export function About() {
               Bakhtech Solutions helps businesses look better, work smarter, and serve customers online with websites, shops, booking systems, and custom tools.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link to="/booking" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
-                Start a project
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 px-5 text-sm font-black text-[var(--foreground)] backdrop-blur-md transition hover:bg-[var(--surface)]">
-                See our work
-              </Link>
+              <AgencyCta to="/booking" label="Start a project" icon={<CalendarDays className="h-4 w-4" />} className="min-h-12" />
+              <AgencyCta to="/portfolio" label="See our work" icon={<ArrowRight className="h-4 w-4" />} className="min-h-12 border-black/10 bg-white/70 text-black backdrop-blur-md hover:bg-white" />
             </div>
             <div className="about-stats-marquee mt-10 sm:hidden" aria-label="Bakhtech Solutions highlights">
               <div className="about-stats-track">
@@ -267,13 +262,8 @@ export function About() {
                 Let us turn your business goals into a fast, modern, trustworthy website or platform that is easy to manage and built to grow.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link to="/booking" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
-                  Start a project
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/portfolio" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)]/70 px-5 text-sm font-black text-[var(--foreground)] backdrop-blur-md transition hover:bg-[var(--surface)]">
-                  Learn more
-                </Link>
+                <AgencyCta to="/booking" label="Start a project" icon={<CalendarDays className="h-4 w-4" />} className="min-h-12" />
+                <AgencyCta to="/portfolio" label="Learn more" icon={<ArrowRight className="h-4 w-4" />} className="min-h-12 border-black/10 bg-white/70 text-black backdrop-blur-md hover:bg-white" />
               </div>
             </div>
 

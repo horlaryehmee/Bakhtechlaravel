@@ -2816,8 +2816,22 @@ a {
   letter-spacing: 0.16em;
 }
 
+:is(.about-page, .projects-page, .booking-page, .contact-page),
+:is(.about-page, .projects-page, .booking-page, .contact-page) :is(h1, h2, h3, h4, h5, h6, p, a, button, span, div, label, input, textarea, select) {
+  font-family: "Outfit", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:is(.about-page, .projects-page, .booking-page, .contact-page) .font-black {
+  font-weight: 700;
+}
+
+:is(.about-page, .projects-page, .booking-page, .contact-page) .font-bold,
+:is(.about-page, .projects-page, .booking-page, .contact-page) .font-semibold {
+  font-weight: 500;
+}
+
 .about-page {
-  --background: #ffffff;
+  --background: #efeee8;
   --foreground: #30373f;
   --muted: #64748b;
   --muted-foreground: #64748b;
@@ -2825,8 +2839,8 @@ a {
   --primary-foreground: #d6e0ed;
   --brand: #587d9f;
   --brand-2: #d6e0ed;
-  --surface: #ffffff;
-  --surface-2: #f4f8fc;
+  --surface: #efeee8;
+  --surface-2: #efeee8;
   --line: rgba(48, 55, 63, 0.16);
   --section: #ffffff;
   --section-strong: #ffffff;
@@ -2924,6 +2938,53 @@ a {
   --sparkles-color: #ffffff;
 }
 
+/* Match the active agency homepage's warm neutral palette. */
+.about-page,
+.projects-page,
+.booking-page,
+.contact-page {
+  --background: #efeee8;
+  --foreground: #111111;
+  --muted: rgba(17, 17, 17, 0.58);
+  --muted-foreground: rgba(17, 17, 17, 0.58);
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --active: #111111;
+  --accent: #ffc400;
+  --brand: #111111;
+  --brand-2: #ffc400;
+  --surface: #ffffff;
+  --surface-2: #f7f7f5;
+  --line: rgba(17, 17, 17, 0.09);
+  --section: #efeee8;
+  --section-strong: #ffffff;
+  --gradient-color: #ffc400;
+  --sparkles-color: #ffc400;
+}
+
+:root.dark .about-page,
+:root.dark .projects-page,
+:root.dark .booking-page,
+:root.dark .contact-page {
+  --background: #efeee8;
+  --foreground: #111111;
+  --muted: rgba(17, 17, 17, 0.58);
+  --muted-foreground: rgba(17, 17, 17, 0.58);
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --active: #111111;
+  --accent: #ffc400;
+  --brand: #111111;
+  --brand-2: #ffc400;
+  --surface: #ffffff;
+  --surface-2: #f7f7f5;
+  --line: rgba(17, 17, 17, 0.09);
+  --section: #efeee8;
+  --section-strong: #ffffff;
+  --gradient-color: #ffc400;
+  --sparkles-color: #ffc400;
+}
+
 .booking-page .bg-white {
   background-color: var(--surface) !important;
 }
@@ -2993,40 +3054,28 @@ a {
   color: #000000;
 }
 
-:root.dark .about-page :is(p, li) {
-  color: #d6e0ed;
-}
-
 .about-hero-title {
-  color: #ef4444;
+  color: var(--foreground);
 }
 
 .about-hero-title span {
-  color: #64748b;
-}
-
-:root.dark .about-hero-title span {
-  color: #d6e0ed;
+  color: var(--muted);
 }
 
 .projects-hero-title {
-  color: #ef4444;
+  color: var(--foreground);
 }
 
 .projects-hero-title span {
-  color: #64748b;
-}
-
-:root.dark .projects-hero-title span {
-  color: #d6e0ed;
+  color: var(--muted);
 }
 
 .about-page .home-eyebrow {
-  color: #ef4444 !important;
+  color: var(--foreground) !important;
 }
 
 .projects-page .home-eyebrow {
-  color: #ef4444 !important;
+  color: var(--foreground) !important;
 }
 
 .about-section-deferred {
@@ -3374,12 +3423,28 @@ a {
   pointer-events: none;
 }
 
+:is(.about-page, .projects-page) .gradient-grid-bg-layer {
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.055) 1px, transparent 1px),
+    radial-gradient(circle 760px at 100% 12rem, rgba(255, 196, 0, 0.14), transparent 62%),
+    radial-gradient(circle 540px at 0% 4rem, rgba(17, 17, 17, 0.06), transparent 58%);
+}
+
 :root.dark .gradient-grid-bg-layer {
   background-image:
     linear-gradient(to right, rgba(214, 224, 237, 0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(214, 224, 237, 0.08) 1px, transparent 1px),
     radial-gradient(circle 760px at 100% 12rem, rgba(88, 125, 159, 0.2), transparent 62%),
     radial-gradient(circle 540px at 0% 4rem, rgba(214, 224, 237, 0.08), transparent 58%);
+}
+
+:root.dark :is(.about-page, .projects-page) .gradient-grid-bg-layer {
+  background-image:
+    linear-gradient(to right, rgba(17, 17, 17, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 17, 17, 0.055) 1px, transparent 1px),
+    radial-gradient(circle 760px at 100% 12rem, rgba(255, 196, 0, 0.14), transparent 62%),
+    radial-gradient(circle 540px at 0% 4rem, rgba(17, 17, 17, 0.06), transparent 58%);
 }
 
 @keyframes marquee-x {
@@ -3566,7 +3631,7 @@ a {
 .feature-icon-ring {
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(120deg, #30373f, #587d9f, #d6e0ed, #587d9f, #30373f) border-box;
+    linear-gradient(120deg, #111111, #ffc400, #ffffff, #ffc400, #111111) border-box;
   background-size: 100% 100%, 300% 300%;
   animation: feature-ring-spin 2.4s linear infinite;
 }
@@ -3619,7 +3684,7 @@ a {
   width: min(34rem, 78%);
   height: 12rem;
   content: "";
-  background: radial-gradient(circle, rgba(88, 125, 159, 0.26), rgba(214, 224, 237, 0.12) 42%, transparent 72%);
+  background: radial-gradient(circle, rgba(255, 196, 0, 0.2), rgba(17, 17, 17, 0.05) 42%, transparent 72%);
   filter: blur(22px);
   transform: translate(-50%, -50%);
 }
@@ -3661,19 +3726,19 @@ a {
 
 .how-help-dark {
   background:
-    radial-gradient(circle at 72% 42%, rgba(88, 125, 159, 0.34), transparent 34%),
-    linear-gradient(135deg, #30373f 0%, #26303a 52%, #1d242b 100%);
-  color: #d6e0ed;
+    radial-gradient(circle at 72% 42%, rgba(255, 196, 0, 0.14), transparent 34%),
+    #050505;
+  color: #ffffff;
 }
 
 :root.dark .how-help-dark {
   background:
-    radial-gradient(circle at 72% 42%, rgba(88, 125, 159, 0.18), transparent 34%),
-    #000000;
+    radial-gradient(circle at 72% 42%, rgba(255, 196, 0, 0.14), transparent 34%),
+    #050505;
 }
 
 .how-help-dark .home-eyebrow {
-  color: #ef4444 !important;
+  color: #ffc400 !important;
 }
 
 .how-help-dark .text-main {
@@ -3681,11 +3746,11 @@ a {
 }
 
 .how-help-dark .text-soft {
-  color: rgba(214, 224, 237, 0.78);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .about-page .how-help-dark :is(p, li) {
-  color: rgba(214, 224, 237, 0.78);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .how-help-dark .about-tags-panel::before {
@@ -3693,10 +3758,10 @@ a {
 }
 
 .how-help-dark .about-tag-pill {
-  border-color: rgba(214, 224, 237, 0.18);
-  background: rgba(214, 224, 237, 0.09);
-  color: #d6e0ed;
-  box-shadow: inset 0 1px 0 rgba(214, 224, 237, 0.14);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }

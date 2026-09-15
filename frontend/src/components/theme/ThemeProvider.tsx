@@ -2,35 +2,20 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { api } from '@/lib/api'
 import { ThemeContext, type Theme } from '@/components/theme/theme-context'
 
-const storageKey = 'bakhtech-theme'
 type ThemeColorKey = 'primary' | 'secondary' | 'active'
 type ThemeColorSettings = Partial<Record<`theme_${Theme}_${ThemeColorKey}`, string>>
 
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark'
-
-  const stored = window.localStorage.getItem(storageKey)
-  if (stored === 'light' || stored === 'dark') return stored
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const theme: Theme = 'light'
   const [colorSettings, setColorSettings] = useState<ThemeColorSettings>({})
 
-  const setTheme = useCallback((nextTheme: Theme) => {
-    setThemeState(nextTheme)
-    window.localStorage.setItem(storageKey, nextTheme)
-  }, [])
-
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
-  }, [setTheme, theme])
+  const setTheme = useCallback((_nextTheme: Theme) => undefined, [])
+  const toggleTheme = useCallback(() => undefined, [])
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.documentElement.style.colorScheme = theme
+    document.documentElement.classList.remove('dark')
+    document.documentElement.style.colorScheme = 'light'
+    window.localStorage.removeItem('bakhtech-theme')
     applyThemeColors(theme, colorSettings)
   }, [theme, colorSettings])
 

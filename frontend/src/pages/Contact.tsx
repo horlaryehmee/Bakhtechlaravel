@@ -1,8 +1,8 @@
 import { type FormEvent, useMemo, useState } from 'react'
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { Mail, MapPin, Phone, Send } from 'lucide-react'
+import { AgencyCta } from '@/components/ui/agency-cta'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
-import { Button } from '@/components/ui/button'
 import { contactItems } from '@/data/site'
 import { ApiError, api } from '@/lib/api'
 
@@ -72,7 +72,7 @@ export function Contact() {
 
   return (
     <main className="contact-page home-page overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_18%_18%,rgba(239,68,68,0.13),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(88,125,159,0.16),transparent_34%),var(--background)] pb-16 pt-32 md:pb-24 md:pt-36">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_18%_18%,rgba(255,196,0,0.14),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(17,17,17,0.06),transparent_34%),var(--background)] pb-16 pt-32 md:pb-24 md:pt-36">
         <Boxes className="portfolio-bg-effect opacity-35" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,var(--background)_0%,transparent_34%,var(--background)_100%)]" />
 
@@ -89,7 +89,7 @@ export function Contact() {
 
           <div className="mx-auto mt-10 grid max-w-6xl gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-start">
             <aside className="surface-card rounded-2xl p-5 md:p-8">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#587d9f]">Start Here</p>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-black/55">Start Here</p>
               <h2 className="mt-3 text-balance text-3xl font-black tracking-tight md:text-4xl">
                 Send the details. We will handle the next step.
               </h2>
@@ -102,7 +102,7 @@ export function Contact() {
                   const href = contactHref(item.label, item.value)
                   const content = (
                     <>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ef4444]/10 text-[#ef4444]">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffc400] text-black">
                         <ContactIcon label={item.label} />
                       </span>
                       <span className="min-w-0">
@@ -126,7 +126,7 @@ export function Contact() {
             </aside>
 
             <div className="surface-card relative overflow-hidden rounded-2xl p-5 md:p-8">
-              <BorderBeam size={280} duration={8} borderWidth={1.8} colorFrom="#ef4444" colorTo="#587d9f" />
+              <BorderBeam size={280} duration={8} borderWidth={1.8} colorFrom="#111111" colorTo="#ffc400" />
               <form className="relative z-10 grid gap-6" onSubmit={submitContact}>
                 <div className="hidden" aria-hidden="true">
                   <label>
@@ -179,9 +179,13 @@ export function Contact() {
                   </p>
                 ) : null}
 
-                <Button type="submit" showArrow disabled={status === 'sending'} className="min-h-12 rounded-xl bg-[#ef4444] px-6 font-black text-white shadow-none hover:bg-[#dc2626] disabled:pointer-events-none disabled:opacity-70">
-                  {status === 'sending' ? 'Sending...' : 'Send message'}
-                </Button>
+                <AgencyCta
+                  type="submit"
+                  disabled={status === 'sending'}
+                  label={status === 'sending' ? 'Sending...' : 'Send message'}
+                  icon={<Send className="h-4 w-4" />}
+                  className="min-h-12 w-fit"
+                />
               </form>
             </div>
           </div>

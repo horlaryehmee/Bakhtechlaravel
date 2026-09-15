@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { Boxes } from '@/components/ui/background-boxes'
+import { AgencyCta } from '@/components/ui/agency-cta'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { SafeImage } from '@/components/ui/safe-image'
 import { api, type Project } from '@/lib/api'
@@ -64,19 +65,19 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
 
   return (
     <article className="surface-card relative flex h-full flex-col overflow-hidden rounded-2xl p-4 text-[var(--foreground)]">
-      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#587d9f" colorTo="#b7d5ec" delay={project.id % 4} />
+      <BorderBeam size={220} duration={8} borderWidth={1.8} colorFrom="#111111" colorTo="#ffc400" delay={project.id % 4} />
       <div className="portfolio-visual-panel relative h-44 overflow-hidden rounded-xl sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
       </div>
 
       <div className="mt-6 flex flex-1 flex-col">
-        <span className="mb-4 w-fit rounded-full bg-[#ef4444]/10 px-3.5 py-1 text-xs font-medium text-[#ef4444]">{project.category}</span>
+        <span className="mb-4 w-fit rounded-full bg-black/5 px-3.5 py-1 text-xs font-medium text-black/55">{project.category}</span>
         <h3 className="text-lg font-semibold leading-tight text-[var(--foreground)] sm:text-xl">{project.title}</h3>
         {showDescription && project.summary ? <p className="mt-3 flex-1 text-sm leading-6 text-[var(--foreground)]/70">{project.summary}</p> : null}
 
         <div className={showDescription && project.summary ? 'mt-5 flex flex-wrap items-center gap-2' : 'mt-4 flex flex-wrap items-center gap-2'}>
           {projectUrl ? (
-            <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[#ef4444]/10 px-3 text-[0.7rem] font-medium text-[#ef4444] transition hover:bg-[#ef4444]/20 sm:text-xs">
+            <a href={projectUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-black px-3 text-[0.7rem] font-medium text-white transition hover:bg-black/80 sm:text-xs">
               View live project
               <ArrowRight className="h-3 w-3" />
             </a>
@@ -201,10 +202,7 @@ export function Portfolio() {
             <p className="home-eyebrow mb-3 text-sm uppercase text-[#ef4444]">Next Project</p>
             <h2 className="text-main mx-auto max-w-3xl text-balance text-3xl font-bold tracking-tight md:text-5xl">Have an idea you want to turn into something useful?</h2>
             <p className="text-soft mx-auto mt-4 max-w-2xl leading-8">Tell us what you want to build. We will help you turn it into a clear, modern digital product.</p>
-            <Link to="/contact" className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#ef4444] px-5 text-sm font-black text-white transition hover:opacity-90">
-              Talk to us
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <AgencyCta to="/contact" label="Talk to us" icon={<ArrowRight className="h-4 w-4" />} className="mt-7 min-h-12" />
           </div>
         </div>
       </section>
