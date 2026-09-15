@@ -531,13 +531,64 @@ class BakhtechApiController extends Controller
 
         foreach ($paths as $path) {
             if (is_file($path)) {
-                return response()->stream(function () use ($path): void {
-                    readfile($path);
-                }, 200, [
+                $size = (int) filesize($path);
+                $start = 0;
+                $end = max(0, $size - 1);
+                $status = 200;
+                $range = request()->header('Range');
+
+                if ($range && preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $matches)) {
+                    if ($matches[1] === '' && $matches[2] !== '') {
+                        $suffixLength = min((int) $matches[2], $size);
+                        $start = max(0, $size - $suffixLength);
+                    } else {
+                        $start = (int) ($matches[1] !== '' ? $matches[1] : 0);
+                        $end = $matches[2] !== '' ? min((int) $matches[2], $end) : $end;
+                    }
+
+                    if ($start >= $size || $start > $end) {
+                        return response('', 416, [
+                            'Accept-Ranges' => 'bytes',
+                            'Content-Range' => 'bytes */'.$size,
+                        ]);
+                    }
+
+                    $status = 206;
+                }
+
+                $length = $end - $start + 1;
+                $headers = [
                     'Cache-Control' => 'public, max-age=31536000, immutable',
                     'Content-Type' => $this->mediaMimeType($safeFilename, $path),
-                    'Content-Length' => (string) filesize($path),
-                ]);
+                    'Content-Length' => (string) $length,
+                    'Accept-Ranges' => 'bytes',
+                ];
+
+                if ($status === 206) {
+                    $headers['Content-Range'] = 'bytes '.$start.'-'.$end.'/'.$size;
+                }
+
+                return response()->stream(function () use ($path, $start, $length): void {
+                    $handle = fopen($path, 'rb');
+                    if ($handle === false) {
+                        return;
+                    }
+
+                    try {
+                        fseek($handle, $start);
+                        $remaining = $length;
+                        while ($remaining > 0 && ! feof($handle)) {
+                            $chunk = fread($handle, min(8192, $remaining));
+                            if ($chunk === false || $chunk === '') {
+                                break;
+                            }
+                            echo $chunk;
+                            $remaining -= strlen($chunk);
+                        }
+                    } finally {
+                        fclose($handle);
+                    }
+                }, $status, $headers);
             }
         }
 

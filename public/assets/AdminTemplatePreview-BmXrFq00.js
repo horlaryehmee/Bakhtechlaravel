@@ -1,0 +1,1 @@
+import{H as e,K as t,Q as n,Y as r,t as i}from"./index-CDtyWwBY.js";var a=e();function o(){let{template:e=``}=n();return t()?e===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(r,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(r,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};

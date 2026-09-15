@@ -6,6 +6,8 @@ export type ProjectVideoMedia = {
   url: string
 }
 
+const warmingVideos = new Map<string, HTMLVideoElement>()
+
 export function getYoutubeVideoId(url: string) {
   const value = url.trim()
   const match = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
@@ -15,6 +17,31 @@ export function getYoutubeVideoId(url: string) {
 export function getYoutubeEmbedUrl(url: string) {
   const id = getYoutubeVideoId(url)
   return id ? `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0` : undefined
+}
+
+export function warmVideoMedia(media: ProjectVideoMedia) {
+  if (typeof document === 'undefined') return
+
+  if (media.type === 'youtube') {
+    for (const href of ['https://www.youtube.com', 'https://i.ytimg.com']) {
+      if (document.head.querySelector(`link[rel="preconnect"][href="${href}"]`)) continue
+      const link = document.createElement('link')
+      link.rel = 'preconnect'
+      link.href = href
+      link.crossOrigin = 'anonymous'
+      document.head.appendChild(link)
+    }
+    return
+  }
+
+  if (warmingVideos.has(media.url)) return
+  const video = document.createElement('video')
+  video.preload = 'auto'
+  video.muted = true
+  video.playsInline = true
+  video.src = media.url
+  warmingVideos.set(media.url, video)
+  video.load()
 }
 
 export function getYoutubeThumbnailUrl(url?: string) {

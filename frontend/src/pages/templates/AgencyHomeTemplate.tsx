@@ -54,11 +54,12 @@ import { whiteBakhtechLogo } from '@/data/brand-assets'
 import { BorderBeam } from '@/components/ui/border-beam'
 import { CpuArchitecture } from '@/components/ui/cpu-architecture'
 import { SafeImage } from '@/components/ui/safe-image'
+import { VideoModal } from '@/components/media/video-modal'
 import { OrbitalSphereGlobe } from '@/components/ui/orbital-sphere-globe'
 import { AgencyFooter, defaultAgencyFooterSettings } from '@/components/layout/AgencyFooter'
 import { api, type Project, type Review } from '@/lib/api'
 import { usePublicReviews } from '@/hooks/usePublicReviews'
-import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, getYoutubeThumbnailUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
+import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, getYoutubeThumbnailUrl, isVideoUrl, projectImageFallbackSrc, warmVideoMedia, type ProjectVideoMedia } from '@/lib/project-media'
 
 type AgencyHomeTemplateProps = {
   preview?: boolean
@@ -401,7 +402,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     return (
       <>
         <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-        <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+        <button type="button" onPointerEnter={() => warmVideoMedia({ title: project.title, type: 'youtube', url: videoUrl })} onFocus={() => warmVideoMedia({ title: project.title, type: 'youtube', url: videoUrl })} onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </span>
@@ -420,7 +421,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
             <source src={videoUrl} />
           </video>
         )}
-        <button type="button" onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+        <button type="button" onPointerEnter={() => warmVideoMedia({ title: project.title, type: 'video', url: videoUrl })} onFocus={() => warmVideoMedia({ title: project.title, type: 'video', url: videoUrl })} onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </span>
@@ -456,7 +457,7 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
             </a>
           ) : null}
           {videoMedia ? (
-            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-black/8 bg-white/60 px-3 text-[0.7rem] font-semibold text-black/62 transition hover:bg-white hover:text-black sm:text-xs">
+            <button type="button" onPointerEnter={() => warmVideoMedia(videoMedia)} onFocus={() => warmVideoMedia(videoMedia)} onClick={() => onPlayMedia(videoMedia)} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-black/8 bg-white/60 px-3 text-[0.7rem] font-semibold text-black/62 transition hover:bg-white hover:text-black sm:text-xs">
               Play presentation
               <Play className="h-3 w-3 fill-current" />
             </button>
@@ -618,30 +619,6 @@ function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: 
               </a>
             )
           })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClose: () => void }) {
-  const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
-
-  return (
-    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
-          <h3 className="truncate text-sm font-bold text-white">{media.title}</h3>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="aspect-video bg-black">
-          {youtubeEmbedUrl ? (
-            <iframe className="h-full w-full" src={youtubeEmbedUrl} title={media.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-          ) : (
-            <video className="h-full w-full" src={media.url} controls autoPlay playsInline />
-          )}
         </div>
       </div>
     </div>
@@ -1063,7 +1040,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                 {designDevelopmentVideoUrl ? (
                   <div className="h-full overflow-hidden rounded-[0.9rem] bg-black shadow-[0_14px_45px_rgba(0,0,0,0.12)]">
                     {designDevelopmentYoutubeEmbedUrl ? (
-                      <button type="button" className="relative block h-full w-full overflow-hidden text-white" onClick={() => setActiveVideo({ title: 'Design and development preview', type: 'youtube', url: designDevelopmentVideoUrl })}>
+                      <button type="button" className="relative block h-full w-full overflow-hidden text-white" onPointerEnter={() => warmVideoMedia({ title: 'Design and development preview', type: 'youtube', url: designDevelopmentVideoUrl })} onFocus={() => warmVideoMedia({ title: 'Design and development preview', type: 'youtube', url: designDevelopmentVideoUrl })} onClick={() => setActiveVideo({ title: 'Design and development preview', type: 'youtube', url: designDevelopmentVideoUrl })}>
                         <SafeImage
                           className="h-full w-full object-cover"
                           src={getYoutubeThumbnailUrl(designDevelopmentVideoUrl)}
@@ -1700,7 +1677,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
       </section>
 
       <AgencyFooter settings={footerSettings} />
-      {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
+      {activeVideo ? <VideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
       {showReviewModal ? <ReviewPlatformModal links={reviewLinks} onClose={() => setShowReviewModal(false)} /> : null}
     </TemplateShell>
   )

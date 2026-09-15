@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, CalendarCheck, ExternalLink, Globe2, Layers3, Megaphone, MessageCircle, Play, SearchCheck, ShoppingCart, X } from 'lucide-react'
 import { Boxes } from '@/components/ui/background-boxes'
 import { BorderBeam } from '@/components/ui/border-beam'
+import { VideoModal } from '@/components/media/video-modal'
 import { SafeImage } from '@/components/ui/safe-image'
 import { InfiniteSlider } from '@/components/ui/infinite-slider'
 import { ProgressiveBlur } from '@/components/ui/progressive-blur'
@@ -10,7 +11,7 @@ import { FeatureCard } from '@/components/ui/grid-feature-cards'
 import { StaggerReviews } from '@/components/ui/stagger-reviews'
 import { api, type Project } from '@/lib/api'
 import { usePublicReviews } from '@/hooks/usePublicReviews'
-import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, type ProjectVideoMedia } from '@/lib/project-media'
+import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia, getProjectVideoUrl, getYoutubeEmbedUrl, isVideoUrl, projectImageFallbackSrc, warmVideoMedia, type ProjectVideoMedia } from '@/lib/project-media'
 import { cn } from '@/lib/utils'
 
 const Sparkles = lazy(() => import('@/components/ui/sparkles').then((module) => ({ default: module.Sparkles })))
@@ -77,7 +78,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
     return (
       <>
         <SafeImage src={videoCoverImage} fallbackSrc={fallbackSrc} alt={project.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-        <button type="button" onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+        <button type="button" onPointerEnter={() => warmVideoMedia({ title: project.title, type: 'youtube', url: videoUrl })} onFocus={() => warmVideoMedia({ title: project.title, type: 'youtube', url: videoUrl })} onClick={() => onPlay({ title: project.title, type: 'youtube', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </span>
@@ -96,7 +97,7 @@ function ProjectMediaPreview({ project, onPlay }: { project: Project; onPlay: (m
             <source src={videoUrl} />
           </video>
         )}
-        <button type="button" onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
+        <button type="button" onPointerEnter={() => warmVideoMedia({ title: project.title, type: 'video', url: videoUrl })} onFocus={() => warmVideoMedia({ title: project.title, type: 'video', url: videoUrl })} onClick={() => onPlay({ title: project.title, type: 'video', url: videoUrl })} className="absolute inset-0 z-10 grid place-items-center bg-black/18 text-white transition hover:bg-black/28" aria-label={`Play ${project.title}`}>
           <span className="grid h-12 w-12 place-items-center rounded-full border border-white/25 bg-white/18 backdrop-blur-md">
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </span>
@@ -132,7 +133,7 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
             </a>
           ) : null}
           {videoMedia ? (
-            <button type="button" onClick={() => onPlayMedia(videoMedia)} className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
+            <button type="button" onPointerEnter={() => warmVideoMedia(videoMedia)} onFocus={() => warmVideoMedia(videoMedia)} onClick={() => onPlayMedia(videoMedia)} className="portfolio-glass-button inline-flex min-h-8 items-center gap-1.5 rounded-lg px-3 text-[0.7rem] font-medium text-[#d6dde5] transition hover:text-white sm:text-xs">
               Play presentation
               <Play className="h-3 w-3 fill-current" />
             </button>
@@ -140,30 +141,6 @@ function ProjectCard({ project, showDescription, onPlayMedia }: { project: Proje
         </div>
       </div>
     </article>
-  )
-}
-
-function ProjectVideoModal({ media, onClose }: { media: ProjectVideoMedia; onClose: () => void }) {
-  const youtubeEmbedUrl = media.type === 'youtube' ? getYoutubeEmbedUrl(media.url) : undefined
-
-  return (
-    <div className="fixed inset-0 z-[160] grid place-items-center bg-black/78 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={media.title}>
-      <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-white/14 bg-[#050816] shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
-          <h3 className="truncate text-sm font-bold text-white">{media.title}</h3>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-white/8 text-white transition hover:bg-white/14" aria-label="Close video">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="aspect-video bg-black">
-          {youtubeEmbedUrl ? (
-            <iframe className="h-full w-full" src={youtubeEmbedUrl} title={media.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
-          ) : (
-            <video className="h-full w-full" src={media.url} controls autoPlay playsInline />
-          )}
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -376,7 +353,7 @@ export function HomeBelowFold({ isDark }: { isDark: boolean }) {
         </section>
       ) : null}
 
-      {activeVideo ? <ProjectVideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
+      {activeVideo ? <VideoModal media={activeVideo} onClose={() => setActiveVideo(null)} /> : null}
       {showReviewModal ? <ReviewPlatformModal links={reviewLinks} onClose={() => setShowReviewModal(false)} /> : null}
     </>
   )
