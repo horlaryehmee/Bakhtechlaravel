@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Layers3, Play, SearchCheck, Sparkles, X } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import { Boxes } from '@/components/ui/background-boxes'
 import { AgencyCta } from '@/components/ui/agency-cta'
@@ -11,6 +11,8 @@ import { getProjectPrimaryImage, getProjectVideoCoverImage, getProjectVideoMedia
 function fromProject(project: Project): Project {
   return project
 }
+
+const PROJECTS_PER_PAGE = 15
 
 function cleanProjectUrl(url?: string) {
   const value = url?.trim()
@@ -123,6 +125,7 @@ export function Portfolio() {
   const [items, setItems] = useState<Project[]>([])
   const [loaded, setLoaded] = useState(false)
   const [showProjectSummaries, setShowProjectSummaries] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     let cancelled = false
@@ -158,6 +161,19 @@ export function Portfolio() {
     return <Navigate to="/" replace />
   }
 
+  const totalPages = Math.ceil(items.length / PROJECTS_PER_PAGE)
+  const pageStart = (currentPage - 1) * PROJECTS_PER_PAGE
+  const visibleItems = items.slice(pageStart, pageStart + PROJECTS_PER_PAGE)
+
+  function goToPage(page: number) {
+    const nextPage = Math.min(Math.max(page, 1), totalPages)
+    if (nextPage === currentPage) return
+    setCurrentPage(nextPage)
+    window.requestAnimationFrame(() => {
+      document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   return (
     <main className="projects-page home-page overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
       <section id="projects" className="relative overflow-hidden bg-[var(--background)] pb-20 pt-32 md:pb-28 md:pt-36">
@@ -174,8 +190,47 @@ export function Portfolio() {
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} showDescription={showProjectSummaries} onPlayMedia={setActiveVideo} />)}
+            {visibleItems.map((item) => <ProjectCard key={`${item.id}-${item.title}`} project={item} showDescription={showProjectSummaries} onPlayMedia={setActiveVideo} />)}
           </div>
+
+          {totalPages > 1 ? (
+            <nav className="mt-12 flex flex-wrap items-center justify-center gap-2" aria-label="Portfolio pagination">
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="grid h-11 w-11 place-items-center rounded-lg border border-black/10 bg-white text-black transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                aria-label="Previous portfolio page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => goToPage(page)}
+                  className={page === currentPage
+                    ? 'h-11 min-w-11 rounded-lg border border-black bg-black px-3 text-sm font-bold text-white'
+                    : 'h-11 min-w-11 rounded-lg border border-black/10 bg-white px-3 text-sm font-bold text-black transition hover:bg-black hover:text-white'}
+                  aria-label={`Portfolio page ${page}`}
+                  aria-current={page === currentPage ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="grid h-11 w-11 place-items-center rounded-lg border border-black/10 bg-white text-black transition hover:bg-black hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                aria-label="Next portfolio page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </nav>
+          ) : null}
         </div>
       </section>
 
