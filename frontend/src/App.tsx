@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { SmartsuppLiveChat } from '@/components/analytics/SmartsuppLiveChat'
+import { LiveChat } from '@/components/analytics/LiveChat'
 import { VisitTracker } from '@/components/analytics/VisitTracker'
 import { SiteLayout } from '@/components/layout/SiteLayout'
 import { SVGFollower } from '@/components/ui/svg-follower'
@@ -137,7 +137,7 @@ function App() {
 
   return (
     <>
-      <SmartsuppLiveChat />
+      <LiveChat />
       {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
       <ScrollRestoration />
       <PublicCursorEffect />

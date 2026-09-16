@@ -417,6 +417,7 @@ class BakhtechApiController extends Controller
             'homepageVideoUrl',
             'designDevelopmentVideoUrl',
             'cursorEffectEnabled',
+            'liveChatProvider',
             'theme_light_primary',
             'theme_light_secondary',
             'theme_light_active',

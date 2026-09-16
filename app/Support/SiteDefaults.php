@@ -83,6 +83,7 @@ class SiteDefaults
             'homepageVideoUrl' => '',
             'designDevelopmentVideoUrl' => '',
             'cursorEffectEnabled' => 'false',
+            'liveChatProvider' => 'tidio',
             'theme_light_primary' => '#1261ff',
             'theme_light_secondary' => '#12c8a0',
             'theme_light_active' => '#ef4444',

@@ -655,6 +655,7 @@ const settingLabels: Record<string, string> = {
   google_business_client_id: 'Google Business Client ID',
   google_business_client_secret: 'Google Business Client Secret',
   cursorEffectEnabled: 'Cursor trail effect',
+  liveChatProvider: 'Live chat provider',
   founder_desk_image: "Founder's Desk image",
   footerCopyright: 'Footer copyright',
   footerCtaLabel: 'Footer button label',
@@ -8362,7 +8363,7 @@ export function AdminDashboard() {
       { id: 'advanced', label: 'Advanced', icon: Gauge },
     ] as const
     const themeKeys = ['theme_light_primary', 'theme_light_secondary', 'theme_light_active', 'theme_dark_primary', 'theme_dark_secondary', 'theme_dark_active']
-    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'designDevelopmentVideoUrl', 'founder_desk_image', 'footerCtaTitle', 'footerWatermark', 'footerDescription', 'footerCtaLabel', 'footerCopyright', 'cursorEffectEnabled']
+    const siteKeys = ['siteName', 'contactEmail', 'phone', 'activeHome', 'homePortfolioShowDescriptions', 'homepageVideoUrl', 'designDevelopmentVideoUrl', 'founder_desk_image', 'footerCtaTitle', 'footerWatermark', 'footerDescription', 'footerCtaLabel', 'footerCopyright', 'cursorEffectEnabled', 'liveChatProvider']
     const socialKeys = ['facebookUrl', 'instagramUrl', 'linkedinUrl', 'tiktokUrl', 'twitterUrl', 'youtubeUrl']
     const reviewKeys = [
       'googleReviewUrl',
@@ -8474,7 +8475,20 @@ export function AdminDashboard() {
         {keys.filter((key) => key in settingsForm).map((key) => (
           <label key={key} className="grid gap-2 text-sm font-bold text-gray-700">
             {settingLabels[key] ?? key}
-            {key === 'homepageVideoUrl' || key === 'designDevelopmentVideoUrl' ? (
+            {key === 'liveChatProvider' ? (
+              <>
+                <select
+                  className="theme-input min-h-11 rounded-xl border border-gray-200 px-4 outline-none focus:border-blue-500"
+                  value={settingsForm[key] ?? 'tidio'}
+                  onChange={(event) => setSettingsForm(prev => ({ ...prev, [key]: event.target.value }))}
+                >
+                  <option value="tidio">Tidio</option>
+                  <option value="smartsupp">Smartsupp</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+                <span className="text-xs font-medium text-gray-500">Choose the live-chat widget shown on public website pages.</span>
+              </>
+            ) : key === 'homepageVideoUrl' || key === 'designDevelopmentVideoUrl' ? (
               <>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
