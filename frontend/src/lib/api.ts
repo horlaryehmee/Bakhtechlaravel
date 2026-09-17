@@ -619,6 +619,7 @@ export type PricingCategory = {
   description: string
   icon: string
   serviceType: 'new_website' | 'existing_website'
+  billingPeriod: 'month' | 'project'
   isActive: boolean
   sortOrder: number
   plans: PricingPlan[]

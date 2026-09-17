@@ -320,6 +320,7 @@ class PricingController extends Controller
             'description' => ['nullable', 'string'],
             'icon' => ['nullable', 'string', 'max:80'],
             'serviceType' => ['nullable', Rule::in(['new_website', 'existing_website'])],
+            'billingPeriod' => ['required', Rule::in(['month', 'project'])],
             'isActive' => ['nullable', 'boolean'],
             'sortOrder' => ['nullable', 'integer', 'min:0'],
         ]);
@@ -371,6 +372,7 @@ class PricingController extends Controller
             'description' => $data['description'] ?? '',
             'icon' => $data['icon'] ?? '',
             'service_type' => $data['serviceType'] ?? 'new_website',
+            'billing_period' => $data['billingPeriod'],
             'is_active' => (bool) ($data['isActive'] ?? true),
             'sort_order' => (int) ($data['sortOrder'] ?? 0),
         ];
@@ -485,6 +487,7 @@ class PricingController extends Controller
             'description' => $category->description ?: '',
             'icon' => $category->icon ?: '',
             'serviceType' => $category->service_type ?? 'new_website',
+            'billingPeriod' => $category->billing_period ?? 'project',
             'isActive' => (bool) $category->is_active,
             'sortOrder' => (int) $category->sort_order,
             'plans' => $includePlans

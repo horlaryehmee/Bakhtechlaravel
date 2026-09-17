@@ -50,16 +50,8 @@ function categoryStartPrice(category: PricingCategory, currency: string) {
   return prices.length ? Math.min(...prices) : null
 }
 
-function planPeriod(plan: PricingPlan, category: PricingCategory | null) {
-  if (category?.serviceType === 'existing_website') {
-    const label = `${plan.name} ${plan.slug}`.toLowerCase()
-    if (label.includes('24')) return '/24hrs'
-    if (label.includes('week')) return '/week'
-    if (label.includes('month')) return '/month'
-    return ''
-  }
-
-  return plan.billingType === 'monthly' ? '/month' : '/project'
+function categoryPeriod(category: PricingCategory | null) {
+  return category?.billingPeriod === 'month' ? '/month' : '/project'
 }
 
 function basePath(pathname: string) {
@@ -293,7 +285,7 @@ export function Pricing() {
                         <h2 className="mt-5 text-xl font-black">{category.name.replace(' Websites', '').replace(' Systems', '')}</h2>
                         <p className="mt-4 flex-1 text-base font-semibold leading-7 text-slate-600">{category.description}</p>
                         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                          <strong className="text-sm font-black uppercase">From {money(categoryStartPrice(category, currency), currency)}</strong>
+                          <strong className="text-sm font-black uppercase">From {money(categoryStartPrice(category, currency), currency)} {categoryPeriod(category)}</strong>
                           <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#2f73ed]" />
                         </div>
                       </button>
@@ -322,7 +314,7 @@ export function Pricing() {
                       <h2 className="mt-5 text-xl font-black">{category.name}</h2>
                       <p className="mt-4 flex-1 text-base font-semibold leading-7 text-slate-600">{category.description}</p>
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                        <strong className="text-sm font-black uppercase">From {money(categoryStartPrice(category, currency), currency)}</strong>
+                        <strong className="text-sm font-black uppercase">From {money(categoryStartPrice(category, currency), currency)} {categoryPeriod(category)}</strong>
                         <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#2f73ed]" />
                       </div>
                     </button>
@@ -364,7 +356,7 @@ export function Pricing() {
                           </PricingCard.Plan>
                           <PricingCard.Price>
                             <PricingCard.MainPrice>{money(planAmount(plan, currency), currency)}</PricingCard.MainPrice>
-                            <PricingCard.Period>{planPeriod(plan, selectedCategory)}</PricingCard.Period>
+                            <PricingCard.Period>{categoryPeriod(selectedCategory)}</PricingCard.Period>
                           </PricingCard.Price>
                           <RippleButton type="button" onClick={() => selectPlan(plan)} className="min-h-12 w-full rounded-lg bg-gradient-to-r from-[#2f73ed] to-[#5538ee] text-base font-black text-white">
                             Select {plan.name}
@@ -452,7 +444,7 @@ export function Pricing() {
                   <p className="mt-2 text-sm font-semibold text-slate-500">{selectedCategory.name}</p>
                   <div className="mt-5 rounded-2xl bg-slate-50 p-4">
                     <span className="text-sm font-black text-slate-500">Invoice total</span>
-                    <strong className="mt-2 block text-4xl font-black">{money(planAmount(selectedPlan, currency), currency)}</strong>
+                    <strong className="mt-2 block text-4xl font-black">{money(planAmount(selectedPlan, currency), currency)} <span className="text-base text-slate-500">{categoryPeriod(selectedCategory)}</span></strong>
                   </div>
                   <ul className="mt-5 grid gap-3">
                     {selectedPlan.features.filter((feature) => feature.isIncluded).slice(0, 8).map((feature) => (

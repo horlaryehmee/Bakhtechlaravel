@@ -20,6 +20,7 @@ class PricingCheckoutTest extends TestCase
             'slug' => 'web-design',
             'description' => 'Website design and development.',
             'icon' => 'globe',
+            'billing_period' => 'month',
             'is_active' => true,
             'sort_order' => 1,
             'created_at' => now(),
@@ -96,5 +97,19 @@ class PricingCheckoutTest extends TestCase
             'document_id' => $documentId,
             'recipient_email' => 'pricing-client@example.test',
         ]);
+    }
+
+    public function test_public_pricing_exposes_the_category_billing_period(): void
+    {
+        DB::table('pricing_categories')->where('slug', 'corporate-websites')->update([
+            'billing_period' => 'month',
+        ]);
+
+        $this->getJson('/api/pricing?currency=NGN')
+            ->assertOk()
+            ->assertJsonFragment([
+                'slug' => 'corporate-websites',
+                'billingPeriod' => 'month',
+            ]);
     }
 }

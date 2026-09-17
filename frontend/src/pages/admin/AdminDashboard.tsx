@@ -477,6 +477,7 @@ const emptyPricingCategoryForm: Partial<PricingCategory> = {
   slug: '',
   description: '',
   icon: 'layout-template',
+  billingPeriod: 'project',
   isActive: true,
   sortOrder: 0,
 }
@@ -9438,6 +9439,13 @@ export function AdminDashboard() {
                 Sort Order
                 <input type="number" value={pricingCategoryForm.sortOrder || 0} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, sortOrder: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
               </label>
+              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
+                Price shown as
+                <select value={pricingCategoryForm.billingPeriod || 'project'} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, billingPeriod: event.target.value as PricingCategory['billingPeriod'] })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
+                  <option value="project">Per project</option>
+                  <option value="month">Per month</option>
+                </select>
+              </label>
             </div>
             <label className="mt-3 grid gap-1 text-xs font-black uppercase text-slate-500">
               Description
@@ -9460,7 +9468,7 @@ export function AdminDashboard() {
                 <div key={category.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                   <div>
                     <p className="font-black text-slate-950">{category.name}</p>
-                    <p className="text-xs font-bold text-slate-500">{category.slug} - {category.plans.length} plans - {category.isActive ? 'Active' : 'Inactive'}</p>
+                    <p className="text-xs font-bold text-slate-500">{category.slug} - {category.plans.length} plans - per {category.billingPeriod} - {category.isActive ? 'Active' : 'Inactive'}</p>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingCategory(category)}><Pencil className="h-4 w-4" /></button>
@@ -9492,6 +9500,17 @@ export function AdminDashboard() {
                   onChange={(event) => setPricingCategories((current) => current.map((category) => category.id === activePricingCategory.id ? { ...category, description: event.target.value } : category))}
                   className="min-h-24 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold normal-case text-slate-900"
                 />
+              </label>
+              <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                Price shown as
+                <select
+                  value={activePricingCategory.billingPeriod || 'project'}
+                  onChange={(event) => setPricingCategories((current) => current.map((category) => category.id === activePricingCategory.id ? { ...category, billingPeriod: event.target.value as PricingCategory['billingPeriod'] } : category))}
+                  className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-bold normal-case text-slate-900"
+                >
+                  <option value="project">Per project</option>
+                  <option value="month">Per month</option>
+                </select>
               </label>
               <div className="grid gap-2 text-xs font-black uppercase text-slate-600">
                 <span>Share link</span>
