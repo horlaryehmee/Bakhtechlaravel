@@ -9439,13 +9439,34 @@ export function AdminDashboard() {
                 Sort Order
                 <input type="number" value={pricingCategoryForm.sortOrder || 0} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, sortOrder: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
               </label>
-              <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-                Price shown as
-                <select value={pricingCategoryForm.billingPeriod || 'project'} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, billingPeriod: event.target.value as PricingCategory['billingPeriod'] })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900">
-                  <option value="project">Per project</option>
-                  <option value="month">Per month</option>
-                </select>
-              </label>
+              <fieldset className="grid gap-2 md:col-span-2">
+                <legend className="text-xs font-black uppercase text-slate-500">Pricing period</legend>
+                <p className="text-xs font-semibold normal-case text-slate-500">Choose how every package price in this category is labelled on the public pricing page.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([
+                    { value: 'project', label: 'Per project', hint: 'Show prices as a one-time project cost' },
+                    { value: 'month', label: 'Per month', hint: 'Show prices as a monthly recurring cost' },
+                  ] as const).map((option) => {
+                    const selected = (pricingCategoryForm.billingPeriod || 'project') === option.value
+                    return (
+                      <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 transition ${selected ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'}`}>
+                        <input
+                          type="radio"
+                          name="pricing-category-billing-period"
+                          value={option.value}
+                          checked={selected}
+                          onChange={() => setPricingCategoryForm({ ...pricingCategoryForm, billingPeriod: option.value })}
+                          className="mt-1 h-4 w-4 accent-blue-600"
+                        />
+                        <span>
+                          <strong className="block text-sm font-black normal-case text-slate-950">{option.label}</strong>
+                          <span className="mt-1 block text-xs font-semibold normal-case leading-5 text-slate-500">{option.hint}</span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </fieldset>
             </div>
             <label className="mt-3 grid gap-1 text-xs font-black uppercase text-slate-500">
               Description
