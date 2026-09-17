@@ -81,8 +81,13 @@ $spaFileResponse = function (bool $private = false) {
 
     if ($private) {
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
-        $response->headers->set('Cache-Control', 'no-store, max-age=0');
     }
+
+    $response->headers->set('Cache-Control', $private
+        ? 'private, no-store, no-cache, must-revalidate, max-age=0'
+        : 'no-store, no-cache, must-revalidate, max-age=0');
+    $response->headers->set('Pragma', 'no-cache');
+    $response->headers->set('Expires', '0');
 
     return $response;
 };

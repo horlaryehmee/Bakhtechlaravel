@@ -22,6 +22,15 @@ const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ def
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
+const chunkReloadKey = 'bakhtech-chunk-reload-attempted'
+
+function reloadForStaleChunk() {
+  if (sessionStorage.getItem(chunkReloadKey)) return false
+
+  sessionStorage.setItem(chunkReloadKey, 'true')
+  window.location.reload()
+  return true
+}
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -34,11 +43,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error
     console.error('Application render failed', error, info)
 
     if (/Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk/i.test(error.message)) {
-      const reloadKey = 'bakhtech-chunk-reload-attempted'
-      if (!sessionStorage.getItem(reloadKey)) {
-        sessionStorage.setItem(reloadKey, 'true')
-        window.location.reload()
-      }
+      reloadForStaleChunk()
     }
   }
 
@@ -63,6 +68,14 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error
       </main>
     )
   }
+}
+
+function ChunkRecoveryReady() {
+  useEffect(() => {
+    sessionStorage.removeItem(chunkReloadKey)
+  }, [])
+
+  return null
 }
 
 const cursorEffectColors = ['#ff4d6d', '#ffd60a', '#38bdf8', '#34d399', '#ffffff']
@@ -135,6 +148,16 @@ function ScrollRestoration() {
 function App() {
   const location = useLocation()
 
+  useEffect(() => {
+    const handlePreloadError = (event: Event) => {
+      event.preventDefault()
+      reloadForStaleChunk()
+    }
+
+    window.addEventListener('vite:preloadError', handlePreloadError)
+    return () => window.removeEventListener('vite:preloadError', handlePreloadError)
+  }, [])
+
   return (
     <>
       <LiveChat />
@@ -143,6 +166,7 @@ function App() {
       <PublicCursorEffect />
       <AppErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+          <ChunkRecoveryReady />
           <Routes>
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="admin/login" element={<AdminLogin />} />

@@ -89,6 +89,7 @@ remove_paths_added_by_release() {
     [ -n "$path" ] || continue
     case "$path" in
       /*|../*|*/../*) continue ;;
+      public/assets/*) continue ;;
     esac
     rm -f "$APP_ROOT/$path"
   done
@@ -101,6 +102,7 @@ remove_paths_deleted_by_release() {
     [ -n "$path" ] || continue
     case "$path" in
       /*|../*|*/../*) continue ;;
+      public/assets/*) continue ;;
     esac
     rm -f "$APP_ROOT/$path"
   done

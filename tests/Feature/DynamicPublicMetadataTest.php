@@ -60,4 +60,14 @@ class DynamicPublicMetadataTest extends TestCase
             ->assertSee('Choose a convenient time to discuss your website requirements and project goals.', false)
             ->assertSee('href="https://example.test/book/website-discovery"', false);
     }
+
+    public function test_pricing_spa_shell_is_never_cached(): void
+    {
+        $response = $this->get('/pricing/seo')->assertOk();
+        $cacheControl = (string) $response->headers->get('Cache-Control');
+
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringContainsString('must-revalidate', $cacheControl);
+    }
 }

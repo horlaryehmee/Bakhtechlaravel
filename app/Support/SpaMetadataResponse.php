@@ -59,7 +59,10 @@ class SpaMetadataResponse
             'Content-Type' => 'text/html; charset=UTF-8',
         ], $headers));
 
-        return $private ? $response->header('Cache-Control', 'private, no-store') : $response;
+        return $response->header(
+            'Cache-Control',
+            $private ? 'private, no-store' : 'no-store, no-cache, must-revalidate, max-age=0'
+        );
     }
 
     private static function setTitle(\DOMDocument $dom, \DOMXPath $xpath, string $value): void
