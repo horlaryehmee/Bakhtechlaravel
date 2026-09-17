@@ -9276,6 +9276,8 @@ export function AdminDashboard() {
 
   function addPricingPackage(categoryId: number) {
     const tempId = -Date.now()
+    const category = pricingCategories.find((item) => item.id === categoryId)
+    const nextSortOrder = Math.max(0, ...(category?.plans.map((plan) => Number(plan.sortOrder || 0)) ?? [])) + 1
     const nextPlan: PricingPlan = {
       id: tempId,
       pricingCategoryId: categoryId,
@@ -9290,7 +9292,7 @@ export function AdminDashboard() {
       displayPrice: { currency: 'NGN', baseAmount: 0, amount: 0, promoApplied: false },
       isActive: true,
       isPopular: false,
-      sortOrder: 0,
+      sortOrder: nextSortOrder,
       version: 1,
       features: [],
     }
@@ -9436,8 +9438,9 @@ export function AdminDashboard() {
                 <input value={pricingCategoryForm.icon || ''} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, icon: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
               </label>
               <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-                Sort Order
-                <input type="number" value={pricingCategoryForm.sortOrder || 0} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, sortOrder: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                Category frontend order
+                <input type="number" min="0" value={pricingCategoryForm.sortOrder || 0} onChange={(event) => setPricingCategoryForm({ ...pricingCategoryForm, sortOrder: Number(event.target.value) })} className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                <span className="text-[11px] font-semibold normal-case text-slate-400">Lower numbers appear first.</span>
               </label>
               <fieldset className="grid gap-2 md:col-span-2">
                 <legend className="text-xs font-black uppercase text-slate-500">Pricing period</legend>
@@ -9489,7 +9492,7 @@ export function AdminDashboard() {
                 <div key={category.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                   <div>
                     <p className="font-black text-slate-950">{category.name}</p>
-                    <p className="text-xs font-bold text-slate-500">{category.slug} - {category.plans.length} plans - per {category.billingPeriod} - {category.isActive ? 'Active' : 'Inactive'}</p>
+                    <p className="text-xs font-bold text-slate-500">Order {category.sortOrder} - {category.slug} - {category.plans.length} plans - per {category.billingPeriod} - {category.isActive ? 'Active' : 'Inactive'}</p>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600" onClick={() => editPricingCategory(category)}><Pencil className="h-4 w-4" /></button>
@@ -9554,6 +9557,7 @@ export function AdminDashboard() {
 
             <div className="mt-6">
               <h3 className="text-lg font-black text-slate-950">Packages</h3>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Set each package's frontend order below. Lower numbers appear first on the public pricing table.</p>
               <div className="mt-5 grid gap-5 xl:grid-cols-3 md:grid-cols-2">
                 {activePricingCategory.plans.map((plan) => {
                   const calculated = calculatedPricingPrices(Number(plan.prices?.NGN || 0), settingsForm)
@@ -9583,6 +9587,11 @@ export function AdminDashboard() {
                         <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
                           Package Name
                           <input value={plan.name || ''} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { name: event.target.value })} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                        </label>
+                        <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
+                          Frontend order
+                          <input type="number" min="0" value={plan.sortOrder || 0} onChange={(event) => updatePricingPackage(activePricingCategory.id, plan.id, { sortOrder: Number(event.target.value) })} className="min-h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold normal-case text-slate-900" />
+                          <span className="text-[11px] font-semibold normal-case text-slate-400">Lower numbers appear first.</span>
                         </label>
                         <label className="grid gap-2 text-xs font-black uppercase text-slate-600">
                           Features (one per line)

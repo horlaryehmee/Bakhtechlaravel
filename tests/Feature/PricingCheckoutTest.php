@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -111,5 +112,20 @@ class PricingCheckoutTest extends TestCase
                 'slug' => 'corporate-websites',
                 'billingPeriod' => 'month',
             ]);
+    }
+
+    public function test_public_pricing_orders_packages_by_their_frontend_order(): void
+    {
+        $categoryId = DB::table('pricing_categories')->where('slug', 'corporate-websites')->value('id');
+
+        DB::table('pricing_plans')->where('pricing_category_id', $categoryId)->where('slug', 'basic')->update(['sort_order' => 30]);
+        DB::table('pricing_plans')->where('pricing_category_id', $categoryId)->where('slug', 'standard')->update(['sort_order' => 20]);
+        DB::table('pricing_plans')->where('pricing_category_id', $categoryId)->where('slug', 'premium')->update(['sort_order' => 10]);
+        Cache::flush();
+
+        $response = $this->getJson('/api/pricing?currency=NGN')->assertOk();
+        $category = collect($response->json('categories'))->firstWhere('slug', 'corporate-websites');
+
+        $this->assertSame(['premium', 'standard', 'basic'], collect($category['plans'])->pluck('slug')->all());
     }
 }
