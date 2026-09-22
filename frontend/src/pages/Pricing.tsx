@@ -114,22 +114,31 @@ export function Pricing() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let active = true
+    queueMicrotask(() => {
+      if (!active) return
+      setLoading(true)
+      setLoadError('')
+    })
     api.publicPricing(currency)
       .then((result) => {
         if (!active) return
         setCategories(result.categories)
         setCurrencies(result.currencies)
       })
-      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load pricing.'))
+      .catch(() => {
+        if (active) setLoadError('Pricing is temporarily unavailable. Please try again or book a call.')
+      })
       .finally(() => active && setLoading(false))
 
     return () => {
       active = false
     }
-  }, [currency])
+  }, [currency, retry])
 
   useEffect(() => {
     if (params.categorySlug) {
@@ -231,6 +240,11 @@ export function Pricing() {
         {loading ? (
           <div className="grid min-h-[520px] place-items-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#2f73ed]" />
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-xl border border-slate-200 bg-white p-6">
+            <p>{loadError}</p>
+            <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 rounded-lg bg-blue-600 px-5 py-3 font-bold text-white">Try again</button>
           </div>
         ) : (
           <>

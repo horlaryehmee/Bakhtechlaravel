@@ -59,7 +59,7 @@ class SecurityHeaders
             $response->headers->set('Cache-Control', 'no-store, max-age=0');
         }
 
-        if ($request->is('api/projects') || $request->is('api/settings') || $request->is('api/pages/*') || $request->is('api/pricing')) {
+        if ($request->is('api/projects') || $request->is('api/settings') || $request->is('api/pages/*')) {
             $response->headers->set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
         }
 

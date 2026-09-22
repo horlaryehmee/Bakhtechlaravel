@@ -1,3 +1,5 @@
+import { parsePricingResponse } from './pricing-response'
+
 export type Project = {
   id: number
   title: string
@@ -1474,7 +1476,8 @@ export const api = {
     return request<{ reviews: Review[] }>(`/api/reviews?t=${Date.now()}`)
   },
   publicPricing(currency = 'NGN') {
-    return request<{ categories: PricingCategory[]; currencies: string[] }>(`/api/pricing?currency=${encodeURIComponent(currency)}`)
+    return request<unknown>(`/api/pricing?currency=${encodeURIComponent(currency)}`, { cache: 'no-store' })
+      .then(parsePricingResponse)
   },
   checkoutPricingPlan(payload: { planId: number; currency: string; documentType?: 'quote' | 'invoice'; client?: Partial<InvoiceClient>; message?: string }) {
     return request<{ document: { id: number; number: string; type: string; status: string; currency: string; total: number; publicUrl: string } }>('/api/pricing/checkout', {

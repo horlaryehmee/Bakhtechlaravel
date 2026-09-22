@@ -17,16 +17,18 @@ class PricingController extends Controller
     {
         $currency = strtoupper((string) $request->query('currency', 'NGN'));
 
-        return $this->rememberPublicPricingCache("public:pricing:{$currency}", function () use ($currency) {
+        $payload = $this->rememberPublicPricingCache("public:pricing:{$currency}", function () use ($currency) {
             return [
                 'categories' => $this->categoryQuery()
                     ->where('pricing_categories.is_active', true)
                     ->get()
                     ->map(fn ($category) => $this->categoryShape($category, true, $currency))
-                    ->values(),
+                    ->values()->all(),
                 'currencies' => ['NGN', 'USD', 'GBP'],
             ];
         });
+
+        return response()->json($payload)->header('Cache-Control', 'no-store, private');
     }
 
     public function adminIndex()
@@ -498,7 +500,7 @@ class PricingController extends Controller
                     ->orderBy('name')
                     ->get()
                     ->map(fn ($plan) => $this->planShape($plan, true, $currency))
-                    ->values()
+                    ->values()->all()
                 : [],
         ];
     }
@@ -717,11 +719,42 @@ class PricingController extends Controller
         try {
             app(RedisConfigurationService::class)->apply();
 
-            return Cache::remember($key, now()->addMinutes(10), $callback);
+            $cached = Cache::get($key);
+            if ($this->validPublicPricingCache($cached)) {
+                return $cached;
+            }
+
+            // Replace legacy collections and malformed cache entries with plain lists.
+            $payload = $callback();
+            Cache::put($key, $payload, now()->addMinutes(10));
+
+            return $payload;
         } catch (\Throwable $exception) {
             report($exception);
 
             return $callback();
         }
+    }
+
+    private function validPublicPricingCache(mixed $payload): bool
+    {
+        if (!is_array($payload) || !is_array($payload['categories'] ?? null)
+            || !array_is_list($payload['categories'])
+            || ($payload['currencies'] ?? null) !== ['NGN', 'USD', 'GBP']) {
+            return false;
+        }
+        foreach ($payload['categories'] as $category) {
+            if (!is_array($category) || !is_string($category['slug'] ?? null)
+                || !is_array($category['plans'] ?? null) || !array_is_list($category['plans'])) {
+                return false;
+            }
+            foreach ($category['plans'] as $plan) {
+                if (!is_array($plan) || !is_array($plan['features'] ?? null) || !array_is_list($plan['features'])) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 }

@@ -12,6 +12,27 @@ class PricingCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_pricing_rebuilds_malformed_cached_lists(): void
+    {
+        foreach (['NGN', 'USD', 'GBP'] as $currency) {
+            Cache::put("public:pricing:{$currency}", [
+                'categories' => (object) ['items' => []],
+                'currencies' => ['NGN', 'USD', 'GBP'],
+            ], 600);
+
+            $response = $this->getJson("/api/pricing?currency={$currency}")->assertOk();
+            $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+            $this->assertIsArray($response->json('categories'));
+            $this->assertNotEmpty($response->json('categories'));
+            $cached = Cache::get("public:pricing:{$currency}");
+            $this->assertTrue(array_is_list($cached['categories']));
+            foreach ($cached['categories'] as $category) {
+                $this->assertTrue(array_is_list($category['plans']));
+            }
+            $this->getJson("/api/pricing?currency={$currency}")->assertExactJson($response->json());
+        }
+    }
+
     public function test_public_pricing_checkout_creates_invoice_document(): void
     {
         Mail::fake();

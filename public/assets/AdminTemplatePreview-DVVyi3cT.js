@@ -1,0 +1,1 @@
+import{K as e,U as t,Y as n,t as r,z as i}from"./index-EpqiaPM1.js";var a=i();function o(){let{template:i=``}=n();return t()?i===`agency-v2`?(0,a.jsx)(r,{preview:!0}):(0,a.jsx)(e,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(e,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
