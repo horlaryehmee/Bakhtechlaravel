@@ -20,6 +20,7 @@ const LegalPage = lazy(() => import('@/pages/LegalPage').then((module) => ({ def
 const NotFound = lazy(() => import('@/pages/NotFound').then((module) => ({ default: module.NotFound })))
 const Portfolio = lazy(() => import('@/pages/Portfolio').then((module) => ({ default: module.Portfolio })))
 const Pricing = lazy(() => import('@/pages/Pricing').then((module) => ({ default: module.Pricing })))
+const QuoteBuilder = lazy(() => import('@/pages/QuoteBuilder').then((module) => ({ default: module.QuoteBuilder })))
 const PublicInvoice = lazy(() => import('@/pages/PublicInvoice').then((module) => ({ default: module.PublicInvoice })))
 const PublicReceipt = lazy(() => import('@/pages/PublicReceipt').then((module) => ({ default: module.PublicReceipt })))
 const chunkReloadKey = 'bakhtech-chunk-reload-attempted'
@@ -84,6 +85,7 @@ function PublicCursorEffect() {
   const location = useLocation()
   const [enabled, setEnabled] = useState(false)
   const isPrivateSurface = location.pathname.startsWith('/admin')
+    || location.pathname === '/quote-builder'
     || location.pathname.startsWith('/invoice/')
     || location.pathname.startsWith('/receipt/')
 
@@ -174,6 +176,8 @@ function App() {
           <Route path="admin/reset-password" element={<AdminResetPassword />} />
           <Route path="admin/home-template-preview/:template" element={<AdminTemplatePreview />} />
           <Route path="admin/dashboard" element={<AdminDashboard />} />
+          <Route path="admin/quote-builder" element={<AdminDashboard initialSection="quote-builder" />} />
+          <Route path="quote-builder" element={<QuoteBuilder />} />
           <Route path="admin/pricing-preview" element={<Pricing />} />
           <Route path="admin/pricing-preview/:categorySlug" element={<Pricing />} />
           <Route path="invoice/:token" element={<PublicInvoice />} />

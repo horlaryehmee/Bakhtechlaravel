@@ -14,6 +14,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
+Route::prefix('quote-builder')->group(function () {
+    Route::get('/catalog', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'catalog'])->middleware('throttle:public-read');
+    Route::post('/estimate', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'estimate'])->middleware('throttle:public-read');
+    Route::post('/quotes', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'store'])->middleware('throttle:quote-submission');
+});
+Route::prefix('admin/quote-builder')->middleware([RequireAdminToken::class, 'admin.role:admin', 'throttle:admin-read'])->group(function () {
+    Route::get('/catalog', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'admin']);
+    Route::get('/quotes', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'quotes']);
+    Route::post('/order/{entity}', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'reorder'])->middleware('throttle:admin-write');
+    Route::post('/{entity}/{id?}', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'save'])->whereNumber('id')->middleware('throttle:admin-write');
+});
+
 Route::get('/health', [HealthController::class, 'health']);
 Route::get('/ready', [HealthController::class, 'ready']);
 Route::get('/sitemap.xml', function () {
@@ -42,8 +54,8 @@ Route::get('/sitemap.xml', function () {
         'Content-Type' => 'application/xml; charset=UTF-8',
     ]);
 });
-Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1,admin-login:');
+Route::post('/admin/login', [BakhtechApiController::class, 'login'])->middleware('throttle:5,1,admin-login:');
 Route::post('/admin/password/forgot', [BakhtechApiController::class, 'requestAdminPasswordReset'])->middleware('throttle:3,1');
 Route::post('/admin/password/reset', [BakhtechApiController::class, 'resetAdminPassword'])->middleware('throttle:5,1');
 Route::post('/reviews/google/trustindex-webhook', [BakhtechApiController::class, 'googleReviewWebhook'])->middleware('throttle:webhook');

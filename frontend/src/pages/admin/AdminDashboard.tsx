@@ -88,10 +88,11 @@ import {
   type SiteIncidentSummary,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { QuoteBuilderAdmin } from '@/pages/admin/QuoteBuilderAdmin'
 import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
 import { isVideoUrl } from '@/lib/project-media'
 
-type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'invoices' | 'users' | 'settings'
+type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'quote-builder' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
@@ -544,6 +545,7 @@ const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDas
   { id: 'seo', label: 'SEO', icon: SearchCheck },
   { id: 'bookings', label: 'Bookings', icon: CalendarDays },
   { id: 'pricing', label: 'Pricing', icon: CreditCard },
+  { id: 'quote-builder', label: 'Quote builder', icon: QuoteIcon },
   { id: 'invoices', label: 'Invoices', icon: Wallet },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
@@ -857,11 +859,11 @@ function dashboardFromLoadedData(projects: Project[], cms: CmsData | null, curre
   }
 }
 
-export function AdminDashboard() {
+export function AdminDashboard({ initialSection }: { initialSection?: AdminSection } = {}) {
   const navigate = useNavigate()
   const token = getAdminToken()
   const initialAdminCache = useMemo(() => readAdminDataCache(), [])
-  const [activeSection, setActiveSection] = useState<AdminSection>(() => storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'invoices', 'users', 'settings']))
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => initialSection ?? storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'quote-builder', 'invoices', 'users', 'settings']))
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData>(() => initialAdminCache?.dashboard ?? dashboardFromLoadedData([], null))
@@ -9634,6 +9636,7 @@ export function AdminDashboard() {
       case 'seo': return renderSeo()
       case 'bookings': return renderBookings()
       case 'pricing': return renderPricing()
+      case 'quote-builder': return <div className="space-y-6"><PanelHeader eyebrow="Quote builder" title="Project estimates and quote requests" text="Manage project types, functionality, pricing rules, and submitted requirements." /><QuoteBuilderAdmin /></div>
       case 'invoices': return renderInvoices()
       case 'users': return renderUsers()
       case 'settings': return renderSettings()

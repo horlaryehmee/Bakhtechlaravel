@@ -230,6 +230,15 @@ Route::get('/admin/{path?}', function () use ($spaFileResponse) {
     return $spaFileResponse(true);
 })->where('path', '.*');
 
+Route::get('/quote-builder', function () use ($seoBaseUrl) {
+    return SpaMetadataResponse::make([
+        'title' => 'Website & Web Application Quote Builder | Bakhtech Solutions',
+        'description' => "Tell us what you're looking to build. We'll help you estimate what your project may cost.",
+        'url' => $seoBaseUrl().'/quote-builder',
+        'image' => SiteDefaults::SOCIAL_PREVIEW_IMAGE,
+    ]);
+});
+
 Route::get('/pricing/{categorySlug}', function () use ($spaFileResponse) {
     return $spaFileResponse();
 })->where('categorySlug', '[A-Za-z0-9_-]+');

@@ -46,6 +46,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('public-read', fn (Request $request) => Limit::perMinute(240)->by($request->ip()));
+        RateLimiter::for('quote-submission', fn (Request $request) => Limit::perMinute(5)
+            ->by($request->ip())
+            ->response(fn (Request $request, array $headers) => response()->json([
+                'message' => 'You have made several quote submissions. Please wait '.($headers['Retry-After'] ?? 60).' seconds, then send your request again. Your selections are still on this page.',
+            ], 429, $headers)));
         RateLimiter::for('public-write', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
         RateLimiter::for('admin-read', fn (Request $request) => Limit::perMinute(240)->by(($request->attributes->get('admin')?->id ?? 'guest').'|'.$request->ip()));
         RateLimiter::for('admin-write', fn (Request $request) => Limit::perMinute(90)->by(($request->attributes->get('admin')?->id ?? 'guest').'|'.$request->ip()));
