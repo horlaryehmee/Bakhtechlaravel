@@ -1,8 +1,9 @@
 import { QuoteBuilderOrder } from './QuoteBuilderOrder'
+import { QuoteRequests } from './QuoteRequests'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { getAdminToken } from '@/lib/api'
-import { investment, money, quoteApi, type Catalog, type Option, type SavedQuote } from '@/lib/quote-builder'
+import { money, quoteApi, type Catalog, type Option } from '@/lib/quote-builder'
 import '../quote-builder.css'
 
 type Entity = 'project_types' | 'questions' | 'features' | 'rules'
@@ -28,7 +29,6 @@ function Editor({ entity, initial, saved }: { entity: Entity; initial: Data; sav
 }
 export function QuoteBuilderAdmin() {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
-  const [quotes, setQuotes] = useState<{data:SavedQuote[];current_page:number;last_page:number} | null>(null)
   const [selected, setSelected] = useState(0)
   const [tab, setTab] = useState('pricing')
   const [error, setError] = useState('')
@@ -36,20 +36,18 @@ export function QuoteBuilderAdmin() {
   const [version, setVersion] = useState(0)
   const token = getAdminToken()
   async function load() { try { setCatalog(await quoteApi<Catalog>('catalog', undefined, true)); setError('') } catch(e) { setError((e as Error).message) } }
-  async function loadQuotes(page = 1) { try { setQuotes(await quoteApi(`quotes?page=${page}`,undefined,true)); setError('') } catch(e) { setError((e as Error).message) } }
   useEffect(() => {
     if (!token) return
     const controller = new AbortController()
     quoteApi<Catalog>('catalog', undefined, true, controller.signal).then(setCatalog).catch(e => { if (!controller.signal.aborted) setError(e.message) })
-    quoteApi<{data:SavedQuote[];current_page:number;last_page:number}>('quotes', undefined, true, controller.signal).then(setQuotes).catch(e => { if (!controller.signal.aborted) setError(e.message) })
     return () => controller.abort()
   }, [token])
   const saved = () => { setNotice('Quote builder settings saved. New estimates will use these prices.'); void load().then(() => setVersion(v => v + 1)) }
   if (!token) return <Navigate to="/admin/login" replace/>
   const type = catalog?.types.find(t => t.id === selected) || catalog?.types[0]
-  return <div className="qb qb-embedded"><div className="qb-admin"><div className="qb-admin-toolbar"><button className={tab === 'pricing' ? 'qb-primary' : ''} aria-pressed={tab === 'pricing'} onClick={() => setTab('pricing')}>Projects & starting prices</button><button className={tab === 'order' ? 'qb-primary' : ''} aria-pressed={tab === 'order'} onClick={() => setTab('order')}>Frontend order</button><button className={tab === 'quotes' ? 'qb-primary' : ''} aria-pressed={tab === 'quotes'} onClick={() => { setTab('quotes'); void loadQuotes() }}>Quote requests</button><Link to="/quote-builder">Open public builder ↗</Link></div>{error && <p role="alert" className="qb-error">{error}</p>}{notice && <p role="status">{notice}</p>}{!catalog && !error && <p>Loading settings…</p>}
+  return <div className="qb qb-embedded"><div className="qb-admin"><div className="qb-admin-toolbar"><button className={tab === 'pricing' ? 'qb-primary' : ''} aria-pressed={tab === 'pricing'} onClick={() => setTab('pricing')}>Projects & starting prices</button><button className={tab === 'order' ? 'qb-primary' : ''} aria-pressed={tab === 'order'} onClick={() => setTab('order')}>Frontend order</button><button className={tab === 'quotes' ? 'qb-primary' : ''} aria-pressed={tab === 'quotes'} onClick={() => setTab('quotes')}>Quote requests</button><Link to="/quote-builder">Open public builder ↗</Link></div>{error && <p role="alert" className="qb-error">{error}</p>}{notice && <p role="status">{notice}</p>}{!catalog && !error && <p>Loading settings…</p>}
     {tab === 'pricing' && catalog && <><section className="qb-panel"><h2>Projects & starting prices</h2><p>Select a project below to edit its name, starting price, description, questions and features. You can create more project types for different customers and budgets.</p><div className="qb-project-list">{catalog.types.map(t => <button key={t.id} type="button" aria-pressed={type?.id === t.id} className={type?.id === t.id ? 'is-selected' : ''} onClick={() => setSelected(t.id)}><strong>{t.name}</strong><span>From {money(t.base_min)}</span><small>{t.enabled ? 'Available' : 'Hidden'}</small></button>)}</div></section><label>Project type<select value={type?.id || ''} onChange={e => setSelected(Number(e.target.value))}>{catalog.types.map(t => <option key={t.id} value={t.id}>{t.name}{!t.enabled ? ' (disabled)' : ''}</option>)}</select></label>{type && <section className="qb-panel" key={`${type.id}-${version}`}><h2>{type.name}</h2><p>The starting price appears on the public project card. The upper amount sets the base estimate range; answers and features can increase it. Both amounts are editable, including for lower-budget projects.</p><Editor entity="project_types" initial={type as unknown as Data} saved={saved}/><h3>Relevant questions</h3><p>Questions shown only for this project type. Historical requests retain their original answers.</p>{type.questions.map(q => <details key={q.id}><summary>{q.label}</summary><Editor entity="questions" initial={q as unknown as Data} saved={saved}/></details>)}<details><summary>+ Add question</summary><Editor entity="questions" initial={{project_type_id:type.id,label:'',options:[{label:'',price:0,complexity:0},{label:'',price:0,complexity:0}]}} saved={saved}/></details><h3>Functionality</h3><p>Disable a feature to remove it from new estimates. Its history is retained.</p>{type.features.map(f => <details key={f.id}><summary>{f.name} · {money(f.price)}{!f.enabled ? ' · disabled' : ''}</summary><Editor entity="features" initial={f as unknown as Data} saved={saved}/></details>)}<details><summary>+ Add feature</summary><Editor entity="features" initial={{project_type_id:type.id,name:'',description:'',price:0,complexity:1,optional:true,custom_quote:false,enabled:true}} saved={saved}/></details></section>}<section className="qb-panel" key={`new-${version}`}><details><summary>+ Create project type</summary><Editor entity="project_types" initial={{name:'',slug:'',description:'',base_min:250000,base_max:300000,enabled:true,discovery_key:'',discovery_label:''}} saved={saved}/></details></section><section className="qb-panel" key={`rules-${version}`}><h2>Complexity rules</h2><p>The highest matching score threshold applies. Minimum = (starting price + selected adjustments) × complexity uplift. Maximum includes the range allowance and the configured starting maximum. Values round up to ₦5,000. Custom quote rules suppress both amounts.</p>{catalog.rules.map(r => <details key={r.id}><summary>{r.level} · score {r.minimum_score}+</summary><Editor entity="rules" initial={r as unknown as Data} saved={saved}/></details>)}</section></>}
     {tab === 'order' && catalog && <QuoteBuilderOrder catalog={catalog} onSaved={() => { void load() }} />}
-    {tab === 'quotes' && <section className="qb-panel"><h2>Quote requests</h2>{quotes?.data.length === 0 && <p>No requests yet.</p>}{quotes?.data.map(q => <details key={q.id}><summary>{q.company} · {q.recommended_type} · {investment(q)}</summary><p>Reference: {q.reference}<br/>Submitted: {q.created_at}<br/>{q.name} · {q.email} · {q.phone}</p><p>{q.description}</p><h3>Selected requirements</h3><p>Original choice: {q.selected_type} · Complexity: {q.complexity}</p><ul>{q.answers.map((a,i) => <li key={i}>{a.question_label}: {a.answer} (+ {money(a.price)})</li>)}{q.features.map((f,i) => <li key={i}>{f.name}: {money(f.price)}</li>)}</ul><h3>Calculation at submission</h3><dl>{Object.entries(q.calculation).map(([key,value]) => <div key={key}><dt>{key.replaceAll('_',' ')}</dt><dd>{String(value ?? '—')}</dd></div>)}</dl></details>)}{quotes && <div className="qb-admin-toolbar"><button disabled={quotes.current_page <= 1} onClick={() => void loadQuotes(quotes.current_page - 1)}>Previous</button><span>Page {quotes.current_page} of {quotes.last_page}</span><button disabled={quotes.current_page >= quotes.last_page} onClick={() => void loadQuotes(quotes.current_page + 1)}>Next</button></div>}</section>}
+    {tab === 'quotes' && <QuoteRequests catalog={catalog} />}
   </div></div>
 }

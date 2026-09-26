@@ -22,6 +22,7 @@ Route::prefix('quote-builder')->group(function () {
 Route::prefix('admin/quote-builder')->middleware([RequireAdminToken::class, 'admin.role:admin', 'throttle:admin-read'])->group(function () {
     Route::get('/catalog', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'admin']);
     Route::get('/quotes', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'quotes']);
+    Route::get('/quotes/{id}', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'showQuote'])->whereNumber('id');
     Route::post('/order/{entity}', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'reorder'])->middleware('throttle:admin-write');
     Route::post('/{entity}/{id?}', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'save'])->whereNumber('id')->middleware('throttle:admin-write');
 });

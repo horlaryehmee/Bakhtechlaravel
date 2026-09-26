@@ -8,7 +8,7 @@ export type PricingRule = { id: number; level: string; minimum_score: number; up
 export type Catalog = { types: ProjectType[]; rules: PricingRule[] }
 export type Configuration = { project_type: string; discovery: string; answers: Record<string, string>; features: number[] }
 export type Estimate = { recommended_type: string; recommendation: string; custom_quote: boolean; estimated_min: number | null; estimated_max: number | null; answers: { question_label: string; answer: string; price: number }[]; features: { name: string; price: number }[]; calculation: Record<string, string | number | null> }
-export type SavedQuote = Estimate & { id: number; reference: string; name: string; company: string; email: string; phone: string; description: string; created_at: string; selected_type: string; complexity: string }
+export type SavedQuote = Estimate & { id: number; reference: string; name: string; company: string; email: string; phone: string; description: string | null; created_at: string; selected_type: string; complexity: string }
 export const money = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(n)
 export const investment = (estimate: Pick<Estimate, 'estimated_min' | 'estimated_max'>) => estimate.estimated_min === null ? 'Custom Quote Required' : `${money(estimate.estimated_min)} – ${money(estimate.estimated_max!)}`
 export async function quoteApi<T>(path: string, body?: unknown, admin = false, signal?: AbortSignal): Promise<T> {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\QuoteBuilder;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,21 +54,65 @@ class QuoteBuilderController extends Controller
         return response()->json($builder->catalog(true));
     }
 
-    public function quotes()
+    public function quotes(Request $request)
     {
-        $quotes = DB::table('qb_quotes')->orderByDesc('id')->paginate(20);
-        $ids = $quotes->pluck('id');
-        $answers = DB::table('qb_quote_answers')->whereIn('quote_id', $ids)->get()->groupBy('quote_id');
-        $features = DB::table('qb_quote_features')->whereIn('quote_id', $ids)->get()->groupBy('quote_id');
-        $quotes->through(function ($q) use ($answers, $features) {
-            $q->calculation = json_decode($q->calculation);
-            $q->answers = $answers->get($q->id, []);
-            $q->features = $features->get($q->id, []);
+        $data = $request->validate([
+            'search' => 'nullable|string|max:150',
+            'project_type_id' => 'nullable|integer|exists:qb_project_types,id',
+            'estimate' => 'nullable|in:range,custom',
+            'sort' => 'nullable|in:newest,oldest',
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
+            'page' => 'nullable|integer|min:1',
+        ]);
+        $query = DB::table('qb_quotes');
+        if ($search = trim($data['search'] ?? '')) {
+            $query->where(function ($q) use ($search) {
+                foreach (['name', 'company', 'email', 'phone', 'reference'] as $field) {
+                    $q->orWhere($field, 'like', '%'.$search.'%');
+                }
+            });
+        }
+        if (! empty($data['project_type_id'])) {
+            $query->where('project_type_id', $data['project_type_id']);
+        }
+        if (($data['estimate'] ?? '') === 'custom') {
+            $query->whereNull('estimated_min');
+        }
+        if (($data['estimate'] ?? '') === 'range') {
+            $query->whereNotNull('estimated_min');
+        }
+        if (! empty($data['from'])) {
+            $query->where('created_at', '>=', $data['from'].' 00:00:00');
+        }
+        if (! empty($data['to'])) {
+            $query->where('created_at', '<', Carbon::parse($data['to'])->addDay()->startOfDay());
+        }
+        $quotes = $query->orderBy('id', ($data['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->paginate(20);
+        $quotes->through(function ($q) {
+            unset($q->calculation, $q->description);
+            $q->created_at = Carbon::parse($q->created_at)->toIso8601String();
 
             return $q;
         });
 
-        return response()->json($quotes)->header('Cache-Control', 'no-store');
+        return response()->json($quotes->toArray() + ['summary' => [
+            'total' => DB::table('qb_quotes')->count(),
+            'custom' => DB::table('qb_quotes')->whereNull('estimated_min')->count(),
+            'recent' => DB::table('qb_quotes')->where('created_at', '>=', now()->subDays(7))->count(),
+        ]])->header('Cache-Control', 'no-store');
+    }
+
+    public function showQuote(int $id)
+    {
+        $quote = DB::table('qb_quotes')->where('id', $id)->first();
+        abort_unless($quote, 404);
+        $quote->calculation = json_decode($quote->calculation);
+        $quote->answers = DB::table('qb_quote_answers')->where('quote_id', $id)->orderBy('id')->get();
+        $quote->features = DB::table('qb_quote_features')->where('quote_id', $id)->orderBy('id')->get();
+        $quote->created_at = Carbon::parse($quote->created_at)->toIso8601String();
+
+        return response()->json($quote)->header('Cache-Control', 'no-store');
     }
 
     public function reorder(Request $request, string $entity)

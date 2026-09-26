@@ -95,7 +95,54 @@ class QuoteBuilderTest extends TestCase
         $this->assertSame(count($input['answers']), DB::table('qb_quote_answers')->where('quote_id', $quote->id)->count());
         DB::table('qb_project_types')->where('slug', 'booking')->update(['base_min' => 900000]);
         $this->assertDatabaseHas('qb_quotes', ['reference' => $reference, 'estimated_min' => 450000, 'email' => 'quote@example.test']);
-        $this->withToken($this->token())->getJson('/api/admin/quote-builder/quotes')->assertOk()->assertJsonPath('data.0.reference', $reference)->assertJsonPath('data.0.calculation.base_min', 450000)->assertJsonCount(count($input['answers']), 'data.0.answers');
+        $adminToken = $this->token();
+        $this->withToken($adminToken)->getJson('/api/admin/quote-builder/quotes')->assertOk()
+            ->assertJsonPath('data.0.reference', $reference)
+            ->assertJsonMissingPath('data.0.calculation')
+            ->assertJsonMissingPath('data.0.answers');
+        $this->withToken($adminToken)->getJson('/api/admin/quote-builder/quotes/'.$quote->id)->assertOk()
+            ->assertJsonPath('calculation.base_min', 450000)
+            ->assertJsonCount(count($input['answers']), 'answers');
+    }
+
+    public function test_admin_quote_requests_support_search_filters_sorting_and_detailed_view(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        $business = $this->configuration('business') + ['name' => 'Ada Client', 'company' => 'Ada Foods', 'email' => 'ada@example.test', 'phone' => '+234 700 111 1111', 'description' => 'A clear business website brief.'];
+        $businessReference = $this->postJson('/api/quote-builder/quotes', $business)->assertCreated()->json('reference');
+
+        $custom = $this->configuration('custom') + ['name' => 'Tunde Client', 'company' => 'Tunde Systems', 'email' => 'tunde@example.test', 'phone' => '+234 700 222 2222'];
+        $customType = collect(app(QuoteBuilder::class)->catalog()['types'])->firstWhere('slug', 'custom');
+        $custom['features'] = [$customType->features->firstWhere('custom_quote', true)->id];
+        $customReference = $this->postJson('/api/quote-builder/quotes', $custom)->assertCreated()->json('reference');
+
+        $token = $this->token();
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes?search=Ada%20Foods')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.reference', $businessReference)
+            ->assertJsonPath('summary.total', 2)->assertJsonPath('summary.custom', 1);
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes?project_type_id='.$customType->id.'&estimate=custom')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.reference', $customReference);
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes?estimate=range&sort=oldest')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.reference', $businessReference);
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes?from='.now()->addDay()->format('Y-m-d'))
+            ->assertOk()->assertJsonCount(0, 'data');
+
+        $quoteId = DB::table('qb_quotes')->where('reference', $businessReference)->value('id');
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes/'.$quoteId)
+            ->assertOk()->assertJsonPath('reference', $businessReference)
+            ->assertJsonPath('description', 'A clear business website brief.')
+            ->assertJsonPath('calculation.project', 'Business Website')
+            ->assertJsonCount(count($business['answers']), 'answers');
+        $this->withToken($token)->getJson('/api/admin/quote-builder/quotes/999999')->assertNotFound();
+    }
+
+    public function test_quote_request_filters_are_validated_and_require_admin_access(): void
+    {
+        $this->getJson('/api/admin/quote-builder/quotes')->assertUnauthorized();
+        $this->withToken($this->token('viewer'))->getJson('/api/admin/quote-builder/quotes')->assertForbidden();
+        $adminToken = $this->token();
+        $this->withToken($adminToken)->getJson('/api/admin/quote-builder/quotes?estimate=unsupported')->assertUnprocessable();
+        $this->withToken($adminToken)->getJson('/api/admin/quote-builder/quotes?from=2026-10-10&to=2026-10-01')->assertUnprocessable();
     }
 
     public function test_admin_can_manage_separate_prices_without_changing_existing_pricing(): void
