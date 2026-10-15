@@ -15,6 +15,7 @@ Build the frontend with `npm run build` from `frontend/`. Deploy the resulting
 php artisan migrate --path=database/migrations/2026_09_26_000001_create_quote_builder_tables.php --force
 php artisan migrate --path=database/migrations/2026_09_26_000002_add_quote_builder_catalogue.php --force
 php artisan migrate --path=database/migrations/2026_09_26_000003_add_quote_builder_ordering.php --force
+php artisan migrate --path=database/migrations/2026_10_15_000001_add_author_website_to_quote_builder.php --force
 php artisan optimize:clear
 ```
 

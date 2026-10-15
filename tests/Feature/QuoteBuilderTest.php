@@ -32,7 +32,8 @@ class QuoteBuilderTest extends TestCase
     public function test_every_project_type_has_relevant_questions_and_a_valid_range(): void
     {
         $types = $this->getJson('/api/quote-builder/catalog')->assertOk()->json('types');
-        $this->assertCount(12, $types);
+        $this->assertCount(13, $types);
+        $this->assertNotNull(collect($types)->firstWhere('slug', 'author'));
         foreach ($types as $type) {
             $this->assertNotEmpty($type['questions']);
             $estimate = $this->postJson('/api/quote-builder/estimate', $this->configuration($type['slug']))->assertOk()->json();
@@ -59,7 +60,7 @@ class QuoteBuilderTest extends TestCase
 
     public function test_discovery_recommends_the_matching_solution_and_rejects_missing_goals(): void
     {
-        foreach (['promote' => 'business', 'sell' => 'ecommerce', 'book' => 'booking', 'product' => 'application', 'operations' => 'custom'] as $goal => $slug) {
+        foreach (['promote' => 'business', 'sell' => 'ecommerce', 'book' => 'booking', 'product' => 'application', 'operations' => 'custom', 'author' => 'author'] as $goal => $slug) {
             $input = $this->configuration($slug);
             $input['project_type'] = 'unsure';
             $input['discovery'] = $goal;
@@ -187,7 +188,7 @@ class QuoteBuilderTest extends TestCase
             $reference = $this->postJson('/api/quote-builder/quotes', $input)->assertCreated()->json('reference');
             $this->assertDatabaseHas('qb_quotes', ['reference' => $reference, 'project_type_id' => $type->id, 'estimated_min' => $type->slug === 'custom' ? null : $type->base_min]);
         }
-        $this->assertDatabaseCount('qb_quotes', 12);
+        $this->assertDatabaseCount('qb_quotes', 13);
     }
 
     public function test_catalogue_is_a_simpler_editable_offer_and_discovery_survives_renaming(): void
