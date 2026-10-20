@@ -178,6 +178,27 @@ class InvoiceController extends Controller
         return ['document' => $this->documentShape($this->documentRow($id), true)];
     }
 
+    public function sendPaymentReminder(Request $request, int $id)
+    {
+        $document = $this->documentRow($id);
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+        if ($document->type !== 'invoice' || in_array($document->status, ['paid', 'cancelled', 'rejected'], true) || (float) $document->balance_due <= 0) {
+            return response()->json(['message' => 'This invoice has no payable balance.'], 422);
+        }
+        if (!$document->client_email) {
+            return response()->json(['message' => 'Add a client email before sending a reminder.'], 422);
+        }
+
+        if (!$this->sendInvoiceNotification($id, $request, 'payment_reminder')) {
+            return response()->json(['message' => 'Payment reminder could not be sent. Check the email log for details.'], 502);
+        }
+        $this->trackEvent($id, 'payment.reminder_sent', $request, ['recipient' => $document->client_email], null, 'owner');
+
+        return ['document' => $this->documentShape($this->documentRow($id), true)];
+    }
+
     public function emailLogs(Request $request)
     {
         $perPage = $this->perPage($request);
@@ -2364,15 +2385,15 @@ class InvoiceController extends Controller
         ];
     }
 
-    public function sendInvoiceNotification(int $documentId, Request $request, string $templateKey, ?string $receiptReference = null): void
+    public function sendInvoiceNotification(int $documentId, Request $request, string $templateKey, ?string $receiptReference = null): bool
     {
         if (!Schema::hasTable('invoice_email_logs')) {
-            return;
+            return false;
         }
 
         $document = $this->documentRow($documentId);
         if (!$document || !$document->client_email) {
-            return;
+            return false;
         }
 
         $emailLogColumns = Schema::getColumnListing('invoice_email_logs');
@@ -2438,6 +2459,7 @@ class InvoiceController extends Controller
                 'recipient' => $document->client_email,
                 'templateKey' => $templateKey,
             ], null, 'system');
+            return true;
         } catch (\Throwable $exception) {
             Log::warning('Invoice email notification failed.', [
                 'documentId' => $documentId,
@@ -2460,6 +2482,7 @@ class InvoiceController extends Controller
             if (isset($logId) && $update !== []) {
                 DB::table('invoice_email_logs')->where('id', $logId)->update($update);
             }
+            return false;
         }
     }
 
@@ -2486,6 +2509,7 @@ class InvoiceController extends Controller
         $label = ucfirst((string) $document->type);
 
         return match ($templateKey) {
+            'payment_reminder' => 'Payment reminder: ' . $document->number,
             'invoice_created_from_quote' => 'Your invoice is ready: ' . $document->number,
             'payment_settled' => 'Invoice fully settled: ' . $document->number,
             'payment_received' => 'Payment received: ' . $document->number,
@@ -2520,6 +2544,7 @@ class InvoiceController extends Controller
         $issueDate = htmlspecialchars((string) ($document->issue_date ?? ''), ENT_QUOTES, 'UTF-8');
         $dueDate = htmlspecialchars((string) ($document->due_date ?? ''), ENT_QUOTES, 'UTF-8');
         $headline = match (true) {
+            $templateKey === 'payment_reminder' => 'Payment reminder',
             $templateKey === 'payment_settled' => 'Invoice fully settled',
             $templateKey === 'payment_received' => 'Payment received',
             $templateKey === 'invoice_created_from_quote' => 'Invoice ready',
@@ -2528,6 +2553,7 @@ class InvoiceController extends Controller
             default => 'Invoice ready',
         };
         $message = match (true) {
+            $templateKey === 'payment_reminder' => 'This is a reminder that the remaining balance on your invoice is due for payment. Please review your invoice and pay the outstanding amount below.',
             $templateKey === 'payment_settled' => 'Thank you. We have received your payment and your invoice is now fully settled. You can view or download your official receipt below.',
             $templateKey === 'payment_received' => 'Thank you. Your payment has been received and applied to this invoice. You can view your receipt below.',
             $templateKey === 'invoice_created_from_quote' => 'Your approved quote has been converted into an invoice. Please review the invoice details below.',
@@ -2544,11 +2570,11 @@ class InvoiceController extends Controller
             };
         $priceLabel = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? ($templateKey === 'payment_settled' ? 'Final payment received' : 'Payment received')
-            : match ($document->type) {
+            : ($templateKey === 'payment_reminder' ? 'Remaining balance due' : match ($document->type) {
                 'quote' => 'Quoted amount',
                 'receipt' => 'Amount recorded',
                 default => 'Amount due',
-            };
+            });
         $receiptPayment = in_array($templateKey, ['payment_received', 'payment_settled'], true)
             ? $this->receiptPayment((int) $document->id, $receiptReference)
             : null;

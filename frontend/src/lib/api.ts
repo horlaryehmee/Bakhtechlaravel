@@ -1620,6 +1620,9 @@ export const api = {
   sendInvoiceDocument(id: number) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send`, { method: 'POST' })
   },
+  sendInvoicePaymentReminder(id: number) {
+    return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/send-reminder`, { method: 'POST' })
+  },
   resendInitialInvoiceNotification(id: number) {
     return request<{ document: InvoiceDocument }>(`/api/admin/invoices/documents/${id}/resend-initial`, { method: 'POST' })
   },

@@ -2812,6 +2812,18 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
     notify('Initial notification resent.')
   }
 
+  async function sendInvoicePaymentReminder(document: InvoiceDocument) {
+    if (document.id === null || document.id === undefined) return
+    setError('')
+    try {
+      await api.sendInvoicePaymentReminder(document.id)
+      await loadDocumentEmailLogs(document.id)
+      notify(`Payment reminder sent to ${document.client.email} for ${invoiceMoney(document.balanceDue, document.currency)}.`)
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Unable to send payment reminder.')
+    }
+  }
+
   async function loadDocumentEmailLogs(documentId: number) {
     try {
       const result = await api.invoiceEmailLogs({ documentId, perPage: 100, includeOpens: 1 })
@@ -3536,6 +3548,11 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                         >
                           <Send className="h-4 w-4" />
                         </Button>
+                        {type === 'invoice' && doc.balanceDue > 0 && !['paid', 'cancelled', 'rejected'].includes(doc.status) && (
+                          <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={!doc.client.email} onClick={() => void sendInvoicePaymentReminder(doc)} title={`Email payment reminder for ${invoiceMoney(doc.balanceDue, doc.currency)}`}>
+                            Remind
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -3577,6 +3594,9 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => window.open(doc.publicUrl, '_blank')}><Eye className="h-4 w-4" />View</Button>
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void copyInvoiceLink(doc)}><Link2 className="h-4 w-4" />Copy</Button>
                 <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" onClick={() => void resendInitialInvoiceNotification(doc)}><Send className="h-4 w-4" />Resend</Button>
+                {type === 'invoice' && doc.balanceDue > 0 && !['paid', 'cancelled', 'rejected'].includes(doc.status) && (
+                  <Button variant="ghost" className="bkinv-btn bkinv-btn-secondary" disabled={!doc.client.email} onClick={() => void sendInvoicePaymentReminder(doc)}><Send className="h-4 w-4" />Send payment reminder</Button>
+                )}
               </div>
             </article>
           ))}
@@ -4108,6 +4128,12 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                       <Send className="h-4 w-4" />
                       Send Email Notification
                     </Button>
+                    {editingInvoice.type === 'invoice' && editingInvoice.balanceDue > 0 && !['paid', 'cancelled', 'rejected'].includes(editingInvoice.status) && (
+                      <Button type="button" variant="ghost" className="bkinv-btn bkinv-btn-secondary bkinv-btn-block" disabled={!editingInvoice.client.email} onClick={() => void sendInvoicePaymentReminder(editingInvoice)}>
+                        <Send className="h-4 w-4" />
+                        Send Payment Reminder ({invoiceMoney(editingInvoice.balanceDue, editingInvoice.currency)})
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
