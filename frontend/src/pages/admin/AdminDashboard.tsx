@@ -4480,6 +4480,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   }
 
   function renderInvoiceSettings() {
+    const paystackWebhookUrl = `${(import.meta.env.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, '')}/api/invoices/payments/paystack/webhook`
     const settingGroups: Array<{ title: string; description: string; fields: InvoiceSettingsField[] }> = [
       {
         title: 'Business identity',
@@ -4749,6 +4750,13 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <p>{group.description}</p>
               </div>
               <div className="bkinv-settings-fields">
+                {group.title === 'Payment controls' ? (
+                  <label className="bkinv-form-group is-wide">
+                    <span>Paystack webhook URL</span>
+                    <input className="bkinv-input" type="url" value={paystackWebhookUrl} readOnly onFocus={(event) => event.currentTarget.select()} />
+                    <small>Copy this URL into your Paystack dashboard webhook settings.</small>
+                  </label>
+                ) : null}
                 {group.fields.map((field) => (
                   <label key={field.key} className={cn('bkinv-form-group', field.multiline && 'is-wide')}>
                     <span>{field.label}</span>
