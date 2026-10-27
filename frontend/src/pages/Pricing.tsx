@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   Code2,
+  Funnel,
   Loader2,
   Mail,
   Phone,
@@ -26,7 +27,7 @@ type WizardStep = 1 | 2 | 3 | 4
 type NeedType = 'new' | 'existing' | ''
 
 const currencySymbols: Record<string, string> = { NGN: 'NGN ', USD: '$', GBP: 'GBP ' }
-const categoryIcons = [Building2, ShoppingCart, CalendarDays, Code2]
+const categoryIcons = [Building2, ShoppingCart, CalendarDays, Code2, Funnel]
 const categoryTints = ['bg-[#ede9fe]', 'bg-[#dff4ff]', 'bg-[#fff2ca]', 'bg-[#e8f0ff]']
 
 const supportIcons = [Wrench, Sparkles, Code2, Shield]
@@ -284,9 +285,9 @@ export function Pricing() {
               <>
                 <StepHero
                   step={2}
-                  label="Choose website category"
-                  title="Choose the website service you need"
-                  text="Select the kind of website project you want to start."
+                  label="Choose service category"
+                  title="Choose the service you need"
+                  text="Select the kind of digital project you want to start."
                 />
                 <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {newWebsiteCategories.map((category, index) => {
@@ -390,6 +391,11 @@ export function Pricing() {
                       </PricingCard.Card>
                     ))}
                   </div>
+                  {selectedCategory.slug === 'sales-funnels' && (
+                    <p className="mt-5 text-sm font-semibold leading-6 text-slate-500">
+                      Domain, hosting, paid ads, and third-party platform fees are separate. You provide your brand assets and product details.
+                    </p>
+                  )}
                 </section>
 
                 <section className="mt-6 rounded-[1.25rem] bg-[#071225] p-6 text-white shadow-[0_20px_56px_rgba(15,23,42,0.16)] md:p-8">
