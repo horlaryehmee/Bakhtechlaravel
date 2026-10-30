@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BakhtechApiController;
 use App\Services\BookingNotificationService;
+use App\Services\CrmEmailProgramService;
 use App\Services\DatabaseSynchronizer;
 use App\Services\SiteIncidentService;
 use App\Services\VisitorAnalyticsService;
@@ -135,6 +136,11 @@ Artisan::command('booking:send-reminders', function () {
     $this->info("Processed {$result['processed']} reminders: {$result['sent']} sent, {$result['failed']} failed, {$expired} expired.");
 })->purpose('Send due booking reminder emails');
 
+Artisan::command('crm:run-email-programs', function (CrmEmailProgramService $programs) {
+    $result = $programs->runDue();
+    $this->info("CRM email programs: {$result['sent']} sent, {$result['skipped']} skipped, {$result['failed']} failed.");
+})->purpose('Send due recurring campaigns and email sequence steps');
+
 Artisan::command('site:monitor {--url=}', function () {
     $result = app(SiteIncidentService::class)->runHealthCheck($this->option('url') ?: null);
 
@@ -207,8 +213,13 @@ Schedule::command('booking:send-reminders')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('crm:run-email-programs')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 Schedule::exec('/bin/bash '.escapeshellarg(base_path('scripts/deployment-integrity.sh')).' --repair --full --quick')
     ->everyMinute()
+    ->when(fn () => PHP_OS_FAMILY !== 'Windows')
     ->withoutOverlapping();
 
 Schedule::command('site:monitor')

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   BarChart3,
@@ -90,9 +90,10 @@ import {
 import { cn } from '@/lib/utils'
 import { QuoteBuilderAdmin } from '@/pages/admin/QuoteBuilderAdmin'
 import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
+import { CrmWorkspace, type CrmView } from '@/pages/admin/CrmWorkspace'
 import { isVideoUrl } from '@/lib/project-media'
 
-type AdminSection = 'dashboard' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'quote-builder' | 'invoices' | 'users' | 'settings'
+type AdminSection = 'dashboard' | 'crm' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'quote-builder' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
@@ -537,6 +538,7 @@ const reviewProviders: Array<{ value: ReviewInput['provider']; label: string }> 
 
 const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'crm', label: 'CRM', icon: Users },
   { id: 'pages', label: 'Pages', icon: FileText },
   { id: 'posts', label: 'Posts', icon: Newspaper },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
@@ -549,6 +551,15 @@ const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDas
   { id: 'invoices', label: 'Invoices', icon: Wallet },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
+]
+
+const crmMenuGroups: Array<{ label: string; items: Array<{ id: CrmView; label: string; nested?: boolean }> }> = [
+  { label: '', items: [{ id: 'dashboard', label: 'Dashboard' }] },
+  { label: '', items: [{ id: 'contacts', label: 'Contacts' }, { id: 'lists', label: 'Lists', nested: true }, { id: 'tags', label: 'Tags', nested: true }] },
+  { label: '', items: [{ id: 'campaigns', label: 'Campaigns' }, { id: 'recurring', label: 'Recurring Campaigns', nested: true }, { id: 'sequences', label: 'Email Sequences', nested: true }, { id: 'templates', label: 'Email Templates', nested: true }] },
+  { label: '', items: [{ id: 'forms', label: 'Forms' }, { id: 'automations', label: 'Automations' }] },
+  { label: '', items: [{ id: 'settings', label: 'Settings' }, { id: 'reports', label: 'Reports' }, { id: 'addons', label: 'Addons' }, { id: 'help', label: 'Help' }] },
+  { label: 'Business', items: [{ id: 'deals', label: 'Deals' }, { id: 'projects', label: 'Projects' }, { id: 'tasks', label: 'Tasks' }, { id: 'companies', label: 'Companies' }] },
 ]
 
 function metricCards(data: DashboardData) {
@@ -863,7 +874,14 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   const navigate = useNavigate()
   const token = getAdminToken()
   const initialAdminCache = useMemo(() => readAdminDataCache(), [])
-  const [activeSection, setActiveSection] = useState<AdminSection>(() => initialSection ?? storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'quote-builder', 'invoices', 'users', 'settings']))
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => initialSection ?? storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'crm', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'quote-builder', 'invoices', 'users', 'settings']))
+  const [crmMenuExpanded, setCrmMenuExpanded] = useState(() => initialSection === 'crm' || storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'crm']) === 'crm')
+  const [crmSelected, setCrmSelected] = useState<CrmView>('dashboard')
+  const [crmNavigationRequest, setCrmNavigationRequest] = useState<{ view: CrmView; id: number } | null>(null)
+  const handleCrmViewChange = useCallback((view: CrmView) => {
+    setCrmSelected(view)
+    setCrmNavigationRequest(current => current?.view === view ? current : { view, id: (current?.id ?? 0) + 1 })
+  }, [])
   const [activeBookingSection, setActiveBookingSection] = useState<BookingAdminSection>(() => storedAdminView('bakhtech-admin-booking-section', 'dashboard', ['dashboard', 'calendars', 'bookings', 'availability', 'settings']))
   const [activeInvoiceSubsection, setActiveInvoiceSubsection] = useState<InvoiceSubsection>(() => storedAdminView('bakhtech-admin-invoice-section', 'dashboard', ['dashboard', 'invoices', 'quotes', 'receipts', 'emails', 'contacts', 'settings', 'import', 'create']))
   const [dashboard, setDashboard] = useState<DashboardData>(() => initialAdminCache?.dashboard ?? dashboardFromLoadedData([], null))
@@ -1266,9 +1284,9 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
 
     try {
       const [
-        seoAuditResult,
-        projectResult,
-        cmsResult,
+        initialSeoAuditResult,
+        initialProjectResult,
+        initialCmsResult,
         adminSessionsResult,
         invoiceOverviewResult,
         invoiceDocumentsResult,
@@ -1285,11 +1303,35 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
         api.invoiceEmailLogs()
       ])
 
+      const retry = <T,>(result: PromiseSettledResult<T>, load: () => Promise<T>): Promise<PromiseSettledResult<T>> =>
+        result.status === 'fulfilled'
+          ? Promise.resolve(result)
+          : load().then(value => ({ status: 'fulfilled' as const, value }), reason => ({ status: 'rejected' as const, reason }))
+      const [seoAuditResult, projectResult, cmsResult] = await Promise.all([
+        retry(initialSeoAuditResult, () => api.seoAudit()),
+        retry(initialProjectResult, () => api.adminProjects()),
+        retry(initialCmsResult, () => api.cms()),
+      ])
+
+      if ([seoAuditResult, projectResult, cmsResult].some(result =>
+        result.status === 'rejected' && result.reason instanceof ApiError && result.reason.status === 401
+      )) {
+        clearAdminToken()
+        navigate('/admin/login', { replace: true })
+        return
+      }
+
       const failedRequired = [
         ['seo audit', seoAuditResult],
         ['projects', projectResult],
         ['CMS/settings', cmsResult],
       ].filter(([, result]) => (result as PromiseSettledResult<unknown>).status === 'rejected')
+      const loadFailureMessage = failedRequired.length
+        ? `Could not load ${failedRequired.map(([label]) => label).join(', ')}. ${(() => {
+          const reason = (failedRequired[0][1] as PromiseRejectedResult).reason
+          return reason instanceof ApiError ? reason.message : 'Check the API connection and retry.'
+        })()}`
+        : ''
 
       const nextSeoAudit = seoAuditResult.status === 'fulfilled' ? seoAuditResult.value : seoAudit
       const nextProjects = projectResult.status === 'fulfilled' ? projectResult.value.projects : projects
@@ -1312,7 +1354,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
       setProjects(nextProjects)
       const cmsWithSessions = nextCms ? { ...nextCms, adminSessions: nextSessions } : null
       if (!cmsWithSessions) {
-        setError(failedRequired.length ? `Loaded with errors: ${failedRequired.map(([label]) => label).join(', ')} failed. Check Settings -> Incidents.` : 'Unable to load CMS/settings.')
+        setError(loadFailureMessage || 'Unable to load CMS/settings.')
         return
       }
       setCms(cmsWithSessions)
@@ -1345,7 +1387,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
         invoiceEmailLogsMeta: invoiceEmailLogsResult.status === 'fulfilled' ? invoiceEmailLogsResult.value.meta : defaultInvoiceListMeta,
       })
       if (failedRequired.length) {
-        setError(`Loaded with errors: ${failedRequired.map(([label]) => label).join(', ')} failed. Check Settings -> Incidents.`)
+        setError(loadFailureMessage)
       }
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 401) {
@@ -9662,6 +9704,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   function renderAdminContent() {
     switch (activeSection) {
       case 'dashboard': return renderDashboard()
+      case 'crm': return <CrmWorkspace embedded initialView={crmSelected} navigationRequest={crmNavigationRequest} onViewChange={handleCrmViewChange} onOpenSettings={() => setActiveSection('settings')} />
       case 'pages': return renderPages()
       case 'posts': return renderPosts()
       case 'projects': return renderProjects()
@@ -9719,13 +9762,19 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
             {menuItems.map((item) => {
               const isActive = activeSection === item.id
               return (
+                <div key={item.id}>
                 <button
-                  key={item.id}
                   type="button"
                   onClick={() => {
+                    if (item.id === 'crm') {
+                      setSidebarCollapsed(false)
+                      setCrmMenuExpanded(activeSection === 'crm' ? !crmMenuExpanded : true)
+                    }
                     setActiveSection(item.id)
-                    setMobileSidebarOpen(false)
+                    if (item.id !== 'crm') setMobileSidebarOpen(false)
                   }}
+                  aria-expanded={item.id === 'crm' ? crmMenuExpanded : undefined}
+                  aria-controls={item.id === 'crm' ? 'admin-crm-submenu' : undefined}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
                     isActive 
@@ -9736,12 +9785,25 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 >
                   <item.icon className={cn("w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-105", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200")} />
                   {!sidebarCollapsed && <span className="truncate text-xs tracking-wide">{item.label}</span>}
+                  {item.id === 'crm' && !sidebarCollapsed && <ChevronRight className={cn('ml-auto h-4 w-4 shrink-0 transition-transform', crmMenuExpanded && 'rotate-90')} />}
                   
                   {/* Active indicator bar */}
                   {isActive && (
                     <span className="absolute left-0 top-3 bottom-3 w-1 bg-white rounded-r-full admin-nav-indicator" />
                   )}
                 </button>
+                {item.id === 'crm' && crmMenuExpanded && !sidebarCollapsed && <div id="admin-crm-submenu" className="ml-5 border-l border-slate-700/70 py-1" aria-label="CRM sections">
+                  {crmMenuGroups.map((group, groupIndex) => <div key={`${group.label}-${groupIndex}`} className={groupIndex > 0 && groupIndex < 5 ? 'mt-1 border-t border-slate-600/70 pt-1' : groupIndex ? 'mt-1' : ''}>
+                    {group.label && <div className="px-4 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.label}</div>}
+                    {group.items.map((child) => <button key={child.id} type="button" aria-current={activeSection === 'crm' && crmSelected === child.id ? 'page' : undefined} onClick={() => {
+                      setActiveSection('crm')
+                      setCrmSelected(child.id)
+                      setCrmNavigationRequest(current => ({ view: child.id, id: (current?.id ?? 0) + 1 }))
+                      setMobileSidebarOpen(false)
+                    }} className={cn('ml-2 flex w-[calc(100%-0.5rem)] items-center rounded-lg py-1.5 text-left text-xs transition-colors', child.nested ? 'pl-6 pr-3' : 'px-3', activeSection === 'crm' && crmSelected === child.id ? 'bg-blue-500/15 font-semibold text-blue-300' : 'text-slate-400 hover:bg-slate-800 hover:text-white')}>{child.label}</button>)}
+                  </div>)}
+                </div>}
+                </div>
               )
             })}
           </nav>
@@ -10080,7 +10142,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
         </div>
 
         {/* Content Body */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className={cn('flex-1 w-full mx-auto', activeSection === 'crm' ? 'min-w-0' : 'max-w-7xl p-4 md:p-6 lg:p-8')}>
           {renderAdminContent()}
         </main>
       </div>
@@ -10104,7 +10166,8 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <p className="text-xs font-semibold">{error}</p>
+          <p className="max-w-[min(70vw,440px)] text-xs font-semibold">{error}</p>
+          {error.startsWith('Could not load ') && <button type="button" className="rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-bold hover:bg-white/20" onClick={() => void loadAdminData(false)}>Retry</button>}
         </div>
       )}
 

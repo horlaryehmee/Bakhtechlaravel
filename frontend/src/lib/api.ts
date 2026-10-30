@@ -1014,7 +1014,91 @@ function publicSettings() {
   return publicSettingsPromise
 }
 
+export type CrmContact = { id: number; name: string; email: string | null; phone: string | null; company: string | null; stage: string; source: string; service_interest: string | null; subscription_status: 'subscribed'|'unsubscribed'; segments?: Array<{id:number;name:string;kind:'list'|'tag'}>; notes: string | null; last_interaction_at: string | null; created_at?: string; updated_at?: string; subscribed_at?: string | null }
+export type CrmDeal = { id: number; contact_id: number; contact_name?: string; title: string; stage: string; estimated_value: string | null; agreed_value: string | null; expected_close_at: string | null; lost_reason: string | null; notes: string | null }
+export type CrmProject = { id: number; contact_id: number; contact_name?: string; deal_id: number | null; title: string; status: string; start_at: string | null; due_at: string | null; notes: string | null }
+export type CrmTask = { id: number; contact_id: number; contact_name?: string; title: string; due_at: string | null; completed: boolean; priority: string; status: string }
+export type CrmDetail = { contact: CrmContact; owner?: { id: number; name: string } | null; company?: { id: number; name: string; website: string | null; address: string | null } | null; segments?: Array<{ id: number; name: string; kind: 'list'|'tag'; color: string | null }>; emailHistory?: Array<CrmEmailTracking & { id: number; campaign: string; subject: string; status: string; error: string | null; sent_at: string | null; created_at: string }>; activities: Array<{ id: number; type: string; subject: string; body: string | null; created_at: string }>; tasks: CrmTask[]; deals: CrmDeal[]; projects: CrmProject[]; documents: Array<{ id: number; number: string; type: string; status: string; total: string; amount_paid: string; balance_due: string; currency: string; due_date: string | null; public_token?: string }> }
+
+export type CrmAutomationStep = { action_type: 'segment'|'remove_segment'|'task'|'note'|'sequence'; segment_id: number|null; task_title: string|null; task_due_days: number|null; task_priority?: 'low'|'normal'|'high'|null; note_body?: string|null; sequence_id?: number|null }
+export type CrmAutomationConditions = { stage?: string|null; source?: string|null; subscription_status?: string|null; segment_id?: number|null }
+export type CrmAutomationInput = { name: string; description: string|null; enabled: boolean; trigger_type: 'contact_created'|'stage_changed'|'subscription_changed'|'segment_added'; trigger_stage: string|null; trigger_segment_id: number|null; trigger_subscription_status: string|null; conditions: CrmAutomationConditions; steps: CrmAutomationStep[] }
+export type CrmAutomation = CrmAutomationInput & { id: number; created_at: string; updated_at: string; run_count: number; completed_count: number; failed_count: number; skipped_count: number; last_run_at: string|null }
+export type CrmAutomationResult = { position: number; action_type: string; status: string; message: string }
+export type CrmAutomationRun = { id: number; automation_id: number; contact_id: number; automation: string; automation_enabled: boolean; name: string; email: string|null; event_key: string; status: string; error: string|null; created_at: string; finished_at: string|null; attempts: number; results: CrmAutomationResult[]; snapshot: {name: string; steps: CrmAutomationStep[]; conditions: CrmAutomationConditions}|null; context: {trigger?: string; stage?: string; subscription_status?: string; segment_id?: number}|null }
+export type CrmAutomationPreview = { status: string; message: string; results: CrmAutomationResult[] }
+
+export type CrmEmailProgramStep = { subject: string; body: string; delay_days: number }
+export type CrmCampaign = { id: number; name: string; subject: string; body: string; status: string; segment_id: number | null; segment_name?: string | null; editor_type: string; created_at: string; updated_at: string; sent_at: string | null; recipients?: number; sent_count?: number; failed_count?: number; pending_count?: number; opened_count?: number; tracked_count?: number }
+export type CrmEmailTracking = { tracked_at: string | null; opened_at: string | null; last_opened_at: string | null; open_count: number }
+export type CrmCampaignDelivery = CrmEmailTracking & { id: number; name: string; email: string | null; status: string; error: string | null; sent_at: string | null }
+export type CrmCampaignDetail = { campaign: CrmCampaign; counts: Record<string, number>; deliveries: CrmCampaignDelivery[] }
+export type CrmEmailProgram = { id: number; kind: 'recurring' | 'sequence'; name: string; enabled: boolean; segment_id: number | null; segment_name?: string | null; frequency: 'daily' | 'weekly' | 'monthly' | null; next_run_at: string | null; editor_type: 'default' | 'classic' | 'html' | 'visual'; subject: string | null; body: string | null; steps: CrmEmailProgramStep[]; run_count?: number; active_enrollments?: number }
+export type CrmEmailProgramInput = Omit<CrmEmailProgram, 'id' | 'segment_name' | 'run_count' | 'active_enrollments'>
+export type CrmEmailProgramDetail = { program: CrmEmailProgram; runs: Array<{ id: number; campaign_id: number | null; contact_name: string | null; run_key: string; status: string; error: string | null; created_at: string }>; enrollments: Record<string, number> }
+
 export const api = {
+  crmContacts(search = '', stage = '', page = 1, segmentId = 0, subscription = '', sort = '', direction = '', savedSegmentId = 0, formSource = '') {
+    return request<{ contacts: { data: CrmContact[]; current_page: number; last_page: number; total: number }; stages: Record<string, number>; openTasks: number }>(`/api/admin/crm/contacts?search=${encodeURIComponent(search)}&stage=${encodeURIComponent(stage)}&page=${page}&segment_id=${segmentId || ''}&subscription=${subscription}&sort=${sort}&direction=${direction}&saved_segment_id=${savedSegmentId || ''}&form_source=${formSource}`)
+  },
+  crmDemoStatus() { return request<{contacts:number}>('/api/admin/crm/demo') },
+  crmDemoSeed() { return request<{contacts:number}>('/api/admin/crm/demo', { method: 'POST' }) },
+  crmDemoClear() { return request<{cleared:number}>('/api/admin/crm/demo', { method: 'DELETE' }) },
+  crmForms() { return request<Array<{id:'message'|'quote'|'booking';title:string;path:string;entries:number;crm_contacts:number}>>('/api/admin/crm/forms') },
+  crmContact(id: number) { return request<CrmDetail>(`/api/admin/crm/contacts/${id}`) },
+  crmCreate(data: Partial<CrmContact>) { return request<CrmDetail>('/api/admin/crm/contacts', { method: 'POST', body: JSON.stringify(data) }) },
+  crmUpdate(id: number, data: Partial<CrmContact>) { return request<CrmDetail>(`/api/admin/crm/contacts/${id}`, { method: 'PUT', body: JSON.stringify(data) }) },
+  crmActivity(id: number, data: { type: string; subject: string; body?: string }) { return request<CrmDetail>(`/api/admin/crm/contacts/${id}/activities`, { method: 'POST', body: JSON.stringify(data) }) },
+  crmTask(id: number, data: { title: string; due_at?: string; priority?: string }) { return request<CrmDetail>(`/api/admin/crm/contacts/${id}/tasks`, { method: 'POST', body: JSON.stringify(data) }) },
+  crmCompleteTask(id: number, completed: boolean) { return request<{ ok: boolean }>(`/api/admin/crm/tasks/${id}`, { method: 'PUT', body: JSON.stringify({ completed }) }) },
+  crmUpdateTask(id: number, data: Partial<Pick<CrmTask, 'title'|'due_at'|'priority'|'status'|'completed'>>) { return request<{ok:boolean}>(`/api/admin/crm/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }) },
+  crmOverview() { return request<Record<string, number | Array<{source?: string; total?: number; month?: string; deals?: number; value?: string}>>>('/api/admin/crm/overview') },
+  crmDeals() { return request<CrmDeal[]>('/api/admin/crm/deals') },
+  crmSaveDeal(data: Partial<CrmDeal>, id?: number) { return request<CrmDeal>(`/api/admin/crm/deals${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) }) },
+  crmProjects() { return request<CrmProject[]>('/api/admin/crm/projects') },
+  crmSaveProject(data: Partial<CrmProject>, id?: number) { return request<CrmProject>(`/api/admin/crm/projects${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) }) },
+  crmTasks() { return request<CrmTask[]>('/api/admin/crm/tasks') },
+  crmCompanies() { return request<Array<{id:number;name:string;website:string|null;phone:string|null;address:string|null;notes:string|null}>>('/api/admin/crm/companies') },
+  crmSaveCompany(data: {name:string;website?:string;phone?:string;address?:string;notes?:string}, id?: number) { return request(`/api/admin/crm/companies${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) }) },
+  crmSegments() { return request<Array<{id:number;kind:'list'|'tag';name:string;color:string|null;contacts:number}>>('/api/admin/crm/segments') },
+  crmSavedSegments() { return request<Array<{id:number;name:string;description:string|null;filters:{stage?:string;subscription_status?:string;source?:string;segment_id?:number;search?:string};contacts:number}>>('/api/admin/crm/saved-segments') },
+  crmSaveSavedSegment(data:{name:string;description:string;filters:{stage?:string;subscription_status?:string;source?:string;segment_id?:number;search?:string}},id?:number) { return request(`/api/admin/crm/saved-segments${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}) },
+  crmDeleteSavedSegment(id:number) { return request<void>(`/api/admin/crm/saved-segments/${id}`,{method:'DELETE'}) },
+  crmSaveSegment(data:{kind:'list'|'tag';name:string;color?:string},id?:number) { return request(`/api/admin/crm/segments${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}) },
+  crmContactSegments(id:number) { return request<Array<{id:number;kind:'list'|'tag';name:string}>>(`/api/admin/crm/contacts/${id}/segments`) },
+  crmSetContactSegments(id:number,segment_ids:number[]) { return request(`/api/admin/crm/contacts/${id}/segments`,{method:'PUT',body:JSON.stringify({segment_ids})}) },
+  crmSubscription(id:number,status:'subscribed'|'unsubscribed') { return request(`/api/admin/crm/contacts/${id}/subscription`,{method:'PUT',body:JSON.stringify({status})}) },
+  crmCampaigns() { return request<CrmCampaign[]>('/api/admin/crm/campaigns') },
+  crmCampaignAudience(segmentId: number | null) { return request<{total:number;eligible:number;unsubscribed:number;invalidEmail:number;sample:Array<{id:number;name:string;email:string}>;sender:{name:string;email:string}}>(`/api/admin/crm/campaign-audience${segmentId ? `?segment_id=${segmentId}` : ''}`) },
+  crmCampaignDeliveries(id: number, page = 1, status = '', search = '') { return request<{data:CrmCampaignDelivery[];total:number;current_page:number;last_page:number}>(`/api/admin/crm/campaigns/${id}/deliveries?page=${page}&status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}`) },
+  crmEmailAssets(kind:'template'|'pattern') { return request<Array<{id:number;kind:string;name:string;subject:string;body:string;updated_at:string}>>(`/api/admin/crm/email-assets?kind=${kind}`) },
+  crmSaveEmailAsset(data:{kind:'template'|'pattern';name:string;subject:string;body:string},id?:number) { return request<{id:number;kind:string;name:string;subject:string;body:string;updated_at:string}>(`/api/admin/crm/email-assets${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}) },
+  crmDeleteEmailAsset(id:number) { return request<void>(`/api/admin/crm/email-assets/${id}`,{method:'DELETE'}) },
+  crmEmailActivityLog(params: {page:number;per_page?:number;search?:string;status?:string;start?:string;end?:string}) { const query=new URLSearchParams(); Object.entries(params).forEach(([key,value])=>{if(value!==undefined&&value!=='')query.set(key,String(value))}); return request<{data:Array<CrmEmailTracking & {id:number;contact_id:number;campaign_id:number;status:string;sent_at:string|null;error:string|null;created_at:string;campaign:string;contact:string;email:string}>;total:number;current_page:number;last_page:number;counts:Record<string,number>}>(`/api/admin/crm/email-activities?${query}`) },
+  crmEmailActivities(start?:string, end?:string) { return request<Array<CrmEmailTracking & {id:number;status:string;sent_at:string|null;error:string|null;created_at:string;campaign:string;contact:string;email:string}>>(`/api/admin/crm/email-activities?${new URLSearchParams({...start ? {start} : {}, ...end ? {end} : {}})}`) },
+  crmEmailPrograms(kind: 'recurring' | 'sequence') { return request<CrmEmailProgram[]>(`/api/admin/crm/email-programs?kind=${kind}`) },
+  crmEmailProgram(id: number) { return request<CrmEmailProgramDetail>(`/api/admin/crm/email-programs/${id}`) },
+  crmSaveEmailProgram(data: CrmEmailProgramInput, id?: number) { return request<CrmEmailProgramDetail>(`/api/admin/crm/email-programs${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(data) }) },
+  crmDeleteEmailProgram(id: number) { return request<void>(`/api/admin/crm/email-programs/${id}`, { method: 'DELETE' }) },
+  crmEnrollEmailProgram(id: number) { return request<{ enrolled: number }>(`/api/admin/crm/email-programs/${id}/enroll`, { method: 'POST' }) },
+  crmRetryEmailProgramRun(id: number, run: number) { return request<CrmEmailProgramDetail>(`/api/admin/crm/email-programs/${id}/runs/${run}/retry`, { method: 'POST' }) },
+  crmDuplicateCampaign(id:number) { return request<CrmCampaign>(`/api/admin/crm/campaigns/${id}/duplicate`,{method:'POST'}) },
+  crmDeleteCampaign(id:number) { return request<void>(`/api/admin/crm/campaigns/${id}`,{method:'DELETE'}) },
+  crmCampaign(id:number) { return request<CrmCampaignDetail>(`/api/admin/crm/campaigns/${id}`) },
+  crmSaveCampaign(data:{name:string;subject:string;body:string;segment_id:number|null;editor_type?:string},id?:number) { return request<CrmCampaign>(`/api/admin/crm/campaigns${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}) },
+  crmLaunchCampaign(id:number) { return request<CrmCampaignDetail>(`/api/admin/crm/campaigns/${id}/launch`,{method:'POST'}) },
+  crmSendCampaignBatch(id:number) { return request<CrmCampaignDetail>(`/api/admin/crm/campaigns/${id}/send-batch`,{method:'POST'}) },
+  crmAutomations() { return request<CrmAutomation[]>('/api/admin/crm/automations') },
+  crmAutomation(id:number) { return request<CrmAutomation>(`/api/admin/crm/automations/${id}`) },
+  crmAutomationActivity(params: {page?:number;automation_id?:number;status?:string;search?:string;from?:string;to?:string}) { const query = new URLSearchParams(); Object.entries(params).forEach(([key,value]) => { if (value !== undefined && value !== '') query.set(key,String(value)) }); return request<{data:CrmAutomationRun[];total:number;current_page:number;last_page:number}>(`/api/admin/crm/automation-activity?${query}`) },
+  crmAutomationContacts(search='') { return request<Array<{id:number;name:string;email:string|null;stage:string;subscription_status:string}>>(`/api/admin/crm/automation-contacts?search=${encodeURIComponent(search)}`) },
+  crmPreviewAutomation(data:CrmAutomationInput, contact_id:number) { return request<CrmAutomationPreview>('/api/admin/crm/automations/preview',{method:'POST',body:JSON.stringify({...data,contact_id})}) },
+  crmAutomationStatus(id:number,enabled:boolean) { return request<CrmAutomation>(`/api/admin/crm/automations/${id}/status`,{method:'PATCH',body:JSON.stringify({enabled})}) },
+  crmRetryAutomation(id:number,run:number) { return request<CrmAutomationRun>(`/api/admin/crm/automations/${id}/runs/${run}/retry`,{method:'POST'}) },
+  crmDuplicateAutomation(id:number) { return request<CrmAutomation>(`/api/admin/crm/automations/${id}/duplicate`,{method:'POST'}) },
+  crmDeleteAutomation(id:number) { return request<void>(`/api/admin/crm/automations/${id}`,{method:'DELETE'}) },
+  crmMarketingDashboard(start: string, end: string) { return request<{engagement:{sent:number;tracked:number;opened:number;openRate:number|null;opens:number};recentOpens:Array<{id:number;contact_id:number;name:string;email:string;campaign:string;subject:string;opened_at:string;last_opened_at:string;open_count:number}>;upcomingTasks:Array<{id:number;title:string;due_at:string}>;overdueTasks:number;activeContacts:number;campaigns:number;emailsSent:number;activeAutomations:number;totalContacts:number;openDeals:number;activeProjects:number;openTasks:number;tags:number;lists:number;growth:Array<{date:string;new:number;cumulative:number}>;performance:{sent:number;pending:number;failed:number;skipped:number};recentCampaigns:Array<{id:number;name:string;subject:string;status:string;created_at:string}>;recentContacts:Array<{id:number;name:string;email:string|null;subscription_status:string;created_at:string}>;recentAutomations:Array<{id:number;name:string;trigger_type:string;action_type:string}>}>(`/api/admin/crm/dashboard?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`) },
+  crmSaveAutomation(data:CrmAutomationInput,id?:number) { return request<CrmAutomation>(`/api/admin/crm/automations${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}) },
   login(email: string, password: string, twoFactorCode = '') {
     return request<{ token: string; admin: { id: number; email: string; name: string; twoFactorEnabled: boolean } }>('/api/admin/login', {
       method: 'POST',

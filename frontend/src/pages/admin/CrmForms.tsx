@@ -1,0 +1,17 @@
+import { useEffect, useState } from 'react'
+import { ArrowUpRight, FileText, Search, Users, RefreshCw, CheckCircle2 } from 'lucide-react'
+import { api } from '@/lib/api'
+type FormRow=Awaited<ReturnType<typeof api.crmForms>>[number]
+const descriptions={message:'Website enquiries flow into contact profiles with the original message.',quote:'Quote requests capture service requirements and create sales opportunities.',booking:'Consultation bookings link appointments to their contact histories.'}
+export function CrmForms({onContacts}:{onContacts:(source:FormRow['id'])=>void}){
+ const [rows,setRows]=useState<FormRow[]>([]),[search,setSearch]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true)
+ async function load(){setLoading(true);setError('');try{setRows(await api.crmForms())}catch(e){setError((e as Error).message)}finally{setLoading(false)}}
+ useEffect(()=>{void load()},[])
+ const filtered=rows.filter(r=>`${r.title} ${r.path}`.toLowerCase().includes(search.toLowerCase()))
+ return <div className="cc-page ca-page"><header className="cc-page-heading"><div><span className="cc-eyebrow">Capture & connect</span><h1>Connected forms</h1><p>Manage the website entry points that bring new relationships into your CRM.</p></div><button className="cc-button" disabled={loading} onClick={()=>void load()}><RefreshCw size={14}/>Refresh</button></header>{error&&<p role="alert" className="cc-feedback cc-feedback--error">{error}</p>}
+ <div className="ca-metrics"><article><FileText size={18}/><div><small>Connected forms</small><strong>{loading?'?':rows.length}</strong></div></article><article><Users size={18}/><div><small>Total submissions</small><strong>{loading?'?':rows.reduce((sum,r)=>sum+r.entries,0).toLocaleString()}</strong></div></article></div>
+ <div className="cc-toolbar"><label className="cc-search"><Search size={15}/><input aria-label="Search connected forms" placeholder="Search forms..." value={search} onChange={e=>setSearch(e.target.value)}/></label></div>
+ {loading?<div className="cc-loading">Loading connected forms...</div>:<div className="ca-grid">{filtered.map(row=><article className="ca-card" key={row.id}><span className="ca-badge"><CheckCircle2 size={12}/>Connected</span><FileText size={28}/><div><h2>{row.title}</h2><p>{descriptions[row.id]}</p></div><dl><div><dt>Submissions</dt><dd>{row.entries.toLocaleString()}</dd></div><div><dt>Linked contacts</dt><dd>{row.crm_contacts.toLocaleString()}</dd></div></dl><footer><button className="cc-button cc-button--primary" onClick={()=>onContacts(row.id)}><Users size={14}/>View contacts</button><a className="cc-button" href={row.path} target="_blank" rel="noreferrer">Open form<ArrowUpRight size={14}/></a></footer><small className="ca-hint">{row.path}</small></article>)}</div>}
+ {!loading&&!filtered.length&&!error&&<div className="ca-empty"><Search size={26}/><h3>No forms match your search</h3><button className="cc-button" onClick={()=>setSearch('')}>Clear search</button></div>}
+ <section className="cc-panel ca-chart-panel" style={{marginTop:20}}><h2>How submissions become contacts</h2><ol className="ca-steps"><li>A visitor submits a website form.</li><li>The CRM links their entry to a contact using their email address.</li><li>Open View contacts, choose a contact, and review the submission in their activity history.</li></ol><p className="ca-hint">These are the existing website forms. Submitting a form does not automatically grant marketing email consent.</p></section></div>
+}

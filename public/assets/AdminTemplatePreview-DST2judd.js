@@ -1,0 +1,1 @@
+import{Z as e,et as t,q as n,rt as r,t as i}from"./index-OKn_GHf1.js";var a=n();function o(){let{template:n=``}=r();return e()?n===`agency-v2`?(0,a.jsx)(i,{preview:!0}):(0,a.jsx)(t,{to:`/admin/dashboard`,replace:!0}):(0,a.jsx)(t,{to:`/admin/login`,replace:!0})}export{o as AdminTemplatePreview};
