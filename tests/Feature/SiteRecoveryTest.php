@@ -19,6 +19,17 @@ class SiteRecoveryTest extends TestCase
         return ['Authorization' => 'Bearer '.AdminToken::make(DB::table('admins')->find($id))];
     }
 
+    public function test_failure_summary_explains_common_causes_without_exposing_secrets(): void
+    {
+        $service = app(SiteRecoveryService::class);
+        $this->assertStringContainsString('disk space', $service->failureSummary(new \RuntimeException('No space left on device: /private/secret')));
+        $this->assertStringContainsString('background writers', $service->failureSummary(new \RuntimeException('tar: file changed as we read it')));
+        $summary = $service->failureSummary(new \RuntimeException('Access denied password=very-secret'));
+        $this->assertStringContainsString('credentials', $summary);
+        $this->assertStringNotContainsString('very-secret', $summary);
+        $this->assertStringNotContainsString('very-secret', $service->failureSummary(new \RuntimeException('Unexpected password=very-secret')));
+    }
+
     public function test_staff_cannot_read_or_run_recovery(): void
     {
         $headers = $this->headersFor('staff');

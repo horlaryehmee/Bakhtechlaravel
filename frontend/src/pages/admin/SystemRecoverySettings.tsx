@@ -50,7 +50,15 @@ export function SystemRecoverySettings() {
       <button type="button" className={button} disabled={!data?.enabled || busy} onClick={() => void run('update')}>Update from GitHub</button>
       <button type="button" className={button} disabled={!data?.enabled || busy} onClick={() => void run('backup')}>Back up files & database</button>
     </div>
-    {data?.operation && <p role="status" className="mt-4 text-sm">{data.operation.status}: {data.operation.message} {data.operation.status === 'queued' && 'The scheduler normally starts within a minute. You can leave this page.'}</p>}
+    {data?.operation && <div role="status" className="mt-4 space-y-2 rounded-xl border border-gray-200 p-4 text-sm">
+      <p className="font-bold">{data.operation.status === 'completed' ? 'Operation successful' : data.operation.status === 'failed' ? 'Operation failed — not confirmed successful' : data.operation.status === 'queued' ? 'Waiting to start' : 'Operation in progress'}</p>
+      {data.operation.failedStep && <p>Failed step: <strong>{data.operation.failedStep}</strong></p>}
+      <p>{data.operation.message}</p>
+      {data.operation.backupStatus && <p>{data.operation.backupStatus}</p>}
+      {data.operation.installedVersion && <p className="break-all">Installed version after operation: <code>{data.operation.installedVersion}</code></p>}
+      {data.operation.finishedAt && <p>Finished: {new Date(data.operation.finishedAt).toLocaleString()}</p>}
+      {data.operation.status === 'queued' && <p>The scheduler normally starts within a minute. You can leave this page.</p>}
+    </div>}
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="mt-3 text-sm">{notice}</p>}
     {data && <p className="mt-4 text-sm text-gray-600">{data.backups.length} backups · {(data.backups.reduce((total, backup) => total + backup.bytes, 0) / 1048576).toFixed(1)} MB stored. Delete old backups to free disk space.</p>}

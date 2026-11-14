@@ -9,6 +9,46 @@ use Symfony\Component\Process\Process;
 
 class SiteRecoveryService
 {
+    private string $step = 'Preparing operation';
+
+    private function markStep(string $step): void
+    {
+        $this->step = $step;
+        $path = $this->directory().'/operation.json';
+        if (! is_file($path)) return;
+        $job = json_decode(file_get_contents($path), true);
+        if (($job['status'] ?? '') !== 'running') return;
+        $job['step'] = $step;
+        $job['message'] = $step;
+        $this->write($path, $job);
+    }
+
+    public function failureSummary(\Throwable $error): string
+    {
+        $text = strtolower($error->getMessage());
+        $reasons = [
+            'no space left' => 'The hosting account has run out of disk space. Free disk space before retrying.',
+            'disk quota exceeded' => 'The hosting disk quota is full. Free disk space before retrying.',
+            'process privilege' => 'MySQL denied permission to export tablespaces. Ask the host to check database dump permissions.',
+            'access denied' => 'The server denied access. Check database credentials and privileges for this step.',
+            'permission denied' => 'The server denied file or command access. Ask the host to check ownership and permissions.',
+            'command not found' => 'A required command is missing from the cron PATH. Ask the host to configure the CLI tools.',
+            'required command is unavailable' => 'A required deployment command is unavailable. Check Git, Composer, PHP, tar, rsync and flock in the cron PATH.',
+            'file changed as we read it' => 'Files changed while the archive was being created. Stop background writers and retry the backup.',
+            'could not resolve host' => 'The server could not reach GitHub. Check DNS and outbound network access.',
+            'could not read username' => 'GitHub authentication is unavailable to the scheduler. Configure repository access on the server.',
+            'exceeded the timeout' => 'This step exceeded its time limit. Ask the host to investigate the slow command.',
+            'configure a separate git checkout' => 'SITE_UPDATE_SOURCE must point to the separate Git checkout on your hosting account.',
+            'already in maintenance mode' => 'The site was already in maintenance mode. Finish the existing maintenance before retrying.',
+            'another deployment or integrity repair' => 'Another deployment or integrity repair holds the deployment lock. Wait for it to finish.',
+            'maintenance is disabled' => 'Maintenance is disabled on this host. Check SITE_MAINTENANCE_ENABLED.',
+        ];
+        foreach ($reasons as $needle => $reason) if (str_contains($text, $needle)) return $reason;
+        if ($error instanceof \Symfony\Component\Process\Exception\ProcessFailedException) {
+            return 'The server command exited with code '.$error->getProcess()->getExitCode().'. The private failure log contains the detailed command output.';
+        }
+        return 'The server could not complete this step. The private failure log contains the detailed error.';
+    }
     public function directory(): string
     {
         $path = config('site_maintenance.directory');
@@ -88,6 +128,14 @@ class SiteRecoveryService
 
     private function run(array $command, ?string $input = null, array $env = []): string
     {
+        $name = basename($command[0]);
+        $step = match ($name) {
+            'mysqldump' => 'Exporting database backup',
+            'tar' => in_array('-xzf', $command) ? 'Restoring application files' : 'Archiving application files',
+            'bash' => 'Deploying GitHub release (dependencies, migrations and verification)',
+            default => ($command[1] ?? '') === 'artisan' ? 'Running Laravel '.($command[2] ?? 'maintenance') : 'Running server command',
+        };
+        $this->markStep($step);
         $process = new Process($command, base_path(), $env, $input, 3600);
         $process->mustRun();
         return $process->getOutput();
@@ -112,7 +160,7 @@ class SiteRecoveryService
             $database = 'database.sqlite';
         } elseif ($driver === 'mysql') {
             $database = 'database.sql';
-            $args = [...$this->mysqlCommand('mysqldump'), '--single-transaction', '--routines', '--triggers', '--events', '--hex-blob', '--result-file='.$dir.'/'.$database, DB::connection()->getDatabaseName()];
+            $args = [...$this->mysqlCommand('mysqldump'), '--single-transaction', '--no-tablespaces', '--routines', '--triggers', '--events', '--hex-blob', '--result-file='.$dir.'/'.$database, DB::connection()->getDatabaseName()];
             $this->run($args, null, ['MYSQL_PWD' => (string) DB::connection()->getConfig('password')]);
         } else {
             throw new \RuntimeException('Backups currently support MySQL and SQLite.');
@@ -143,11 +191,15 @@ class SiteRecoveryService
         $lock = fopen($dir.'/operation.lock', 'c+');
         if (! flock($lock, LOCK_EX | LOCK_NB)) { fclose($lock); return; }
         $maintenance = false;
+        $claimed = false;
         $deploymentLock = null;
         try {
             $job = $this->status()['operation'];
             if (($job['status'] ?? '') !== 'queued') return;
+            $claimed = true;
             $job['status'] = 'running';
+            $job['startedAt'] = now()->toIso8601String();
+            $job['previousVersion'] = $this->status()['version'];
             $job['message'] = 'Creating a full recovery backup.';
             $this->write($dir.'/operation.json', $job);
             if (! config('site_maintenance.enabled') || PHP_OS_FAMILY === 'Windows') throw new \RuntimeException('Maintenance is disabled on this host.');
@@ -156,10 +208,12 @@ class SiteRecoveryService
             if (! flock($deploymentLock, LOCK_EX | LOCK_NB)) throw new \RuntimeException('Another deployment or integrity repair is running.');
             if (Artisan::call('down', ['--retry' => 60]) !== 0) throw new \RuntimeException('Cannot enable maintenance mode.');
             $maintenance = true;
+            $this->markStep('Creating database backup');
             $job['safetyBackup'] = $this->backup();
             $job['message'] = 'Backup complete. Running '.$job['action'].'.';
             $this->write($dir.'/operation.json', $job);
             if ($job['action'] === 'update') {
+                $this->markStep('Checking Git checkout configuration');
                 $source = realpath(config('site_maintenance.source'));
                 if (! $source || $source === realpath(base_path()) || ! is_dir($source.'/.git')) throw new \RuntimeException('Configure a separate Git checkout with SITE_UPDATE_SOURCE.');
                 flock($deploymentLock, LOCK_UN);
@@ -182,6 +236,7 @@ class SiteRecoveryService
                 } else {
                     $stream = fopen($backupDir.'/database.sql', 'r');
                     try {
+                        $this->markStep('Restoring database');
                         $process = new Process([...$this->mysqlCommand('mysql'), DB::connection()->getDatabaseName()], base_path(), ['MYSQL_PWD' => (string) DB::connection()->getConfig('password')], $stream, 3600);
                         $process->mustRun();
                     } finally { fclose($stream); }
@@ -190,11 +245,12 @@ class SiteRecoveryService
                 $this->run([PHP_BINARY, 'artisan', 'optimize']);
             }
             $job['status'] = 'completed';
-            $job['message'] = ucfirst($job['action']).' completed.';
+            $job['message'] = ucfirst($job['action']).' completed successfully.';
         } catch (\Throwable $e) {
             $job['status'] = 'failed';
-            // Process exceptions can include credentials and server paths; keep them out of API output.
-            $job['message'] = 'Operation failed. Check the private server log. The safety backup is retained.';
+            $job['failedStep'] = $this->step;
+            $job['message'] = $this->failureSummary($e);
+            $job['backupStatus'] = isset($job['safetyBackup']) ? 'A completed safety backup is retained.' : 'No completed safety backup was created by this operation.';
             file_put_contents($dir.'/failure.log', now()->toIso8601String().' '.$e->getMessage()."\n", FILE_APPEND | LOCK_EX);
             chmod($dir.'/failure.log', 0600);
         } finally {
@@ -203,10 +259,15 @@ class SiteRecoveryService
                 // A failed restore may leave partial data: keep the site offline for recovery.
                 if (($job['status'] ?? '') === 'completed' || ($job['action'] ?? '') !== 'restore') {
                     try { $this->run([PHP_BINARY, 'artisan', 'up']); }
-                    catch (\Throwable) { $job['status'] = 'failed'; $job['message'] = 'Could not leave maintenance mode. Server recovery is required.'; }
+                    catch (\Throwable $error) { $job['status'] = 'failed'; $job['failedStep'] = 'Returning the website online'; $job['message'] = $this->failureSummary($error); }
                 }
             }
-            if (isset($job) && ($job['status'] ?? '') !== 'queued') $this->write($dir.'/operation.json', $job);
+            if ($claimed && isset($job) && in_array($job['status'] ?? '', ['completed', 'failed'])) {
+                $job['finishedAt'] = now()->toIso8601String();
+                $job['installedVersion'] = $this->status()['version'];
+                $job['step'] = $job['failedStep'] ?? 'Finished';
+                $this->write($dir.'/operation.json', $job);
+            }
             flock($lock, LOCK_UN);
             fclose($lock);
         }

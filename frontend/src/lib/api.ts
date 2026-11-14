@@ -1489,7 +1489,7 @@ export const api = {
     return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/system/deploy', { method: 'POST' })
   },
   recoveryStatus() {
-    return request<{ enabled: boolean; version: string; operation: { status: string; message: string; safetyBackup?: string } | null; backups: { id: string; createdAt: string; bytes: number; version: string }[] }>('/api/admin/system/recovery')
+    return request<{ enabled: boolean; version: string; operation: { status: string; message: string; safetyBackup?: string; step?: string; failedStep?: string; backupStatus?: string; finishedAt?: string; installedVersion?: string; previousVersion?: string } | null; backups: { id: string; createdAt: string; bytes: number; version: string }[] }>('/api/admin/system/recovery')
   },
   deleteRecoveryBackup(backup: string, confirmation: string) {
     return request<{ message: string }>('/api/admin/system/recovery/backup', { method: 'DELETE', body: JSON.stringify({ backup, confirmation }) })
