@@ -1,6 +1,7 @@
 import './admin-theme.css'
 import './dashboard-modern.css'
 import { DashboardActivityChart } from '@/components/ui/dashboard-activity-chart'
+import { whiteBakhtechLogo } from '@/data/brand-assets'
 import { SystemRecoverySettings } from './SystemRecoverySettings'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
@@ -4930,9 +4931,9 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
       <div className="space-y-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Overview</p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">Business Control Center</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mt-1">Business overview</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">
-            Monitor invoices, revenue streams, bookings, traffic, and overall website performance in real time.
+            Your invoices, bookings, and website activity in one place.
           </p>
         </div>
 
@@ -9691,14 +9692,9 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
           <button type="button" className="m-3 ml-auto flex min-h-10 items-center gap-2 rounded-lg px-3 md:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Close navigation"><X className="h-4 w-4" />Close</button>
           <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800/60">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0 font-bold text-sm tracking-wide">
-                BT
-              </div>
-              {!sidebarCollapsed && (
-                <span className="font-bold text-sm text-slate-100 uppercase tracking-wider truncate">
-                  Bakhtech Admin
-                </span>
-              )}
+              <button type="button" onClick={() => setActiveSection('dashboard')} aria-label="Bakhtech dashboard" className="admin-brand-link">
+                <img src={whiteBakhtechLogo} alt="Bakhtech" width="135" height="45" className={cn('admin-brand-logo', sidebarCollapsed && 'admin-brand-logo-compact')} />
+              </button>
             </div>
 
             {/* Collapse toggle (desktop only) */}

@@ -1,28 +1,39 @@
 /* Shared workspace design: overview, CMS, CRM, invoices, booking and settings. */
+.admin-theme .admin-brand-link{display:flex;align-items:center;min-height:44px;border-radius:6px}
+.admin-theme .admin-brand-logo{display:block;width:135px;height:45px;object-fit:contain;filter:brightness(0)}
+.admin-theme.dark .admin-brand-logo{filter:none}
+.admin-theme .admin-brand-logo-compact{width:40px;height:36px}
+/* Secondary actions must own both colors, rather than inheriting pale dark-mode text. */
+.admin-theme :is(.cc-button,.ct-button,.crm-secondary-button,.crm-secondary-action){background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line)}
+.admin-theme :is(.cc-button,.ct-button,.crm-secondary-button,.crm-secondary-action):hover{background:var(--admin-soft);color:var(--admin-ink);border-color:var(--admin-muted)}
+.admin-theme :is(.cc-button--primary,.ct-primary,.crm-primary-button,.crm-primary-action){background:var(--admin-primary)!important;color:var(--admin-on-primary)!important;border-color:var(--admin-primary)!important}
+.admin-theme :is(.cc-button--primary,.ct-primary,.crm-primary-button,.crm-primary-action):hover{background:var(--admin-primary-hover)!important;color:var(--admin-on-primary)!important}
+.admin-theme .cc-button--danger,.admin-theme .cc-button--danger:hover{background:#bd3030;color:#fff;border-color:#bd3030}
+.admin-theme :is(.cc-panel,.cc-metric,.cc-modal,.cc-library,.cc-toolbar,.cc-search){background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line)}
 .admin-theme, .admin-theme .crm-workspace {
   --admin-canvas:#f7f8fa; --admin-surface:#fff; --admin-soft:#f1f4f8;
   --admin-ink:#182235; --admin-muted:#68768b; --admin-line:#e4e9f0;
-  --admin-primary:#5265df; --admin-primary-hover:#4254ca; --admin-on-primary:#fff;
-  --admin-accent:#5265df; --admin-accent-soft:#edf0ff;
+  --admin-primary:#252923; --admin-primary-hover:#3c4239; --admin-on-primary:#fff;
+  --admin-accent:#a98020; --admin-accent-soft:#f7f1df;
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
   font-size:14px; line-height:1.5; font-variant-numeric:tabular-nums;
 }
 .admin-theme.dark, .admin-theme.dark .crm-workspace {
   --admin-canvas:#111722; --admin-surface:#192230; --admin-soft:#222e40;
   --admin-ink:#eaf0fa; --admin-muted:#a1afc3; --admin-line:#2d394b;
-  --admin-primary:#91a0ff; --admin-primary-hover:#adbbff; --admin-on-primary:#101a36;
-  --admin-accent:#91a0ff; --admin-accent-soft:#293454;
+  --admin-primary:#e8c46a; --admin-primary-hover:#f3d68e; --admin-on-primary:#191c18;
+  --admin-accent:#e8c46a; --admin-accent-soft:#393326;
   color-scheme:dark;
 }
 .admin-theme .admin-sidebar {
   --admin-surface:#fff; --admin-soft:#f1f4f8; --admin-ink:#182235; --admin-muted:#68768b;
-  --admin-line:#e4e9f0; --admin-primary:#5265df; --admin-on-primary:#fff;
+  --admin-line:#e4e9f0; --admin-primary:#252923; --admin-on-primary:#fff;
   background:var(--admin-surface)!important; color:var(--admin-muted); border-color:var(--admin-line);
   transition:width .2s ease,transform .2s ease;
 }
 .admin-theme.dark .admin-sidebar {
   --admin-surface:#192230; --admin-soft:#222e40; --admin-ink:#eaf0fa; --admin-muted:#a1afc3;
-  --admin-line:#2d394b; --admin-primary:#91a0ff; --admin-on-primary:#101a36;
+  --admin-line:#2d394b; --admin-primary:#e8c46a; --admin-on-primary:#191c18;
 }
 .admin-theme .admin-sidebar :is(.text-slate-100,.text-slate-200,.text-slate-300){color:var(--admin-ink)!important}
 .admin-theme .admin-sidebar :is(.text-slate-400,.text-slate-500){color:var(--admin-muted)!important}
