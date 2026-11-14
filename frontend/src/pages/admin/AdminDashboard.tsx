@@ -1,5 +1,6 @@
 import './admin-theme.css'
 import './dashboard-modern.css'
+import './admin-surfaces.css'
 import { DashboardActivityChart } from '@/components/ui/dashboard-activity-chart'
 import { whiteBakhtechLogo } from '@/data/brand-assets'
 import { SystemRecoverySettings } from './SystemRecoverySettings'

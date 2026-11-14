@@ -1,0 +1,59 @@
+/* Explicit surface/text pairs shared by every embedded admin workspace.
+   Scoped specificity prevents lazy-loaded feature styles reverting to light surfaces. */
+.admin-theme.admin-theme :is(.ce-palette,.ce-toolbar,.ce-block>header,.ce-block-fields,.ce-statusbar,.ce-html-checks,.pw-search,.pw-total,.pw-google-instructions){background:var(--admin-soft);color:var(--admin-ink);border-color:var(--admin-line)}
+.admin-theme.admin-theme .pw-embedded tbody tr:hover{background:var(--admin-soft)}
+.admin-theme.admin-theme .wp-classic-editor{font-size:14px;font-weight:400;text-transform:none;letter-spacing:normal;color:var(--admin-ink)}
+.admin-theme.admin-theme .wp-classic-editor .text-soft{color:var(--admin-muted)}
+.admin-theme.admin-theme .pw-embedded .pw-badge{background:var(--admin-soft);color:var(--admin-ink)}
+.admin-theme.admin-theme .pw-embedded :is(.pw-development,.pw-in_progress,.pw-under_review){background:#e8efff;color:#294a8b}
+.admin-theme.admin-theme .pw-embedded :is(.pw-content_collection,.pw-awaiting_content,.pw-submitted,.pw-review){background:#fff0c7;color:#6e4e0a}
+.admin-theme.admin-theme .pw-embedded :is(.pw-completed,.pw-active,.pw-approved,.pw-published){background:#e7f4ea;color:#286135}
+.admin-theme.admin-theme .pw-embedded :is(.pw-needs_revision,.pw-revisions,.pw-inactive,.pw-cancelled){background:#fce9e4;color:#8e3523}
+.admin-theme.admin-theme :is(.ca-metrics article,.ca-card,.ca-faq,.au-node,.au-action-picker>button,.cc-metric,.cc-panel,.ce-editor,.ce-tools button,.ce-palette>div>button,.ce-inspector,.ce-preview>header,.el-step-strip>button,.el-starters button,.pw-project-card,.pw-panel,.pw-metrics,.pw-modal,.pw-project-switcher){
+  background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line);
+}
+.admin-theme.admin-theme :is(.au-canvas,.ce-canvas,.ce-preview,.cc-preview-stage,.ct-preview,.ct-preview-heading,.pw-guidance,.pw-project-icon,.pw-document-icon,.pw-step,.pw-avatar,.pw-file-hint,.pw-modal-footer,.pw-content-row blockquote,.pw-review-copy){
+  background:var(--admin-soft);color:var(--admin-ink);border-color:var(--admin-line);
+}
+.admin-theme.admin-theme :is(.ca-field,.cc-field,.ce-field,.pw-field)>:is(input,select,textarea),
+.admin-theme.admin-theme :is(.au-date-filter input,.au-page .cc-field textarea,.cc-toolbar select,.cc-pagination select,.ce-color-row input,.el-select,.pw-copy-link input){
+  background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line);
+}
+.admin-theme.admin-theme :is(.cc-button,.ct-button,.ce-tools button,.pw-button){
+  background:var(--admin-surface)!important;color:var(--admin-ink)!important;border-color:var(--admin-line)!important;
+}
+.admin-theme.admin-theme :is(.cc-button,.ct-button,.ce-tools button,.pw-button):hover{
+  background:var(--admin-soft)!important;color:var(--admin-ink)!important;
+}
+.admin-theme.admin-theme :is(.cc-button--primary,.ct-primary,.co-primary,.pw-button.primary){
+  background:var(--admin-primary)!important;color:var(--admin-on-primary)!important;border-color:var(--admin-primary)!important;
+}
+.admin-theme.admin-theme :is(.cc-button--primary,.ct-primary,.co-primary,.pw-button.primary):hover{
+  background:var(--admin-primary-hover)!important;color:var(--admin-on-primary)!important;
+}
+.admin-theme.admin-theme .cc-button--danger{background:#bd3030!important;color:#fff!important;border-color:#bd3030!important}
+.admin-theme.admin-theme :is(.ce-view-switch button[aria-pressed=true],.cc-preview-toolbar button[aria-pressed=true],.ce-preview header button[aria-pressed=true]){background:var(--admin-accent-soft);color:var(--admin-ink)}
+/* A highlighted metric uses one foreground throughout, including its labels/icons. */
+.admin-theme.admin-theme .co-metric-3,
+.admin-theme.admin-theme .co-metric-3 :is(.co-metric-top,.co-metric-bottom,strong,svg){color:var(--admin-on-primary)}
+.admin-theme.admin-theme .co-metric-3{background:var(--admin-primary)}
+.admin-theme.admin-theme .pw.pw-embedded{color-scheme:inherit;--pw-yellow:var(--admin-primary)}
+.admin-theme.admin-theme .pw-embedded :is(.pw-guidance h3,.pw-project-card h3,.pw-panel h2,.pw-panel h3,.pw-modal h2,.pw-modal h3,.pw-table td,.pw-account h2,.pw-account h3){color:var(--admin-ink)}
+.admin-theme.admin-theme .pw-embedded :is(.pw-guidance p,.pw-guidance .pw-eyebrow,.pw-eyebrow,.pw-subtle,.pw-field>span,.pw-file-hint,.pw-required,.pw-topbar,.pw-footer,.pw-project-summary,.pw-product-summary,.pw-milestone p,.pw-content-row p){color:var(--admin-muted)}
+.admin-theme.admin-theme .pw-embedded .pw-guidance-mark{color:var(--admin-muted);opacity:.35}
+.admin-theme.admin-theme .pw-embedded .pw-progress{background:var(--admin-line)}
+.admin-theme.admin-theme .pw-embedded .pw-progress>span{background:var(--admin-primary)}
+.admin-theme.admin-theme .pw-embedded :is(.pw-task,.pw-file,.pw-milestone,.pw-content-row,.pw-panel-heading){border-color:var(--admin-line)}
+.admin-theme.admin-theme :is(.wp-editor-toolbar,.wp-editor-tabs button){background:var(--admin-soft);color:var(--admin-ink);border-color:var(--admin-line)}
+.admin-theme.admin-theme :is(.wp-editor-tabs button.is-active,.rich-text-editor-content,.wp-editor-source){background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line)}
+.admin-theme.admin-theme .wp-editor-toolbar button{color:var(--admin-ink)}
+.admin-theme.admin-theme .wp-editor-toolbar button:hover{background:var(--admin-accent-soft);color:var(--admin-ink)}
+.admin-theme.admin-theme .rich-text-editor-content :is(h1,h2,h3,h4,h5,h6,p,li){color:inherit}
+.admin-theme.admin-theme .rich-text-editor-content:focus{outline:2px solid var(--admin-primary);outline-offset:1px;box-shadow:none}
+.admin-theme.admin-theme input::placeholder,.admin-theme.admin-theme textarea::placeholder{color:var(--admin-muted);opacity:1}
+/* Email design canvases represent the outgoing document, so retain a light pair. */
+.admin-theme.admin-theme .ce-block{background:#fff;color:#182235;color-scheme:light}
+.admin-theme.admin-theme .ce-block :is(h1,h2,h3,h4,h5,h6){color:inherit}
+.admin-theme.admin-theme :is(.cc-preview-stage iframe,.ce-preview-stage iframe,.ct-preview-stage iframe){background:#fff;color:#182235;color-scheme:light}
+/* Fix inherited text on neutral and dark utility surfaces (including toast messages). */
+.admin-theme.admin-theme :is(.bg-gray-900,.bg-gray-950,.bg-slate-900,.bg-slate-950).text-white{color:var(--admin-ink)}
