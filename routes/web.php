@@ -226,6 +226,11 @@ Route::get('/', function (Request $request) use ($legacyInvoiceRedirect, $cmsPag
     ]);
 });
 
+Route::get('/auth/google/start', [\App\Http\Controllers\Api\PortalGoogleAuthController::class, 'start'])->middleware('throttle:10,1');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Api\PortalGoogleAuthController::class, 'callback'])->middleware('throttle:20,1')->block(10, 10);
+Route::get('/auth/google/complete', [\App\Http\Controllers\Api\PortalGoogleAuthController::class, 'complete'])->middleware('throttle:10,1')->block(10, 10);
+Route::get('/portal/{path?}', fn () => $spaFileResponse(true))->where('path', '.*');
+
 Route::get('/admin/{path?}', function () use ($spaFileResponse) {
     return $spaFileResponse(true);
 })->where('path', '.*');

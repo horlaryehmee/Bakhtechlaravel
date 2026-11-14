@@ -1486,6 +1486,15 @@ export const api = {
     return response.blob()
   },
   runDeploymentMaintenance() {
+    return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/system/deploy', { method: 'POST' })
+  },
+  recoveryStatus() {
+    return request<{ enabled: boolean; version: string; operation: { status: string; message: string; safetyBackup?: string } | null; backups: { id: string; createdAt: string; bytes: number; version: string }[] }>('/api/admin/system/recovery')
+  },
+  recoveryOperation(action: 'update' | 'backup' | 'restore', backup?: string, confirmation?: string) {
+    return request('/api/admin/system/recovery', { method: 'POST', body: JSON.stringify({ action, backup, confirmation }) })
+  },
+  runLegacyDeploymentMaintenance() {
     return request<{ message: string; results: DeploymentCommandResult[]; completedAt: string }>('/api/admin/settings', {
       method: 'PUT',
       body: JSON.stringify({ _systemAction: 'deployment-maintenance' }),

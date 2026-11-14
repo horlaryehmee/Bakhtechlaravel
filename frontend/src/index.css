@@ -6653,3 +6653,10 @@ a {
     flex-direction: column;
   }
 }
+/* Offscreen homepage decorations should not compete with scrolling. */
+.agency-template .agency-offscreen *,
+.agency-template .agency-offscreen *::before,
+.agency-template .agency-offscreen *::after {
+  animation-play-state: paused !important;
+}
+

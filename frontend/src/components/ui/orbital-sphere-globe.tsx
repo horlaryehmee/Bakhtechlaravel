@@ -35,6 +35,20 @@ export function OrbitalSphereGlobe({ className = '' }: OrbitalSphereGlobeProps) 
     let animationId = 0
     let resizeObserver: ResizeObserver | null = null
     let cancelled = false
+    let visible = false
+    let started = false
+
+    const animate = () => {
+      if (!visible || document.hidden || cancelled) return
+      phi += 0.0035
+      globe?.update({ phi })
+      animationId = requestAnimationFrame(animate)
+    }
+    const resume = () => {
+      cancelAnimationFrame(animationId)
+      if (globe && visible && !document.hidden) animationId = requestAnimationFrame(animate)
+    }
+    document.addEventListener('visibilitychange', resume)
 
     const renderGlobe = async () => {
       const { default: createGlobe } = await import('cobe')
@@ -47,17 +61,8 @@ export function OrbitalSphereGlobe({ className = '' }: OrbitalSphereGlobeProps) 
         height: width * 2,
       })
 
-      const animate = () => {
-        phi += 0.0035
-        globe?.update({ phi, width: width * 2, height: width * 2 })
-        animationId = requestAnimationFrame(animate)
-      }
-
-      cancelAnimationFrame(animationId)
-      animationId = requestAnimationFrame(animate)
-      requestAnimationFrame(() => {
-        canvas.style.opacity = '1'
-      })
+      resume()
+      canvas.style.opacity = '1'
     }
 
     const startGlobe = () => {
@@ -74,10 +79,13 @@ export function OrbitalSphereGlobe({ className = '' }: OrbitalSphereGlobeProps) 
     }
 
     const intersectionObserver = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return
-      intersectionObserver.disconnect()
-      startGlobe()
-    }, { rootMargin: '220px' })
+      visible = entries.some((entry) => entry.isIntersecting)
+      if (visible && !started) {
+        started = true
+        startGlobe()
+      }
+      resume()
+    })
 
     const onResizeWithoutObserver = (entries: ResizeObserverEntry[]) => {
       const nextWidth = Math.round(entries[0]?.contentRect.width || canvas.offsetWidth)
@@ -91,6 +99,7 @@ export function OrbitalSphereGlobe({ className = '' }: OrbitalSphereGlobeProps) 
 
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', resume)
       cancelAnimationFrame(animationId)
       intersectionObserver.disconnect()
       resizeObserver?.disconnect()

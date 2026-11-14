@@ -674,6 +674,7 @@ class InvoiceController extends Controller
             ]);
         });
 
+        app(\App\Services\PaidInvoiceClientService::class)->afterPayment((int) $document->id);
         $this->trackEvent((int) $document->id, 'payment.recorded', $request, [
             'amount' => $amount,
             'method' => $validated['method'],

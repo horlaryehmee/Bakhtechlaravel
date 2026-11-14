@@ -1,5 +1,7 @@
+import './admin-theme.css'
+import { SystemRecoverySettings } from './SystemRecoverySettings'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   Activity,
@@ -90,10 +92,11 @@ import {
 import { cn } from '@/lib/utils'
 import { QuoteBuilderAdmin } from '@/pages/admin/QuoteBuilderAdmin'
 import { AdminPostsWorkspace } from '@/pages/admin/AdminPostsWorkspace'
+import { PortalWorkspace } from '@/pages/portal/PortalWorkspace'
 import { CrmWorkspace, type CrmView } from '@/pages/admin/CrmWorkspace'
 import { isVideoUrl } from '@/lib/project-media'
 
-type AdminSection = 'dashboard' | 'crm' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'quote-builder' | 'invoices' | 'users' | 'settings'
+type AdminSection = 'client-projects' | 'dashboard' | 'crm' | 'pages' | 'posts' | 'projects' | 'reviews' | 'library' | 'seo' | 'bookings' | 'pricing' | 'quote-builder' | 'invoices' | 'users' | 'settings'
 type BookingAdminSection = 'dashboard' | 'calendars' | 'bookings' | 'availability' | 'settings'
 type InvoiceSubsection = 'dashboard' | 'invoices' | 'quotes' | 'receipts' | 'emails' | 'contacts' | 'settings' | 'import' | 'create'
 type CalendarSettingsSection = 'form' | 'locations' | 'payment' | 'email' | 'availability'
@@ -539,6 +542,7 @@ const reviewProviders: Array<{ value: ReviewInput['provider']; label: string }> 
 const menuItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'crm', label: 'CRM', icon: Users },
+  { id: 'client-projects', label: 'Client projects', icon: FolderKanban },
   { id: 'pages', label: 'Pages', icon: FileText },
   { id: 'posts', label: 'Posts', icon: Newspaper },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
@@ -872,9 +876,17 @@ function dashboardFromLoadedData(projects: Project[], cms: CmsData | null, curre
 
 export function AdminDashboard({ initialSection }: { initialSection?: AdminSection } = {}) {
   const navigate = useNavigate()
+  const adminLocation = useLocation()
   const token = getAdminToken()
   const initialAdminCache = useMemo(() => readAdminDataCache(), [])
-  const [activeSection, setActiveSection] = useState<AdminSection>(() => initialSection ?? storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'crm', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'quote-builder', 'invoices', 'users', 'settings']))
+  const [storedSection, setStoredSection] = useState<AdminSection>(() => initialSection ?? storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'crm', 'pages', 'posts', 'projects', 'reviews', 'library', 'seo', 'bookings', 'pricing', 'quote-builder', 'invoices', 'users', 'settings']))
+  const inClientProjects = adminLocation.pathname.startsWith('/admin/dashboard/client-projects')
+  const activeSection: AdminSection = inClientProjects ? 'client-projects' : storedSection
+  const setActiveSection = (section: AdminSection) => {
+    setStoredSection(section)
+    if (section === 'client-projects') navigate('/admin/dashboard/client-projects')
+    else if (inClientProjects) navigate('/admin/dashboard')
+  }
   const [crmMenuExpanded, setCrmMenuExpanded] = useState(() => initialSection === 'crm' || storedAdminView('bakhtech-admin-section', 'dashboard', ['dashboard', 'crm']) === 'crm')
   const [crmSelected, setCrmSelected] = useState<CrmView>('dashboard')
   const [crmNavigationRequest, setCrmNavigationRequest] = useState<{ view: CrmView; id: number } | null>(null)
@@ -9156,6 +9168,8 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
           </p>
         </section>
 
+        <SystemRecoverySettings />
+
         {deploymentResults.length ? (
           <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -9704,6 +9718,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   function renderAdminContent() {
     switch (activeSection) {
       case 'dashboard': return renderDashboard()
+      case 'client-projects': return <PortalWorkspace embedded />
       case 'crm': return <CrmWorkspace embedded initialView={crmSelected} navigationRequest={crmNavigationRequest} onViewChange={handleCrmViewChange} onOpenSettings={() => setActiveSection('settings')} />
       case 'pages': return renderPages()
       case 'posts': return renderPosts()
@@ -9722,7 +9737,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   }
 
   return (
-    <div className={cn("min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex", darkMode && "dark")}>
+    <div className={cn("admin-theme min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex", darkMode && "dark")}>
       {/* 1. Sidebar Container (Desktop & Mobile Drawer) */}
       <aside 
         className={cn(
@@ -9792,6 +9807,9 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                     <span className="absolute left-0 top-3 bottom-3 w-1 bg-white rounded-r-full admin-nav-indicator" />
                   )}
                 </button>
+                {item.id === 'client-projects' && activeSection === 'client-projects' && !sidebarCollapsed && <div className="ml-5 border-l border-slate-700/70 py-1" aria-label="Client project sections">
+                  {[['', 'Overview'], ['/projects', 'All projects'], ['/clients', 'Clients & team'], ['/settings', 'Google sign-in']].map(([path, title]) => <button key={path} type="button" aria-current={adminLocation.pathname === `/admin/dashboard/client-projects${path}` ? 'page' : undefined} onClick={() => { navigate(`/admin/dashboard/client-projects${path}`); setMobileSidebarOpen(false) }} className={cn('ml-2 flex w-[calc(100%-0.5rem)] items-center rounded-lg px-3 py-1.5 text-left text-xs transition-colors', adminLocation.pathname === `/admin/dashboard/client-projects${path}` ? 'bg-blue-500/15 font-semibold text-blue-300' : 'text-slate-400 hover:bg-slate-800 hover:text-white')}>{title}</button>)}
+                </div>}
                 {item.id === 'crm' && crmMenuExpanded && !sidebarCollapsed && <div id="admin-crm-submenu" className="ml-5 border-l border-slate-700/70 py-1" aria-label="CRM sections">
                   {crmMenuGroups.map((group, groupIndex) => <div key={`${group.label}-${groupIndex}`} className={groupIndex > 0 && groupIndex < 5 ? 'mt-1 border-t border-slate-600/70 pt-1' : groupIndex ? 'mt-1' : ''}>
                     {group.label && <div className="px-4 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.label}</div>}
@@ -10142,7 +10160,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
         </div>
 
         {/* Content Body */}
-        <main className={cn('flex-1 w-full mx-auto', activeSection === 'crm' ? 'min-w-0' : 'max-w-7xl p-4 md:p-6 lg:p-8')}>
+        <main className={cn('flex-1 w-full mx-auto', activeSection === 'crm' || activeSection === 'client-projects' ? 'min-w-0' : 'max-w-7xl p-4 md:p-6 lg:p-8')}>
           {renderAdminContent()}
         </main>
       </div>

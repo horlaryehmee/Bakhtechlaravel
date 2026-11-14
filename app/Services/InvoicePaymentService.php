@@ -299,6 +299,7 @@ class InvoicePaymentService
                 'updated_at' => now(),
             ]);
 
+            DB::afterCommit(fn () => app(PaidInvoiceClientService::class)->afterPayment((int) $document->id));
             return [
                 'processed' => true,
                 'newlyProcessed' => true,

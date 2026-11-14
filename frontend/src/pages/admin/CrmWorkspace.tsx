@@ -17,6 +17,7 @@ import './crm-fluent.css'
 import './crm-campaigns.css'
 import './crm-administration.css'
 import './crm-contacts.css'
+import './admin-theme.css'
 import { CrmResources } from './CrmResources'
 
 const stages = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']
@@ -129,7 +130,7 @@ export function CrmWorkspace({ onExit, onOpenSettings, embedded = false, initial
     </aside>
     </>}
     <div className="crm-main">
-    {embedded ? <header className="crm-embedded-header"><img src="/fluentcrm-logo.svg" alt=""/><div><strong>CRM</strong><span>Customer relationships and campaigns</span></div></header> : <>
+    {embedded ? <header className="crm-embedded-header"><div><strong>CRM</strong><span>Customer relationships and campaigns</span></div></header> : <>
     <header className="crm-topbar" aria-label="CRM workspace navigation"><div className="crm-topbar__heading"><button type="button" className="crm-mobile-menu" aria-label="Open CRM menu" onClick={() => setMobileNav(true)}><Menu size={18}/></button><img className="crm-brand-icon" src="/fluentcrm-logo.svg" alt="FluentCRM"/><div><strong>FluentCRM <small>Pro</small></strong></div></div><nav className="crm-nav-scroll" aria-label="CRM sections">{crmNavigation.filter(item=>['dashboard','contacts','campaigns','forms','automations','reports'].includes(item.id)).map(item => {const active=item.id==='contacts'?['contacts','lists','tags','segments'].includes(tab):tab===item.id;return <button key={item.id} type="button" aria-current={active?'page':undefined} className="crm-nav-item" onClick={() => {setTab(item.id);if(item.id==='contacts'){setFormSource('');setDetail(null);setCreating(false);void reload()}}}><span>{item.label}</span></button>})}</nav><button type="button" className="crm-top-settings" aria-label="Open CRM settings" onClick={() => setTab('settings')}><Settings size={17}/></button></header>
     </>}
     {['contacts','lists','tags','segments'].includes(tab) && <nav className="crm-subnav" aria-label="Contacts sections">{contactNavigation.map(item=><button key={item.id} type="button" aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);if(item.id==='contacts'){setFormSource('');setDetail(null);setCreating(false);void reload()}}}><item.icon size={15}/>{item.label}</button>)}</nav>}

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
+require __DIR__.'/client-portal.php';
+
 Route::prefix('quote-builder')->group(function () {
     Route::get('/catalog', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'catalog'])->middleware('throttle:public-read');
     Route::post('/estimate', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'estimate'])->middleware('throttle:public-read');
@@ -237,6 +239,8 @@ Route::middleware([RequireAdminToken::class, 'throttle:admin-read'])->group(func
     Route::put('/admin/redis/settings', [RedisSettingsController::class, 'update'])->middleware('admin.role:admin');
     Route::post('/admin/redis/test', [RedisSettingsController::class, 'test'])->middleware(['admin.role:admin', 'throttle:10,1']);
     Route::post('/admin/system/deploy', [SystemMaintenanceController::class, 'deploy'])->middleware('admin.role:admin');
+    Route::get('/admin/system/recovery', [SystemMaintenanceController::class, 'status'])->middleware('admin.role:admin');
+    Route::post('/admin/system/recovery', [SystemMaintenanceController::class, 'operation'])->middleware(['admin.role:admin', 'throttle:6,1']);
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
     Route::post('/admin/media', [BakhtechApiController::class, 'uploadMedia']);
     Route::post('/admin/media/chunk', [BakhtechApiController::class, 'uploadMediaChunk']);

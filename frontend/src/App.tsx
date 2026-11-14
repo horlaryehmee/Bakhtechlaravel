@@ -9,6 +9,7 @@ import { Booking } from '@/pages/Booking'
 import { HomeRouter } from '@/pages/HomeRouter'
 
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })))
+const PortalWorkspace = lazy(() => import('@/pages/portal/PortalWorkspace').then((module) => ({ default: module.PortalWorkspace })))
 const AdminForgotPassword = lazy(() => import('@/pages/admin/AdminForgotPassword').then((module) => ({ default: module.AdminForgotPassword })))
 const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin').then((module) => ({ default: module.AdminLogin })))
 const AdminResetPassword = lazy(() => import('@/pages/admin/AdminResetPassword').then((module) => ({ default: module.AdminResetPassword })))
@@ -85,6 +86,7 @@ function PublicCursorEffect() {
   const location = useLocation()
   const [enabled, setEnabled] = useState(false)
   const isPrivateSurface = location.pathname.startsWith('/admin')
+    || location.pathname.startsWith('/portal')
     || location.pathname === '/quote-builder'
     || location.pathname.startsWith('/invoice/')
     || location.pathname.startsWith('/receipt/')
@@ -162,20 +164,24 @@ function App() {
 
   return (
     <>
-      <LiveChat />
-      {!location.pathname.startsWith('/admin') ? <VisitTracker /> : null}
+      {!location.pathname.startsWith('/portal') && !location.pathname.startsWith('/admin/client-projects') ? <LiveChat /> : null}
+      {!location.pathname.startsWith('/admin') && !location.pathname.startsWith('/portal') ? <VisitTracker /> : null}
       <ScrollRestoration />
       <PublicCursorEffect />
       <AppErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
           <ChunkRecoveryReady />
           <Routes>
+          <Route path="portal" element={<PortalWorkspace />} />
+          <Route path="portal/:section" element={<PortalWorkspace />} />
+          <Route path="portal/projects/:projectId/:section?" element={<PortalWorkspace />} />
+          <Route path="admin/client-projects/*" element={<Navigate to={location.pathname.replace('/admin/client-projects', '/admin/dashboard/client-projects') + location.search} replace />} />
           <Route path="admin" element={<Navigate to="/admin/login" replace />} />
           <Route path="admin/login" element={<AdminLogin />} />
           <Route path="admin/forgot-password" element={<AdminForgotPassword />} />
           <Route path="admin/reset-password" element={<AdminResetPassword />} />
           <Route path="admin/home-template-preview/:template" element={<AdminTemplatePreview />} />
-          <Route path="admin/dashboard" element={<AdminDashboard />} />
+          <Route path="admin/dashboard/*" element={<AdminDashboard />} />
           <Route path="admin/quote-builder" element={<AdminDashboard initialSection="quote-builder" />} />
           <Route path="quote-builder" element={<QuoteBuilder />} />
           <Route path="admin/pricing-preview" element={<Pricing />} />

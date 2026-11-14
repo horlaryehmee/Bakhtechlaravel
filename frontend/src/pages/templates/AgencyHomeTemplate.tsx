@@ -314,6 +314,16 @@ function BrandIcon({ icon, className = 'h-5 w-5' }: { icon: string; className?: 
 
 function TemplateShell({ children, preview = false }: { children: ReactNode; preview?: boolean }) {
   const [showPreviewBanner, setShowPreviewBanner] = useState(preview)
+  const shellRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const sections = shellRef.current?.querySelectorAll('section')
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => entry.target.classList.toggle('agency-offscreen', !entry.isIntersecting))
+    }, { rootMargin: '100px' })
+    sections?.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
+  }, [children])
 
   useEffect(() => {
     const previousBackground = document.body.style.backgroundColor
@@ -325,7 +335,7 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
   }, [])
 
   return (
-    <main className="agency-template min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] antialiased">
+    <main ref={shellRef} className="agency-template min-h-screen overflow-hidden bg-[#efeee8] text-[#111111] antialiased">
       {showPreviewBanner ? (
         <div className="fixed inset-x-0 top-0 z-[180] flex min-h-8 items-center justify-center border-b border-amber-300/20 bg-amber-300 px-12 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-[#111827]">
           <span>Admin preview only</span>
@@ -715,6 +725,8 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
     if (!video || !designDevelopmentIsLocalVideo) return
 
     if (!designDevelopmentVideoInView) {
+      video.pause()
+      setDesignDevelopmentVideoPlaying(false)
       video.muted = true
       setDesignDevelopmentVideoMuted(true)
       return

@@ -73,6 +73,10 @@ class AppServiceProvider extends ServiceProvider
             $bodyText = $message->getTextBody();
             $sourceHeader = $message->getHeaders()->get('X-Bakhtech-Source');
             $source = $sourceHeader ? trim($sourceHeader->getBodyAsString()) : 'website';
+            if ($source === 'portal-invitation') {
+                $bodyHtml = null;
+                $bodyText = 'Private portal invitation. Access link omitted from logs.';
+            }
 
             foreach ($message->getTo() as $recipient) {
                 DB::table('email_logs')->insert([

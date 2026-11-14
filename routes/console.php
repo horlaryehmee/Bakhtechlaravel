@@ -213,6 +213,10 @@ Schedule::command('booking:send-reminders')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('portal:send-invitations')->everyMinute()->withoutOverlapping();
+Schedule::command('site:recovery-work')->everyMinute()->evenInMaintenanceMode()->runInBackground()->withoutOverlapping();
+Schedule::command('portal:sync-paid-clients')->everyMinute()->withoutOverlapping();
+
 Schedule::command('crm:run-email-programs')
     ->everyMinute()
     ->withoutOverlapping();
