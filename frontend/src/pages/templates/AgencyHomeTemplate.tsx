@@ -317,13 +317,31 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
   const shellRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    const sections = shellRef.current?.querySelectorAll('section')
+    const shell = shellRef.current
+    if (!shell) return
+
+    // Observe once; only pick up sections that are added later (e.g. reviews),
+    // instead of rebuilding the observer on every homepage render.
+    const observed = new WeakSet<Element>()
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => entry.target.classList.toggle('agency-offscreen', !entry.isIntersecting))
     }, { rootMargin: '100px' })
-    sections?.forEach((section) => observer.observe(section))
-    return () => observer.disconnect()
-  }, [children])
+    const observeSections = () => {
+      shell.querySelectorAll('section').forEach((section) => {
+        if (observed.has(section)) return
+        observed.add(section)
+        observer.observe(section)
+      })
+    }
+    observeSections()
+    const mutationObserver = new MutationObserver(observeSections)
+    mutationObserver.observe(shell, { childList: true })
+
+    return () => {
+      mutationObserver.disconnect()
+      observer.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     const previousBackground = document.body.style.backgroundColor
@@ -413,7 +431,7 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   const videoMedia = getProjectVideoMedia(project)
 
   return (
-    <article className="relative flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 text-[#202328] shadow-[0_18px_55px_rgba(15,23,42,0.07)] backdrop-blur-sm">
+    <article className="relative flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 text-[#202328] shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
       <BorderBeam size={220} duration={8} borderWidth={1.25} colorFrom="#d6d2c8" colorTo="#f6f3ec" delay={project.id % 4} />
       <div className="relative h-44 overflow-hidden rounded-xl border border-black/5 bg-white/30 sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
@@ -445,7 +463,7 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
 
 function ProjectCardSkeleton() {
   return (
-    <article className="relative flex h-full min-h-[27rem] flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.07)] backdrop-blur-sm">
+    <article className="relative flex h-full min-h-[27rem] flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
       <div className="h-44 rounded-xl bg-black/[0.045] sm:h-48" />
       <div className="mt-6 h-6 w-24 rounded-full bg-black/[0.045]" />
       <div className="mt-5 h-6 w-3/4 rounded-full bg-black/[0.055]" />
@@ -600,6 +618,74 @@ function ReviewPlatformModal({ links, onClose }: { links: ReviewLinks; onClose: 
   )
 }
 
+function UpdateNotificationStack() {
+  const [notificationIndex, setNotificationIndex] = useState(0)
+  const anchorRef = useRef<HTMLSpanElement>(null)
+  const notificationStack = Array.from({ length: 4 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
+
+  // Only tick while the card is on screen and the tab is visible, and keep the
+  // re-render local to this stack instead of the whole homepage.
+  useEffect(() => {
+    const anchor = anchorRef.current?.parentElement
+    if (!anchor) return
+
+    let visible = false
+    let timer = 0
+    const sync = () => {
+      window.clearInterval(timer)
+      timer = 0
+      if (visible && !document.hidden) {
+        timer = window.setInterval(() => {
+          setNotificationIndex((index) => (index + 1) % updateNotifications.length)
+        }, 2600)
+      }
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting
+      sync()
+    })
+    observer.observe(anchor)
+    document.addEventListener('visibilitychange', sync)
+
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  return (
+    <>
+      <span ref={anchorRef} hidden />
+      {notificationStack.map((notification, stackIndex) => {
+        const stackStyles = [
+          { '--from-bottom': '1.35rem', '--from-left': '1.25rem', '--from-right': '1.25rem', '--from-y': '0px', '--from-scale': 1, '--from-opacity': 1, '--from-label-opacity': 1, '--to-bottom': '-2.6rem', '--to-left': '8.25rem', '--to-right': '8.25rem', '--to-y': '1.4rem', '--to-scale': 0.42, '--to-opacity': 1, '--to-label-opacity': 1, zIndex: 40, boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
+          { '--from-bottom': '2.82rem', '--from-left': '1.55rem', '--from-right': '1.55rem', '--from-y': '-2px', '--from-scale': 0.985, '--from-opacity': 0.96, '--from-label-opacity': 0.34, '--to-bottom': '1.35rem', '--to-left': '1.25rem', '--to-right': '1.25rem', '--to-y': '0px', '--to-scale': 1, '--to-opacity': 1, '--to-label-opacity': 1, zIndex: 35, boxShadow: '0 16px 36px rgba(15,23,42,0.11)' },
+          { '--from-bottom': '3.42rem', '--from-left': '2rem', '--from-right': '2rem', '--from-y': '-4px', '--from-scale': 0.965, '--from-opacity': 0.82, '--from-label-opacity': 0.18, '--to-bottom': '2.82rem', '--to-left': '1.55rem', '--to-right': '1.55rem', '--to-y': '-2px', '--to-scale': 0.985, '--to-opacity': 0.96, '--to-label-opacity': 0.34, zIndex: 25, boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
+          { '--from-bottom': '4.02rem', '--from-left': '2.35rem', '--from-right': '2.35rem', '--from-y': '-6px', '--from-scale': 0.94, '--from-opacity': 0, '--from-label-opacity': 0, '--to-bottom': '3.42rem', '--to-left': '2rem', '--to-right': '2rem', '--to-y': '-4px', '--to-scale': 0.965, '--to-opacity': 0.82, '--to-label-opacity': 0.18, zIndex: 15, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
+        ][stackIndex]
+
+        return (
+          <div
+            key={`${notification.label}-${notificationIndex}-${stackIndex}`}
+            className={`homepage-notification-card ${stackIndex === 0 ? 'is-exiting' : 'is-promoting pointer-events-none'}`}
+            style={stackStyles as CSSProperties}
+            aria-hidden={stackIndex !== 1}
+          >
+            <div className="relative flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-mono text-xs font-semibold text-black/42">notification</p>
+                <p className="mt-3 truncate font-mono text-base font-semibold text-black/80">{notification.label}</p>
+              </div>
+              <BrandIcon icon={notification.icon} className="mt-1 h-5 w-5 shrink-0" />
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 function HeroOrbitArc() {
   return (
     <div className="absolute -bottom-[25rem] left-1/2 flex h-full w-full -translate-x-1/2 justify-center md:-bottom-[20.15rem]">
@@ -651,7 +737,6 @@ function HeroOrbitArc() {
 
 export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [notificationIndex, setNotificationIndex] = useState(0)
   const [openComparisonIndex, setOpenComparisonIndex] = useState(0)
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [portfolioProjects, setPortfolioProjects] = useState<Project[]>([])
@@ -675,7 +760,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const designDevelopmentSectionRef = useRef<HTMLElement | null>(null)
   const designDevelopmentVideoRef = useRef<HTMLVideoElement | null>(null)
   const testimonialDragRef = useRef({ active: false, dragged: false, pointerId: 0, startX: 0, scrollLeft: 0 })
-  const notificationStack = Array.from({ length: 4 }, (_, stackIndex) => updateNotifications[(notificationIndex + stackIndex) % updateNotifications.length])
   const homepageProjectCards = portfolioProjects.slice(0, 6)
   const hasHomepageProjects = homepageProjectCards.length > 0
   const visibleNavigation = navigation.filter((item) => hasHomepageProjects || item.href !== '/portfolio')
@@ -685,14 +769,6 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
   const loopedReviews = reviews.length > 1 ? [...reviews, ...reviews] : reviews
   const designDevelopmentYoutubeEmbedUrl = getYoutubeEmbedUrl(designDevelopmentVideoUrl)
   const designDevelopmentIsLocalVideo = isVideoUrl(designDevelopmentVideoUrl)
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNotificationIndex((index) => (index + 1) % updateNotifications.length)
-    }, 2600)
-
-    return () => window.clearInterval(timer)
-  }, [])
 
   useEffect(() => {
     const section = testimonialsSectionRef.current
@@ -1132,36 +1208,12 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4 md:min-h-0">
+            <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-4 md:min-h-0 [contain:layout_paint]">
               <h3 className="relative z-10 max-w-[14rem] text-lg font-semibold leading-7 text-black">Regular updates and progress tracking</h3>
               <div className="absolute right-4 top-4 h-28 w-36 opacity-65 [background-image:radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] [background-size:10px_10px]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-[#eee9d9]" />
               <div className="absolute left-1/2 top-[4.7rem] h-32 w-32 -translate-x-1/2 rounded-full border-[1.65rem] border-transparent border-r-[#f8f8f7] border-t-[#f8f8f7]" />
-              {notificationStack.map((notification, stackIndex) => {
-                const stackStyles = [
-                  { '--from-bottom': '1.35rem', '--from-left': '1.25rem', '--from-right': '1.25rem', '--from-y': '0px', '--from-scale': 1, '--from-opacity': 1, '--from-label-opacity': 1, '--to-bottom': '-2.6rem', '--to-left': '8.25rem', '--to-right': '8.25rem', '--to-y': '1.4rem', '--to-scale': 0.42, '--to-opacity': 1, '--to-label-opacity': 1, zIndex: 40, boxShadow: '0 18px 42px rgba(15,23,42,0.12)' },
-                  { '--from-bottom': '2.82rem', '--from-left': '1.55rem', '--from-right': '1.55rem', '--from-y': '-2px', '--from-scale': 0.985, '--from-opacity': 0.96, '--from-label-opacity': 0.34, '--to-bottom': '1.35rem', '--to-left': '1.25rem', '--to-right': '1.25rem', '--to-y': '0px', '--to-scale': 1, '--to-opacity': 1, '--to-label-opacity': 1, zIndex: 35, boxShadow: '0 16px 36px rgba(15,23,42,0.11)' },
-                  { '--from-bottom': '3.42rem', '--from-left': '2rem', '--from-right': '2rem', '--from-y': '-4px', '--from-scale': 0.965, '--from-opacity': 0.82, '--from-label-opacity': 0.18, '--to-bottom': '2.82rem', '--to-left': '1.55rem', '--to-right': '1.55rem', '--to-y': '-2px', '--to-scale': 0.985, '--to-opacity': 0.96, '--to-label-opacity': 0.34, zIndex: 25, boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
-                  { '--from-bottom': '4.02rem', '--from-left': '2.35rem', '--from-right': '2.35rem', '--from-y': '-6px', '--from-scale': 0.94, '--from-opacity': 0, '--from-label-opacity': 0, '--to-bottom': '3.42rem', '--to-left': '2rem', '--to-right': '2rem', '--to-y': '-4px', '--to-scale': 0.965, '--to-opacity': 0.82, '--to-label-opacity': 0.18, zIndex: 15, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' },
-                ][stackIndex]
-
-                return (
-                  <div
-                    key={`${notification.label}-${notificationIndex}-${stackIndex}`}
-                    className={`homepage-notification-card ${stackIndex === 0 ? 'is-exiting' : 'is-promoting pointer-events-none'}`}
-                    style={stackStyles as CSSProperties}
-                    aria-hidden={stackIndex !== 1}
-                  >
-                    <div className="relative flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-xs font-semibold text-black/42">notification</p>
-                        <p className="mt-3 truncate font-mono text-base font-semibold text-black/80">{notification.label}</p>
-                      </div>
-                      <BrandIcon icon={notification.icon} className="mt-1 h-5 w-5 shrink-0" />
-                    </div>
-                  </div>
-                )
-              })}
+              <UpdateNotificationStack />
             </article>
             <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4 md:min-h-0">
               <h3 className="relative z-20 max-w-[19rem] text-lg font-black drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">Hosting, Deployment & Maintenance</h3>
@@ -1518,7 +1570,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
                   {[...founderNotes, ...founderNotes, ...founderNotes].map((item, index) => {
                     const Icon = item.icon
                     return (
-                      <article key={`${item.name}-${index}`} className="w-[min(16rem,78vw)] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] backdrop-blur">
+                      <article key={`${item.name}-${index}`} className="w-[min(16rem,78vw)] rounded-lg border border-white/10 bg-black/38 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
                         <div className="flex items-center gap-3">
                           <span className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/8 text-white/72">
                             <Icon className="h-4 w-4" />

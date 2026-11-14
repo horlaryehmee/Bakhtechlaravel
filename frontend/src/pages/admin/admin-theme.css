@@ -60,7 +60,7 @@
 :is(.admin-theme, .crm-workspace) .bg-blue-600 { background-color: var(--admin-primary) !important; }
 :is(.admin-theme, .crm-workspace) .bg-blue-600 { color: var(--admin-on-primary) !important; }
 :is(.admin-theme, .crm-workspace) .bg-blue-600\/10 { background-color: color-mix(in srgb, var(--admin-primary) 10%, transparent) !important; }
-:is(.admin-theme, .crm-workspace) .bg-blue-600\/10 { color: var(--admin-on-primary) !important; }
+:is(.admin-theme, .crm-workspace) .bg-blue-600\/10 { color: var(--admin-ink) !important; }
 :is(.admin-theme, .crm-workspace) .bg-cyan-50 { background-color: var(--admin-accent-soft) !important; }
 :is(.admin-theme, .crm-workspace) .bg-gray-100 { background-color: var(--admin-soft) !important; }
 :is(.admin-theme, .crm-workspace) .bg-gray-300 { background-color: var(--admin-soft) !important; }
@@ -101,7 +101,7 @@
 :is(.admin-theme, .crm-workspace) .border-slate-800\/40 { border-color: color-mix(in srgb, var(--admin-line) 40%, transparent) !important; }
 :is(.admin-theme, .crm-workspace) .border-slate-800\/60 { border-color: color-mix(in srgb, var(--admin-line) 60%, transparent) !important; }
 :is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-blue-950\/20 { background-color: color-mix(in srgb, var(--admin-primary) 20%, transparent) !important; }
-:is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-blue-950\/20 { color: var(--admin-on-primary) !important; }
+:is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-blue-950\/20 { color: var(--admin-ink) !important; }
 :is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-slate-700 { background-color: var(--admin-soft) !important; }
 :is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-slate-800 { background-color: var(--admin-surface) !important; }
 :is(.admin-theme.dark, .dark .crm-workspace) .dark\:bg-slate-800\/40 { background-color: color-mix(in srgb, var(--admin-surface) 40%, transparent) !important; }
@@ -220,9 +220,9 @@
 
 /* Historical custom-color utilities, scoped to the administration UI. */
 :is(.admin-theme, .crm-workspace) .bg-\[\#1261ff\] { background-color: var(--admin-primary) !important; color: var(--admin-on-primary) !important; }
-:is(.admin-theme, .crm-workspace) .bg-\[\#1261ff\]\/10 { background-color: color-mix(in srgb, var(--admin-primary) 10%, transparent) !important; color: var(--admin-on-primary) !important; }
+:is(.admin-theme, .crm-workspace) .bg-\[\#1261ff\]\/10 { background-color: color-mix(in srgb, var(--admin-primary) 10%, transparent) !important; color: var(--admin-ink) !important; }
 :is(.admin-theme, .crm-workspace) .bg-\[\#3267e3\] { background-color: var(--admin-primary) !important; color: var(--admin-on-primary) !important; }
-:is(.admin-theme, .crm-workspace) .bg-\[\#3267e3\]\/10 { background-color: color-mix(in srgb, var(--admin-primary) 10%, transparent) !important; color: var(--admin-on-primary) !important; }
+:is(.admin-theme, .crm-workspace) .bg-\[\#3267e3\]\/10 { background-color: color-mix(in srgb, var(--admin-primary) 10%, transparent) !important; color: var(--admin-ink) !important; }
 :is(.admin-theme, .crm-workspace) .border-\[\#3267e3\] { border-color: var(--admin-accent) !important; }
 :is(.admin-theme, .crm-workspace) .border-\[\#d9e1ea\] { border-color: var(--admin-accent) !important; }
 :is(.admin-theme, .crm-workspace) .hover\:text-\[\#1d4ed8\]:hover { color: var(--admin-ink) !important; }
@@ -231,124 +231,3 @@
 :is(.admin-theme, .crm-workspace) .text-\[\#2563eb\] { color: var(--admin-ink) !important; }
 :is(.admin-theme, .crm-workspace) .text-\[\#3267e3\] { color: var(--admin-ink) !important; }
 :is(.admin-theme, .crm-workspace) .text-\[\#3b82f6\] { color: var(--admin-ink) !important; }
-.admin-theme .bkinv-page-title { color:var(--admin-ink); }
-.admin-theme .bkinv-saved-indicator { color:var(--admin-muted); }
-.admin-theme .bkinv-card { background:var(--admin-surface); }
-.admin-theme .bkinv-card-header { background:var(--admin-surface); }
-.admin-theme .bkinv-card-header svg { color:var(--admin-ink); }
-.admin-theme .bkinv-card-header h2 { color:var(--admin-ink); }
-.admin-theme .bkinv-alert { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-form-group span:first-child { color:var(--admin-ink); }
-.admin-theme .bkinv-input, .admin-theme .bkinv-textarea, .admin-theme .bkinv-select { background:var(--admin-surface); color:var(--admin-ink); }
-.admin-theme .bkinv-input:focus, .admin-theme .bkinv-textarea:focus, .admin-theme .bkinv-select:focus { border-color:var(--admin-accent); }
-.admin-theme .bkinv-line-items-table th { color:var(--admin-muted); }
-.admin-theme .bkinv-line-items-table .item-description { color:var(--admin-ink); }
-.admin-theme .bkinv-line-items-table tfoot { background:var(--admin-surface); }
-.admin-theme .bkinv-grand-total { background:var(--admin-primary); color:var(--admin-muted); }
-.admin-theme .bkinv-grand-total td { color:var(--admin-muted); }
-.admin-theme .bkinv-grand-total .bkinv-total-display { color:var(--admin-muted); }
-.admin-theme .bkinv-btn-primary { background:var(--admin-primary); color:var(--admin-muted); }
-.admin-theme .bkinv-btn-primary:hover { background:var(--admin-primary); }
-.admin-theme .bkinv-btn-secondary { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-btn-secondary:hover { background:var(--admin-soft); }
-.admin-theme .bkinv-btn-icon:hover { color:var(--admin-muted); }
-.admin-theme .bkinv-back-button { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-card { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-card-header { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-card-header svg { background:var(--admin-soft); }
-.admin-theme .bkinv-edit-screen .bkinv-form-group span:first-child { color:var(--admin-ink); }
-.admin-theme .bkinv-edit-screen :is(.bkinv-input, .admin-theme .bkinv-textarea, .admin-theme .bkinv-select):focus { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-alert { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-gateway-option, .admin-theme .bkinv-gateway-card { background:var(--admin-surface); }
-.admin-theme .bkinv-gateway-option:hover, .admin-theme .bkinv-gateway-card:hover { border-color:var(--admin-accent); }
-.admin-theme .bkinv-gateway-option.is-selected, .admin-theme .bkinv-gateway-card.is-selected { background:var(--admin-soft); }
-.admin-theme .bkinv-currency-card { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table thead { background:var(--admin-primary); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table th { color:var(--admin-ink); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table td { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table tfoot { background:var(--admin-surface); }
-.admin-theme .bkinv-admin-tabs { background:var(--admin-surface); }
-.admin-theme .bkinv-admin-tab { color:var(--admin-ink); }
-.admin-theme .bkinv-admin-tab:hover { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-admin-tab.is-active { background:var(--admin-primary); color:var(--admin-muted); }
-.admin-theme .bkinv-email-hero { color:var(--admin-ink); }
-.admin-theme .bkinv-email-metric { background:var(--admin-surface); }
-.admin-theme .bkinv-email-metric h3 { color:var(--admin-ink); }
-.admin-theme .bkinv-email-metric span { color:var(--admin-muted); }
-.admin-theme .bkinv-email-panel-head > span { background:var(--admin-soft); color:var(--admin-muted); }
-.admin-theme .bkinv-email-log-row { background:var(--admin-surface); color:var(--admin-ink); }
-.admin-theme .bkinv-email-avatar { color:var(--admin-muted); }
-.admin-theme .bkinv-email-main strong, .admin-theme .bkinv-email-doc strong { color:var(--admin-ink); }
-.admin-theme .bkinv-email-iframe { background:var(--admin-surface); }
-.admin-theme .bkinv-admin-hero h3 { color:var(--admin-ink); }
-.admin-theme .bkinv-admin-hero p { color:var(--admin-ink); }
-.admin-theme .bkinv-kpi-card { background:var(--admin-surface); }
-.admin-theme .bkinv-kpi-icon { color:var(--admin-ink); }
-.admin-theme .bkinv-kpi-content h3 { color:var(--admin-muted); }
-.admin-theme .bkinv-kpi-value { color:var(--admin-ink); }
-.admin-theme .bkinv-kpi-label { color:var(--admin-muted); }
-.admin-theme .bkinv-stats-card { background:var(--admin-surface); }
-.admin-theme .bkinv-stats-card h2 { color:var(--admin-ink); }
-.admin-theme .bkinv-recent-item { background:var(--admin-surface); color:var(--admin-ink); }
-.admin-theme .bkinv-recent-item:hover { border-color:var(--admin-accent); background:var(--admin-soft); }
-.admin-theme .bkinv-recent-main strong, .admin-theme .bkinv-recent-meta strong { color:var(--admin-ink); }
-.admin-theme .bkinv-recent-client { color:var(--admin-muted); }
-.admin-theme .bkinv-view-all { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-view-all:hover { background:var(--admin-soft); }
-.admin-theme .bkinv-ops-card { background:var(--admin-surface); }
-.admin-theme .bkinv-ops-card.is-strong { border-color:var(--admin-accent); background:var(--admin-soft); }
-.admin-theme .bkinv-ops-card span { color:var(--admin-muted); }
-.admin-theme .bkinv-ops-card strong { color:var(--admin-ink); }
-.admin-theme .bkinv-ops-card p { color:var(--admin-muted); }
-.admin-theme .bkinv-work-card, .admin-theme .bkinv-settings-card { background:var(--admin-surface); }
-.admin-theme .bkinv-work-card h2, .admin-theme .bkinv-settings-hero h3, .admin-theme .bkinv-settings-card h4 { color:var(--admin-ink); }
-.admin-theme .bkinv-work-card p, .admin-theme .bkinv-settings-hero p, .admin-theme .bkinv-settings-card-head p { color:var(--admin-muted); }
-.admin-theme .bkinv-pipeline-row, .admin-theme .bkinv-queue-row { background:var(--admin-surface); }
-.admin-theme .bkinv-pipeline-row span, .admin-theme .bkinv-queue-row p { color:var(--admin-muted); }
-.admin-theme .bkinv-pipeline-row strong { color:var(--admin-ink); }
-.admin-theme .bkinv-queue-row:hover { background:var(--admin-soft); }
-.admin-theme .bkinv-queue-row strong, .admin-theme .bkinv-queue-row b { color:var(--admin-ink); }
-.admin-theme .bkinv-list-header h3 { color:var(--admin-ink); }
-.admin-theme .bkinv-list-header p { color:var(--admin-muted); }
-.admin-theme .bkinv-list-tools { background:var(--admin-surface); }
-.admin-theme .bkinv-pagination { background:var(--admin-surface); }
-.admin-theme .bkinv-pagination > span { color:var(--admin-muted); }
-.admin-theme .bkinv-search-field { background:var(--admin-surface); color:var(--admin-muted); }
-.admin-theme .bkinv-search-field input { color:var(--admin-ink); }
-.admin-theme .bkinv-list-card { background:var(--admin-surface); }
-.admin-theme .bkinv-admin-table thead { background:var(--admin-surface); }
-.admin-theme .bkinv-admin-table th { color:var(--admin-ink); }
-.admin-theme .bkinv-admin-table td { color:var(--admin-ink); }
-.admin-theme .bkinv-admin-table tr:hover td { background:var(--admin-surface); }
-.admin-theme .bkinv-contact-cell > span { background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-contact-cell strong { color:var(--admin-ink); }
-.admin-theme .bkinv-contact-cell p { color:var(--admin-muted); }
-.admin-theme .bkinv-settings-hero { background:var(--admin-surface); }
-.admin-theme .bkinv-settings-card-head { background:var(--admin-surface); }
-.admin-theme .bkinv-action-btn { color:var(--admin-ink); }
-.admin-theme .bkinv-action-btn:hover { border-color:var(--admin-accent); background:var(--admin-soft); color:var(--admin-ink); }
-.admin-theme .bkinv-list-empty { color:var(--admin-muted); }
-.admin-theme .bkinv-list-empty p { color:var(--admin-ink); }
-.admin-theme .bkinv-list-empty span { color:var(--admin-muted); }
-.admin-theme .bkinv-mobile-doc-card { background:var(--admin-surface); }
-.admin-theme .bkinv-mobile-doc-card span { color:var(--admin-muted); }
-.admin-theme .bkinv-mobile-doc-card b { color:var(--admin-ink); }
-.admin-theme .bkinv-public-page { color:var(--admin-ink); }
-.admin-theme .bkinv-public-wrapper { background:var(--admin-surface); }
-.admin-theme .bkinv-company-details { color:var(--admin-ink); }
-.admin-theme .bkinv-doc-pill { background:var(--admin-soft); }
-.admin-theme .bkinv-kpi-neutral .bkinv-kpi-icon { color:var(--admin-ink); }
-.admin-theme .bkinv-meta-chip { color:var(--admin-ink); }
-.admin-theme .bkinv-info-box, .admin-theme .bkinv-payment-panel, .admin-theme .bkinv-totals-card { background:var(--admin-surface); }
-.admin-theme .bkinv-section-kicker { color:var(--admin-muted); }
-.admin-theme .bkinv-info-box p, .admin-theme .bkinv-payment-panel p, .admin-theme .bkinv-public-section p { color:var(--admin-ink); }
-.admin-theme .bkinv-public-table thead { background:var(--admin-soft); }
-.admin-theme .bkinv-public-table td p { color:var(--admin-muted); }
-.admin-theme .bkinv-public-stat { background:var(--admin-surface); }
-.admin-theme .bkinv-public-stat span { color:var(--admin-muted); }
-.admin-theme .bkinv-totals-card { background:var(--admin-surface); }
-.admin-theme .bkinv-public-primary { color:var(--admin-muted); }
-.admin-theme .bkinv-public-accept { color:var(--admin-muted); }
-.admin-theme .bkinv-public-secondary { color:var(--admin-ink); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table tbody tr { background:var(--admin-surface); }
-.admin-theme .bkinv-edit-screen .bkinv-line-items-table tfoot .text-right { color:var(--admin-muted); }

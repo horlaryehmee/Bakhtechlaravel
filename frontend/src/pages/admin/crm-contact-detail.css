@@ -203,10 +203,10 @@
 .dark .cd-page { --cd-ink:var(--admin-ink); --cd-muted:var(--admin-muted); --cd-line:var(--admin-line); --cd-surface:var(--admin-surface); --cd-soft:var(--admin-soft); --cd-blue:var(--admin-ink); --cd-blue-soft:var(--admin-soft); }
 .dark .cd-profile-title > p, .dark .cd-task-copy > span, .dark .cd-notes, .dark .cd-timeline-item p { color:var(--admin-muted); }
 .dark .cd-metric small, .dark .cd-field > span { color:var(--admin-muted); }
-.dark .cd-button--primary { background:var(--admin-primary); border-color:var(--admin-accent); color:white; }
+.dark .cd-button--primary { background:var(--admin-primary); border-color:var(--admin-primary); color:var(--admin-on-primary); }
 .dark .cd-next-action { background:var(--admin-surface); border-color:var(--admin-accent); }
 .dark .cd-next-action p { color:var(--admin-ink); }
-.dark .cd-tabs > button > span { background:var(--admin-primary); color:var(--admin-muted); }
+.dark .cd-tabs > button > span { background:var(--admin-accent-soft); color:var(--admin-ink); }
 .dark .cd-badge--neutral { background: #29374e; color: #b6c3d6; }
 .dark .cd-badge--blue { background: #223d67; color: #a2c2ff; }
 .dark .cd-badge--green { background: #1c3e35; color: #86c7a9; }

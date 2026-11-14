@@ -12,7 +12,7 @@
 .admin-theme :is(.cc-panel,.cc-metric,.cc-modal,.cc-library,.cc-toolbar,.cc-search){background:var(--admin-surface);color:var(--admin-ink);border-color:var(--admin-line)}
 .admin-theme, .admin-theme .crm-workspace {
   --admin-canvas:#f7f8fa; --admin-surface:#fff; --admin-soft:#f1f4f8;
-  --admin-ink:#182235; --admin-muted:#68768b; --admin-line:#e4e9f0;
+  --admin-ink:#182235; --admin-muted:#5a677b; --admin-line:#e4e9f0;
   --admin-primary:#252923; --admin-primary-hover:#3c4239; --admin-on-primary:#fff;
   --admin-accent:#a98020; --admin-accent-soft:#f7f1df;
   font-family:Inter,ui-sans-serif,system-ui,sans-serif;
@@ -26,7 +26,7 @@
   color-scheme:dark;
 }
 .admin-theme .admin-sidebar {
-  --admin-surface:#fff; --admin-soft:#f1f4f8; --admin-ink:#182235; --admin-muted:#68768b;
+  --admin-surface:#fff; --admin-soft:#f1f4f8; --admin-ink:#182235; --admin-muted:#5a677b;
   --admin-line:#e4e9f0; --admin-primary:#252923; --admin-on-primary:#fff;
   background:var(--admin-surface)!important; color:var(--admin-muted); border-color:var(--admin-line);
   transition:width .2s ease,transform .2s ease;

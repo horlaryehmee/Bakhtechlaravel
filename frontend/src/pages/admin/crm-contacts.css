@@ -7,7 +7,7 @@
 .ct-actions,.ct-toolbar,.ct-selection,.ct-footer,.ct-footer>div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ct-panel{background:var(--crm-surface);border:1px solid var(--crm-line);border-radius:14px;box-shadow:var(--crm-shadow);overflow:hidden}
 .ct-primary,.ct-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:7px;padding:9px 13px;font-size:12px;font-weight:650;white-space:nowrap;min-height:36px}
-.ct-primary{background:var(--admin-primary);color:white;border:1px solid var(--admin-accent);}
+.ct-primary{background:var(--admin-primary);color:var(--admin-on-primary);border:1px solid var(--admin-primary);}
 .ct-primary:hover{background:var(--admin-primary);}
 .ct-button{border:1px solid var(--crm-line);background:var(--crm-surface);color:var(--crm-ink);}
 .ct-directory button:disabled{opacity:.45;cursor:not-allowed}

@@ -57,3 +57,71 @@
 .admin-theme.admin-theme :is(.cc-preview-stage iframe,.ce-preview-stage iframe,.ct-preview-stage iframe){background:#fff;color:#182235;color-scheme:light}
 /* Fix inherited text on neutral and dark utility surfaces (including toast messages). */
 .admin-theme.admin-theme :is(.bg-gray-900,.bg-gray-950,.bg-slate-900,.bg-slate-950).text-white{color:var(--admin-ink)}
+/* Dark-mode status colors: one tinted pair per meaning, so badges never stay as pale light-mode pills. */
+.admin-theme.dark{--admin-ok-bg:#163a2b;--admin-ok-fg:#8fe3b6;--admin-warn-bg:#3b3018;--admin-warn-fg:#f2cb7c;--admin-bad-bg:#401f25;--admin-bad-fg:#f7abab;--admin-ok-line:#25573f;--admin-warn-line:#5a4822;--admin-bad-line:#663039}
+.admin-theme.admin-theme.dark :is(.au-status,.cc-status,.cd-badge--neutral,.ca-delivery-status,.ce-statusbar,.ct-preview-heading,.bkinv-status-draft){background:var(--admin-soft);color:var(--admin-muted)}
+.admin-theme.admin-theme.dark :is(.au-status--active,.au-status--completed,.cc-status--sent,.cd-badge--green,.ca-badge,.cc-mail-icon.is-sent,.co-badge-sent,.bkinv-status-pill.status-success,.bkinv-status-accepted,.bkinv-status-paid,.bkinv-kpi-success .bkinv-kpi-icon){background:var(--admin-ok-bg);color:var(--admin-ok-fg)}
+.admin-theme.admin-theme.dark :is(.au-status--skipped,.au-status--paused,.cc-status--pending,.cd-badge--amber,.co-badge-sending,.bkinv-status-pill.status-warning,.bkinv-status-partial,.bkinv-kpi-warning .bkinv-kpi-icon){background:var(--admin-warn-bg);color:var(--admin-warn-fg)}
+.admin-theme.admin-theme.dark :is(.au-status--failed,.au-run-error,.cc-status--failed,.cd-badge--red,.bkinv-status-pill.status-danger,.bkinv-status-rejected,.bkinv-status-overdue,.bkinv-status-cancelled,.bkinv-kpi-danger .bkinv-kpi-icon){background:var(--admin-bad-bg);color:var(--admin-bad-fg)}
+/* Tailwind semantic tints used in legacy admin screens. */
+.admin-theme.admin-theme.dark :is(.bg-green-50,.bg-green-100,.bg-emerald-50,.bg-emerald-100){background-color:var(--admin-ok-bg)!important}
+.admin-theme.admin-theme.dark :is(.bg-amber-50,.bg-amber-100,.bg-orange-50,.bg-yellow-50,.bg-yellow-100){background-color:var(--admin-warn-bg)!important}
+.admin-theme.admin-theme.dark :is(.bg-red-50,.bg-red-100,.bg-rose-50){background-color:var(--admin-bad-bg)!important}
+.admin-theme.admin-theme.dark :is(.text-green-600,.text-green-700,.text-green-800,.text-emerald-500,.text-emerald-600,.text-emerald-700,.text-emerald-800){color:var(--admin-ok-fg)!important}
+.admin-theme.admin-theme.dark :is(.text-amber-600,.text-amber-700,.text-amber-800,.text-amber-900,.text-orange-700){color:var(--admin-warn-fg)!important}
+.admin-theme.admin-theme.dark :is(.text-red-500,.text-red-600,.text-red-700,.text-red-800){color:var(--admin-bad-fg)!important}
+.admin-theme.admin-theme.dark :is(.border-emerald-100,.border-emerald-200,.border-green-200){border-color:var(--admin-ok-line)!important}
+.admin-theme.admin-theme.dark :is(.border-amber-100,.border-amber-200){border-color:var(--admin-warn-line)!important}
+.admin-theme.admin-theme.dark :is(.border-red-100,.border-red-200){border-color:var(--admin-bad-line)!important}
+.admin-theme.admin-theme.dark .pw-embedded :is(.pw-development,.pw-in_progress,.pw-under_review){background:var(--admin-accent-soft);color:var(--admin-ink)}
+.admin-theme.admin-theme.dark .pw-embedded :is(.pw-content_collection,.pw-awaiting_content,.pw-submitted,.pw-review){background:var(--admin-warn-bg);color:var(--admin-warn-fg)}
+.admin-theme.admin-theme.dark .pw-embedded :is(.pw-completed,.pw-active,.pw-approved,.pw-published){background:var(--admin-ok-bg);color:var(--admin-ok-fg)}
+.admin-theme.admin-theme.dark .pw-embedded :is(.pw-needs_revision,.pw-revisions,.pw-inactive,.pw-cancelled){background:var(--admin-bad-bg);color:var(--admin-bad-fg)}
+/* Template thumbnails are email previews (kept light); their label owns both colors. */
+.admin-theme.admin-theme .ct-card-tag{background:var(--admin-surface);color:var(--admin-ink);border:1px solid var(--admin-line)}
+.admin-theme.admin-theme .el-asset-preview>span{background:var(--admin-surface);color:var(--admin-ink)}
+/* Code editor header text sits on the editor surface. */
+.admin-theme.admin-theme .ce-code-pane>header{background:var(--admin-soft);color:var(--admin-muted)}
+/* Inverted "foreground" pills (active booking tab, quick actions) use the brand action pair in both themes. */
+.admin-theme.admin-theme .bg-\[var\(--foreground\)\]{background-color:var(--admin-primary)!important;color:var(--admin-on-primary)!important}
+/* Neutral statuses and the project revision notice in both themes. */
+.admin-theme.admin-theme :is(.au-status,.cc-status,.cd-badge--neutral,.ca-delivery-status,.ce-statusbar){background:var(--admin-soft);color:var(--admin-muted)}
+.admin-theme.admin-theme.dark .pw-embedded .pw-revision{background:var(--admin-warn-bg)!important;color:var(--admin-warn-fg)!important;border-color:var(--admin-warn-line)!important}
+/* Quote builder project picker. */
+.admin-theme.admin-theme .qb-project-list small{color:var(--admin-muted)}
+.admin-theme.admin-theme .qb-project-list .is-selected{background:var(--admin-accent-soft);color:var(--admin-ink);border-color:var(--admin-accent)}
+.admin-theme.admin-theme .qb-project-list .is-selected small{color:var(--admin-ink)}
+.admin-theme.admin-theme:not(.dark) .ca-badge{color:#1d6b4b}
+.admin-theme.admin-theme .pw-embedded .pw-loading{color:var(--admin-muted)}
+.admin-theme.admin-theme:not(.dark) .pw-embedded .pw-revision{color:#83502c!important}
+/* Quote builder embedded in the admin: replace its own blue/navy palette with the shared admin theme. */
+.admin-theme.admin-theme .qb-embedded{--qb-blue:var(--admin-primary);--qb-ink:var(--admin-ink);color:var(--admin-ink)}
+.admin-theme.admin-theme .qb-embedded :is(h1,h2,h3,h4,summary,label,strong){color:var(--admin-ink)}
+.admin-theme.admin-theme .qb-embedded :is(.qb-admin p,.qb-eyebrow,.qb-order-label,.qb-order-position,small){color:var(--admin-muted)}
+.admin-theme.admin-theme .qb-embedded .qb-panel{background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-ink)}
+.admin-theme.admin-theme .qb-embedded .qb-admin details{border-color:var(--admin-line)}
+.admin-theme.admin-theme .qb-embedded .qb-admin :is(input:not([type=checkbox]),textarea,select){background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-ink)}
+.admin-theme.admin-theme .qb-embedded .qb-admin button:not(.qb-primary){background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-ink)}
+.admin-theme.admin-theme .qb-embedded .qb-admin button:not(.qb-primary):hover{background:var(--admin-soft)}
+.admin-theme.admin-theme .qb-embedded .qb-primary{background:var(--admin-primary);border-color:var(--admin-primary);color:var(--admin-on-primary)}
+.admin-theme.admin-theme .qb-embedded .qb-primary:hover{background:var(--admin-primary-hover);border-color:var(--admin-primary-hover)}
+.admin-theme.admin-theme .qb-embedded a{color:var(--admin-ink);text-decoration:underline;text-underline-offset:3px}
+.admin-theme.admin-theme .qb-embedded .qb-error{background:#fff0ed;border-color:#f1c9c0;color:#8f2c1d}
+.admin-theme.admin-theme.dark .qb-embedded .qb-error{background:var(--admin-bad-bg);border-color:var(--admin-bad-line);color:var(--admin-bad-fg)}
+.admin-theme.admin-theme .qb-embedded .qb-order-list li{background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-ink)}
+/* Quote requests (list + detail) on the shared admin palette. */
+.admin-theme.admin-theme :is(.qr-stats>div,.qr-list-heading>button,.qr-back,.qr-copy,.qr-pagination button,.qr-table .qr-view){background:var(--admin-surface);border-color:var(--admin-line);color:var(--admin-ink)}
+.admin-theme.admin-theme :is(.qr-list-heading>button,.qr-back,.qr-copy,.qr-pagination button,.qr-table .qr-view):hover{background:var(--admin-soft)}
+.admin-theme.admin-theme :is(.qr-list-heading,.qr-filters,.qr-table th,.qr-table td,.qr-table tr,.qr-pagination,.qr-answers>div,.qr-breakdown>div,.qr-feature-list li){border-color:var(--admin-line)}
+.admin-theme.admin-theme .qr-list-heading{background:transparent}
+.admin-theme.admin-theme :is(.qr-filters,.qr-table th,.qr-project-summary>div,.qr-notes,.qr-reference){background:var(--admin-soft)}
+.admin-theme.admin-theme .qr-notes{border-left-color:var(--admin-accent)}
+.admin-theme.admin-theme .qr-table tbody tr:hover{background:var(--admin-soft)}
+.admin-theme.admin-theme :is(.qr-stats strong,.qr-table td>strong,.qr-answers dd,.qr-breakdown dd,.qr-feature-list li){color:var(--admin-ink)}
+.admin-theme.admin-theme :is(.qr-stats span,.qr-filters label,.qr-table th,.qr-table td>span:not(.qr-badge),.qr-table td>small,.qr-table td:before,.qr-pagination,.qr-pagination span,.qr-empty,.qr-detail-grid h4,.qr-project-summary small,.qr-answers dt,.qr-breakdown dt){color:var(--admin-muted)}
+.admin-theme.admin-theme .qr-breakdown .qr-total{background:var(--admin-accent-soft)}
+.admin-theme.admin-theme .qr-breakdown .qr-total :is(dt,dd){color:var(--admin-ink)}
+.admin-theme.admin-theme .qr-contact>.qb-primary{color:var(--admin-on-primary)}
+.admin-theme.admin-theme.dark .qr-badge{background:var(--admin-ok-bg);color:var(--admin-ok-fg)!important}
+.admin-theme.admin-theme.dark .qr-badge.qr-custom{background:var(--admin-warn-bg);color:var(--admin-warn-fg)!important}
+.admin-theme.admin-theme .pw-embedded .pw-table-progress{color:var(--admin-muted)}

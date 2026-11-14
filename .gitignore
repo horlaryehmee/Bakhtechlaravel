@@ -62,3 +62,4 @@ server/data/*.sqlite
 *.sln
 *.sw?
 Thumbs.db
+.claude/settings.local.json

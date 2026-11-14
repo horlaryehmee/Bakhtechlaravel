@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface CpuArchitectureSvgProps {
@@ -25,8 +26,26 @@ const CpuArchitecture = ({
   animateLines = true,
   animateMarkers = true,
 }: CpuArchitectureSvgProps) => {
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  // SMIL <animate> loops ignore CSS animation-play-state, so pause them
+  // explicitly whenever the graphic is off screen.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg || typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) svg.unpauseAnimations()
+      else svg.pauseAnimations()
+    })
+    observer.observe(svg)
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <svg
+      ref={svgRef}
       className={cn('text-muted', className)}
       width={width}
       height={height}
