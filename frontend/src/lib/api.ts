@@ -1491,6 +1491,9 @@ export const api = {
   recoveryStatus() {
     return request<{ enabled: boolean; version: string; operation: { status: string; message: string; safetyBackup?: string } | null; backups: { id: string; createdAt: string; bytes: number; version: string }[] }>('/api/admin/system/recovery')
   },
+  deleteRecoveryBackup(backup: string, confirmation: string) {
+    return request<{ message: string }>('/api/admin/system/recovery/backup', { method: 'DELETE', body: JSON.stringify({ backup, confirmation }) })
+  },
   recoveryOperation(action: 'update' | 'backup' | 'restore', backup?: string, confirmation?: string) {
     return request('/api/admin/system/recovery', { method: 'POST', body: JSON.stringify({ action, backup, confirmation }) })
   },

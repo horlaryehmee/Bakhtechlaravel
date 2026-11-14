@@ -7,6 +7,9 @@ export function SystemRecoverySettings() {
   const [pending, setPending] = useState(false)
   const [restore, setRestore] = useState('')
   const [confirmation, setConfirmation] = useState('')
+  const [deleting, setDeleting] = useState('')
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [notice, setNotice] = useState('')
   useEffect(() => {
     let active = true
     const refresh = () => api.recoveryStatus().then((result) => {
@@ -28,6 +31,16 @@ export function SystemRecoverySettings() {
     finally { setPending(false) }
   }
   const button = 'inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
+  async function deleteBackup() {
+    setPending(true); setError(''); setNotice('')
+    try {
+      await api.deleteRecoveryBackup(deleting, deleteConfirmation)
+      setData((current) => current ? { ...current, backups: current.backups.filter((backup) => backup.id !== deleting) } : current)
+      setDeleting(''); setDeleteConfirmation(''); setRestore('')
+      setNotice('Backup permanently deleted. Its disk space has been freed.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not delete backup.') }
+    finally { setPending(false) }
+  }
   return <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
     <h3 className="text-xl font-black text-gray-900">Version updates & backups</h3>
     <p className="mt-2 text-sm text-gray-600">Update from GitHub with an automatic recovery backup, Composer dependencies, migrations, and cache rebuilds. The site briefly enters maintenance mode.</p>
@@ -39,10 +52,18 @@ export function SystemRecoverySettings() {
     </div>
     {data?.operation && <p role="status" className="mt-4 text-sm">{data.operation.status}: {data.operation.message} {data.operation.status === 'queued' && 'The scheduler normally starts within a minute. You can leave this page.'}</p>}
     {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+    {notice && <p role="status" className="mt-3 text-sm">{notice}</p>}
+    {data && <p className="mt-4 text-sm text-gray-600">{data.backups.length} backups · {(data.backups.reduce((total, backup) => total + backup.bytes, 0) / 1048576).toFixed(1)} MB stored. Delete old backups to free disk space.</p>}
     <div className="mt-5 space-y-3">{data?.backups.map((backup) => <div key={backup.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
       <div><p className="text-sm font-bold">{new Date(backup.createdAt).toLocaleString()}</p><p className="text-xs text-gray-500">{(backup.bytes / 1048576).toFixed(1)} MB · {backup.version.slice(0, 12)}</p></div>
       <button type="button" className={button} disabled={busy || !data.enabled} onClick={() => { setRestore(backup.id); setConfirmation('') }}>Restore…</button>
+      <button type="button" className="min-h-11 rounded-xl border border-red-300 px-4 py-3 text-sm font-bold text-red-700 disabled:opacity-60" disabled={busy} onClick={() => { setDeleting(backup.id); setDeleteConfirmation(''); setRestore(''); setNotice('') }}>Delete backup</button>
     </div>)}</div>
+    {deleting && <div className="mt-4 rounded-xl border border-red-200 p-4" role="region" aria-label="Confirm backup deletion">
+      <p className="text-sm">Permanently delete backup {deleting}? Its saved files and database snapshot cannot be recovered. Your live website and database will not be deleted. Type DELETE to confirm.</p>
+      <input aria-label="Delete backup confirmation" className="my-3 rounded border p-2" value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} />
+      <div className="flex gap-3"><button type="button" className={button} disabled={busy || deleteConfirmation !== 'DELETE'} onClick={() => void deleteBackup()}>Permanently delete backup</button><button type="button" disabled={pending} onClick={() => setDeleting('')}>Cancel</button></div>
+    </div>}
     {restore && <div className="mt-4 rounded-xl bg-amber-50 p-4">
       <p className="text-sm text-amber-900">Restore {restore}? This replaces backed-up files and database records. Newer files absent from the backup remain. A safety backup is created first. Type RESTORE to continue.</p>
       <input aria-label="Restore confirmation" className="my-3 rounded border bg-white p-2" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />

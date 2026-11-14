@@ -241,6 +241,7 @@ Route::middleware([RequireAdminToken::class, 'throttle:admin-read'])->group(func
     Route::post('/admin/redis/test', [RedisSettingsController::class, 'test'])->middleware(['admin.role:admin', 'throttle:10,1']);
     Route::post('/admin/system/deploy', [SystemMaintenanceController::class, 'deploy'])->middleware('admin.role:admin');
     Route::get('/admin/system/recovery', [SystemMaintenanceController::class, 'status'])->middleware('admin.role:admin');
+    Route::delete('/admin/system/recovery/backup', [SystemMaintenanceController::class, 'deleteBackup'])->middleware(['admin.role:admin', 'throttle:10,1']);
     Route::post('/admin/system/recovery', [SystemMaintenanceController::class, 'operation'])->middleware(['admin.role:admin', 'throttle:6,1']);
     Route::get('/admin/media', [BakhtechApiController::class, 'media']);
     Route::post('/admin/media', [BakhtechApiController::class, 'uploadMedia']);

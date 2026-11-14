@@ -28,4 +28,11 @@ class SystemMaintenanceController extends Controller
     {
         return $maintenance->run();
     }
+
+    public function deleteBackup(Request $request, SiteRecoveryService $recovery)
+    {
+        $data = $request->validate(['backup' => 'required|string', 'confirmation' => 'required|in:DELETE']);
+        $recovery->deleteBackup($data['backup']);
+        return response()->json(['message' => 'Backup permanently deleted.']);
+    }
 }

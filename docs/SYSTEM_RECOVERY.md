@@ -62,6 +62,11 @@ MySQL dump or SQLite snapshot. Git metadata, node_modules, logs, framework runti
 files and generated caches are excluded. Backups remain on this host; arrange an
 independent off-server copy for disaster recovery. No automatic retention deletes
 backups. Monitor available disk space.
+Admins can delete individual backups from Settings by typing DELETE. This removes
+only that backup's archive, database snapshot and manifest, not live site data.
+Deletion is permanent and blocked while recovery operations are queued or running.
+The panel displays the total stored backup size. Separate cPanel deployment source
+archives are not included in this list.
 
 Restore accepts only local backups with verified SHA-256 checksums, creates a new
 safety backup, replaces archived files and database records, and rebuilds caches.

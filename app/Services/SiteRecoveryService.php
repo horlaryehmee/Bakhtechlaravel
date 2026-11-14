@@ -62,6 +62,30 @@ class SiteRecoveryService
         }
     }
 
+    public function deleteBackup(string $id): void
+    {
+        abort_unless(preg_match('/^backup-[a-f0-9-]{36}$/D', $id), 422, 'Invalid backup ID.');
+        $root = $this->directory();
+        $lock = fopen($root.'/operation.lock', 'c+');
+        if (! $lock) throw new \RuntimeException('Cannot acquire operation lock.');
+        try {
+            abort_unless(flock($lock, LOCK_EX | LOCK_NB), 409, 'An operation is running. Try again when it finishes.');
+            $operation = $this->status()['operation'];
+            abort_if(in_array($operation['status'] ?? '', ['queued', 'running']), 409, 'Wait for the current operation to finish before deleting backups.');
+            $target = $root.DIRECTORY_SEPARATOR.$id;
+            abort_unless(! is_link($target) && is_dir($target) && realpath($target) === $target, 404, 'Backup not found.');
+            // Never recurse: only remove the known files directly inside this backup.
+            $files = array_values(array_diff(scandir($target), ['.', '..']));
+            foreach ($files as $file) {
+                abort_unless(in_array($file, ['manifest.json', 'files.tar.gz', 'database.sql', 'database.sqlite']) && ! is_link($target.DIRECTORY_SEPARATOR.$file) && is_file($target.DIRECTORY_SEPARATOR.$file), 422, 'Unexpected backup contents; deletion refused.');
+            }
+            foreach ($files as $file) {
+                if (! unlink($target.DIRECTORY_SEPARATOR.$file)) throw new \RuntimeException('Backup could not be fully deleted.');
+            }
+            if (! rmdir($target)) throw new \RuntimeException('Backup directory could not be removed.');
+        } finally { flock($lock, LOCK_UN); fclose($lock); }
+    }
+
     private function run(array $command, ?string $input = null, array $env = []): string
     {
         $process = new Process($command, base_path(), $env, $input, 3600);
