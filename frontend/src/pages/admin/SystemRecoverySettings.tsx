@@ -27,7 +27,7 @@ export function SystemRecoverySettings() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to start operation.') }
     finally { setPending(false) }
   }
-  const button = 'rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-40'
+  const button = 'inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
   return <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
     <h3 className="text-xl font-black text-gray-900">Version updates & backups</h3>
     <p className="mt-2 text-sm text-gray-600">Update from GitHub with an automatic recovery backup, Composer dependencies, migrations, and cache rebuilds. The site briefly enters maintenance mode.</p>
