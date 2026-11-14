@@ -1,4 +1,6 @@
 import './admin-theme.css'
+import './dashboard-modern.css'
+import { DashboardActivityChart } from '@/components/ui/dashboard-activity-chart'
 import { SystemRecoverySettings } from './SystemRecoverySettings'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
@@ -1018,11 +1020,30 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
   })
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!mobileSidebarOpen) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    sidebarRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    const closeOnDesktop = () => { if (window.innerWidth >= 768) setMobileSidebarOpen(false) }
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileSidebarOpen(false)
+      if (event.key !== 'Tab') return
+      const controls = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input') ?? []).filter((element) => element.getClientRects().length)
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
+    window.addEventListener('keydown', keyboard)
+    window.addEventListener('resize', closeOnDesktop)
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', keyboard); window.removeEventListener('resize', closeOnDesktop); previousFocus?.focus() }
+  }, [mobileSidebarOpen])
   const [searchQuery, setSearchQuery] = useState('')
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showCreateNewDropdown, setShowCreateNewDropdown] = useState(false)
-  const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '12m'>('30d')
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -4925,7 +4946,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
               </div>
               <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                 <TrendingUp className="w-3.5 h-3.5" />
-                +12.4%
+                Collected
               </span>
             </div>
             <div className="mt-4">
@@ -4943,7 +4964,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <InvoiceIcon className="w-5 h-5" />
               </div>
               <span className="flex items-center gap-1 text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
-                +4 this mo
+                All invoices
               </span>
             </div>
             <div className="mt-4">
@@ -4959,7 +4980,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <CreditCard className="w-5 h-5" />
               </div>
               <span className="flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                -3.2%
+                Outstanding
               </span>
             </div>
             <div className="mt-4">
@@ -4977,7 +4998,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <Users className="w-5 h-5" />
               </div>
               <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                +2 new
+                Client records
               </span>
             </div>
             <div className="mt-4">
@@ -4989,93 +5010,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
 
         {/* 📈 Analytics Section */}
         <section className="grid gap-6 lg:grid-cols-3">
-          {/* Revenue line chart */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm lg:col-span-2">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-slate-950 dark:text-white">Revenue Stream</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total invoice earnings over selected time range</p>
-              </div>
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-                {(['7d', '30d', '12m'] as const).map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => setTimeFilter(filter)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-                      timeFilter === filter
-                        ? "bg-white dark:bg-slate-700 text-slate-950 dark:text-white shadow-sm"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
-                    )}
-                  >
-                    {filter === '7d' ? '7 Days' : filter === '30d' ? '30 Days' : 'Yearly'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* SVG line chart */}
-            <div className="w-full">
-              <svg className="w-full h-64 overflow-visible" viewBox="0 0 600 240" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chart-glow-grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Horizontal grid lines */}
-                <line x1="0" y1="40" x2="600" y2="40" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
-                <line x1="0" y1="100" x2="600" y2="100" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
-                <line x1="0" y1="160" x2="600" y2="160" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
-                <line x1="0" y1="220" x2="600" y2="220" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeDasharray="4 4" />
-
-                {/* Conditional line curves based on filter */}
-                {timeFilter === '7d' && (
-                  <>
-                    <path d="M0,190 C60,180 120,200 180,140 C240,80 300,160 360,110 C420,60 480,90 540,60 L600,80 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
-                    <path d="M0,190 C60,180 120,200 180,140 C240,80 300,160 360,110 C420,60 480,90 540,60 L600,80" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
-                    {/* Points */}
-                    <circle cx="180" cy="140" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="360" cy="110" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="540" cy="60" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                  </>
-                )}
-                {timeFilter === '30d' && (
-                  <>
-                    <path d="M0,180 C80,190 160,140 240,160 C320,180 400,90 480,70 C520,60 560,95 600,50 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
-                    <path d="M0,180 C80,190 160,140 240,160 C320,180 400,90 480,70 C520,60 560,95 600,50" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
-                    {/* Points */}
-                    <circle cx="240" cy="160" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="480" cy="70" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="600" cy="50" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                  </>
-                )}
-                {timeFilter === '12m' && (
-                  <>
-                    <path d="M0,210 C80,200 160,180 240,130 C320,80 400,120 480,60 L600,40 L600,220 L0,220 Z" fill="url(#chart-glow-grad)" />
-                    <path d="M0,210 C80,200 160,180 240,130 C320,80 400,120 480,60 L600,40" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
-                    {/* Points */}
-                    <circle cx="240" cy="130" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="480" cy="60" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                    <circle cx="600" cy="40" r="4" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                  </>
-                )}
-              </svg>
-            </div>
-            {/* Legend */}
-            <div className="flex items-center gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <span>Invoice Earnings</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-                <span>Target Baseline</span>
-              </div>
-            </div>
-          </div>
+          <DashboardActivityChart data={dashboard?.analytics?.trend ?? []} />
 
           {/* Payment breakdown */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
@@ -5094,18 +5029,18 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
               <div className="h-5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
                 <div 
                   className="bg-emerald-500 h-full transition-all duration-500" 
-                  style={{ width: `${paidPercent || 60}%` }}
-                  title={`Paid: ${paidPercent || 60}%`}
+                  style={{ width: `${paidPercent}%` }}
+                  title={`Paid: ${paidPercent}%`}
                 />
                 <div 
                   className="bg-amber-500 h-full transition-all duration-500" 
-                  style={{ width: `${unpaidPercent || 30}%` }}
-                  title={`Pending: ${unpaidPercent || 30}%`}
+                  style={{ width: `${unpaidPercent}%` }}
+                  title={`Pending: ${unpaidPercent}%`}
                 />
                 <div 
                   className="bg-red-500 h-full transition-all duration-500" 
-                  style={{ width: `${Math.max(0, 100 - (paidPercent || 60) - (unpaidPercent || 30))}%` }}
-                  title={`Overdue`}
+                  style={{ width: `${totals.invoices ? Math.max(0, 100 - paidPercent - unpaidPercent) : 0}%` }}
+                  title="Other invoice statuses"
                 />
               </div>
 
@@ -5122,7 +5057,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-xl p-3 text-center">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase">Conversion</span>
                   <span className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1 block">
-                    {Math.round(invoiceOverview?.conversion.viewToPaymentClickRate || 80)}%
+                    {Math.round(invoiceOverview?.conversion.viewToPaymentClickRate || 0)}%
                   </span>
                 </div>
               </div>
@@ -9740,6 +9675,10 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
     <div className={cn("admin-theme min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex", darkMode && "dark")}>
       {/* 1. Sidebar Container (Desktop & Mobile Drawer) */}
       <aside 
+        ref={sidebarRef}
+        aria-label="Admin navigation"
+        role={mobileSidebarOpen ? 'dialog' : undefined}
+        aria-modal={mobileSidebarOpen || undefined}
         className={cn(
           "fixed top-0 bottom-0 left-0 z-40 bg-slate-900 dark:bg-slate-950 border-r border-slate-800/60 flex flex-col justify-between admin-sidebar overflow-y-auto admin-scrollbar text-slate-400 select-none",
           sidebarCollapsed ? "w-[72px]" : "w-[280px]",
@@ -9749,6 +9688,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
         {/* Upper section */}
         <div>
           {/* Brand header */}
+          <button type="button" className="m-3 ml-auto flex min-h-10 items-center gap-2 rounded-lg px-3 md:hidden" onClick={() => setMobileSidebarOpen(false)} aria-label="Close navigation"><X className="h-4 w-4" />Close</button>
           <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800/60">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shrink-0 font-bold text-sm tracking-wide">
@@ -9789,6 +9729,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                     if (item.id !== 'crm') setMobileSidebarOpen(false)
                   }}
                   aria-expanded={item.id === 'crm' ? crmMenuExpanded : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                   aria-controls={item.id === 'crm' ? 'admin-crm-submenu' : undefined}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
@@ -9893,14 +9834,16 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setMobileSidebarOpen(true)}
+              onClick={() => { setSidebarCollapsed(false); setMobileSidebarOpen(true) }}
+              aria-label="Open navigation"
+              aria-expanded={mobileSidebarOpen}
               className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Breadcrumb section */}
-            <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
               <span>Admin</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
               <span className="text-slate-800 dark:text-white font-bold">{activeMenu.label}</span>
@@ -9908,11 +9851,12 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
           </div>
 
           {/* Center: Global Search Bar */}
-          <div className="relative max-w-md w-full mx-4 hidden md:block">
+          <div className="admin-global-search relative max-w-md w-full mx-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
               <input
                 type="text"
+                aria-label="Search pages, posts, projects and invoices"
                 placeholder="Search pages, posts, projects, invoices..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -9922,6 +9866,7 @@ export function AdminDashboard({ initialSection }: { initialSection?: AdminSecti
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
                 >
                   <X className="w-3.5 h-3.5" />
