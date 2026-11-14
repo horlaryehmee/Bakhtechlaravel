@@ -327,7 +327,9 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
       entries.forEach((entry) => entry.target.classList.toggle('agency-offscreen', !entry.isIntersecting))
     }, { rootMargin: '100px' })
     const observeSections = () => {
-      shell.querySelectorAll('section').forEach((section) => {
+      // Sections, plus individual animated pieces inside very tall sections, so
+      // decorations only animate while they are actually on screen.
+      shell.querySelectorAll('section, [data-anim-scope]').forEach((section) => {
         if (observed.has(section)) return
         observed.add(section)
         observer.observe(section)
@@ -335,7 +337,7 @@ function TemplateShell({ children, preview = false }: { children: ReactNode; pre
     }
     observeSections()
     const mutationObserver = new MutationObserver(observeSections)
-    mutationObserver.observe(shell, { childList: true })
+    mutationObserver.observe(shell, { childList: true, subtree: true })
 
     return () => {
       mutationObserver.disconnect()
@@ -431,7 +433,7 @@ function AgencyProjectCard({ project, showDescription, onPlayMedia }: { project:
   const videoMedia = getProjectVideoMedia(project)
 
   return (
-    <article className="relative flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 text-[#202328] shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
+    <article data-anim-scope className="relative flex h-full flex-col overflow-hidden rounded-[1.35rem] border border-black/5 bg-white/35 p-4 text-[#202328] shadow-[0_18px_55px_rgba(15,23,42,0.07)]">
       <BorderBeam size={220} duration={8} borderWidth={1.25} colorFrom="#d6d2c8" colorTo="#f6f3ec" delay={project.id % 4} />
       <div className="relative h-44 overflow-hidden rounded-xl border border-black/5 bg-white/30 sm:h-48">
         <ProjectMediaPreview project={project} onPlay={onPlayMedia} />
@@ -1263,7 +1265,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
               </div>
             </article>
 
-            <article className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0">
+            <article data-anim-scope className="relative min-h-[17rem] overflow-hidden rounded-2xl bg-white p-5 shadow-sm md:col-span-3 md:min-h-0 [contain:layout_paint]">
               <h3 className="relative z-10 max-w-[16rem] text-lg font-semibold leading-6 text-black">Components, Dashboards and Everything else</h3>
               <CpuArchitecture
                 className="absolute inset-x-[-2.5rem] bottom-[-1.9rem] h-[15.5rem] w-[calc(100%+5rem)] text-[#e5e5df] md:inset-x-[-2.25rem] md:bottom-[-2.2rem] md:h-[15.2rem]"

@@ -34,8 +34,11 @@ const CpuArchitecture = ({
     const svg = svgRef.current
     if (!svg || typeof IntersectionObserver === 'undefined') return
 
+    // On phones the graphic stays still: its path animations can't run on the
+    // GPU and cost a repaint every frame.
+    const phone = window.matchMedia('(max-width: 767px)')
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) svg.unpauseAnimations()
+      if (entry.isIntersecting && !phone.matches) svg.unpauseAnimations()
       else svg.pauseAnimations()
     })
     observer.observe(svg)

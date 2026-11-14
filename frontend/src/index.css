@@ -6656,6 +6656,19 @@ a {
   }
 }
 /* Offscreen homepage decorations should not compete with scrolling. */
+/* Path-following decorations (offset-path) can't be GPU-animated, so they
+   repaint on the main thread every frame. Keep them still on phones. */
+@media (max-width: 767px) {
+  .agency-template .cpu-architecture {
+    animation: none !important;
+    visibility: hidden;
+  }
+
+  .agency-template .border-beam {
+    display: none;
+  }
+}
+
 .agency-template .agency-offscreen *,
 .agency-template .agency-offscreen *::before,
 .agency-template .agency-offscreen *::after {
