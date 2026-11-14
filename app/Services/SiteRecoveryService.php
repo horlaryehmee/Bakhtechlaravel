@@ -33,7 +33,7 @@ class SiteRecoveryService
             'access denied' => 'The server denied access. Check database credentials and privileges for this step.',
             'permission denied' => 'The server denied file or command access. Ask the host to check ownership and permissions.',
             'command not found' => 'A required command is missing from the cron PATH. Ask the host to configure the CLI tools.',
-            'required command is unavailable' => 'A required deployment command is unavailable. Check Git, Composer, PHP, tar, rsync and flock in the cron PATH.',
+            'required command is unavailable' => 'A required deployment command is unavailable in the scheduler PATH. Check the private log for its name.',
             'file changed as we read it' => 'Files changed while the archive was being created. Stop background writers and retry the backup.',
             'could not resolve host' => 'The server could not reach GitHub. Check DNS and outbound network access.',
             'could not read username' => 'GitHub authentication is unavailable to the scheduler. Configure repository access on the server.',
@@ -136,7 +136,7 @@ class SiteRecoveryService
             default => ($command[1] ?? '') === 'artisan' ? 'Running Laravel '.($command[2] ?? 'maintenance') : 'Running server command',
         };
         $this->markStep($step);
-        $process = new Process($command, base_path(), $env, $input, 3600);
+        $process = new Process($command, base_path(), ['PATH' => '/usr/local/cpanel/3rdparty/lib/path-bin:/usr/local/bin:/usr/bin:/bin:'.(getenv('PATH') ?: ''), ...$env], $input, 3600);
         $process->mustRun();
         return $process->getOutput();
     }
