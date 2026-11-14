@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_ROOT="${APP_ROOT:-$SCRIPT_ROOT}"
 GIT_ROOT="${GIT_ROOT:-}"
-DEPLOY_REF="${DEPLOY_REF:-HEAD}"
+DEPLOY_REF="${DEPLOY_REF:-}"
 REPAIR=false
 FULL=false
 QUICK=false
@@ -55,6 +55,20 @@ if [ "${INTEGRITY_SKIP_LOCK:-0}" != "1" ] && command -v flock >/dev/null 2>&1; t
     echo "Integrity check skipped: a deployment is in progress."
     exit 0
   fi
+fi
+
+# Without an explicit ref, verify against the release the last successful
+# deployment recorded. The trusted checkout's HEAD can lag behind when the
+# deploy runs from a separate cPanel clone (it only fetches), and repairing to
+# that stale HEAD would silently roll the live site back to an old release.
+if [ -z "$DEPLOY_REF" ]; then
+  if [ -s "$APP_ROOT/storage/app/deployment-ref" ]; then
+    RECORDED_REF="$(tr -d '[:space:]' < "$APP_ROOT/storage/app/deployment-ref")"
+    if [ -n "$RECORDED_REF" ] && git -C "$GIT_ROOT" cat-file -e "${RECORDED_REF}^{commit}" 2>/dev/null; then
+      DEPLOY_REF="$RECORDED_REF"
+    fi
+  fi
+  DEPLOY_REF="${DEPLOY_REF:-HEAD}"
 fi
 
 git -C "$GIT_ROOT" cat-file -e "${DEPLOY_REF}^{commit}"

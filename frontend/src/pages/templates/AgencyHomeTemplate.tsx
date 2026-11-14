@@ -1218,7 +1218,7 @@ export function AgencyHomeTemplate({ preview = false }: AgencyHomeTemplateProps)
             <article className="relative min-h-[18.5rem] overflow-hidden rounded-2xl bg-[#050505] p-5 text-white shadow-sm md:col-span-4 md:min-h-0">
               <h3 className="relative z-20 max-w-[19rem] text-lg font-black drop-shadow-[0_2px_12px_rgba(0,0,0,0.65)]">Hosting, Deployment & Maintenance</h3>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(255,255,255,0.35),transparent_22%),radial-gradient(circle_at_72%_52%,rgba(255,255,255,0.18),transparent_28%),linear-gradient(180deg,#050505,#080808)]" />
-              <div className="absolute inset-x-0 bottom-[-2.75rem] top-16 z-0 hidden items-center justify-center overflow-visible md:bottom-[-3rem] md:top-16 md:flex">
+              <div className="absolute inset-x-0 bottom-[-2.75rem] top-16 z-0 flex items-center justify-center overflow-visible md:bottom-[-3rem] md:top-16">
                 <OrbitalSphereGlobe className="h-[17rem] w-[17rem] opacity-90 md:h-[18.5rem] md:w-[18.5rem]" />
               </div>
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.92)_0%,rgba(5,5,5,0.12)_34%,rgba(5,5,5,0.65)_100%)]" />
