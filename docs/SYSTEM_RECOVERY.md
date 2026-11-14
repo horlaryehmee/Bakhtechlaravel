@@ -1,5 +1,22 @@
 # Settings updates and recovery
 
+## Visitor maintenance page
+
+Browser requests during maintenance display `resources/views/errors/503.blade.php`.
+This self-contained page needs no frontend build or external asset requests. The
+503 status and Retry-After semantics remain; API requests still return JSON.
+Only `/api/maintenance/notify` is exempt from the maintenance middleware.
+Validated email requests are encrypted in private storage, deduplicated, and rate
+limited using the file cache. The normal every-minute scheduler runs
+`site:maintenance-notifications` after maintenance ends. Configure a working SMTP
+mailer; log and array mailers do not consume requests. Failed deliveries retry,
+and requests older than 30 days expire. These addresses are not added to marketing.
+Delivery is at least once: a process interruption after SMTP accepts a message
+but before removal of its request can cause a duplicate notification.
+Do not use `artisan down --render` for this flow: Laravel's early pre-rendered
+response bypasses the signup route. The existing deploy and recovery commands
+use normal `artisan down` and support this page.
+
 The admin Settings page queues updates, full backups, and restores. Only admins
 can access these endpoints. Operations survive closing the browser and are
 serialized with a private filesystem lock. Restores require typing RESTORE.

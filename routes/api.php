@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 require __DIR__.'/client-portal.php';
+Route::post('/maintenance/notify', [\App\Http\Controllers\Api\MaintenanceNotificationController::class, 'store']);
 
 Route::prefix('quote-builder')->group(function () {
     Route::get('/catalog', [\App\Http\Controllers\Api\QuoteBuilderController::class, 'catalog'])->middleware('throttle:public-read');
